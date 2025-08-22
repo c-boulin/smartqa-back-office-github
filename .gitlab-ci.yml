@@ -1,0 +1,85 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  AWS_DEFAULT_REGION: eu-west-1
+  BUILD_DIR: "dist"  # Ajuste selon ton dossier build (dist, build, public...)
+
+####### RULES FOR ALL INFRA JOBS #######
+.deploy_rules: &deploy_rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH # staging
+      variables:
+        STAGE: stag
+        AWS_DEFAULT_REGION: eu-west-1
+        ROLE_ARN: arn:aws:iam::963496677041:role/dvf-smartqa-stag-role-sls-deployment
+        S3_BUCKET_NAME: "smartqa-stag-backoffice-s3"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME != $CI_DEFAULT_BRANCH # dev
+      variables:
+        STAGE: dev
+        AWS_DEFAULT_REGION: eu-west-1
+        ROLE_ARN: arn:aws:iam::679799247858:role/dvf-smartqa-dev-role-sls-deployment
+        S3_BUCKET_NAME: "smartqa-dev-backoffice-s3"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH # dev
+      variables:
+        STAGE: dev
+        AWS_DEFAULT_REGION: eu-west-1
+        ROLE_ARN: arn:aws:iam::679799247858:role/dvf-smartqa-dev-role-sls-deployment
+        S3_BUCKET_NAME: "smartqa-dev-backoffice-s3"
+    - if: $CI_COMMIT_BRANCH =~ /^develop.*$/ # dev
+      variables:
+        STAGE: dev
+        AWS_DEFAULT_REGION: eu-west-1
+        ROLE_ARN: arn:aws:iam::679799247858:role/dvf-smartqa-dev-role-sls-deployment
+        S3_BUCKET_NAME: "smartqa-dev-backoffice-s3"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH # staging
+      variables:
+        STAGE: stag
+        AWS_DEFAULT_REGION: eu-west-1
+        ROLE_ARN: arn:aws:iam::963496677041:role/dvf-smartqa-stag-role-sls-deployment
+        S3_BUCKET_NAME: "smartqa-stag-backoffice-s3"
+    - if: $CI_COMMIT_TAG # prod
+      variables:
+        STAGE: prod
+        AWS_DEFAULT_REGION: eu-west-1
+        ROLE_ARN: arn:aws:iam::926783724271:role/dvf-smartqa-prod-role-sls-deployment
+        S3_BUCKET_NAME: "smartqa-prod-backoffice-s3"
+    - when: never
+
+####### AUTH (AWS, COMPOSER, SSH) #######
+.aws_auth: &aws_auth
+  - sts=$( aws sts assume-role --role-arn "${ROLE_ARN}" --role-session-name ${CI_COMMIT_SHORT_SHA} --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text )
+  - export AWS_ACCESS_KEY_ID=$( echo "${sts}" | awk '{print $1}' )
+  - export AWS_SECRET_ACCESS_KEY=$( echo "${sts}" | awk '{print $2}' )
+  - export AWS_SESSION_TOKEN=$( echo "${sts}" | awk '{print $3}' )
+
+####### SHARED DEPLOY #######
+build_frontend:
+  image: node:20-alpine
+  stage: build
+  script:
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - ${BUILD_DIR}/
+    expire_in: 1 hour
+  cache:
+    paths:
+      - node_modules/
+  <<: *deploy_rules
+
+deploy_s3:
+  image:
+    name: amazon/aws-cli:latest   # or pin a version you trust
+    entrypoint: [""]              # <-- important: disable ENTRYPOINT=aws
+  stage: deploy
+  before_script:
+    - *aws_auth                   # your assume-role / auth block
+  script:
+    # if S3_BUCKET_NAME is just the bucket name, prefix with s3://
+    - aws s3 sync "${BUILD_DIR}/" "s3://${S3_BUCKET_NAME}/" --delete
+  <<: *deploy_rules
