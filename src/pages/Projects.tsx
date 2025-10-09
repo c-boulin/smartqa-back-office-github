@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, Search, Filter, Edit, Trash2, ChevronLeft, ChevronRight, Loader, User } from 'lucide-react';
+import { Plus, Search, Filter, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
@@ -500,7 +500,7 @@ const Projects: React.FC = () => {
                         title="Edit"
                         disabled={isSubmitting}
                       >
-                        <Edit className="w-4 h-4" />
+                        <SquarePen className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => openDeleteDialog(project)}

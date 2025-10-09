@@ -63,10 +63,13 @@ export interface ApiTestCase {
     testRuns?: {
       data: Array<{ type: string; id: string }>;
     };
-    creator: {
+    user?: {
       data: { type: string; id: string };
     };
-    editor: {
+    creator?: {
+      data: { type: string; id: string };
+    };
+    editor?: {
       data: { type: string; id: string };
     };
     stepResults?: {
@@ -163,6 +166,27 @@ export interface UpdateTestCaseRequest {
             order: number;
           };
         }>;
+      };
+      shared_steps?: {
+        data: Array<{
+          type: string;
+          id: string;
+          meta: {
+            order: number;
+          };
+        }>;
+      };
+      attachments?: {
+        data: Array<{ type: string; id: string }>;
+      };
+      project?: {
+        data: { type: string; id: string };
+      };
+      folder?: {
+        data: { type: string; id: string };
+      };
+      user?: {
+        data: { type: string; id: string };
       };
     };
   };
@@ -628,6 +652,9 @@ class TestCasesApiService {
     template: number;
     preconditions: string;
     tags: Tag[];
+    projectId?: string;
+    folderId?: string;
+    ownerId?: string;
     stepResultsRelationships?: Array<{
       type: string;
       id: string;
@@ -647,17 +674,32 @@ class TestCasesApiService {
       id: string;
     }>;
   }): Promise<UpdateTestCaseResponse> {
+    console.log('🔧 API Service - Received testCaseData:', testCaseData);
+    console.log('🔧 API Service - automationStatus type:', typeof testCaseData.automationStatus);
+    console.log('🔧 API Service - template type:', typeof testCaseData.template);
+
+    // Ensure all numeric fields are numbers
+    const priorityNum = this.priorityToApi[testCaseData.priority];
+    const typeNum = this.typeToApi[testCaseData.testType];
+    const stateNum = this.statusToApi[testCaseData.status];
+    const automationNum = typeof testCaseData.automationStatus === 'string'
+      ? parseInt(testCaseData.automationStatus, 10) as 1 | 2 | 3 | 4 | 5
+      : testCaseData.automationStatus;
+    const templateNum = typeof testCaseData.template === 'string'
+      ? parseInt(testCaseData.template, 10)
+      : testCaseData.template;
+
     const requestBody: UpdateTestCaseRequest = {
       data: {
         type: "TestCase",
         attributes: {
           title: testCaseData.title,
           description: testCaseData.description,
-          priority: this.priorityToApi[testCaseData.priority],
-          type: this.typeToApi[testCaseData.testType],
-          state: this.statusToApi[testCaseData.status],
-          automation: testCaseData.automationStatus,
-          template: testCaseData.template,
+          priority: priorityNum,
+          type: typeNum,
+          state: stateNum,
+          automation: automationNum,
+          template: templateNum,
           preconditions: testCaseData.preconditions,
         }
       }
@@ -675,25 +717,49 @@ class TestCasesApiService {
     };
     
     // Add step_results relationship if provided
-    if (testCaseData.stepResultsRelationships && testCaseData.stepResultsRelationships.length > 0) {
+    // ALWAYS send step_results relationship (empty array if no step results)
+    if (testCaseData.stepResultsRelationships !== undefined) {
       requestBody.data.relationships.step_results = {
         data: testCaseData.stepResultsRelationships
       };
     }
     
     // Add shared_steps relationship if provided
-    if (testCaseData.sharedStepsRelationships && testCaseData.sharedStepsRelationships.length > 0) {
+    // ALWAYS send shared_steps relationship (empty array if no shared steps)
+    if (testCaseData.sharedStepsRelationships !== undefined) {
       requestBody.data.relationships.shared_steps = {
         data: testCaseData.sharedStepsRelationships
       };
     }
 
-    // Add attachments relationship if provided
-    if (testCaseData.createdAttachments && testCaseData.createdAttachments.length > 0) {
-      requestBody.data.relationships.attachments = {
-        data: testCaseData.createdAttachments
+    // Always send attachments relationship (empty array if no attachments)
+    requestBody.data.relationships.attachments = {
+      data: testCaseData.createdAttachments || []
+    };
+
+    // Add project relationship if provided
+    if (testCaseData.projectId) {
+      requestBody.data.relationships.project = {
+        data: { type: "Project", id: `/api/projects/${testCaseData.projectId}` }
       };
     }
+
+    // Add folder relationship if provided
+    if (testCaseData.folderId) {
+      requestBody.data.relationships.folder = {
+        data: { type: "Folder", id: `/api/folders/${testCaseData.folderId}` }
+      };
+    }
+
+    // Add user (owner) relationship if provided
+    if (testCaseData.ownerId) {
+      requestBody.data.relationships.user = {
+        data: { type: "User", id: `/api/users/${testCaseData.ownerId}` }
+      };
+    }
+
+    console.log('🚀 Final PATCH payload being sent:', JSON.stringify(requestBody, null, 2));
+    console.log('🚀 Automation field in payload:', requestBody.data.attributes.automation, 'type:', typeof requestBody.data.attributes.automation);
 
     const response = await apiService.authenticatedRequest(`/test_cases/${id}`, {
       method: 'PATCH',
@@ -767,8 +833,9 @@ class TestCasesApiService {
     // Extraire l'ID du projet depuis l'URL de l'API
     const projectId = apiTestCase.relationships.project.data.id.split('/').pop() || '';
     const folderId = apiTestCase.relationships.folder?.data?.id?.split('/').pop();
-    
-    console.log('🔄 Transforming test case:', apiTestCase.attributes.id, 'folderId from API:', folderId);
+    const ownerId = apiTestCase.relationships.user?.data?.id?.split('/').pop();
+
+    console.log('🔄 Transforming test case:', apiTestCase.attributes.id, 'folderId from API:', folderId, 'ownerId:', ownerId);
     
     // Extract tags from relationships and resolve them using included data
     let tags: string[] = [];
@@ -830,11 +897,13 @@ class TestCasesApiService {
       id: apiTestCase.attributes.id.toString(),
       projectId: projectId,
       folderId: folderId,
+      ownerId: ownerId,
       title: apiTestCase.attributes.title,
       description: apiTestCase.attributes.description,
       preconditions: apiTestCase.attributes.preconditions || '', // Add preconditions from API
       priority: this.priorityFromApi[apiTestCase.attributes.priority as keyof typeof this.priorityFromApi] || 'medium',
       type: this.typeFromApi[apiTestCase.attributes.type as keyof typeof this.typeFromApi] || 'functional',
+      typeId: apiTestCase.attributes.type, // Store numeric type ID for filtering
       status: this.statusFromApi[apiTestCase.attributes.state as keyof typeof this.statusFromApi] || 'draft',
       automationStatus: apiTestCase.attributes.automation, // Utilise directement le champ automation de l'API
       steps: [], // Steps are handled via stepResults

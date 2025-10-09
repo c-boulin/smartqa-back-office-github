@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, Loader, Play, Clock, CheckCircle, User, Calendar, Copy } from 'lucide-react';
+import { Plus, Search, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Play, Clock, CheckCircle, User, Calendar, Copy, Activity, Archive } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/UI/Card';
@@ -72,6 +72,7 @@ const TestRuns: React.FC = () => {
   const [isFiltersSidebarOpen, setIsFiltersSidebarOpen] = useState(false);
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [testRunToClose, setTestRunToClose] = useState<TestRun | null>(null);
+  const [activeTab, setActiveTab] = useState<'active' | 'closed'>('active');
 
   const handleSearch = useCallback(async (term: string) => {
     setCurrentSearchTerm(term);
@@ -121,6 +122,24 @@ const TestRuns: React.FC = () => {
     setCurrentSearchTerm('');
     fetchTestRuns(1);
   }, [clearFilters, fetchTestRuns]);
+
+  // Filter test runs based on active tab
+  const getFilteredTestRuns = () => {
+    console.log('🔍 Filtering test runs for tab:', activeTab);
+    console.log('🔍 All test runs:', testRuns.map(tr => ({ id: tr.id, name: tr.name, state: tr.state, status: tr.status })));
+    
+    if (activeTab === 'active') {
+      const activeRuns = testRuns.filter(testRun => testRun.state !== 6); // Not closed
+      console.log('🔍 Active test runs:', activeRuns.map(tr => ({ id: tr.id, name: tr.name, state: tr.state })));
+      return activeRuns;
+    } else {
+      const closedRuns = testRuns.filter(testRun => testRun.state === 6); // Closed
+      console.log('🔍 Closed test runs:', closedRuns.map(tr => ({ id: tr.id, name: tr.name, state: tr.state })));
+      return closedRuns;
+    }
+  };
+
+  const filteredTestRuns = getFilteredTestRuns();
 
   const clearIndividualFilter = useCallback(async (filterType: keyof typeof filters, value?: any) => {
     if (filterType === 'search') {
@@ -247,7 +266,8 @@ const TestRuns: React.FC = () => {
         testCaseIds: data.testCaseIds,
         configurations: data.configurations,
         assignedTo: data.assignedTo,
-        tags: processedTags
+        tags: processedTags,
+        testPlanId: data.testPlanId
       });
       setIsEditModalOpen(false);
       setSelectedTestRun(null);
@@ -312,6 +332,7 @@ const TestRuns: React.FC = () => {
     includeAllTestCases: boolean;
     includeByResults: boolean;
     selectedResults: string[];
+    selectedTestCaseIds?: string[];
     copyTestCaseAssignee: boolean;
     copyTags: boolean;
     copyLinkedIssues: boolean;
@@ -334,9 +355,8 @@ const TestRuns: React.FC = () => {
       if (cloneData.includeAllTestCases) {
         testCaseIds = testRunToClone.testCaseIds;
       } else if (cloneData.includeByResults) {
-        // For now, just include all test cases since we don't have execution results API
-        // This will be implemented when we have the execution results API
-        testCaseIds = testRunToClone.testCaseIds;
+        // Use the actual selected test case IDs from the modal
+        testCaseIds = cloneData.selectedTestCaseIds || [];
       }
       
       // Get existing tags if copyTags is enabled
@@ -534,7 +554,7 @@ const TestRuns: React.FC = () => {
           {selectedProject && (
             <div className="mt-2">
               <div className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400">
-                📁 Project: {selectedProject.name}
+                📁 Project: {selectedProject.name} ({filteredTestRuns.length} {activeTab} test runs)
               </div>
             </div>
           )}
@@ -563,6 +583,40 @@ const TestRuns: React.FC = () => {
       {/* Only show content if project is selected */}
       {selectedProject && (
         <>
+          {/* Tabs */}
+          <Card className="p-0 overflow-hidden">
+            <div className="flex border-b border-slate-700">
+              <button
+                onClick={() => setActiveTab('active')}
+                className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${
+                  activeTab === 'active'
+                    ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border-b-2 border-cyan-400'
+                    : 'text-gray-400 hover:text-cyan-400 hover:bg-slate-800/50'
+                }`}
+              >
+                <Activity className="w-4 h-4" />
+                <span>Active Test Runs</span>
+                <span className="ml-2 px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs rounded-full">
+                  {testRuns.filter(tr => tr.state !== 6).length}
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('closed')}
+                className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${
+                  activeTab === 'closed'
+                    ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border-b-2 border-cyan-400'
+                    : 'text-gray-400 hover:text-cyan-400 hover:bg-slate-800/50'
+                }`}
+              >
+                <Archive className="w-4 h-4" />
+                <span>Closed Test Runs</span>
+                <span className="ml-2 px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">
+                  {testRuns.filter(tr => tr.state === 6).length}
+                </span>
+              </button>
+            </div>
+          </Card>
+
           <TestRunsFilters
             searchTerm={searchTerm}
             onSearchTermChange={setSearchTerm}
@@ -596,12 +650,11 @@ const TestRuns: React.FC = () => {
                     <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Progress</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Test Cases</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Assignee</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Dates</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {testRuns.map((testRun) => (
+                  {filteredTestRuns.map((testRun) => (
                     <tr key={testRun.id} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
                       <td className="py-4 px-6 text-sm text-gray-300 font-mono">
                         #{testRun.id}
@@ -668,35 +721,17 @@ const TestRuns: React.FC = () => {
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <div className="space-y-1 text-xs text-gray-400">
-                          <div className="flex items-center">
-                            <Calendar className="w-3 h-3 mr-1" />
-                            <span>Started: {format(testRun.startDate, 'MMM dd, yyyy')}</span>
-                          </div>
-                          {testRun.endDate && (
-                            <div className="flex items-center">
-                              <Clock className="w-3 h-3 mr-1" />
-                              <span>Ended: {format(testRun.endDate, 'MMM dd, yyyy')}</span>
-                            </div>
-                          )}
-                          {testRun.closedDate && (
-                            <div className="flex items-center">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              <span>Closed: {format(testRun.closedDate, 'MMM dd, yyyy')}</span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
                         <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => openEditModal(testRun)}
-                            className="p-2 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded-lg transition-colors"
-                            title="Edit"
-                            disabled={isSubmitting}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                          {activeTab === 'active' && ( // Only show edit button for active test runs
+                            <button
+                              onClick={() => openEditModal(testRun)}
+                              className="p-2 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded-lg transition-colors"
+                              title="Edit"
+                              disabled={isSubmitting}
+                            >
+                              <SquarePen className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => openCloneModal(testRun)}
                             className="p-2 text-gray-400 hover:text-green-400 hover:bg-slate-700 rounded-lg transition-colors"
@@ -705,7 +740,7 @@ const TestRuns: React.FC = () => {
                           >
                             <Copy className="w-4 h-4" />
                           </button>
-                          {testRun.state !== 6 && ( // Only show close button if not already closed
+                          {activeTab === 'active' && testRun.state !== 6 && ( // Only show close button for active test runs
                             <button
                               onClick={() => openCloseModal(testRun)}
                               className="p-2 text-gray-400 hover:text-orange-400 hover:bg-slate-700 rounded-lg transition-colors"
@@ -730,15 +765,17 @@ const TestRuns: React.FC = () => {
                 </tbody>
               </table>
               
-              {testRuns.length === 0 && !loading && (
+              {filteredTestRuns.length === 0 && !loading && (
                 <div className="text-center py-12">
                   <div className="text-gray-400 mb-4">
                     <Play className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-medium">No test runs found</p>
+                    <p className="text-lg font-medium">No {activeTab} test runs found</p>
                     <p className="text-sm">
                       {currentSearchTerm 
-                        ? `No test runs found matching "${currentSearchTerm}". Try a different search term or create a new test run.`
-                        : 'No test runs found for this project. Create your first test run to get started.'
+                        ? `No ${activeTab} test runs found matching "${currentSearchTerm}". Try a different search term${activeTab === 'active' ? ' or create a new test run' : ''}.`
+                        : activeTab === 'active' 
+                          ? 'No active test runs found for this project. Create your first test run to get started.'
+                          : 'No closed test runs found for this project. Close some test runs to see them here.'
                       }
                     </p>
                   </div>
@@ -751,9 +788,7 @@ const TestRuns: React.FC = () => {
               <div className="border-t border-slate-700 px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-400">
-                    Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
-                    {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
-                    {pagination.totalItems} test runs
+                    Showing {filteredTestRuns.length} of {testRuns.length} test runs
                   </div>
                   <div className="flex items-center space-x-2">
                     <Button

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Folder, ChevronRight, ChevronDown, FolderOpen, Loader } from 'lucide-react';
+import { Folder, ChevronRight, ChevronDown, FolderOpen, Loader, MoreHorizontal, SquarePen, Trash2 } from 'lucide-react';
 import { Folder as FolderType } from '../../services/foldersApi';
 
 interface FolderNodeProps {
@@ -9,6 +9,8 @@ interface FolderNodeProps {
   level: number;
   expandedFolders: Set<string>;
   onToggleExpanded: (folderId: string) => void;
+  onEditFolder?: (folder: FolderType) => void;
+  onDeleteFolder?: (folder: FolderType) => void;
 }
 
 const FolderNode: React.FC<FolderNodeProps> = React.memo(({
@@ -17,8 +19,11 @@ const FolderNode: React.FC<FolderNodeProps> = React.memo(({
   onSelectFolder,
   level,
   expandedFolders,
-  onToggleExpanded
+  onToggleExpanded,
+  onEditFolder,
+  onDeleteFolder
 }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const isSelected = selectedFolderId === folder.id;
   const isExpanded = expandedFolders.has(folder.id);
   const hasChildren = folder.children.length > 0;
@@ -42,59 +47,136 @@ const FolderNode: React.FC<FolderNodeProps> = React.memo(({
   // Utiliser directement le compteur calculé du dossier
   const testCasesCount = folder.testCasesCount || 0;
 
+  const handleThreeDotsClick = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropdownOpen(!isDropdownOpen);
+  }, [isDropdownOpen]);
+
+  const handleEdit = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropdownOpen(false);
+    if (onEditFolder) {
+      onEditFolder(folder);
+    }
+  }, [folder, onEditFolder]);
+
+  const handleDelete = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropdownOpen(false);
+    if (onDeleteFolder) {
+      onDeleteFolder(folder);
+    }
+  }, [folder, onDeleteFolder]);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    if (isDropdownOpen) {
+      const handleClickOutside = () => setIsDropdownOpen(false);
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [isDropdownOpen]);
+
   return (
-    <div>
-      <div
-        className={`flex items-center py-2 px-3 cursor-pointer transition-colors rounded-lg ${
-          isSelected
-            ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/30'
-            : 'text-gray-300 hover:text-cyan-400 hover:bg-slate-800/50'
-        }`}
-        style={{ paddingLeft: `${12 + level * 16}px` }}
-        onClick={handleSelect}
-      >
-        {hasChildren ? (
-          <button
-            onClick={handleToggle}
-            className="flex items-center justify-center w-4 h-4 mr-2 text-gray-400 hover:text-cyan-400 transition-colors"
-            type="button"
-          >
-            {isExpanded ? (
-              <ChevronDown className="w-3 h-3" />
-            ) : (
-              <ChevronRight className="w-3 h-3" />
-            )}
-          </button>
-        ) : (
-          <div className="w-4 h-4 mr-2" />
-        )}
-        
-        <div className="flex items-center flex-1 min-w-0">
+    <div className="relative">
+      <div className="flex items-center">
+        <div
+          className={`flex items-center py-2 px-3 cursor-pointer transition-colors rounded-lg flex-1 ${
+            isSelected
+              ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/30'
+              : 'text-gray-300 hover:text-cyan-400 hover:bg-slate-800/50'
+          }`}
+          style={{ paddingLeft: `${12 + level * 16}px` }}
+          onClick={handleSelect}
+        >
           {hasChildren ? (
-            <FolderOpen className="w-4 h-4 mr-2 flex-shrink-0" />
+            <button
+              onClick={handleToggle}
+              className="flex items-center justify-center w-4 h-4 mr-2 text-gray-400 hover:text-cyan-400 transition-colors"
+              type="button"
+            >
+              {isExpanded ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
+            </button>
           ) : (
-            <Folder className="w-4 h-4 mr-2 flex-shrink-0" />
+            <div className="w-4 h-4 mr-2" />
           )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center">
-              <span className="truncate text-sm font-medium">{folder.name}</span>
-              {/* Always display the counter with distinct colors for debugging */}
-              <span className={`ml-auto text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${
-                testCasesCount > 0 
-                  ? 'text-cyan-400 bg-cyan-500/20 border border-cyan-500/30' 
-                  : 'text-gray-500 bg-slate-700/50 border border-slate-600'
-              }`}>
-                {testCasesCount}
-              </span>
-            </div>
-            {/* Show description only for the selected folder */}
-            {isSelected && folder.description && (
-              <div className="text-xs text-gray-400 mt-1 truncate">
-                {folder.description}
-              </div>
+          
+          <div className="flex items-center flex-1 min-w-0">
+            {hasChildren ? (
+              <FolderOpen className="w-4 h-4 mr-2 flex-shrink-0" />
+            ) : (
+              <Folder className="w-4 h-4 mr-2 flex-shrink-0" />
             )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="truncate text-sm font-medium pr-2">{folder.name}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${
+                  testCasesCount > 0 
+                    ? 'text-cyan-400 bg-cyan-500/20 border border-cyan-500/30' 
+                    : 'text-gray-500 bg-slate-700/50 border border-slate-600'
+                }`}>
+                  {testCasesCount}
+                </span>
+              </div>
+              {/* Show description only for the selected folder */}
+              {isSelected && folder.description && (
+                <div className="text-xs text-gray-400 mt-1 truncate">
+                  {folder.description}
+                </div>
+              )}
+            </div>
           </div>
         </div>
+        
+        {/* Three-dots button - outside the folder box */}
+        {(onEditFolder || onDeleteFolder) && (
+          <div className="relative ml-1">
+            <button
+              onClick={handleThreeDotsClick}
+              className="p-1 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded transition-colors"
+              title="Folder actions"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            
+            {/* Dropdown menu */}
+            {isDropdownOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setIsDropdownOpen(false)}
+                />
+                <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50 min-w-[120px]">
+                  {onEditFolder && (
+                    <button
+                      onClick={handleEdit}
+                      className="w-full px-3 py-2 text-left text-gray-300 hover:text-cyan-400 hover:bg-slate-700 transition-colors flex items-center text-sm"
+                    >
+                      <SquarePen className="w-3 h-3 mr-2" />
+                      Edit
+                    </button>
+                  )}
+                  {onDeleteFolder && (
+                    <button
+                      onClick={handleDelete}
+                      className="w-full px-3 py-2 text-left text-gray-300 hover:text-red-400 hover:bg-slate-700 transition-colors flex items-center text-sm"
+                    >
+                      <Trash2 className="w-3 h-3 mr-2" />
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {hasChildren && isExpanded && (
@@ -108,6 +190,8 @@ const FolderNode: React.FC<FolderNodeProps> = React.memo(({
               level={level + 1}
               expandedFolders={expandedFolders}
               onToggleExpanded={onToggleExpanded}
+              onEditFolder={onEditFolder}
+              onDeleteFolder={onDeleteFolder}
             />
           ))}
         </div>
@@ -123,13 +207,17 @@ interface FolderTreeProps {
   selectedFolderId: string | null;
   onSelectFolder: (folderId: string | null) => void;
   loading: boolean;
+  onEditFolder?: (folder: FolderType) => void;
+  onDeleteFolder?: (folder: FolderType) => void;
 }
 
 const FolderTree: React.FC<FolderTreeProps> = React.memo(({
   folders,
   selectedFolderId,
   onSelectFolder,
-  loading
+  loading,
+  onEditFolder,
+  onDeleteFolder
 }) => {
   const [expandedFolders, setExpandedFolders] = React.useState<Set<string>>(new Set());
 
@@ -217,6 +305,8 @@ const FolderTree: React.FC<FolderTreeProps> = React.memo(({
           level={0}
           expandedFolders={expandedFolders}
           onToggleExpanded={handleToggleExpanded}
+          onEditFolder={onEditFolder}
+          onDeleteFolder={onDeleteFolder}
         />
       ))}
     </div>

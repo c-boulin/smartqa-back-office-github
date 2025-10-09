@@ -21,6 +21,8 @@ import TestRuns from './pages/TestRuns';
 import TestRunDetails from './pages/TestRunDetails';
 import TestRunsOverview from './pages/TestRunsOverview';
 import TestPlans from './pages/TestPlans';
+import TestPlanDetails from './pages/TestPlanDetails';
+import Reports from './pages/Reports';
 
 const AppContent: React.FC = () => {
   const { loading } = useLoading();
@@ -47,7 +49,8 @@ const AppContent: React.FC = () => {
               <Route path="test-runs/:id" element={<TestRunDetails />} />
               <Route path="test-runs-overview" element={<TestRunsOverview />} />
               <Route path="test-plans" element={<TestPlans />} />
-              <Route path="reports" element={<div className="text-white">Reports - In Development</div>} />
+              <Route path="test-plans/:id" element={<TestPlanDetails />} />
+              <Route path="reports" element={<Reports />} />
               <Route path="settings" element={<div className="text-white">Settings - In Development</div>} />
             </Route>
           </Routes>

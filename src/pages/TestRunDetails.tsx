@@ -19,7 +19,7 @@ import toast from 'react-hot-toast';
 // Test Result Dropdown Component
 interface TestResultDropdownProps {
   value: TestResultId;
-  onChange: (value: TestResultId) => void;
+  onChange: (value: TestResultId, comment?: string) => void;
   disabled?: boolean;
   isUpdating?: boolean;
 }
@@ -31,8 +31,11 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
   isUpdating = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [comment, setComment] = useState('');
+  const [isCommentExpanded, setIsCommentExpanded] = useState(false);
+  const [selectedResult, setSelectedResult] = useState<TestResultId>(value);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
-  const selectedResult = TEST_RESULTS[value];
+  const currentResultLabel = TEST_RESULTS[value];
 
   const handleToggle = () => {
     if (!disabled && !isUpdating) {
@@ -84,6 +87,26 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
     }
   };
 
+  const handleResultSelect = (newResultId: TestResultId) => {
+    setSelectedResult(newResultId);
+  };
+
+  const handleResultChange = (newResultId: TestResultId) => {
+    setSelectedResult(newResultId);
+  };
+
+  const handleValidate = () => {
+    onChange(selectedResult, comment.trim() || undefined);
+    setIsOpen(false);
+    setComment('');
+    setIsCommentExpanded(false);
+  };
+
+  // Update selectedResult when value prop changes
+  React.useEffect(() => {
+    setSelectedResult(value);
+  }, [value]);
+
   return (
     <div className="relative">
       <button
@@ -91,13 +114,13 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
         type="button"
         onClick={handleToggle}
         disabled={disabled || isUpdating}
-        className={`w-full px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between ${getStatusColor(selectedResult)} ${
+        className={`w-full px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between ${getStatusColor(currentResultLabel)} ${
           disabled || isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'
         }`}
       >
         <div className="flex items-center">
           <div className={`w-2 h-2 rounded-full mr-2 ${getResultColor(value)}`}></div>
-          <span>{selectedResult}</span>
+          <span>{currentResultLabel}</span>
         </div>
         {isUpdating ? (
           <Loader className="w-3 h-3 animate-spin text-gray-400" />
@@ -115,22 +138,77 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
             onClick={() => setIsOpen(false)}
           />
           <div 
-            className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] max-h-60 overflow-y-auto min-w-[200px]"
+            className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96"
           >
-            {Object.entries(TEST_RESULTS).map(([resultId, label]) => (
-              <button
-                key={resultId}
-                type="button"
-                onClick={() => {
-                  onChange(parseInt(resultId) as TestResultId);
-                  setIsOpen(false);
-                }}
-                className="w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors flex items-center text-sm"
-              >
-                <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${getResultColor(parseInt(resultId) as TestResultId)}`}></div>
-                <span className="text-white">{label}</span>
-              </button>
-            ))}
+            <div className="p-3 border-b border-slate-600">
+              <h4 className="text-sm font-medium text-white mb-3">Select Result</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+              {Object.entries(TEST_RESULTS).map(([resultId, label]) => (
+                <button
+                  key={resultId}
+                  type="button"
+                  onClick={() => handleResultChange(parseInt(resultId) as TestResultId)}
+                  className={`w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors flex items-center text-sm ${
+                    selectedResult === parseInt(resultId) 
+                      ? 'bg-cyan-600/30 border-l-4 border-cyan-400' 
+                      : ''
+                  }`}
+                >
+                  <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${getResultColor(parseInt(resultId) as TestResultId)}`}></div>
+                  <span className={`${selectedResult === parseInt(resultId) ? 'text-cyan-300 font-medium' : 'text-white'}`}>
+                    {label}
+                  </span>
+                  {selectedResult === parseInt(resultId) && (
+                    <span className="ml-auto text-cyan-400">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            </div>
+            
+            {/* Comment Section */}
+            <div className="border-t border-slate-600 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-gray-400">
+                  Comment (Optional)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCommentExpanded(!isCommentExpanded)}
+                  className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  {isCommentExpanded ? 'Collapse' : 'Expand'}
+                </button>
+              </div>
+              
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Add a comment about this execution result..."
+                className={`w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 resize-none transition-all ${
+                  isCommentExpanded ? 'h-24' : 'h-12'
+                }`}
+                disabled={disabled || isUpdating}
+              />
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-2 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleValidate}
+                  className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors"
+                >
+                  Validate
+                </button>
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -217,91 +295,129 @@ const TestRunDetails: React.FC = () => {
       );
       setTestRun(transformedTestRun);
 
-      // Create execution result map from caseResults
-      // Create execution result map from executions
-      const executionResultMap = new Map<string, number>();
-      
-      console.log('🏃 Processing executions for execution mapping...');
-      console.log('🏃 Raw executions:', JSON.stringify(testRunResponse.data.attributes.executions, null, 2));
-      
-      if (testRunResponse.data.attributes.executions && Array.isArray(testRunResponse.data.attributes.executions)) {
-        testRunResponse.data.attributes.executions.forEach((execution: any) => {
-          console.log('🏃 Processing execution:', execution);
-          
-          // Extract test case ID from test_case_id field (now a number)
-          const testCaseId = execution.test_case_id ? execution.test_case_id.toString() : null;
-          const rawResult = execution.result;
-          
-          let resultId: number;
-          
-          if (typeof rawResult === 'number') {
-            // Already a numeric ID
-            resultId = rawResult;
-          } else if (typeof rawResult === 'string') {
-            // Convert string to numeric ID (reverse lookup)
-            const foundEntry = Object.entries(TEST_RESULTS).find(([id, label]) => 
-              label.toLowerCase() === rawResult.toLowerCase()
-            );
-            resultId = foundEntry ? parseInt(foundEntry[0]) : 6; // Default to 'Untested'
-          } else {
-            resultId = 6; // Default to 'Untested'
-          }
-          
-          console.log(`🏃 Extracted: testCaseId=${testCaseId}, rawResult=${rawResult} (${typeof rawResult}), resultId=${resultId}`);
-          
-          if (testCaseId) {
-            executionResultMap.set(testCaseId, resultId);
-            console.log(`🏃 ✅ Mapped test case ${testCaseId} -> ${resultId} (${TEST_RESULTS[resultId as TestResultId]})`);
-          } else {
-            console.log('🏃 ❌ Missing test case ID:', { test_case_id: execution.test_case_id, result: rawResult });
-          }
-        });
-      } else {
-        console.log('🏃 ❌ executions is not a valid array:', testRunResponse.data.attributes.executions);
-      }
-      
-      console.log('🏃 Final execution result map:', Array.from(executionResultMap.entries()));
-
       // Fetch test case details for each test case in the test run
       const testCasePromises = transformedTestRun.testCaseIds.map(async (testCaseId) => {
         try {
           const testCaseResponse = await testCasesApiService.getTestCase(testCaseId);
           const testCase = testCasesApiService.transformApiTestCase(testCaseResponse.data);
           
-          // Get execution result from the map
-          const executionResult = executionResultMap.get(testCaseId) || 6; // Default to 'Untested'
+          // Get execution result from test case's executions array
+          let executionResult: TestResultId = 6; // Default to 'Untested'
           
-          console.log(`🏃 Test case ${testCaseId}: mapped result = ${executionResult} (${TEST_RESULTS[executionResult as TestResultId]})`);
+          console.log(`🏃 ===== PROCESSING TEST CASE ${testCaseId} =====`);
+          console.log(`🏃 Test case title: ${testCase.title}`);
+          console.log(`🏃 Test run ID we're looking for: ${testRunId}`);
+          console.log(`🏃 Raw API response attributes:`, testCaseResponse.data.attributes);
+          console.log(`🏃 Raw executions data:`, testCaseResponse.data.attributes.executions);
+          console.log(`🏃 Executions data type:`, typeof testCaseResponse.data.attributes.executions);
+          console.log(`🏃 Is executions an array:`, Array.isArray(testCaseResponse.data.attributes.executions));
+          
+          // Check if executions exist in the API response
+          const executionsData = testCaseResponse.data.attributes.executions;
+          
+          if (executionsData && Array.isArray(executionsData) && executionsData.length > 0) {
+            console.log(`🏃 ✅ Valid executions array found with ${executionsData.length} executions`);
+            console.log(`🏃 All executions for test case ${testCaseId}:`, executionsData);
+            
+            // Filter executions for this test run and get the latest one
+            const testRunExecutions = executionsData.filter((execution: any) => 
+              execution.test_run_id.toString() === testRunId
+            );
+            
+            console.log(`🏃 🔍 Filtering executions for test run ${testRunId}:`);
+            executionsData.forEach((execution: any, index: number) => {
+              console.log(`🏃 🔍   Execution ${index + 1}:`);
+              console.log(`🏃 🔍     - execution.test_run_id: ${execution.test_run_id} (type: ${typeof execution.test_run_id})`);
+              console.log(`🏃 🔍     - testRunId: ${testRunId} (type: ${typeof testRunId})`);
+              console.log(`🏃 🔍     - Match: ${execution.test_run_id.toString() === testRunId}`);
+              console.log(`🏃 🔍     - execution.result: ${execution.result} (type: ${typeof execution.result})`);
+              console.log(`🏃 🔍     - execution.created_at: ${execution.created_at}`);
+            });
+            
+            console.log(`🏃 ✅ Found ${testRunExecutions.length} executions for test case ${testCaseId} in test run ${testRunId}`);
+            console.log(`🏃 ✅ Filtered executions:`, testRunExecutions);
+            
+            if (testRunExecutions.length > 0) {
+              // Sort by creation date and get the latest execution
+              const latestExecution = testRunExecutions.sort((a: any, b: any) => 
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              )[0];
+              
+              console.log(`🏃 🎯 Latest execution for test case ${testCaseId}:`, latestExecution);
+              console.log(`🏃 🎯 Latest execution result field:`, latestExecution.result, 'type:', typeof latestExecution.result);
+              
+              // Extract result ID from the latest execution
+              const rawResult = latestExecution.result;
+              
+              if (typeof rawResult === 'number') {
+                executionResult = rawResult as TestResultId;
+                console.log(`🏃 🎯 ✅ Using numeric result: ${executionResult} (${TEST_RESULTS[executionResult]})`);
+              } else if (typeof rawResult === 'string') {
+                // First try to cast string to integer
+                const parsedInt = parseInt(rawResult);
+                if (!isNaN(parsedInt) && TEST_RESULTS[parsedInt as TestResultId]) {
+                  // String is a valid numeric ID
+                  executionResult = parsedInt as TestResultId;
+                  console.log(`🏃 🎯 ✅ Converted string numeric result "${rawResult}" to: ${executionResult} (${TEST_RESULTS[executionResult]})`);
+                } else {
+                  // String is not numeric, try reverse lookup by label
+                  const foundEntry = Object.entries(TEST_RESULTS).find(([id, label]) => 
+                    label.toLowerCase() === rawResult.toLowerCase()
+                  );
+                  executionResult = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6;
+                  console.log(`🏃 🎯 ✅ Converted string label result "${rawResult}" to: ${executionResult} (${TEST_RESULTS[executionResult]})`);
+                }
+              } else {
+                console.log(`🏃 🎯 ⚠️ Unknown result type for test case ${testCaseId}:`, rawResult, 'defaulting to Untested');
+                executionResult = 6; // Default to Untested
+              }
+              
+              console.log(`🏃 🎯 ✅ FINAL: Test case ${testCaseId} execution result: ${executionResult} (${TEST_RESULTS[executionResult]})`);
+            } else {
+              console.log(`🏃 🎯 ❌ No executions found for test case ${testCaseId} in test run ${testRunId} after filtering`);
+            }
+          } else if (executionsData) {
+            console.log(`🏃 🎯 ❌ Executions data exists but is not a valid array for test case ${testCaseId}:`, typeof executionsData, executionsData);
+          } else {
+            console.log(`🏃 🎯 ❌ No executions data found for test case ${testCaseId}`);
+          }
+          
+          console.log(`🏃 🎯 📊 FINAL RESULT for test case ${testCaseId}: ${executionResult} (${TEST_RESULTS[executionResult]})`);
+          console.log(`🏃 ===== END PROCESSING TEST CASE ${testCaseId} =====`);
           
           return {
             id: testCase.id,
             title: testCase.title,
             priority: testCase.priority,
             type: testCase.type,
-            executionStatus: executionResult as TestResultId,
-            executionResult: TEST_RESULTS[executionResult as TestResultId],
+            executionStatus: executionResult,
+            executionResult: TEST_RESULTS[executionResult],
             fullTestCase: testCase
           };
         } catch (error) {
           console.error(`Failed to fetch test case ${testCaseId}:`, error);
-          
-          // Even for failed fetches, try to get the execution result
-          const executionResult = executionResultMap.get(testCaseId) || 6; // Default to 'Untested'
-          console.log(`🏃 Failed fetch for test case ${testCaseId}: using result = ${executionResult} (${TEST_RESULTS[executionResult as TestResultId]})`);
           
           return {
             id: testCaseId,
             title: `Test Case ${testCaseId}`,
             priority: 'medium',
             type: 'functional',
-            executionStatus: executionResult as TestResultId,
-            executionResult: TEST_RESULTS[executionResult as TestResultId],
+            executionStatus: 6 as TestResultId, // Default to 'Untested'
+            executionResult: TEST_RESULTS[6],
             fullTestCase: null
           };
         }
       });
 
       const testCasesWithExecution = await Promise.all(testCasePromises);
+      
+      console.log('🏃 📊 FINAL TEST CASES WITH EXECUTION RESULTS:');
+      testCasesWithExecution.forEach((tc, index) => {
+        console.log(`🏃 📊 Test case ${index + 1}: ${tc.title}`);
+        console.log(`🏃 📊   - ID: ${tc.id}`);
+        console.log(`🏃 📊   - Execution Status: ${tc.executionStatus} (${tc.executionResult})`);
+      });
+      
       setTestCases(testCasesWithExecution);
       setFilteredTestCases(testCasesWithExecution);
 
@@ -367,7 +483,7 @@ const TestRunDetails: React.FC = () => {
     setSelectedTestCaseForDetails(null);
   };
 
-  const handleExecutionResultChange = async (testCaseId: string, newResultId: TestResultId) => {
+  const handleExecutionResultChange = async (testCaseId: string, newResultId: TestResultId, comment?: string) => {
     if (!testRun || !id || isTestRunClosed) {
       if (isTestRunClosed) {
         toast.error('Cannot update execution results for closed test runs');
@@ -389,7 +505,8 @@ const TestRunDetails: React.FC = () => {
       const response = await testCaseExecutionsApiService.createTestCaseExecution({
         testCaseId,
         testRunId: id,
-        result: newResultId
+        result: newResultId,
+        comment: comment || undefined
       });
 
       // Update local state to reflect the change immediately
@@ -756,7 +873,7 @@ const TestRunDetails: React.FC = () => {
                     <div className="space-y-2">
                       <TestResultDropdown
                         value={testCase.executionStatus}
-                        onChange={(newResultId) => handleExecutionResultChange(testCase.id, newResultId)}
+                        onChange={(newResultId, comment) => handleExecutionResultChange(testCase.id, newResultId, comment)}
                         disabled={isTestRunClosed || updatingResults.has(`${testCase.id}-${testRun?.id}`)}
                         isUpdating={updatingResults.has(`${testCase.id}-${testRun?.id}`)}
                       />
@@ -766,22 +883,6 @@ const TestRunDetails: React.FC = () => {
               ))}
             </tbody>
           </table>
-          
-          {filteredTestCases.length === 0 && !loading && (
-            <div className="text-center py-12">
-              <div className="text-gray-400">
-                <p className="text-lg font-medium">
-                  {testCases.length === 0 ? 'No test cases found' : 'No test cases match your filters'}
-                </p>
-                <p className="text-sm">
-                  {testCases.length === 0 
-                    ? 'This test run doesn\'t have any test cases assigned.'
-                    : 'Try adjusting your search term or filters to see more results.'
-                  }
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -797,7 +898,7 @@ const TestRunDetails: React.FC = () => {
           testCases.find(tc => tc.id === selectedTestCaseForDetails.id)?.executionStatus : undefined
         }
         onExecutionResultChange={(testCaseId, testRunId, newResultId) => {
-          handleExecutionResultChange(testCaseId, newResultId);
+          handleExecutionResultChange(testCaseId, newResultId, undefined);
         }}
       />
 

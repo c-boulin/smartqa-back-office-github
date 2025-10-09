@@ -88,6 +88,7 @@ export interface CreateTestRunRequest {
       description: string;
       state: number;
       test_plan_id?: string;
+      test_plan_id?: string;
     };
     relationships: {
       project: {
@@ -104,6 +105,9 @@ export interface CreateTestRunRequest {
       };
       tags?: {
         data: Array<{ type: string; id: string }>;
+      };
+      test_plan?: {
+        data: { type: string; id: string } | null;
       };
     };
   };
@@ -174,7 +178,9 @@ class TestRunsApiService {
   }
 
   async getTestRuns(projectId: string, page: number = 1, itemsPerPage: number = 30): Promise<TestRunsApiResponse> {
-    const response = await apiService.authenticatedRequest(`/test_runs?project=${projectId}&include=user&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`);
+    // Fetch ALL test runs (both active and closed) - don't filter by state
+    const response = await apiService.authenticatedRequest(`/test_runs?project=${projectId}&include=user,testCases&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`);
+    console.log('🌐 API: getTestRuns response for project', projectId, ':', response);
     return response || this.getDefaultTestRunsResponse();
   }
 
@@ -232,11 +238,8 @@ class TestRunsApiService {
     projectId: string;
     testCaseIds?: string[];
     configurations?: Configuration[];
-    configurations?: Configuration[];
     assignedTo?: string;
     state?: number;
-    tags?: Tag[];
-    testPlanId?: string;
     tags?: Tag[];
     testPlanId?: string;
   }): Promise<CreateTestRunResponse> {
@@ -261,17 +264,6 @@ class TestRunsApiService {
         }
       }
     };
-
-    // Add test_plan_id to attributes if provided
-    if (testRunData.testPlanId && testRunData.testPlanId !== '') {
-      requestBody.data.relationships.test_plans = {
-        data: {
-          type: "TestPlan",
-          id: `/api/test_plans/${testRunData.testPlanId}`
-        }
-      };
-    }
-
 
     // Add test cases relationship if provided
     if (testRunData.testCaseIds && testRunData.testCaseIds.length > 0) {
@@ -299,6 +291,16 @@ class TestRunsApiService {
       };
     }
     
+    // Add test_plan relationship if provided
+    if (testRunData.testPlanId && testRunData.testPlanId !== '') {
+      requestBody.data.relationships.test_plan = {
+        data: {
+          type: "TestPlan",
+          id: `/api/test_plans/${testRunData.testPlanId}`
+        }
+      };
+    }
+    
     console.log('🌐 Final POST payload for test run creation:', JSON.stringify(requestBody, null, 2));
     
     const response = await apiService.authenticatedRequest('/test_runs?include=user', {
@@ -323,6 +325,13 @@ class TestRunsApiService {
     tags?: Tag[];
     testPlanId?: string;
   }): Promise<{ data: ApiTestRun }> {
+    console.log('📅 UPDATE: Building payload for test run:', id);
+    console.log('📅 UPDATE: Received testPlanId:', testRunData.testPlanId);
+    console.log('📅 UPDATE: testPlanId type:', typeof testRunData.testPlanId);
+    console.log('📅 UPDATE: testPlanId length:', testRunData.testPlanId?.length);
+    console.log('📅 UPDATE: Is empty string:', testRunData.testPlanId === '');
+    console.log('📅 UPDATE: Is truthy:', !!testRunData.testPlanId);
+    
     const requestBody = {
       data: {
         type: "TestRun",
@@ -351,18 +360,20 @@ class TestRunsApiService {
       }
     };
 
-    // Add test_plan_id to attributes if provided
+    // CRITICAL: Only add test_plan relationship if a test plan is actually selected
     if (testRunData.testPlanId && testRunData.testPlanId.trim() !== '') {
-      requestBody.data.relationships.test_plans = {
+      console.log('📅 UPDATE: Adding test_plan relationship with ID:', testRunData.testPlanId);
+      requestBody.data.relationships.test_plan = {
         data: {
           type: "TestPlan",
           id: `/api/test_plans/${testRunData.testPlanId}`
         }
       };
-      console.log('✅ Added test_plans to PATCH relationships:', testRunData.testPlanId);
     } else {
-      console.log('❌ No testPlanId provided for PATCH or empty:', testRunData.testPlanId);
+      console.log('📅 UPDATE: No test plan selected - omitting test_plan node from payload');
     }
+    
+    console.log('📅 UPDATE: Final payload structure:', JSON.stringify(requestBody, null, 2));
 
     const response = await apiService.authenticatedRequest(`/test_runs/${id}?include=user`, {
       method: 'PATCH',
@@ -412,20 +423,23 @@ class TestRunsApiService {
   }
 
   // Helper method to transform API test run to our internal format
-  transformApiTestRun(apiTestRun: ApiTestRun, included: ApiCreator[] = []): TestRun {
+  transformApiTestRun(apiTestRun: ApiTestRun, included: ApiCreator[] = [], specificUser?: ApiCreator): TestRun {
     // Extract project ID from the relationship URL
     const projectId = apiTestRun.relationships.project.data.id.split('/').pop() || '';
     
     // Extract assigned user ID from the relationship URL (relationships.user, not creator)
     const assignedUserId = apiTestRun.relationships.user?.data?.id?.split('/').pop() || '';
     
-    // Find assigned user details in included data
-    const assignedUser = this.findCreatorInIncluded(assignedUserId, included);
+    // Find assigned user details - use specific user if provided, otherwise search in included data
+    const assignedUser = specificUser || this.findCreatorInIncluded(assignedUserId, included);
     
     // Extract test case IDs from relationships
     const testCaseIds = apiTestRun.relationships.testCases?.data?.map(testCase => 
       testCase.id.split('/').pop() || ''
     ).filter(id => id !== '') || [];
+    
+    // CRITICAL FIX: Use testCaseIds.length as the authoritative total count
+    const totalTestCases = testCaseIds.length;
     
     // Extract configurations from relationships and included data
     const configurations: Configuration[] = [];
@@ -444,7 +458,6 @@ class TestRunsApiService {
         }
       }
     }
-    
     // Process caseResults array to get real execution statistics
     // Process executions array to get real execution statistics
     let passedCount = 0;
@@ -455,7 +468,6 @@ class TestRunsApiService {
     let untestedCount = 0;
     let inProgressCount = 0;
     let unknownCount = 0;
-    let totalTestCases = 0;
     
     if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
       console.log(`🏃 Processing executions array for "${apiTestRun.attributes.name}"`);
@@ -490,10 +502,22 @@ class TestRunsApiService {
         if (typeof rawResult === 'number') {
           // Convert numeric ID to string label
           resultLabel = TEST_RESULTS[rawResult as TestResultId]?.toLowerCase() || 'unknown';
+          console.log(`🏃     - converted numeric ${rawResult} to: ${resultLabel}`);
         } else if (typeof rawResult === 'string') {
-          resultLabel = rawResult.toLowerCase();
+          // Handle string results - could be numeric string or label string
+          const numericResult = parseInt(rawResult);
+          if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
+            // String is a numeric ID
+            resultLabel = TEST_RESULTS[numericResult as TestResultId]?.toLowerCase() || 'unknown';
+            console.log(`🏃     - converted string numeric "${rawResult}" to: ${resultLabel}`);
+          } else {
+            // String is already a label
+            resultLabel = rawResult.toLowerCase();
+            console.log(`🏃     - using string label: ${resultLabel}`);
+          }
         } else {
           resultLabel = 'unknown';
+          console.log(`🏃     - unknown result type, defaulting to: unknown`);
         }
         
         console.log(`🏃     - processed result: ${resultLabel}`);
@@ -529,7 +553,10 @@ class TestRunsApiService {
         }
       });
       
-      totalTestCases = lastExecutionPerTestCase.size;
+      // Count test cases without executions as "untested"
+      const testCasesWithExecutions = lastExecutionPerTestCase.size;
+      const testCasesWithoutExecutions = totalTestCases - testCasesWithExecutions;
+      untestedCount += testCasesWithoutExecutions;
       
       console.log(`🏃 Final counts for "${apiTestRun.attributes.name}":`, {
         total: totalTestCases,
@@ -544,17 +571,16 @@ class TestRunsApiService {
       });
     } else {
       console.log(`🏃 No valid executions array found for "${apiTestRun.attributes.name}"`);
-      // Fallback to test case IDs count if no executions
-      totalTestCases = testCaseIds.length;
+      // If no executions, all test cases are "untested"
+      untestedCount = totalTestCases;
     }
     
-    // Calculate progress and pass rate based on real data
-    // Progress = executed test cases (passed + failed + retest) / total test cases
-    // Note: blocked, skipped, untested, in progress, unknown are NOT considered executed
+    // FIXED CALCULATION: Progress = executed test cases / total test cases
+    // Executed = test cases that have any execution result (not untested)
     const executedCount = passedCount + failedCount + retestCount;
     const progress = totalTestCases > 0 ? Math.round((executedCount / totalTestCases) * 100) : 0;
     
-    // Pass rate = passed test cases / executed test cases (not total)
+    // FIXED CALCULATION: Pass rate = passed test cases / executed test cases
     const passRate = executedCount > 0 ? Math.round((passedCount / executedCount) * 100) : 0;
     
     console.log(`🏃 Calculated metrics for "${apiTestRun.attributes.name}":`, {
@@ -601,7 +627,7 @@ class TestRunsApiService {
       name: apiTestRun.attributes.name,
       description: apiTestRun.attributes.description,
       status: apiTestRun.attributes.status,
-      state: apiTestRun.attributes.state || 1, // Add state from API
+      state: parseInt(apiTestRun.attributes.state?.toString() || '1'), // Convert string to number
       projectId: projectId,
       testCaseIds: testCaseIds,
       configurations: configurations,
@@ -628,3 +654,14 @@ class TestRunsApiService {
 }
 
 export const testRunsApiService = new TestRunsApiService();
+
+
+
+
+
+
+
+
+
+
+

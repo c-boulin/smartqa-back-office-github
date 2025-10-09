@@ -201,16 +201,18 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
         // Extract REAL execution data from caseResults in ACTIVE test runs only
         testRunsResponse.data.forEach(apiTestRun => {
           // Active test runs are those with state 1 (New), 2 (In Progress), or 3 (Under Review)
-          const isActiveTestRun = apiTestRun.attributes.state === 1 || // New
-                                  apiTestRun.attributes.state === 2 || // In progress  
-                                  apiTestRun.attributes.state === 3;   // Under review
+          // Handle both string and number state values
+          const state = apiTestRun.attributes.state;
+          const isActiveTestRun = state === "1" || state === 1 || // New
+                                  state === "2" || state === 2 || // In progress  
+                                  state === "3" || state === 3;   // Under review
           
           console.log(`🏃 Processing test run: ${apiTestRun.attributes.name}`);
-          console.log(`🏃 Test run state: ${apiTestRun.attributes.state} (1=New, 2=In Progress, 3=Under Review)`);
+          console.log(`🏃 Test run state: ${state} (type: ${typeof state}) (1=New, 2=In Progress, 3=Under Review)`);
           console.log(`🏃 Is active test run: ${isActiveTestRun}`);
           
           if (!isActiveTestRun) {
-            console.log(`🏃 ⏭️ SKIPPING test run "${apiTestRun.attributes.name}" - not active (state: ${apiTestRun.attributes.state})`);
+            console.log(`🏃 ⏭️ SKIPPING test run "${apiTestRun.attributes.name}" - not active (state: ${state})`);
             return;
           }
           
@@ -259,6 +261,7 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
               console.log(`🏃   Test case ${index + 1}:`, execution);
               console.log(`🏃     - test_case_id: ${execution.test_case_id}`);
               console.log(`🏃     - result: ${execution.result}`);
+              console.log(`🏃     - result type: ${typeof execution.result}`);
               
               // Handle both numeric and string result values
               const rawResult = execution.result;
@@ -267,10 +270,22 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
               if (typeof rawResult === 'number') {
                 // Convert numeric ID to string label
                 resultLabel = TEST_RESULTS[rawResult as TestResultId]?.toLowerCase() || 'unknown';
+                console.log(`🏃     - converted numeric ${rawResult} to: ${resultLabel}`);
               } else if (typeof rawResult === 'string') {
-                resultLabel = rawResult.toLowerCase();
+                // Handle string results - could be numeric string or label string
+                const numericResult = parseInt(rawResult);
+                if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
+                  // String is a numeric ID
+                  resultLabel = TEST_RESULTS[numericResult as TestResultId]?.toLowerCase() || 'unknown';
+                  console.log(`🏃     - converted string numeric "${rawResult}" to: ${resultLabel}`);
+                } else {
+                  // String is already a label
+                  resultLabel = rawResult.toLowerCase();
+                  console.log(`🏃     - using string label: ${resultLabel}`);
+                }
               } else {
                 resultLabel = 'unknown';
+                console.log(`🏃     - unknown result type, defaulting to: unknown`);
               }
               
               console.log(`🏃     - processed result: ${resultLabel}`);
@@ -376,8 +391,10 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
         // Filter for closed test runs (state 6 = Closed) from the same response
         console.log('🔍 BAR_CHART_DEBUG: Starting to filter for closed test runs...');
         const closedTestRunsFromResponse = testRunsResponse.data.filter((apiTestRun, index) => {
-          const isClosed = apiTestRun.attributes.state === 6;
-          console.log(`🔍 BAR_CHART_DEBUG: Test run ${index + 1}: "${apiTestRun.attributes.name}" - state: ${apiTestRun.attributes.state}, is closed: ${isClosed}, closedAt: ${apiTestRun.attributes.closedAt}`);
+          // Handle both string and number state values
+          const state = apiTestRun.attributes.state;
+          const isClosed = state === "6" || state === 6;
+          console.log(`🔍 BAR_CHART_DEBUG: Test run ${index + 1}: "${apiTestRun.attributes.name}" - state: ${state} (type: ${typeof state}), is closed: ${isClosed}, closedAt: ${apiTestRun.attributes.closedAt}`);
           return isClosed;
         });
         
@@ -529,15 +546,21 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
 
       // Analyze real test case data
       const automationDistribution = {
-        notAutomated: testCases.filter(tc => tc.automationStatus === 1).length,
-        automated: testCases.filter(tc => tc.automationStatus === 2).length,
-        notRequired: testCases.filter(tc => tc.automationStatus === 3).length,
-        cannotAutomate: testCases.filter(tc => tc.automationStatus === 4).length,
-        obsolete: testCases.filter(tc => tc.automationStatus === 5).length,
+        notAutomated: testCases.filter(tc => tc.automationStatus === 1 || tc.automationStatus === "1").length,
+        automated: testCases.filter(tc => tc.automationStatus === 2 || tc.automationStatus === "2").length,
+        notRequired: testCases.filter(tc => tc.automationStatus === 3 || tc.automationStatus === "3").length,
+        cannotAutomate: testCases.filter(tc => tc.automationStatus === 4 || tc.automationStatus === "4").length,
+        obsolete: testCases.filter(tc => tc.automationStatus === 5 || tc.automationStatus === "5").length,
       };
       
       console.log(`🤖 Automation distribution:`, automationDistribution);
       console.log(`🤖 Sample test cases automation status:`, testCases.slice(0, 5).map(tc => ({ id: tc.id, automationStatus: tc.automationStatus, type: typeof tc.automationStatus })));
+      console.log(`🤖 All test cases automation status:`, testCases.map(tc => ({ id: tc.id, title: tc.title, automationStatus: tc.automationStatus })));
+      
+      // Debug: Check what automation status values we actually have
+      const uniqueAutomationStatuses = [...new Set(testCases.map(tc => tc.automationStatus))];
+      console.log(`🤖 Unique automation status values found:`, uniqueAutomationStatuses);
+      console.log(`🤖 Automation status types:`, uniqueAutomationStatuses.map(status => ({ value: status, type: typeof status })));
 
       // Calculate automation metrics based on real data
       const automatedTestCases = automationDistribution.automated; // ID 2 = "Automated"
@@ -546,8 +569,17 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
                              automationDistribution.cannotAutomate + 
                              automationDistribution.obsolete; // All other IDs
       
-      const automationCoverage = (automatedTestCases + manualTestCases) > 0 ? 
-        Math.round((automatedTestCases / (automatedTestCases + manualTestCases)) * 100) : 0;
+      const totalTestCasesWithAutomationStatus = automatedTestCases + manualTestCases;
+      const automationCoverage = totalTestCasesWithAutomationStatus > 0 ? 
+        Math.round((automatedTestCases / totalTestCasesWithAutomationStatus) * 100) : 0;
+      
+      console.log(`🤖 Automation metrics calculation:`, {
+        totalTestCases: testCases.length,
+        automatedTestCases,
+        manualTestCases,
+        totalTestCasesWithAutomationStatus,
+        automationCoverage: `${automationCoverage}%`
+      });
 
       const testTypeDistribution = {
         1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0

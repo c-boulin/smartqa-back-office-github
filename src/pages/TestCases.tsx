@@ -11,6 +11,7 @@ import TestCasesFiltersSidebar from '../components/TestCase/TestCasesFiltersSide
 import CreateTestCaseModal from '../components/TestCase/CreateTestCaseModal';
 import UpdateTestCaseModal from '../components/TestCase/UpdateTestCaseModal';
 import CreateFolderModal from '../components/Folder/CreateFolderModal';
+import EditFolderModal from '../components/Folder/EditFolderModal';
 import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSidebar';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -19,9 +20,12 @@ import { useFolders } from '../hooks/useFolders';
 import { useTestCasesFilters } from '../hooks/useTestCasesFilters';
 import { useTestCasesNavigation } from '../hooks/useTestCasesNavigation';
 import { foldersApiService } from '../services/foldersApi';
+import { testCasesApiService } from '../services/testCasesApi';
+import { apiService } from '../services/api';
 import { TestCase } from '../types';
 import { Tag } from '../services/tagsApi';
-import { getPriorityString, getTestTypeString, getStatusString } from '../utils/testCaseHelpers';
+import { getPriorityString, getTestTypeString, getPriorityNumber, getTestTypeNumber } from '../utils/testCaseHelpers';
+import { getStateNumber } from '../utils/updateTestCaseHelpers';
 import toast from 'react-hot-toast';
 
 const TestCases: React.FC = () => {
@@ -59,9 +63,13 @@ const TestCases: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFiltersSidebarOpen, setIsFiltersSidebarOpen] = useState(false);
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
+  const [isEditFolderModalOpen, setIsEditFolderModalOpen] = useState(false);
+  const [isDeleteFolderDialogOpen, setIsDeleteFolderDialogOpen] = useState(false);
+  const [folderToManage, setFolderToManage] = useState<any>(null);
   const [filtersCleared, setFiltersCleared] = useState(false);
   const [isDetailsSidebarOpen, setIsDetailsSidebarOpen] = useState(false);
   const [selectedTestCaseForDetails, setSelectedTestCaseForDetails] = useState<TestCase | null>(null);
+  const [isDragDropInProgress, setIsDragDropInProgress] = useState(false);
   
   const { 
     testCases,
@@ -238,6 +246,15 @@ const TestCases: React.FC = () => {
       toast.success('Folder created successfully');
       await fetchAllTestCasesAndExtractFolders(selectedProject.id);
       
+      // Re-apply folder filter to maintain the current view if a folder is selected
+      if (selectedFolderId) {
+        console.log('🔄 Re-applying folder filter after folder creation to maintain folder context for folder:', selectedFolderId);
+        // Small delay to ensure folder data refresh completes
+        setTimeout(() => {
+          showFolderTestCases(selectedFolderId);
+        }, 100);
+      }
+      
     } catch (error) {
       console.error('Failed to create folder:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create folder';
@@ -246,6 +263,160 @@ const TestCases: React.FC = () => {
       setIsSubmitting(false);
     }
   }, [selectedProject, authState.user?.id, fetchAllTestCasesAndExtractFolders]);
+
+  const handleEditFolder = useCallback(async (data: {
+    name: string;
+    description: string;
+  }) => {
+    if (!folderToManage || !selectedProject || !authState.user?.id) {
+      toast.error('Missing required data');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      // Get all the existing folder data to preserve relationships
+      const existingFolder = folderToManage;
+      
+      await foldersApiService.updateFolder(folderToManage.id, {
+        name: data.name,
+        description: data.description,
+        projectId: selectedProject.id,
+        parentId: existingFolder.parentId,
+        childrenIds: existingFolder.children?.map((child: any) => child.id) || [],
+        testCaseIds: [], // Test cases relationships are managed separately
+        creatorId: authState.user.id, // Use current user as creator for now
+        editorId: authState.user.id // Current user is the editor
+      });
+      
+      setIsEditFolderModalOpen(false);
+      setFolderToManage(null);
+      toast.success('Folder updated successfully');
+      
+      // Refresh folder data
+      await fetchAllTestCasesAndExtractFolders(selectedProject.id);
+      
+      // Re-apply folder filter to maintain the current view if a folder is selected
+      if (selectedFolderId) {
+        console.log('🔄 Re-applying folder filter after update to maintain context for folder:', selectedFolderId);
+        // Small delay to ensure folder data refresh completes
+        setTimeout(() => {
+          showFolderTestCases(selectedFolderId);
+        }, 100);
+      }
+      
+    } catch (error) {
+      console.error('Failed to update folder:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update folder';
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [folderToManage, selectedProject, authState.user?.id, fetchAllTestCasesAndExtractFolders]);
+
+  const handleDeleteFolder = useCallback(async () => {
+    if (!folderToManage || !selectedProject) {
+      toast.error('Missing required data');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      await foldersApiService.deleteFolder(folderToManage.id);
+      
+      setIsDeleteFolderDialogOpen(false);
+      setFolderToManage(null);
+      toast.success('Folder deleted successfully');
+      
+      // Clear folder selection if the deleted folder was selected
+      if (selectedFolderId === folderToManage.id) {
+        selectFolder(null);
+      }
+      
+      // Refresh folder data
+      await fetchAllTestCasesAndExtractFolders(selectedProject.id);
+      
+       // Re-apply folder filter to maintain the current view if a folder is selected
+       if (selectedFolderId) {
+         console.log('🔄 Re-applying folder filter after folder deletion to maintain folder context for folder:', selectedFolderId);
+         // Small delay to ensure folder data refresh completes
+         setTimeout(() => {
+           showFolderTestCases(selectedFolderId);
+         }, 100);
+       }
+       
+    } catch (error) {
+      console.error('Failed to delete folder:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete folder';
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [folderToManage, selectedProject, selectedFolderId, selectFolder, fetchAllTestCasesAndExtractFolders]);
+
+  const openEditFolderModal = useCallback((folder: any) => {
+    setFolderToManage(folder);
+    setIsEditFolderModalOpen(true);
+  }, []);
+
+  const openDeleteFolderDialog = useCallback((folder: any) => {
+    setFolderToManage(folder);
+    
+    // Check if folder is empty (no test cases)
+    if (!folder.testCasesCount || folder.testCasesCount === 0) {
+      // For empty folders, delete directly without confirmation dialog
+      handleDeleteEmptyFolder(folder);
+    } else {
+      // For folders with test cases, show confirmation dialog
+      setIsDeleteFolderDialogOpen(true);
+    }
+  }, []);
+
+  const handleDeleteEmptyFolder = useCallback(async (folder?: any) => {
+    const targetFolder = folder || folderToManage;
+    if (!targetFolder || !selectedProject) {
+      toast.error('Missing required data');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      await foldersApiService.deleteFolder(targetFolder.id);
+      
+      toast.success('Folder deleted successfully');
+      
+      // Clear folder selection if the deleted folder was selected
+      if (selectedFolderId === targetFolder.id) {
+        selectFolder(null);
+      }
+      
+      // Refresh folder data
+      await fetchAllTestCasesAndExtractFolders(selectedProject.id);
+      
+      // Re-apply folder filter to maintain the current view if a folder is selected
+      if (selectedFolderId) {
+        console.log('🔄 Re-applying folder filter after folder deletion to maintain folder context for folder:', selectedFolderId);
+        // Small delay to ensure folder data refresh completes
+        setTimeout(() => {
+          showFolderTestCases(selectedFolderId);
+        }, 100);
+      }
+      
+      // Clean up state
+      setFolderToManage(null);
+      
+    } catch (error) {
+      console.error('Failed to delete empty folder:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete folder';
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+  )
 
   const handleTestCaseTitleClick = useCallback((testCase: TestCase) => {
     console.log('📋 Test case title clicked:', testCase.title, 'ID:', testCase.id);
@@ -258,6 +429,116 @@ const TestCases: React.FC = () => {
     setSelectedTestCaseForDetails(null);
   }, []);
 
+  const handleTestCaseDropped = useCallback(async (testCaseId: string, targetFolderId: string) => {
+    if (!selectedProject) {
+      toast.error('No project selected');
+      return;
+    }
+
+    try {
+      setIsDragDropInProgress(true);
+      console.log('🎯 Moving test case', testCaseId, 'to folder', targetFolderId);
+
+      // Find the test case in our current data
+      const testCaseToMove = testCases.find(tc => tc.id === testCaseId) || 
+                            allTestCases.find(tc => tc.id === testCaseId);
+      
+      if (!testCaseToMove) {
+        throw new Error('Test case not found');
+      }
+
+      console.log('📋 Found test case to move:', testCaseToMove.title);
+      console.log('📋 Current folder ID:', testCaseToMove.folderId);
+      console.log('📋 Target folder ID:', targetFolderId);
+
+      // Get the current test case data from API to ensure we have the latest version
+      const currentTestCaseResponse = await testCasesApiService.getTestCase(testCaseId);
+      const currentTestCase = testCasesApiService.transformApiTestCase(currentTestCaseResponse.data);
+
+      // Get the full test case data with all relationships
+      const fullTestCaseResponse = await testCasesApiService.getTestCaseWithIncludes(testCaseId);
+      console.log('📋 Full test case data:', fullTestCaseResponse);
+      
+      // Build the complete PATCH payload preserving all existing relationships
+      const updatePayload = {
+        data: {
+          type: "TestCase",
+          attributes: {
+            title: currentTestCaseResponse.data.attributes.title,
+            description: currentTestCaseResponse.data.attributes.description,
+            priority: currentTestCaseResponse.data.attributes.priority,
+            type: currentTestCaseResponse.data.attributes.type,
+            state: currentTestCaseResponse.data.attributes.state,
+            automation: currentTestCaseResponse.data.attributes.automation,
+            template: currentTestCaseResponse.data.attributes.template || 1,
+            preconditions: currentTestCaseResponse.data.attributes.preconditions || ''
+          },
+          relationships: {
+            // Update the folder relationship to the new target folder
+            folder: {
+              data: { type: "Folder", id: `/api/folders/${targetFolderId}` }
+            },
+            // Preserve existing project relationship
+            project: currentTestCaseResponse.data.relationships.project,
+            // Preserve existing user relationship
+            user: currentTestCaseResponse.data.relationships.user
+          }
+        }
+      };
+      
+      // Preserve existing tags relationship if it exists
+      if (currentTestCaseResponse.data.relationships.tags) {
+        updatePayload.data.relationships.tags = currentTestCaseResponse.data.relationships.tags;
+        console.log('📋 Preserved tags relationship:', currentTestCaseResponse.data.relationships.tags);
+      }
+      
+      // Preserve existing attachments relationship if it exists
+      if (currentTestCaseResponse.data.relationships.attachments) {
+        updatePayload.data.relationships.attachments = currentTestCaseResponse.data.relationships.attachments;
+        console.log('📋 Preserved attachments relationship:', currentTestCaseResponse.data.relationships.attachments);
+      }
+      
+      // Preserve existing step results relationship if it exists
+      if (currentTestCaseResponse.data.relationships.stepResults) {
+        updatePayload.data.relationships.step_results = currentTestCaseResponse.data.relationships.stepResults;
+        console.log('📋 Preserved step results relationship:', currentTestCaseResponse.data.relationships.stepResults);
+      }
+      
+      // Preserve existing shared steps relationship if it exists
+      if (currentTestCaseResponse.data.relationships.sharedSteps) {
+        updatePayload.data.relationships.shared_steps = currentTestCaseResponse.data.relationships.sharedSteps;
+        console.log('📋 Preserved shared steps relationship:', currentTestCaseResponse.data.relationships.sharedSteps);
+      }
+      
+      console.log('📋 Complete PATCH payload:', JSON.stringify(updatePayload, null, 2));
+
+      // Send the PATCH request directly to preserve exact API format
+      await apiService.authenticatedRequest(`/test_cases/${testCaseId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updatePayload)
+      });
+
+      // Refresh the test cases and folder data
+      await fetchAllTestCasesAndExtractFolders(selectedProject.id);
+      
+      // Re-apply current view context
+      if (selectedFolderId) {
+        console.log('🔄 Re-applying folder filter after move to maintain folder context');
+        setTimeout(() => {
+          showFolderTestCases(selectedFolderId);
+        }, 100);
+      }
+
+      toast.success(`Test case moved to folder successfully`);
+
+    } catch (error) {
+      console.error('❌ Failed to move test case:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to move test case';
+      toast.error(errorMessage);
+    } finally {
+      setIsDragDropInProgress(false);
+    }
+  }, [testCases, allTestCases, selectedProject, fetchAllTestCasesAndExtractFolders, selectedFolderId, showFolderTestCases]);
   const handleSearchKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -314,6 +595,15 @@ const TestCases: React.FC = () => {
       setIsCreateModalOpen(false);
       toast.success('Test case created successfully');
       
+      // Re-apply folder filter to show only test cases from the selected folder
+      if (selectedFolderId) {
+        console.log('🔄 Re-applying folder filter after test case creation to maintain folder context for folder:', selectedFolderId);
+        // Small delay to ensure test case creation and folder data refresh completes
+        setTimeout(() => {
+          showFolderTestCases(selectedFolderId);
+        }, 100);
+      }
+      
     } catch (error) {
       console.error('Failed to create test case:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create test case';
@@ -367,22 +657,25 @@ const TestCases: React.FC = () => {
       }
       
       const updateData = {
-        title: data.title,
-        description: data.description,
+        title: data.title || '',
+        description: data.description || '',
         priority: data.priority === 1 ? 'low' : data.priority === 2 ? 'medium' : data.priority === 3 ? 'high' : data.priority === 4 ? 'critical' : 'medium',
         testType: getTestTypeString(data.testCaseType),
-        status: data.state === 1 ? 'active' : 
-                data.state === 2 ? 'draft' : 
+        status: data.state === 1 ? 'active' :
+                data.state === 2 ? 'draft' :
                 data.state === 3 ? 'in_review' :
-                data.state === 4 ? 'outdated' : 
+                data.state === 4 ? 'outdated' :
                 data.state === 5 ? 'rejected' : 'draft',
-        automationStatus: data.automationStatus,
-        template: data.template,
-        preconditions: data.preconditions,
+        automationStatus: data.automationStatus || 1,
+        template: data.template || 1,
+        preconditions: data.preconditions || '',
         tags: processedTags,
         testSteps: data.testSteps || [],
         userId: authState.user.id,
-        stepResultsRelationships: data.stepResultsRelationships,
+        projectId: selectedProject.id,
+        folderId: selectedTestCase.folderId || selectedFolderId,
+        ownerId: data.owner || selectedTestCase.ownerId || authState.user.id,
+        stepResultsRelationships: data.stepResultsRelationships || [],
         sharedStepsRelationships: data.sharedStepsRelationships || [],
         createdAttachments: data.createdAttachments || []
       };
@@ -393,6 +686,15 @@ const TestCases: React.FC = () => {
       setSelectedTestCase(null);
       toast.success('Test case updated successfully');
       await fetchAllTestCasesAndExtractFolders(selectedProject.id);
+      
+      // Re-apply folder filter to maintain folder context after update
+      if (selectedFolderId) {
+        console.log('🔄 Re-applying folder filter after test case update to maintain folder context for folder:', selectedFolderId);
+        // Small delay to ensure folder data refresh completes
+        setTimeout(() => {
+          showFolderTestCases(selectedFolderId);
+        }, 100);
+      }
       
     } catch (error) {
       console.error('Failed to update test case:', error);
@@ -414,6 +716,15 @@ const TestCases: React.FC = () => {
         await fetchAllTestCasesAndExtractFolders(selectedProject.id);
       }
       
+      // Re-apply folder filter to maintain folder context after deletion
+      if (selectedFolderId) {
+        console.log('🔄 Re-applying folder filter after test case deletion to maintain folder context for folder:', selectedFolderId);
+        // Small delay to ensure folder data refresh completes
+        setTimeout(() => {
+          showFolderTestCases(selectedFolderId);
+        }, 100);
+      }
+      
       setSelectedTestCase(null);
     } catch (error) {
       // Error is already handled in the hook
@@ -422,6 +733,73 @@ const TestCases: React.FC = () => {
     }
   }, [deleteTestCase, selectedTestCase, selectedProject, fetchAllTestCasesAndExtractFolders]);
 
+  const handleDuplicateTestCase = useCallback(async (testCase: TestCase) => {
+    if (!selectedProject || !authState.user?.id) {
+      toast.error('Missing required data for duplication');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      console.log('🔄 Starting test case duplication for:', testCase.title);
+      
+      // Get complete test case data with all relationships first
+      const fullTestCaseResponse = await testCasesApiService.getTestCase(testCase.id);
+      console.log('📋 Full test case data:', fullTestCaseResponse);
+      
+      // Prepare the duplicate payload based on the original test case data
+      const originalData = fullTestCaseResponse.data;
+      const originalAttributes = originalData.attributes;
+      const originalRelationships = originalData.relationships;
+      
+      // Determine the folder ID - use original folder or current selection
+      let targetFolderId = testCase.folderId || selectedFolderId;
+      if (!targetFolderId) {
+        // If no folder is specified, use the project root (assuming project ID as root folder)
+        targetFolderId = selectedProject.id;
+      }
+      
+      // Create the duplicate payload with all original data
+      await createTestCase({
+        title: `${originalAttributes.title} (Copy)`,
+        description: originalAttributes.description || '',
+        priority: originalAttributes.priority,
+        testCaseType: originalAttributes.type,
+        state: originalAttributes.state,
+        automationStatus: originalAttributes.automation,
+        template: 1,
+        preconditions: originalAttributes.preconditions || '',
+        tags: testCase.tags?.map(tagLabel => {
+          const foundTag = tags.find(t => t.label === tagLabel);
+          return foundTag || { id: tagLabel, label: tagLabel };
+        }) || [],
+        projectId: selectedProject.id,
+        folderId: targetFolderId,
+        creatorId: authState.user.id,
+        // Pass the original relationships to be handled by the createTestCase function
+        originalRelationships: originalRelationships
+      });
+      
+      await fetchAllTestCasesAndExtractFolders(selectedProject.id);
+      toast.success(`Test case duplicated successfully as "${originalAttributes.title} (Copy)"`);
+      
+      // Re-apply current view context
+      if (selectedFolderId) {
+        console.log('🔄 Re-applying folder filter after duplication to maintain folder context');
+        setTimeout(() => {
+          showFolderTestCases(selectedFolderId);
+        }, 100);
+      }
+      
+    } catch (error) {
+      console.error('Failed to duplicate test case:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to duplicate test case';
+      toast.error(`Failed to duplicate test case: ${errorMessage}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [createTestCase, selectedProject, authState.user?.id, fetchAllTestCasesAndExtractFolders, selectedFolderId, showFolderTestCases, tags]);
   const openEditModal = useCallback((testCase: TestCase) => {
     setSelectedTestCase(testCase);
     setIsEditModalOpen(true);
@@ -505,6 +883,9 @@ const TestCases: React.FC = () => {
             onSelectFolder={selectFolder}
             foldersLoading={foldersLoading}
             onCreateFolder={handleCreateFolder}
+            onEditFolder={openEditFolderModal}
+            onDeleteFolder={openDeleteFolderDialog}
+            onTestCaseDropped={handleTestCaseDropped}
             onClearIndividualFilter={clearIndividualFilter}
           />
 
@@ -535,8 +916,9 @@ const TestCases: React.FC = () => {
               onTestCaseTitleClick={handleTestCaseTitleClick}
               onEditTestCase={openEditModal}
               onDeleteTestCase={openDeleteDialog}
+              onDuplicateTestCase={handleDuplicateTestCase}
               onPageChange={handlePageChange}
-              isSubmitting={isSubmitting}
+              isSubmitting={isSubmitting || isDragDropInProgress}
             />
           </div>
         </div>
@@ -593,6 +975,32 @@ const TestCases: React.FC = () => {
         onSubmit={handleCreateFolderSubmit}
         isSubmitting={isSubmitting}
         availableFolders={folderTree}
+      />
+
+      <EditFolderModal
+        isOpen={isEditFolderModalOpen}
+        onClose={() => {
+          setIsEditFolderModalOpen(false);
+          setFolderToManage(null);
+        }}
+        onSubmit={handleEditFolder}
+        isSubmitting={isSubmitting}
+        folder={folderToManage}
+      />
+
+      <ConfirmDialog
+        isOpen={isDeleteFolderDialogOpen}
+        onClose={() => {
+          setIsDeleteFolderDialogOpen(false);
+          setFolderToManage(null);
+        }}
+        onConfirm={handleDeleteFolder}
+        title="Delete Folder"
+        message={`Deleting the folder "${folderToManage?.name}" will also delete all test cases inside it. If you want to keep the test cases, move them to another folder first.`}
+        warningCount={folderToManage?.testCasesCount || 0}
+        warningType="test case"
+        confirmText="Delete"
+        variant="danger"
       />
 
       <TestCaseDetailsSidebar

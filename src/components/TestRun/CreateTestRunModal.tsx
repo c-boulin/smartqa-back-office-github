@@ -223,6 +223,8 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
       tags: formData.tags
     };
     
+    console.log('📅 CREATE: Final submitData.testPlanId:', submitData.testPlanId);
+    
     await onSubmit(submitData);
   };
 

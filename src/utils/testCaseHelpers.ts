@@ -32,12 +32,19 @@ export const getPriorityNumber = (priority: 'low' | 'medium' | 'high' | 'critica
   return priorityMap[priority];
 };
 
-export const getTestTypeNumber = (type: 'functional' | 'regression' | 'smoke' | 'integration' | 'performance'): number => {
-  const typeMap = { 'functional': 6, 'regression': 8, 'smoke': 10, 'integration': 4, 'performance': 7 };
-  return typeMap[type];
-};
-
-export const getStateNumber = (state: 'draft' | 'active' | 'deprecated'): number => {
-  const stateMap = { 'active': 1, 'draft': 2, 'deprecated': 4 };
-  return stateMap[state];
+export const getTestTypeNumber = (type: string): number => {
+  const typeMap: Record<string, number> = {
+    'other': 1,
+    'acceptance': 2,
+    'accessibility': 3,
+    'compatibility': 4,
+    'destructive': 5,
+    'functional': 6,
+    'performance': 7,
+    'regression': 8,
+    'security': 9,
+    'smoke': 10,
+    'usability': 11
+  };
+  return typeMap[type] || 6; // Default to functional
 };

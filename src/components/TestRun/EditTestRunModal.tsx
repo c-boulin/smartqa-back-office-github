@@ -74,6 +74,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   const [isLoadingTags, setIsLoadingTags] = useState(false);
   const [existingConfigurations, setExistingConfigurations] = useState<Configuration[]>([]);
   const [isLoadingConfigurations, setIsLoadingConfigurations] = useState(false);
+  const [originalTestPlanId, setOriginalTestPlanId] = useState<string>('');
   
   // Use configurations from app context and load them if needed
   const configurations = appState.configurations;
@@ -109,34 +110,34 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
       console.log('📋 Test run test case IDs:', testRun.testCaseIds);
       console.log('📋 Available test cases count:', allTestCases.length);
       
-      // Load the assigned user from relationships.user (not creator)
-      loadAssignedUser(testRun.id);
-      
-      // Load the test plan from relationships.test_plans
-      loadTestPlan(testRun.id);
-      
       setFormData({
         name: testRun.name,
         description: testRun.description || '',
         testCaseIds: testRun.testCaseIds || [], // Use actual test case IDs from test run
         configurations: [], // Will be populated from new selections only
-        testPlanId: '', // Will be set by loadTestPlan
-        assignedTo: '', // Will be set by loadAssignedUser
+        testPlanId: '', // Will be loaded from API
+        assignedTo: testRun.assignedTo?.id || '', // Use assigned user ID from test run
         state: testRun.state, // Use the actual state number from the test run
         tags: [] // Will be populated from existing tags
       });
       
       console.log('📋 Set formData.testCaseIds to:', testRun.testCaseIds);
+      console.log('📋 Set formData.testPlanId to: (will be loaded from API)');
+      console.log('📋 Set formData.assignedTo to:', testRun.assignedTo?.id || '');
       
-      // Load existing tags and configurations by calling the API
+      // Load existing tags and configurations by calling the API  
       loadExistingTags(testRun.id);
       loadExistingConfigurations(testRun.id);
+      loadExistingTestPlan(testRun.id);
+      loadExistingTestPlan(testRun.id);
       
       console.log('📋 Setting existing test case IDs:', testRun.testCaseIds);
     } else if (isOpen && !testRun) {
       // Reset form for new test run
       setExistingTags([]);
       setExistingConfigurations([]);
+      setOriginalTestPlanId('');
+      
       const today = new Date();
       const dateStr = today.toLocaleDateString('en-GB', {
         day: '2-digit',
@@ -149,7 +150,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
         description: '',
         testCaseIds: [],
         configurations: [],
-        testPlan: '',
+        testPlanId: '',
         assignedTo: '',
         state: 1,
         tags: []
@@ -341,44 +342,58 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
     }
   };
 
-  // Function to load test plan for the test run
-  const loadTestPlan = async (testRunId: string) => {
+  // Function to load existing test plan for the test run
+  const loadExistingTestPlan = async (testRunId: string) => {
     try {
-      console.log('📅 Loading test plan for test run:', testRunId);
+      console.log('📅 Loading existing test plan for test run:', testRunId);
       
-      // Get test run details to extract test plan from relationships.test_plans
+      // Get test run details with test plan included
       const response = await testRunsApiService.getTestRun(testRunId);
-      console.log('📅 Test run response for test plan:', response);
+      console.log('📅 Test run response:', response);
       
-      // Extract test plan ID from relationships.testPlans
-      const testPlanRelationship = response.data.relationships?.testPlans?.data;
+      // Extract test plan ID from relationships (try both camelCase and snake_case)
+      const testPlanRelationship = response.data.relationships?.testPlan?.data || response.data.relationships?.test_plan?.data;
       console.log('📅 Test plan relationship found:', testPlanRelationship);
       
       if (testPlanRelationship) {
-        const testPlanId = testPlanRelationship?.id?.split('/').pop();
+        const testPlanId = testPlanRelationship.id?.split('/').pop();
         console.log('📅 Extracted test plan ID:', testPlanId);
         
-        // Set the test plan in form data
-        setFormData(prev => ({
-          ...prev,
-          testPlanId: testPlanId || ''
-        }));
-        
-        console.log('✅ Set test plan ID in form:', testPlanId);
+        if (testPlanId && testPlanId !== 'undefined' && testPlanId !== 'null') {
+          // Set the test plan ID in form data
+          setFormData(prev => ({
+            ...prev,
+            testPlanId: testPlanId
+          }));
+          
+          // Set original test plan ID for change tracking
+          setOriginalTestPlanId(testPlanId);
+          
+          console.log('✅ Set test plan ID in form:', testPlanId);
+        } else {
+          console.log('📅 Invalid test plan ID, clearing form field');
+          setFormData(prev => ({
+            ...prev,
+            testPlanId: ''
+          }));
+          setOriginalTestPlanId('');
+        }
       } else {
         console.log('📅 No test plan relationship found in test run');
         setFormData(prev => ({
           ...prev,
           testPlanId: ''
         }));
+        setOriginalTestPlanId('');
       }
       
     } catch (error) {
-      console.error('❌ Failed to load test plan:', error);
+      console.error('❌ Failed to load existing test plan:', error);
       setFormData(prev => ({
         ...prev,
         testPlanId: ''
       }));
+      setOriginalTestPlanId('');
     }
   };
 
@@ -492,6 +507,22 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
     // Combine existing configurations with new configurations from form
     const allConfigurations = [...existingConfigurations, ...processedConfigurations];
     
+    // Determine the final test plan ID to send
+    // Use the current form value (which may have changed from the original)
+    const finalTestPlanId = formData.testPlanId;
+    
+    console.log('📅 SUBMIT DEBUG:', {
+      originalTestPlanId,
+      currentTestPlanId: formData.testPlanId,
+      finalTestPlanId,
+      hasChanged: originalTestPlanId !== formData.testPlanId,
+      formDataTestPlanId: formData.testPlanId,
+      formDataTestPlanIdType: typeof formData.testPlanId,
+      formDataTestPlanIdLength: formData.testPlanId?.length,
+      isEmptyString: formData.testPlanId === '',
+      isTruthy: !!formData.testPlanId
+    });
+    
     const submitData = {
       name: formData.name,
       description: formData.description,
@@ -500,8 +531,10 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
       configurations: allConfigurations,
       assignedTo: formData.assignedTo,
       tags: allTags,
-      testPlanId: formData.testPlanId
+      testPlanId: finalTestPlanId
     };
+    
+    console.log('📅 Final submitData.testPlanId:', submitData.testPlanId);
     
     await onSubmit(submitData);
   };
@@ -761,7 +794,15 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
               </label>
               <TestPlanSelector
                 selectedTestPlanId={formData.testPlanId}
-                onTestPlanChange={(testPlanId) => handleInputChange('testPlanId', testPlanId)}
+               onTestPlanChange={(testPlanId) => {
+                 console.log('📅 TEST PLAN DROPDOWN CHANGED:', {
+                   newTestPlanId: testPlanId,
+                   previousTestPlanId: formData.testPlanId,
+                   originalTestPlanId,
+                   hasChanged: originalTestPlanId !== testPlanId
+                 });
+                 handleInputChange('testPlanId', testPlanId);
+               }}
                 disabled={isSubmitting}
                 placeholder="Select test plan..."
                 projectId={selectedProject?.id}

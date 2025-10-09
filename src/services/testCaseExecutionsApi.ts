@@ -5,6 +5,7 @@ export interface CreateTestCaseExecutionRequest {
     type: "TestCaseExecution";
     attributes: {
       result: number;
+      comment?: string;
     };
     relationships: {
       test_run: {
@@ -50,6 +51,7 @@ export interface TestCaseExecution {
   testRunId: string;
   result: number;
   resultLabel: string;
+  comment?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -59,12 +61,14 @@ class TestCaseExecutionsApiService {
     testCaseId: string;
     testRunId: string;
     result: number;
+    comment?: string;
   }): Promise<CreateTestCaseExecutionResponse> {
     const requestBody: CreateTestCaseExecutionRequest = {
       data: {
         type: "TestCaseExecution",
         attributes: {
-          result: data.result
+          result: data.result,
+          ...(data.comment && data.comment.trim() ? { comment: data.comment.trim() } : {})
         },
         relationships: {
           test_run: {
@@ -106,6 +110,7 @@ class TestCaseExecutionsApiService {
       testRunId,
       result: apiExecution.attributes.result,
       resultLabel: this.getResultLabel(apiExecution.attributes.result),
+      comment: apiExecution.attributes.comment,
       createdAt: new Date(apiExecution.attributes.created_at),
       updatedAt: new Date(apiExecution.attributes.updated_at)
     };

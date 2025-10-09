@@ -63,8 +63,40 @@ class TagsApiService {
   }
 
   async getTags(): Promise<TagsApiResponse> {
-    const response = await apiService.authenticatedRequest('/tags?itemsPerPage=100');
-    return response || this.getDefaultTagsResponse();
+    let allTags: ApiTag[] = [];
+    let currentPage = 1;
+    let totalPages = 1;
+
+    do {
+      const response: TagsApiResponse = await apiService.authenticatedRequest(
+        `/tags?itemsPerPage=100&page=${currentPage}`
+      );
+
+      if (response && response.data) {
+        allTags = [...allTags, ...response.data];
+
+        // Calculate total pages from meta information
+        if (response.meta) {
+          totalPages = Math.ceil(response.meta.totalItems / response.meta.itemsPerPage);
+        }
+      }
+
+      currentPage++;
+    } while (currentPage <= totalPages);
+
+    return {
+      links: {
+        self: '/tags',
+        first: '/tags?page=1',
+        last: `/tags?page=${totalPages}`
+      },
+      meta: {
+        totalItems: allTags.length,
+        itemsPerPage: 100,
+        currentPage: totalPages
+      },
+      data: allTags
+    };
   }
 
   async createTag(label: string): Promise<CreateTagResponse> {

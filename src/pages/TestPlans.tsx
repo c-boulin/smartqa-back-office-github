@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, Loader, Calendar, User } from 'lucide-react';
+import { Plus, Search, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Calendar, User, Filter, X } from 'lucide-react';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
@@ -8,13 +9,16 @@ import CreateTestPlanModal from '../components/TestPlan/CreateTestPlanModal';
 import EditTestPlanModal from '../components/TestPlan/EditTestPlanModal';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { useUsers } from '../context/UsersContext';
 import { useTestPlans } from '../hooks/useTestPlans';
 import { TestPlan } from '../services/testPlansApi';
 import toast from 'react-hot-toast';
 
 const TestPlans: React.FC = () => {
-  const { getSelectedProject } = useApp();
+  const { getSelectedProject, state: appState } = useApp();
   const { state: authState } = useAuth();
+  const navigate = useNavigate();
+  const { users } = useUsers();
   const selectedProject = getSelectedProject();
   
   const { 
@@ -36,15 +40,64 @@ const TestPlans: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedTestPlan, setSelectedTestPlan] = useState<TestPlan | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ownerFilter, setOwnerFilter] = useState('all');
+  const [appliedOwnerFilter, setAppliedOwnerFilter] = useState('all');
+
+  const searchTestPlansWithOwner = async (term: string, ownerId: string) => {
+    // Implementation needed
+  };
+
+  const filterTestPlansByOwner = async (ownerId: string) => {
+    // Implementation needed
+  };
+
+  const applyOwnerFilter = () => {
+    setAppliedOwnerFilter(ownerFilter);
+    const userId = ownerFilter !== 'all' ? ownerFilter : undefined;
+    
+    if (currentSearchTerm.trim()) {
+      searchTestPlans(currentSearchTerm, 1, userId);
+    } else {
+      fetchTestPlans(1, undefined, userId);
+    }
+  };
+
+  const clearOwnerFilter = () => {
+    setOwnerFilter('all');
+    setAppliedOwnerFilter('all');
+    setSearchTerm('');
+    setCurrentSearchTerm('');
+    fetchTestPlans(1);
+  };
+
+  const getOwnerName = (ownerId: string) => {
+    const user = users.find(u => u.id === ownerId);
+    return user?.name || 'Unknown';
+  };
+
+  const handleTestPlanClick = useCallback((testPlan: TestPlan) => {
+    console.log('📋 Test plan clicked:', testPlan.title, 'ID:', testPlan.id);
+    navigate(`/test-plans/${testPlan.id}`);
+  }, [navigate]);
+
+  const filteredTestPlans = testPlans;
 
   const handleSearch = useCallback(async (term: string) => {
     setCurrentSearchTerm(term);
     if (term.trim()) {
-      await searchTestPlans(term);
+      if (appliedOwnerFilter !== 'all') {
+        await searchTestPlansWithOwner(term, appliedOwnerFilter);
+      } else {
+        await searchTestPlans(term);
+      }
     } else {
-      await fetchTestPlans(1);
+      if (appliedOwnerFilter !== 'all') {
+        await filterTestPlansByOwner(appliedOwnerFilter);
+      } else {
+        await fetchTestPlans(1);
+      }
     }
-  }, [searchTestPlans, fetchTestPlans]);
+  }, [searchTestPlans, fetchTestPlans, appliedOwnerFilter]);
 
   const handleSearchKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -58,13 +111,8 @@ const TestPlans: React.FC = () => {
   }, []);
 
   const handleCreateTestPlan = useCallback(async (data: any) => {
-    if (!selectedProject) {
-      toast.error('Please select a project first');
-      return;
-    }
-
-    if (!authState.user?.id) {
-      toast.error('User not authenticated');
+    if (!selectedProject || !data.assignedTo) {
+      toast.error('Please select an owner');
       return;
     }
 
@@ -73,7 +121,10 @@ const TestPlans: React.FC = () => {
       
       await createTestPlan({
         title: data.title,
-        creatorId: authState.user.id
+        projectId: selectedProject.id,
+        assignedTo: data.assignedTo,
+        dateStart: data.dateStart,
+        dateEnd: data.dateEnd
       });
       
       setIsCreateModalOpen(false);
@@ -83,7 +134,7 @@ const TestPlans: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [createTestPlan, selectedProject, authState.user?.id]);
+  }, [createTestPlan]);
 
   const handleEditTestPlan = useCallback(async (data: any) => {
     if (!selectedTestPlan) {
@@ -91,11 +142,19 @@ const TestPlans: React.FC = () => {
       return;
     }
 
+    if (!selectedProject) {
+      toast.error('No project selected');
+      return;
+    }
     try {
       setIsSubmitting(true);
       
       await updateTestPlan(selectedTestPlan.id, {
-        title: data.title
+        title: data.title,
+        projectId: selectedProject.id,
+        assignedTo: data.assignedTo,
+        dateStart: data.dateStart,
+        dateEnd: data.dateEnd
       });
       
       setIsEditModalOpen(false);
@@ -207,21 +266,10 @@ const TestPlans: React.FC = () => {
       </div>
 
       {/* Show message if no project selected */}
-      {!selectedProject && (
-        <Card className="p-8 text-center">
-          <div className="text-gray-400 mb-4">
-            <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">No project selected</p>
-            <p className="text-sm">Please select a project from the sidebar to view and manage test plans.</p>
-          </div>
-        </Card>
-      )}
-
-      {/* Only show content if project is selected */}
-      {selectedProject && (
-        <>
-          {/* Search */}
-          <Card className="p-6">
+      {/* Search */}
+      <Card className="p-6">
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
@@ -232,145 +280,291 @@ const TestPlans: React.FC = () => {
                 onKeyPress={handleSearchKeyPress}
                 className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
               />
-              {currentSearchTerm && (
-                <div className="mt-2 text-sm text-cyan-400">
-                  Searching for: "{currentSearchTerm}"
-                  <button
-                    onClick={() => {
-                      setSearchTerm('');
-                      setCurrentSearchTerm('');
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select
+                value={ownerFilter}
+                onChange={(e) => setOwnerFilter(e.target.value)}
+                className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              >
+                <option value="all">All Owners</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={applyOwnerFilter}
+              disabled={ownerFilter === appliedOwnerFilter}
+            >
+              Apply Filter
+            </Button>
+          </div>
+        </div>
+
+        {/* Active filters display */}
+        {(currentSearchTerm || appliedOwnerFilter !== 'all') && (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-sm text-gray-400">Active filters:</span>
+            {currentSearchTerm && (
+              <span className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400">
+                Search: "{currentSearchTerm}"
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCurrentSearchTerm('');
+                    if (appliedOwnerFilter !== 'all') {
+                      filterTestPlansByOwner(appliedOwnerFilter);
+                    } else {
                       fetchTestPlans(1);
-                    }}
-                    className="ml-2 text-gray-400 hover:text-white underline"
-                  >
-                    Clear search
-                  </button>
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {/* Test Plans Table */}
-          <Card className="overflow-hidden">
-            {loading && (
-              <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center z-10">
-                <Loader className="w-6 h-6 text-cyan-400 animate-spin" />
-              </div>
+                    }
+                  }}
+                  className="ml-2 text-cyan-400 hover:text-cyan-300 transition-colors"
+                  title="Clear search"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
             )}
-            
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-800/50 border-b border-slate-700">
-                  <tr>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">ID</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Title</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Created</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Last Updated</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Actions</th>
+            {appliedOwnerFilter !== 'all' && (
+              <span className="inline-flex items-center px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-sm text-purple-400">
+                Owner: {getOwnerName(appliedOwnerFilter)}
+                <button
+                  onClick={clearOwnerFilter}
+                  className="ml-2 text-purple-400 hover:text-purple-300 transition-colors"
+                  title="Clear owner filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            <button
+              onClick={clearOwnerFilter}
+              className="text-sm text-gray-400 hover:text-white underline"
+            >
+              Clear all filters
+            </button>
+          </div>
+        )}
+      </Card>
+
+      {/* Test Plans Table */}
+      <Card className="overflow-hidden">
+        <div className="relative">
+        {loading && (
+          <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center z-10">
+            <Loader className="w-6 h-6 text-cyan-400 animate-spin" />
+          </div>
+        )}
+        
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-800/50 border-b border-slate-700">
+              <tr>
+                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">ID</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Title</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Status</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Progress</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Duration</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTestPlans.map((testPlan) => {
+                // Calculate progress based on closed test runs
+                const progress = testPlan.totalTestRuns > 0 
+                  ? Math.round((testPlan.closedTestRuns / testPlan.totalTestRuns) * 100)
+                  : 0;
+                
+                // Calculate status based on closed test runs
+                const getStatus = () => {
+                  if (testPlan.totalTestRuns === 0 || testPlan.closedTestRuns === 0) {
+                    return { label: 'New', color: 'text-gray-400 bg-gray-500/20 border-gray-500/50' };
+                  } else if (testPlan.closedTestRuns < testPlan.totalTestRuns) {
+                    return { label: 'In Progress', color: 'text-blue-400 bg-blue-500/20 border-blue-500/50' };
+                  } else {
+                    return { label: 'Complete', color: 'text-green-400 bg-green-500/20 border-green-500/50' };
+                  }
+                };
+                
+                const status = getStatus();
+                
+                const getProgressColor = (progress: number) => {
+                  if (progress === 0) return 'from-gray-500 to-gray-600';
+                  if (progress < 50) return 'from-red-500 to-orange-500';
+                  if (progress < 100) return 'from-yellow-500 to-orange-500';
+                  return 'from-green-500 to-emerald-500';
+                };
+                
+                return (
+                  <tr key={testPlan.id} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+                    <td className="py-4 px-6 text-sm text-gray-300 font-mono">
+                      #{testPlan.id}
+                    </td>
+                    <td className="py-4 px-6">
+                      <div>
+                        <button
+                          onClick={() => handleTestPlanClick(testPlan)}
+                          className="text-left w-full group"
+                        >
+                          <h3 className="font-semibold text-white group-hover:text-cyan-400 transition-colors cursor-pointer mb-1">
+                            {testPlan.title}
+                          </h3>
+                        </button>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${status.color}`}>
+                        {status.label}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-400">
+                            {testPlan.totalTestRuns === 0 ? 'No test runs' : 
+                             progress === 0 ? 'Not started' :
+                             progress === 100 ? 'Completed' : 'In progress'}
+                          </span>
+                          <span className="text-white font-medium">{progress}%</span>
+                        </div>
+                        {testPlan.totalTestRuns > 0 && (
+                          <div className="w-full bg-slate-700 rounded-full h-2">
+                            <div 
+                              className={`bg-gradient-to-r ${getProgressColor(progress)} h-2 rounded-full transition-all duration-300`}
+                              style={{ width: `${progress}%` }}
+                            ></div>
+                          </div>
+                        )}
+                        <div className="text-xs text-gray-400">
+                          {testPlan.closedTestRuns} of {testPlan.totalTestRuns} test runs closed
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      {testPlan.dateStart && testPlan.dateEnd ? (
+                        <div className="space-y-1">
+                          <div className="text-sm text-gray-300">
+                            {format(testPlan.dateStart, 'MMM dd, yyyy')} - {format(testPlan.dateEnd, 'MMM dd, yyyy')}
+                          </div>
+                          {(() => {
+                            const today = new Date();
+                            const endDate = testPlan.dateEnd;
+                            
+                            // Reset time to start of day for accurate comparison
+                            const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                            const endDateStart = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+                            
+                            if (todayStart > endDateStart) {
+                              const diffTime = todayStart.getTime() - endDateStart.getTime();
+                              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                              
+                              return (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/50">
+                                  {diffDays} day{diffDays !== 1 ? 's' : ''} overdue
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      ) : testPlan.dateStart ? (
+                        <div className="text-sm text-gray-300">
+                          {format(testPlan.dateStart, 'MMM dd, yyyy')} - No end date
+                        </div>
+                      ) : testPlan.dateEnd ? (
+                        <div className="text-sm text-gray-300">
+                          No start date - {format(testPlan.dateEnd, 'MMM dd, yyyy')}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 text-sm">No dates set</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => openEditModal(testPlan)}
+                          className="p-2 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded-lg transition-colors"
+                          title="Edit"
+                          disabled={isSubmitting}
+                        >
+                          <SquarePen className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => openDeleteDialog(testPlan)}
+                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
+                          title="Delete"
+                          disabled={isSubmitting}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {testPlans.map((testPlan) => (
-                    <tr key={testPlan.id} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
-                      <td className="py-4 px-6 text-sm text-gray-300 font-mono">
-                        #{testPlan.id}
-                      </td>
-                      <td className="py-4 px-6">
-                        <div>
-                          <h3 className="font-semibold text-white mb-1">{testPlan.title}</h3>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center text-sm text-gray-300">
-                          <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                          <span>{format(testPlan.createdAt, 'MMM dd, yyyy')}</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center text-sm text-gray-300">
-                          <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                          <span>{format(testPlan.updatedAt, 'MMM dd, yyyy')}</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => openEditModal(testPlan)}
-                            className="p-2 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded-lg transition-colors"
-                            title="Edit"
-                            disabled={isSubmitting}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => openDeleteDialog(testPlan)}
-                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
-                            title="Delete"
-                            disabled={isSubmitting}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              
-              {testPlans.length === 0 && !loading && (
-                <div className="text-center py-12">
-                  <div className="text-gray-400 mb-4">
-                    <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-medium">No test plans found</p>
-                    <p className="text-sm">
-                      {currentSearchTerm 
-                        ? `No test plans found matching "${currentSearchTerm}". Try a different search term or create a new test plan.`
-                        : 'No test plans found for this project. Create your first test plan to get started.'
-                      }
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="border-t border-slate-700 px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-400">
-                    Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
-                    {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
-                    {pagination.totalItems} test plans
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={pagination.currentPage === 1 || loading}
-                      icon={ChevronLeft}
-                    >
-                      Previous
-                    </Button>
-                    <span className="text-sm text-gray-400">
-                      Page {pagination.currentPage} of {pagination.totalPages}
-                    </span>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={pagination.currentPage === pagination.totalPages || loading}
-                      icon={ChevronRight}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
+                );
+              })}
+            </tbody>
+          </table>
+          
+          {testPlans.length === 0 && !loading && (
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">No test plans found</p>
+                <p className="text-sm">
+                  {currentSearchTerm 
+                    ? `No test plans found matching "${currentSearchTerm}". Try a different search term or create a new test plan.`
+                    : 'No test plans found. Create your first test plan to get started.'
+                  }
+                </p>
               </div>
-            )}
-          </Card>
-        </>
-      )}
+            </div>
+          )}
+        </div>
+        </div>
+
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="border-t border-slate-700 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-400">
+                Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
+                {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
+                {pagination.totalItems} test plans
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1 || loading}
+                  icon={ChevronLeft}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-400">
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === pagination.totalPages || loading}
+                  icon={ChevronRight}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Card>
 
       {/* Modals */}
       <CreateTestPlanModal

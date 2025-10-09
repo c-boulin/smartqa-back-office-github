@@ -15,11 +15,13 @@ export interface TestCase {
   id: string;
   projectId: string;
   folderId?: string; // Ajout du folderId
+  ownerId?: string; // Owner/user ID
   title: string;
   description: string;
   preconditions?: string; // Add preconditions field
   priority: 'low' | 'medium' | 'high' | 'critical';
   type: 'functional' | 'regression' | 'smoke' | 'integration' | 'performance';
+  typeId?: number | string; // Type ID from API for filtering (can be string or number)
   status: 'draft' | 'active' | 'deprecated';
   automationStatus: 1 | 2 | 3 | 4 | 5; // Utilise les valeurs numériques de l'API
   steps: TestStep[];

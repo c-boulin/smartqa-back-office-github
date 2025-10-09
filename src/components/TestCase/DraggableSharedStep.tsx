@@ -7,6 +7,7 @@ import { SharedStep } from '../../services/sharedStepsApi';
 
 interface DraggableSharedStepProps {
   sharedStep: SharedStep;
+  uniqueId?: string;
   index: number;
   onRemove: (sharedStepId: string) => void;
   onView?: (sharedStep: SharedStep) => void;
@@ -15,11 +16,15 @@ interface DraggableSharedStepProps {
 
 const DraggableSharedStep: React.FC<DraggableSharedStepProps> = ({
   sharedStep,
+  uniqueId,
   index,
   onRemove,
   onView,
   disabled = false
 }) => {
+  // Use uniqueId for drag and drop if provided, otherwise fall back to sharedStep.id
+  const dragId = uniqueId || sharedStep.id;
+  
   const {
     attributes,
     listeners,
@@ -27,12 +32,13 @@ const DraggableSharedStep: React.FC<DraggableSharedStepProps> = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: `shared-${sharedStep.id}` });
+  } = useSortable({ id: dragId });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
 
   return (
     <div
@@ -78,7 +84,7 @@ const DraggableSharedStep: React.FC<DraggableSharedStepProps> = ({
             variant="danger"
             size="sm"
             icon={Trash2}
-            onClick={() => onRemove(sharedStep.id)}
+            onClick={() => onRemove(dragId)}
             disabled={disabled}
             className="p-2"
             title="Remove shared step"
@@ -88,7 +94,9 @@ const DraggableSharedStep: React.FC<DraggableSharedStepProps> = ({
       
       <div className="bg-purple-900/30 border border-purple-500/30 rounded-lg p-3">
         <div className="mb-2">
-          <h5 className="font-medium text-purple-200 mb-1">{sharedStep.title}</h5>
+          <h5 className="font-medium text-purple-200 mb-1">
+            {sharedStep.title}
+          </h5>
           {sharedStep.description && (
             <p className="text-sm text-purple-300/80">{sharedStep.description}</p>
           )}

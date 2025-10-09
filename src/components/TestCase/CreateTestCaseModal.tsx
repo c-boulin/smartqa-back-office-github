@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Loader, CheckCircle, Edit, Eye, Clock, XCircle, AlertTriangle, Zap, Target, Shield, Flame, Layers } from 'lucide-react';
+import { Plus, Loader, CheckCircle, SquarePen, Eye, Clock, XCircle, AlertTriangle, Zap, Target, Shield, Flame, Layers } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -38,7 +38,7 @@ const TEMPLATES = {
 
 const STATES = {
   1: { label: 'Active', icon: CheckCircle, color: 'text-green-400' },
-  2: { label: 'Draft', icon: Edit, color: 'text-orange-400' },
+  2: { label: 'Draft', icon: SquarePen, color: 'text-orange-400' },
   3: { label: 'In Review', icon: Eye, color: 'text-blue-400' },
   4: { label: 'Outdated', icon: Clock, color: 'text-gray-400' },
   5: { label: 'Rejected', icon: XCircle, color: 'text-red-400' }
@@ -214,13 +214,13 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
 
   // Set current user as default owner when users are loaded
   useEffect(() => {
-    if (users.length > 0 && authState.user && !formData.owner) {
+    if (users.length > 0 && authState.user) {
       const currentUser = users.find(user => user.email === authState.user?.email);
       if (currentUser) {
         setFormData(prev => ({ ...prev, owner: currentUser.id }));
       }
     }
-  }, [users, authState.user, formData.owner]);
+  }, [users, authState.user]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -231,7 +231,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
         template: 1,
         description: '',
         preconditions: '',
-        owner: '',
+        owner: '', // Will be set by the user effect above
         state: 2,
         priority: 2,
         testCaseType: 6,
@@ -243,6 +243,14 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
       setSelectedTags([]);
       setAttachments([]);
       setUploadedAttachments([]);
+      
+      // Set current user as default owner when modal opens
+      if (users.length > 0 && authState.user) {
+        const currentUser = users.find(user => user.email === authState.user?.email);
+        if (currentUser) {
+          setFormData(prev => ({ ...prev, owner: currentUser.id }));
+        }
+      }
     }
   }, [isOpen]);
 
@@ -272,19 +280,34 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
   };
 
   const addSharedStep = (sharedStep: SharedStep) => {
-    // Check if this shared step is already added
-    const isAlreadyAdded = sharedSteps.some(existing => existing.id === sharedStep.id);
-    if (isAlreadyAdded) {
-      return;
-    }
+    // Allow adding the same shared step multiple times
+    // Create a unique instance ID using timestamp to differentiate duplicates
+    const instanceId = `shared-${sharedStep.id}-${Date.now()}`;
     
     setSharedSteps(prev => [...prev, sharedStep]);
-    setStepOrder(prev => [...prev, { type: 'shared', id: `shared-${sharedStep.id}` }]);
+    setStepOrder(prev => [...prev, { type: 'shared', id: instanceId }]);
   };
 
   const removeSharedStep = (sharedStepId: string) => {
-    setSharedSteps(prev => prev.filter(step => step.id !== sharedStepId));
-    setStepOrder(prev => prev.filter(item => !(item.type === 'shared' && item.id === `shared-${sharedStepId}`)));
+    // Find the index of the shared step instance to remove
+    const orderIndex = stepOrder.findIndex(item => item.type === 'shared' && item.id === sharedStepId);
+    
+    if (orderIndex !== -1) {
+      // Remove from sharedSteps array at the same index
+      setSharedSteps(prev => prev.filter((_, index) => {
+        // Count shared step instances before this order index
+        let sharedStepIndex = 0;
+        for (let i = 0; i < orderIndex; i++) {
+          if (stepOrder[i].type === 'shared') {
+            sharedStepIndex++;
+          }
+        }
+        return index !== sharedStepIndex;
+      }));
+      
+      // Remove from stepOrder
+      setStepOrder(prev => prev.filter(item => item.id !== sharedStepId));
+    }
   };
 
   const viewSharedStep = (sharedStep: SharedStep) => {
@@ -298,9 +321,26 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
       const step = testSteps.find(s => s.id === orderItem.id);
       return step ? { type: 'step' as const, id: step.id, step: step.step, result: step.result } : null;
     } else {
-      const sharedStepId = orderItem.id.replace('shared-', '');
-      const sharedStep = sharedSteps.find(s => s.id === sharedStepId);
-      return sharedStep ? { type: 'shared' as const, id: orderItem.id, sharedStep } : null;
+      // Extract shared step ID from instance ID (format: shared-{id}-{timestamp})
+      const idParts = orderItem.id.split('-');
+      if (idParts.length >= 3 && idParts[0] === 'shared') {
+        const sharedStepId = idParts[1];
+        
+        // Find the shared step instance at the correct position
+        let sharedStepIndex = 0;
+        const currentOrderIndex = stepOrder.findIndex(item => item.id === orderItem.id);
+        
+        // Count shared step instances before this position
+        for (let i = 0; i < currentOrderIndex; i++) {
+          if (stepOrder[i].type === 'shared') {
+            sharedStepIndex++;
+          }
+        }
+        
+        const sharedStep = sharedSteps[sharedStepIndex];
+        return sharedStep ? { type: 'shared' as const, id: orderItem.id, sharedStep } : null;
+      }
+      return null;
     }
   }).filter(Boolean) as TestStepOrSharedStep[];
 
@@ -385,16 +425,29 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
           });
         }
       } else if (orderItem.type === 'shared') {
-        const sharedStepId = orderItem.id.replace('shared-', '');
-        const sharedStep = sharedSteps.find(s => s.id === sharedStepId);
-        if (sharedStep) {
-          sharedStepsRelationships.push({
-            type: "SharedStep",
-            id: `/api/shared_steps/${sharedStep.id}`,
-            meta: {
-              order: order
+        // Extract shared step ID from instance ID (format: shared-{id}-{timestamp})
+        const idParts = orderItem.id.split('-');
+        if (idParts.length >= 3 && idParts[0] === 'shared') {
+          const sharedStepId = idParts[1];
+          
+          // Find the shared step instance at the correct position
+          let sharedStepIndex = 0;
+          for (let i = 0; i < position; i++) {
+            if (stepOrder[i].type === 'shared') {
+              sharedStepIndex++;
             }
-          });
+          }
+          
+          const sharedStep = sharedSteps[sharedStepIndex];
+          if (sharedStep) {
+            sharedStepsRelationships.push({
+              type: "SharedStep",
+              id: `/api/shared_steps/${sharedStep.id}`,
+              meta: {
+                order: order
+              }
+            });
+          }
         }
       }
     }
@@ -503,72 +556,102 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
 
               {/* Steps and Results with Drag & Drop */}
               <div>
+                {/* Header - only show buttons here when list is empty */}
                 <div className="flex items-center justify-between mb-4">
                   <label className="block text-sm font-medium text-gray-300">
                     Steps and Results
                   </label>
-                  <div className="flex space-x-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      icon={Layers}
-                      onClick={() => setIsSharedStepSelectorOpen(true)}
-                      disabled={isSubmitting}
-                    >
-                      Add Shared Step
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      icon={Plus}
-                      onClick={addTestStep}
-                      disabled={isSubmitting}
-                    >
-                      Add Step
-                    </Button>
-                  </div>
+                  {allSteps.length === 0 && (
+                    <div className="flex space-x-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        icon={Layers}
+                        onClick={() => setIsSharedStepSelectorOpen(true)}
+                        disabled={isSubmitting}
+                      >
+                        Add Shared Step
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        icon={Plus}
+                        onClick={addTestStep}
+                        disabled={isSubmitting}
+                      >
+                        Add Step
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-4">
                   {allSteps.length > 0 ? (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <SortableContext
-                        items={allSteps.map(step => step.id)}
-                        strategy={verticalListSortingStrategy}
+                    <>
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
                       >
-                        {allSteps.map((item, index) => (
-                          item.type === 'step' ? (
-                            <DraggableTestStepWithAutoUpload
-                              key={item.id}
-                              step={{
-                                id: item.id,
-                                step: item.step!,
-                                result: item.result!
-                              }}
-                              index={index}
-                              onUpdate={updateTestStep}
-                              onRemove={removeTestStep}
-                              disabled={isSubmitting}
-                            />
-                          ) : (
-                            <DraggableSharedStep
-                              key={item.id}
-                              sharedStep={item.sharedStep!}
-                              index={index}
-                              onRemove={removeSharedStep}
-                              onView={viewSharedStep}
-                              disabled={isSubmitting}
-                            />
-                          )
-                        ))}
-                      </SortableContext>
-                    </DndContext>
+                        <SortableContext
+                          items={allSteps.map(step => step.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {allSteps.map((item, index) => (
+                            item.type === 'step' ? (
+                              <DraggableTestStepWithAutoUpload
+                                key={item.id}
+                                step={{
+                                  id: item.id,
+                                  step: item.step!,
+                                  result: item.result!
+                                }}
+                                index={index}
+                                onUpdate={updateTestStep}
+                                onRemove={removeTestStep}
+                                disabled={isSubmitting}
+                              />
+                            ) : (
+                              <DraggableSharedStep
+                                key={item.id}
+                                sharedStep={item.sharedStep!}
+                                uniqueId={item.id}
+                                index={index}
+                                onRemove={removeSharedStep}
+                                onView={viewSharedStep}
+                                disabled={isSubmitting}
+                              />
+                            )
+                          ))}
+                        </SortableContext>
+                      </DndContext>
+                      
+                      {/* Buttons below the list when there are entries */}
+                      <div className="flex justify-end space-x-2 pt-4">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          icon={Layers}
+                          onClick={() => setIsSharedStepSelectorOpen(true)}
+                          disabled={isSubmitting}
+                        >
+                          Add Shared Step
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          icon={Plus}
+                          onClick={addTestStep}
+                          disabled={isSubmitting}
+                        >
+                          Add Step
+                        </Button>
+                      </div>
+                    </>
                   ) : (
                     <div className="text-center py-8 text-gray-400 border-2 border-dashed border-slate-600 rounded-lg">
                       <p>No steps added yet.</p>

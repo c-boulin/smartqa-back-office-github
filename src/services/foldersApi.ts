@@ -60,22 +60,8 @@ export interface CreateFolderRequest {
     relationships: {
       parent?: {
         type: "Folder";
-        id: string;
-      };
-      children?: Array<{
-        type: "Folder";
-        id: string;
-      }>;
-      test_cases?: Array<{
-        type: "TestCase";
-        id: string;
-      }>;
-      project: {
-        type: "Project";
-        id: string;
-      };
-      user: {
         type: "User";
+        type: string;
         id: string;
       };
     };
@@ -177,6 +163,64 @@ class FoldersApiService {
     }
 
     return response;
+  }
+
+  async updateFolder(folderId: string, folderData: {
+    name: string;
+    description: string;
+    projectId: string;
+    parentId?: string;
+    childrenIds: string[];
+    testCaseIds: string[];
+    creatorId: string;
+    editorId: string;
+  }): Promise<UpdateFolderResponse> {
+    const requestBody: UpdateFolderRequest = {
+      data: {
+        type: "Folder",
+        attributes: {
+          name: folderData.name,
+          description: folderData.description
+        },
+        relationships: {
+          user: {
+            type: "User",
+            id: `/api/users/${folderData.editorId}`
+          }
+        }
+      }
+    };
+
+    const response = await apiService.authenticatedRequest(`/folders/${folderId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+
+    return response;
+  }
+
+  async deleteFolder(folderId: string): Promise<void> {
+    try {
+      await apiService.authenticatedRequest(`/folders/${folderId}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      // Enhanced error handling for delete operations
+      if (error instanceof Error) {
+        if (error.message.includes('404')) {
+          throw new Error('Folder not found. It may have already been deleted.');
+        } else if (error.message.includes('409')) {
+          throw new Error('Cannot delete folder. It may contain test cases or subfolders that need to be moved first.');
+        } else if (error.message.includes('403')) {
+          throw new Error('You do not have permission to delete this folder.');
+        }
+      }
+      throw error;
+    }
   }
 
   // Helper method to transform API folder to our internal format

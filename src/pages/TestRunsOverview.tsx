@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, User, Play, CheckCircle, XCircle, Clock, AlertTriangle, Loader, Search, Filter } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Play, CheckCircle, XCircle, Clock, AlertTriangle, Loader, Search, Filter, X } from 'lucide-react';
 import { format } from 'date-fns';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
@@ -16,7 +16,7 @@ import toast from 'react-hot-toast';
 // Test Result Dropdown Component
 interface TestResultDropdownProps {
   value: TestResultId;
-  onChange: (value: TestResultId) => void;
+  onChange: (value: TestResultId, comment?: string) => void;
   disabled?: boolean;
   isUpdating?: boolean;
 }
@@ -28,8 +28,11 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
   isUpdating = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [comment, setComment] = useState('');
+  const [isCommentExpanded, setIsCommentExpanded] = useState(false);
+  const [selectedResult, setSelectedResult] = useState<TestResultId>(value);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
-  const selectedResult = TEST_RESULTS[value];
+  const currentResultLabel = TEST_RESULTS[value];
 
   const handleToggle = () => {
     if (!disabled && !isUpdating) {
@@ -81,6 +84,26 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
     }
   };
 
+  const handleResultSelect = (newResultId: TestResultId) => {
+    setSelectedResult(newResultId);
+  };
+
+  const handleResultChange = (newResultId: TestResultId) => {
+    setSelectedResult(newResultId);
+  };
+
+  const handleValidate = () => {
+    onChange(selectedResult, comment.trim() || undefined);
+    setIsOpen(false);
+    setComment('');
+    setIsCommentExpanded(false);
+  };
+
+  // Update selectedResult when value prop changes
+  React.useEffect(() => {
+    setSelectedResult(value);
+  }, [value]);
+
   return (
     <div className="relative">
       <button
@@ -88,13 +111,13 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
         type="button"
         onClick={handleToggle}
         disabled={disabled || isUpdating}
-        className={`w-full px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between ${getStatusColor(selectedResult)} ${
+        className={`w-full px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between ${getStatusColor(currentResultLabel)} ${
           disabled || isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'
         }`}
       >
         <div className="flex items-center">
           <div className={`w-2 h-2 rounded-full mr-2 ${getResultColor(value)}`}></div>
-          <span>{selectedResult}</span>
+          <span>{currentResultLabel}</span>
         </div>
         {isUpdating ? (
           <Loader className="w-3 h-3 animate-spin text-gray-400" />
@@ -112,22 +135,87 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
             onClick={() => setIsOpen(false)}
           />
           <div 
-            className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] max-h-60 overflow-y-auto min-w-[200px]"
+            className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96"
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 'auto',
+              right: '0',
+              marginTop: '4px',
+              width: '320px',
+              maxWidth: '90vw',
+              transform: 'translateX(0)',
+              zIndex: 101
+            }}
           >
-            {Object.entries(TEST_RESULTS).map(([resultId, label]) => (
-              <button
-                key={resultId}
-                type="button"
-                onClick={() => {
-                  onChange(parseInt(resultId) as TestResultId);
-                  setIsOpen(false);
-                }}
-                className="w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors flex items-center text-sm"
-              >
-                <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${getResultColor(parseInt(resultId) as TestResultId)}`}></div>
-                <span className="text-white">{label}</span>
-              </button>
-            ))}
+            <div className="p-3 border-b border-slate-600">
+              <h4 className="text-sm font-medium text-white mb-3">Select Result</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+              {Object.entries(TEST_RESULTS).map(([resultId, label]) => (
+                <button
+                  key={resultId}
+                  type="button"
+                  onClick={() => handleResultChange(parseInt(resultId) as TestResultId)}
+                  className={`w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors flex items-center text-sm ${
+                    selectedResult === parseInt(resultId) 
+                      ? 'bg-cyan-600/30 border-l-4 border-cyan-400' 
+                      : ''
+                  }`}
+                >
+                  <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${getResultColor(parseInt(resultId) as TestResultId)}`}></div>
+                  <span className={`${selectedResult === parseInt(resultId) ? 'text-cyan-300 font-medium' : 'text-white'}`}>
+                    {label}
+                  </span>
+                  {selectedResult === parseInt(resultId) && (
+                    <span className="ml-auto text-cyan-400">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            
+            {/* Comment Section */}
+            <div className="border-t border-slate-600 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-gray-400">
+                  Comment (Optional)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCommentExpanded(!isCommentExpanded)}
+                  className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  {isCommentExpanded ? 'Collapse' : 'Expand'}
+                </button>
+              </div>
+              
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Add a comment about this execution result..."
+                className={`w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 resize-none transition-all ${
+                  isCommentExpanded ? 'h-24' : 'h-12'
+                }`}
+                disabled={disabled || isUpdating}
+              />
+              
+              <div className="flex justify-end space-x-2 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleValidate}
+                  className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors"
+                >
+                  Validate
+                </button>
+              </div>
+            </div>
+            </div>
           </div>
         </>
       )}
@@ -220,11 +308,23 @@ const TestRunsOverview: React.FC = () => {
             if (typeof rawResult === 'number') {
               resultId = rawResult as TestResultId;
             } else if (typeof rawResult === 'string') {
-              // Try to find the result ID by label
-              const foundEntry = Object.entries(TEST_RESULTS).find(([id, label]) => 
-                label.toLowerCase() === rawResult.toLowerCase()
-              );
-              resultId = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6; // Default to Untested
+              // Try to parse as integer first
+              const parsedInt = parseInt(rawResult);
+              if (!isNaN(parsedInt) && TEST_RESULTS[parsedInt as TestResultId]) {
+                // String is a valid numeric ID
+                resultId = parsedInt as TestResultId;
+                console.log(`🔄 Converted string numeric result "${rawResult}" to: ${resultId} (${TEST_RESULTS[resultId]})`);
+              } else {
+                // String is not numeric, try reverse lookup by label
+                const foundEntry = Object.entries(TEST_RESULTS).find(([id, label]) => 
+                  label.toLowerCase() === rawResult.toLowerCase()
+                );
+                resultId = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6; // Default to Untested
+                console.log(`🔄 Converted string label result "${rawResult}" to: ${resultId} (${TEST_RESULTS[resultId]})`);
+              }
+            } else if (typeof rawResult === 'string') {
+              resultId = 6; // Default to Untested
+              console.log(`🔄 Unknown result type for execution, defaulting to Untested: ${rawResult}`);
             } else {
               resultId = 6; // Default to Untested
             }
@@ -332,7 +432,7 @@ const TestRunsOverview: React.FC = () => {
       // Apply initial filter if provided in URL
       if (resultFilter && resultFilter !== 'all') {
         applyResultFilter(resultFilter, allResults);
-        }
+      }
 
     } catch (err) {
       console.error('Failed to fetch test runs overview:', err);
@@ -371,7 +471,7 @@ const TestRunsOverview: React.FC = () => {
 
   const handleSearch = (term: string) => {
     setCurrentSearchTerm(term);
-    applyResultFilter(selectedResultFilter);
+    applyAllFilters(selectedResultFilter, term);
   };
 
   const handleTestCaseTitleClick = (testCaseWithExecution: TestCaseWithExecution) => {
@@ -395,10 +495,55 @@ const TestRunsOverview: React.FC = () => {
 
   const handleResultFilterChange = (filter: string) => {
     setSelectedResultFilter(filter);
-    applyResultFilter(filter);
+    applyAllFilters(filter, currentSearchTerm);
   };
 
-  const handleExecutionResultChange = async (testCaseId: string, testRunId: string, newResultId: TestResultId) => {
+  const applyAllFilters = (resultFilter: string = selectedResultFilter, searchTerm: string = currentSearchTerm) => {
+    let filtered = [...allTestCasesWithExecution];
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(testCase =>
+        testCase.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        testCase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        testCase.testRunName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply result filter
+    if (resultFilter !== 'all') {
+      // Convert filter string to result ID for comparison
+      const filterResultId = Object.entries(TEST_RESULTS).find(([id, label]) => 
+        label.toLowerCase() === resultFilter.toLowerCase()
+      )?.[0];
+      
+      if (filterResultId) {
+        filtered = filtered.filter(testCase => testCase.executionStatus === parseInt(filterResultId));
+      }
+    }
+
+    setFilteredTestCases(filtered);
+  };
+
+  const clearSearchFilter = () => {
+    setSearchTerm('');
+    setCurrentSearchTerm('');
+    applyAllFilters(selectedResultFilter, '');
+  };
+
+  const clearResultFilter = () => {
+    setSelectedResultFilter('all');
+    applyAllFilters('all', currentSearchTerm);
+  };
+
+  const clearAllFilters = () => {
+    setSearchTerm('');
+    setCurrentSearchTerm('');
+    setSelectedResultFilter('all');
+    setFilteredTestCases(allTestCasesWithExecution);
+  };
+
+  const handleExecutionResultChange = async (testCaseId: string, testRunId: string, newResultId: TestResultId, comment?: string) => {
     // Find the test run to check if it's closed
     const testRun = testRuns.find(tr => tr.id === testRunId);
     if (testRun?.state === 6) {
@@ -420,7 +565,8 @@ const TestRunsOverview: React.FC = () => {
       const response = await testCaseExecutionsApiService.createTestCaseExecution({
         testCaseId,
         testRunId,
-        result: newResultId
+        result: newResultId,
+        comment: comment
       });
 
       // Update local state to reflect the change immediately
@@ -648,22 +794,31 @@ const TestRunsOverview: React.FC = () => {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <span className="text-sm text-gray-400">Active filters:</span>
             {currentSearchTerm && (
-              <span className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400">
+              <span className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400 group">
                 Search: "{currentSearchTerm}"
+                <button
+                  onClick={clearSearchFilter}
+                  className="ml-2 text-cyan-400 hover:text-cyan-300 transition-colors opacity-70 group-hover:opacity-100"
+                  title="Clear search filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </span>
             )}
             {selectedResultFilter !== 'all' && (
-              <span className="inline-flex items-center px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-sm text-purple-400">
+              <span className="inline-flex items-center px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-sm text-purple-400 group">
                 Result: {selectedResultFilter}
+                <button
+                  onClick={clearResultFilter}
+                  className="ml-2 text-purple-400 hover:text-purple-300 transition-colors opacity-70 group-hover:opacity-100"
+                  title="Clear result filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </span>
             )}
             <button
-              onClick={() => {
-                setSearchTerm('');
-                setCurrentSearchTerm('');
-                setSelectedResultFilter('all');
-                setFilteredTestCases(allTestCasesWithExecution);
-              }}
+              onClick={clearAllFilters}
               className="text-sm text-gray-400 hover:text-white underline"
             >
               Clear all filters
@@ -731,7 +886,7 @@ const TestRunsOverview: React.FC = () => {
                   <td className="py-4 px-6">
                     <TestResultDropdown
                       value={testCase.executionStatus}
-                      onChange={(newResultId) => handleExecutionResultChange(testCase.id, testCase.testRunId, newResultId)}
+                      onChange={(newResultId, comment) => handleExecutionResultChange(testCase.id, testCase.testRunId, newResultId, comment)}
                       disabled={testRuns.find(tr => tr.id === testCase.testRunId)?.state === 6 || updatingResults.has(`${testCase.id}-${testCase.testRunId}`)}
                       isUpdating={updatingResults.has(`${testCase.id}-${testCase.testRunId}`)}
                     />
@@ -740,22 +895,6 @@ const TestRunsOverview: React.FC = () => {
               ))}
             </tbody>
           </table>
-          
-          {filteredTestCases.length === 0 && !loading && (
-            <div className="text-center py-12">
-              <div className="text-gray-400">
-                <p className="text-lg font-medium">
-                  {allTestCasesWithExecution.length === 0 ? 'No test cases found' : 'No test cases match your filters'}
-                </p>
-                <p className="text-sm">
-                  {allTestCasesWithExecution.length === 0 
-                    ? 'No active test runs found with test cases.'
-                    : 'Try adjusting your search term or filters to see more results.'
-                  }
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </Card>
 

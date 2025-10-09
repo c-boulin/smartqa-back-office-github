@@ -5,3 +5,7 @@ By default, this template supports JSX syntax with Tailwind CSS classes, React h
 Use icons from lucide-react for logos.
 
 When asked to add a feature, avoid writing over and over again in the same file, instead try to write more but smaller files, so it is easier to maintain.
+
+NEVER EVER use a credit card icon as an edit button, only use proper clasic edit buttons.
+
+When creating a version in history, always give it a title based on what was edited

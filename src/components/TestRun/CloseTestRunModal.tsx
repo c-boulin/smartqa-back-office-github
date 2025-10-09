@@ -41,22 +41,9 @@ const CloseTestRunModal: React.FC<CloseTestRunModalProps> = ({
               Close Test Run: "{testRun.name}"
             </h3>
             <p className="text-gray-300 mb-4">
-              You are about to close this test run. Once closed, you will have a grace period of 
-              <strong className="text-orange-400"> 2 hours</strong> to reopen it if needed.
+              You are about to close this test run. Once closed, it cannot be reopened.
             </p>
           </div>
-        </div>
-
-        {/* Important Notice - Same width as Test Run Summary */}
-        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
-          <div className="flex items-center mb-2">
-            <Clock className="w-4 h-4 text-orange-400 mr-2" />
-            <span className="text-sm font-medium text-orange-400">Important Notice</span>
-          </div>
-          <p className="text-sm text-orange-300">
-            After the 2-hour grace period expires, you will not be able to reopen this test run. 
-            Make sure all test executions are complete before proceeding.
-          </p>
         </div>
 
         {/* Confirmation Question */}

@@ -35,7 +35,8 @@ const Modal: React.FC<ModalProps> = ({
         <div className="fixed inset-0 transition-opacity bg-black/75 backdrop-blur-sm" onClick={onClose}></div>
         
         <div className={`inline-block ${sizeClasses[size]} p-6 overflow-hidden text-left align-middle transition-all transform bg-gradient-to-br from-slate-800 to-slate-900 shadow-2xl rounded-xl border border-purple-500/30 my-4`}>
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
+          {title && (
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
             <h3 className="text-xl font-semibold text-white">{title}</h3>
             <button
               onClick={onClose}
@@ -44,7 +45,8 @@ const Modal: React.FC<ModalProps> = ({
             >
               <X className="w-5 h-5" />
             </button>
-          </div>
+            </div>
+          )}
           
           <div className="text-gray-300">
             {children}

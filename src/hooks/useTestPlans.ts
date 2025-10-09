@@ -20,7 +20,7 @@ export const useTestPlans = (projectId?: string | null) => {
   const previousProjectId = useRef<string | null>(null);
 
   // Stable fetchTestPlans function
-  const fetchTestPlans = useCallback(async (page: number = 1, targetProjectId?: string) => {
+  const fetchTestPlans = useCallback(async (page: number = 1, targetProjectId?: string, userId?: string) => {
     const useProjectId = targetProjectId || projectId;
     
     // Prevent multiple simultaneous requests
@@ -37,9 +37,10 @@ export const useTestPlans = (projectId?: string | null) => {
       console.log('📋 Fetching test plans for project:', useProjectId || 'all projects', 'page:', page);
       
       let response: TestPlansApiResponse = await testPlansApiService.getTestPlans(
-        undefined, // Don't filter by project
+        useProjectId, // Filter by project ID
         page,
-        30
+        30,
+        userId // Filter by user ID
       );
       
       if (!response || typeof response !== 'object') {
@@ -60,7 +61,7 @@ export const useTestPlans = (projectId?: string | null) => {
       }
       
       const transformedTestPlans = responseData.map(apiTestPlan => 
-        testPlansApiService.transformApiTestPlan(apiTestPlan)
+        testPlansApiService.transformApiTestPlan(apiTestPlan, response?.included)
       );
       
       console.log('✅ Fetched', transformedTestPlans.length, 'test plans');
@@ -94,7 +95,7 @@ export const useTestPlans = (projectId?: string | null) => {
     }
   }, [projectId]);
 
-  const searchTestPlans = useCallback(async (searchTerm: string, page: number = 1) => {
+  const searchTestPlans = useCallback(async (searchTerm: string, page: number = 1, userId?: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -103,7 +104,8 @@ export const useTestPlans = (projectId?: string | null) => {
       
       let response: TestPlansApiResponse = await testPlansApiService.searchTestPlans(
         searchTerm,
-        undefined, // Don't filter by project
+        projectId, // Filter by project ID
+        userId, // Filter by user ID
         page,
         30
       );
@@ -120,7 +122,7 @@ export const useTestPlans = (projectId?: string | null) => {
       };
       
       const transformedTestPlans = responseData.map(apiTestPlan => 
-        testPlansApiService.transformApiTestPlan(apiTestPlan)
+        testPlansApiService.transformApiTestPlan(apiTestPlan, response?.included)
       );
       
       setTestPlans(transformedTestPlans);

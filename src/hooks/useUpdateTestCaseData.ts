@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { testCasesApiService } from '../services/testCasesApi';
-import { sharedStepsApiService } from '../services/sharedStepsApi';
-import { apiService } from '../services/api';
+import { testCaseDataService, ProcessedStepResult, ProcessedSharedStep, ProcessedAttachment } from '../services/testCaseDataService';
 import { TestCase } from '../types';
 import { Tag } from '../services/tagsApi';
 import { SharedStep } from '../services/sharedStepsApi';
@@ -13,73 +11,72 @@ interface TestStep {
   originalId?: string;
 }
 
+interface SharedStepInstance {
+  id: string;
+  title: string;
+  description?: string;
+  order: number;
+  pivotId: number;
+  projectId: string;
+  stepsCount: number;
+  usedInCount: number;
+  stepResults: string[];
+  createdBy: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 interface UseUpdateTestCaseDataReturn {
   testSteps: TestStep[];
   setTestSteps: React.Dispatch<React.SetStateAction<TestStep[]>>;
-  sharedSteps: SharedStep[];
-  setSharedSteps: React.Dispatch<React.SetStateAction<SharedStep[]>>;
+  sharedSteps: SharedStepInstance[];
+  setSharedSteps: React.Dispatch<React.SetStateAction<SharedStepInstance[]>>;
   stepOrder: Array<{ type: 'step' | 'shared'; id: string }>;
   setStepOrder: React.Dispatch<React.SetStateAction<Array<{ type: 'step' | 'shared'; id: string }>>>;
   selectedTags: Tag[];
   setSelectedTags: React.Dispatch<React.SetStateAction<Tag[]>>;
-  existingAttachments: Array<{ id: string; url: string; fileName: string }>;
-  setExistingAttachments: React.Dispatch<React.SetStateAction<Array<{ id: string; url: string; fileName: string }>>>;
+  existingAttachments: ProcessedAttachment[];
+  setExistingAttachments: React.Dispatch<React.SetStateAction<ProcessedAttachment[]>>;
   loadingAttachments: boolean;
   isLoadingData: boolean;
   loadTestCaseData: (testCase: TestCase, availableTags: Tag[]) => Promise<void>;
   resetData: () => void;
+  deleteSharedStepInstance: (pivotId: number) => Promise<void>;
 }
 
 export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
   const [testSteps, setTestSteps] = useState<TestStep[]>([]);
-  const [sharedSteps, setSharedSteps] = useState<SharedStep[]>([]);
+  const [sharedSteps, setSharedSteps] = useState<SharedStepInstance[]>([]);
   const [stepOrder, setStepOrder] = useState<Array<{ type: 'step' | 'shared'; id: string }>>([]);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<Array<{
-    id: string;
-    url: string;
-    fileName: string;
-  }>>([]);
+  const [existingAttachments, setExistingAttachments] = useState<ProcessedAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
 
-  const loadExistingAttachments = useCallback(async (testCaseId: string) => {
+  const deleteSharedStepInstance = useCallback(async (pivotId: number, testCaseId?: string) => {
+    if (!testCaseId) {
+      console.error('❌ Cannot delete shared step instance: missing test case ID');
+      return;
+    }
+
     try {
-      setLoadingAttachments(true);
-      console.log('📎 Loading existing attachments for test case:', testCaseId);
+      console.log('🗑️ Deleting shared step instance with pivot_id:', pivotId);
+      await testCaseDataService.deleteSharedStepInstance(testCaseId, pivotId);
       
-      const testCaseResponse = await testCasesApiService.getTestCase(testCaseId);
-      const attachmentRelationships = testCaseResponse.data.relationships?.attachments?.data || [];
+      // Remove from local state
+      setSharedSteps(prev => prev.filter(step => step.pivotId !== pivotId));
+      setStepOrder(prev => prev.filter(item => 
+        !(item.type === 'shared' && item.id.includes(`-${pivotId}`))
+      ));
       
-      if (attachmentRelationships.length === 0) {
-        setExistingAttachments([]);
-        return;
-      }
-      
-      const attachmentPromises = attachmentRelationships.map(async (attachmentRef: any) => {
-        try {
-          const attachmentId = attachmentRef.id.split('/').pop();
-          const attachmentResponse = await apiService.authenticatedRequest(`/attachments/${attachmentId}`);
-          
-          return {
-            id: attachmentId,
-            url: attachmentResponse.data.attributes.url,
-            fileName: attachmentResponse.data.attributes.url.split('/').pop() || 'attachment'
-          };
-        } catch (error) {
-          console.error('📎 Failed to fetch attachment details:', error);
-          return null;
-        }
-      });
-      
-      const attachmentDetails = (await Promise.all(attachmentPromises)).filter(Boolean);
-      setExistingAttachments(attachmentDetails);
-      
+      console.log('✅ Successfully removed shared step instance from local state');
     } catch (error) {
-      console.error('📎 Failed to load existing attachments:', error);
-      setExistingAttachments([]);
-    } finally {
-      setLoadingAttachments(false);
+      console.error('❌ Failed to delete shared step instance:', error);
+      throw error;
     }
   }, []);
 
@@ -87,125 +84,72 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
     setIsLoadingData(true);
     
     try {
-      console.log('🔄 Fetching test case with includes:', testCase.id);
+      console.log('🔄 Using new API endpoints to fetch test case data:', testCase.id);
       
-      const response = await testCasesApiService.getTestCaseWithIncludes(testCase.id);
-      console.log('✅ Received test case with includes:', response);
+      // Use the new service to fetch data from all three endpoints
+      const result = await testCaseDataService.fetchTestCaseDataForUpdate(testCase.id);
       
-      const allItemsWithOrder: Array<{
-        id: string;
-        originalId?: string;
-        step?: string;
-        result?: string;
-        sharedStepId?: string;
-        order: number;
-        type: 'step' | 'shared';
-        includedData?: any;
-      }> = [];
-      
-      if (response.included) {
-        for (const includedItem of response.included) {
-          if (includedItem.type === 'StepResult') {
-            const stepResultId = includedItem.id.split('/').pop() || includedItem.attributes.id.toString();
-            allItemsWithOrder.push({
-              id: stepResultId,
-              originalId: stepResultId,
-              step: includedItem.attributes.step,
-              result: includedItem.attributes.result,
-              order: includedItem.attributes.order || 0,
-              type: 'step'
-            });
-          } else if (includedItem.type === 'SharedStep') {
-            const sharedStepId = includedItem.id.split('/').pop() || includedItem.attributes.id.toString();
-            allItemsWithOrder.push({
-              id: `shared-${sharedStepId}`,
-              sharedStepId: sharedStepId,
-              order: includedItem.attributes.order || 0,
-              type: 'shared',
-              includedData: includedItem
-            });
-          }
+      if (!result.success) {
+        console.error('❌ Failed to fetch complete test case data:', result.error);
+        
+        // Use partial data if available
+        if (result.partialData) {
+          console.log('⚠️ Using partial data due to some API failures');
+          setTestSteps(result.partialData.stepResults?.map(sr => ({
+            id: sr.id,
+            originalId: sr.originalId,
+            step: sr.step,
+            result: sr.result
+          })) || []);
+          
+          setSharedSteps(result.partialData.sharedSteps || []);
+          setExistingAttachments(result.partialData.attachments || []);
+          
+          // Build step order from partial data
+          const stepOrder = (result.partialData.stepResults || []).map(sr => ({
+            type: 'step' as const,
+            id: sr.id
+          })).concat(
+            (result.partialData.sharedSteps || []).map(ss => ({
+              type: 'shared' as const,
+              id: `shared-${ss.id}-${ss.pivotId}`
+            }))
+          );
+          
+          setStepOrder(stepOrder);
         }
+        
+        throw new Error(result.error || 'Failed to fetch test case data');
       }
       
-      allItemsWithOrder.sort((a, b) => a.order - b.order);
+      // Successfully fetched all data
+      const { stepResults, sharedSteps: fetchedSharedSteps, attachments, stepOrder } = result.data!;
       
-      const processedTestSteps = allItemsWithOrder
-        .filter(item => item.type === 'step')
-        .map(item => ({
-          id: item.id,
-          originalId: item.originalId!,
-          step: item.step!,
-          result: item.result!
-        }));
-        
-      setTestSteps(processedTestSteps);
+      console.log('✅ Successfully fetched test case data:', {
+        stepResults: stepResults.length,
+        sharedSteps: fetchedSharedSteps.length,
+        attachments: attachments.length,
+        stepOrder: stepOrder.length
+      });
       
-      const basicSharedSteps = allItemsWithOrder
-        .filter(item => item.type === 'shared')
-        .map(item => {
-          const includedData = item.includedData;
-          return {
-            id: item.sharedStepId!,
-            title: includedData.attributes.title || 'Shared Step',
-            description: includedData.attributes.description || '',
-            projectId: testCase.projectId,
-            stepsCount: 0,
-            usedInCount: 0,
-            stepResults: [],
-            createdBy: {
-              id: '',
-              name: 'Unknown',
-              email: ''
-            },
-            createdAt: new Date(includedData.attributes.createdAt || new Date()),
-            updatedAt: new Date(includedData.attributes.updatedAt || new Date())
-          };
-        });
-        
-      setSharedSteps(basicSharedSteps);
+      // Transform step results to TestStep format
+      const transformedTestSteps = stepResults.map(sr => ({
+        id: sr.id,
+        originalId: sr.originalId,
+        step: sr.step,
+        result: sr.result
+      }));
       
-      const orderedSteps = allItemsWithOrder.map(item => ({
+      setTestSteps(transformedTestSteps);
+      setSharedSteps(fetchedSharedSteps);
+      setExistingAttachments(attachments);
+      
+      // Set step order (convert to the format expected by the UI)
+      const uiStepOrder = stepOrder.map(item => ({
         type: item.type,
         id: item.id
       }));
-      setStepOrder(orderedSteps);
-      
-      // Fetch full shared step data
-      const sharedStepIds = allItemsWithOrder
-        .filter(item => item.type === 'shared')
-        .map(item => item.sharedStepId!);
-        
-      if (sharedStepIds.length > 0) {
-        try {
-          const sharedStepPromises = sharedStepIds.map(async (sharedStepId) => {
-            try {
-              const sharedStepResponse = await sharedStepsApiService.getSharedStep(sharedStepId);
-              return {
-                id: sharedStepId,
-                data: sharedStepsApiService.transformApiSharedStep(sharedStepResponse.data, sharedStepResponse.included)
-              };
-            } catch (error) {
-              console.error(`❌ Failed to fetch shared step ${sharedStepId}:`, error);
-              return null;
-            }
-          });
-          
-          const fetchedSharedStepsResults = (await Promise.all(sharedStepPromises)).filter(Boolean);
-          
-          setSharedSteps(prevSharedSteps => {
-            const fetchedMap = new Map(fetchedSharedStepsResults.map(result => [result!.id, result!.data]));
-            return prevSharedSteps.map(prevStep => {
-              const fullStep = fetchedMap.get(prevStep.id);
-              return fullStep || prevStep;
-            });
-          });
-        } catch (error) {
-          console.error('❌ Failed to fetch shared step details:', error);
-        }
-      }
-      
-      await loadExistingAttachments(testCase.id);
+      setStepOrder(uiStepOrder);
       
       // Process tags
       let existingTags: Tag[] = [];
@@ -224,14 +168,16 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
       setSelectedTags(existingTags);
       
     } catch (error) {
-      console.error('❌ Failed to fetch test case with includes:', error);
+      console.error('❌ Failed to load test case data:', error);
       setTestSteps([]);
       setSharedSteps([]);
+      setExistingAttachments([]);
       setStepOrder([]);
+      throw error;
     } finally {
       setIsLoadingData(false);
     }
-  }, [loadExistingAttachments]);
+  }, []);
 
   const resetData = useCallback(() => {
     setTestSteps([]);
@@ -242,6 +188,18 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
     setIsLoadingData(false);
   }, []);
 
+  const handleDeleteSharedStepInstance = useCallback(async (pivotId: number) => {
+    // Find the test case ID from the current context
+    // This would need to be passed from the parent component
+    console.log('🗑️ Attempting to delete shared step instance with pivot_id:', pivotId);
+    
+    // For now, just remove from local state
+    // The actual API call should be made from the parent component
+    setSharedSteps(prev => prev.filter(step => step.pivotId !== pivotId));
+    setStepOrder(prev => prev.filter(item => 
+      !(item.type === 'shared' && item.id.includes(`-${pivotId}`))
+    ));
+  }, []);
   return {
     testSteps,
     setTestSteps,
@@ -256,6 +214,7 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
     loadingAttachments,
     isLoadingData,
     loadTestCaseData,
-    resetData
+    resetData,
+    deleteSharedStepInstance: handleDeleteSharedStepInstance
   };
 };

@@ -91,18 +91,9 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
     loadingAttachments,
     isLoadingData,
     loadTestCaseData,
-    resetData
+    resetData,
+    deleteSharedStepInstance
   } = useUpdateTestCaseData();
-
-  // Set current user as default owner when users are loaded
-  useEffect(() => {
-    if (users.length > 0 && authState.user && !formData.owner) {
-      const currentUser = users.find(user => user.email === authState.user?.email);
-      if (currentUser) {
-        setFormData(prev => ({ ...prev, owner: currentUser.id }));
-      }
-    }
-  }, [users, authState.user, formData.owner]);
 
   // Populate form when testCase changes
   useEffect(() => {
@@ -113,7 +104,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
         template: 1,
         description: testCase.description,
         preconditions: testCase.preconditions || '',
-        owner: '',
+        owner: testCase.ownerId || '', // Use existing owner from test case
         state: getStateNumber(testCase.status),
         priority: getPriorityNumber(testCase.priority),
         testCaseType: getTestTypeNumber(testCase.type),
@@ -123,13 +114,14 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
       setAttachments([]);
       loadTestCaseData(testCase, availableTags);
     } else if (isOpen && !testCase) {
-      // Reset form for new test case
+      // Reset form for new test case - set current user as default
+      const currentUser = users.find(user => user.email === authState.user?.email);
       setFormData({
         title: '',
         template: 1,
         description: '',
         preconditions: '',
-        owner: '',
+        owner: currentUser?.id || '',
         state: 2,
         priority: 2,
         testCaseType: 6,
@@ -138,7 +130,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
       setAttachments([]);
       resetData();
     }
-  }, [isOpen, testCase, availableTags, loadTestCaseData, resetData]);
+  }, [isOpen, testCase, availableTags, users, authState.user]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -166,18 +158,30 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
   };
 
   const addSharedStep = (sharedStep: SharedStep) => {
-    const isAlreadyAdded = sharedSteps.some(existing => existing.id === sharedStep.id);
-    if (isAlreadyAdded) {
-      return;
-    }
+    // Allow adding the same shared step multiple times
+    // Create a unique instance ID using timestamp to differentiate duplicates
+    const instanceId = `shared-${sharedStep.id}-${Date.now()}`;
     
     setSharedSteps(prev => [...prev, sharedStep]);
-    setStepOrder(prev => [...prev, { type: 'shared', id: `shared-${sharedStep.id}` }]);
+    setStepOrder(prev => [...prev, { type: 'shared', id: instanceId }]);
   };
 
   const removeSharedStep = (sharedStepId: string) => {
-    setSharedSteps(prev => prev.filter(step => step.id !== sharedStepId));
-    setStepOrder(prev => prev.filter(item => !(item.type === 'shared' && item.id === `shared-${sharedStepId}`)));
+    // Handle both regular shared step removal and pivot-based removal
+    if (sharedStepId.startsWith('pivot-')) {
+      const pivotId = parseInt(sharedStepId.replace('pivot-', ''));
+      console.log('🗑️ Removing shared step instance with pivot_id:', pivotId);
+      
+      // Call the deletion function with pivot ID
+      deleteSharedStepInstance(pivotId).catch(error => {
+        console.error('❌ Failed to delete shared step instance:', error);
+        toast.error('Failed to delete shared step instance');
+      });
+    } else {
+      // Legacy removal by shared step ID
+      setSharedSteps(prev => prev.filter(step => step.id !== sharedStepId));
+      setStepOrder(prev => prev.filter(item => !(item.type === 'shared' && item.id === `shared-${sharedStepId}`)));
+    }
   };
 
   const viewSharedStep = (sharedStep: SharedStep) => {
@@ -258,19 +262,24 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
     const stepResultsRelationships = buildStepResultsRelationships(stepOrder, testSteps);
     const sharedStepsRelationships = buildSharedStepsRelationships(stepOrder, sharedSteps);
     
+    // CRITICAL: Always send relationships arrays (empty if no items) to ensure API removes links
+    const finalStepResultsRelationships = stepResultsRelationships.length > 0 ? stepResultsRelationships : [];
+    const finalSharedStepsRelationships = sharedStepsRelationships.length > 0 ? sharedStepsRelationships : [];
+    
     const submitData = {
       title: formData.title,
       description: formData.description,
       testSteps: testSteps,
-      preconditions: formData.preconditions,
+      preconditions: formData.preconditions || '',
       owner: formData.owner,
       state: formData.state,
       priority: formData.priority,
       testCaseType: formData.testCaseType,
       automationStatus: formData.automationStatus,
+      template: formData.template || 1,
       tags: selectedTags,
-      stepResultsRelationships,
-      sharedStepsRelationships,
+      stepResultsRelationships: finalStepResultsRelationships,
+      sharedStepsRelationships: finalSharedStepsRelationships,
       createdAttachments: allAttachmentsForPayload
     };
     

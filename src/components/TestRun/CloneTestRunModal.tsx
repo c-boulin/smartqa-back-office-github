@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Info } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
-import { TestRun } from '../../services/testRunsApi';
+import { TestRun, testRunsApiService } from '../../services/testRunsApi';
+import { TEST_RESULTS, TestResultId } from '../../types';
 
 interface CloneTestRunModalProps {
   isOpen: boolean;
@@ -37,17 +38,14 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
     copyLinkedIssues: false
   });
 
-  // Mock test case results data for the second screenshot
-  const testCaseResults = [
-    { id: 'passed', label: 'Passed', count: 48, color: 'text-green-400' },
-    { id: 'failed', label: 'Failed', count: 20, color: 'text-red-400' },
-    { id: 'blocked', label: 'Blocked', count: 5, color: 'text-purple-400' },
-    { id: 'retest', label: 'Retest', count: 4, color: 'text-yellow-400' },
-    { id: 'skipped', label: 'Skipped', count: 7, color: 'text-gray-400' },
-    { id: 'untested', label: 'Untested', count: 14, color: 'text-gray-500' },
-    { id: 'in_progress', label: 'In Progress', count: 0, color: 'text-blue-400' },
-    { id: 'unknown', label: 'Unknown', count: 0, color: 'text-gray-600' }
-  ];
+  const [testCaseResults, setTestCaseResults] = useState<Array<{
+    id: string;
+    label: string;
+    count: number;
+    color: string;
+    testCaseIds: string[];
+  }>>([]);
+  const [isLoadingResults, setIsLoadingResults] = useState(false);
 
   // Reset form when modal opens/closes or testRun changes
   useEffect(() => {
@@ -64,8 +62,132 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
         copyTags: true,
         copyLinkedIssues: false
       });
+      
+      // Load real execution results when modal opens
+      if (testRun) {
+        loadTestCaseResults(testRun.id);
+      }
     }
   }, [isOpen, testRun]);
+
+  const loadTestCaseResults = async (testRunId: string) => {
+    try {
+      setIsLoadingResults(true);
+      console.log('🔄 Loading real execution results for test run:', testRunId);
+      
+      // Get detailed test run data with executions
+      const testRunResponse = await testRunsApiService.getTestRun(testRunId);
+      
+      // Initialize result counts and test case mappings
+      const resultCounts: Record<string, { count: number; testCaseIds: string[] }> = {};
+      
+      // Initialize all possible results
+      Object.entries(TEST_RESULTS).forEach(([resultId, label]) => {
+        resultCounts[resultId] = { count: 0, testCaseIds: [] };
+      });
+      
+      // Process executions to count results and map test cases
+      if (testRunResponse.data.attributes.executions && Array.isArray(testRunResponse.data.attributes.executions)) {
+        console.log('🔄 Processing', testRunResponse.data.attributes.executions.length, 'executions');
+        
+        // Group executions by test case ID and get the latest execution per test case
+        const lastExecutionPerTestCase = new Map<string, any>();
+        
+        testRunResponse.data.attributes.executions.forEach((execution: any) => {
+          const testCaseId = execution.test_case_id.toString();
+          const executionDate = new Date(execution.created_at);
+          
+          // Keep only the latest execution for each test case
+          const existing = lastExecutionPerTestCase.get(testCaseId);
+          if (!existing || new Date(existing.created_at) < executionDate) {
+            lastExecutionPerTestCase.set(testCaseId, execution);
+          }
+        });
+        
+        console.log('🔄 Found', lastExecutionPerTestCase.size, 'unique test cases with executions');
+        
+        // Count each result type and collect test case IDs
+        Array.from(lastExecutionPerTestCase.values()).forEach((execution: any) => {
+          const testCaseId = execution.test_case_id.toString();
+          const rawResult = execution.result;
+          
+          let resultId: string;
+          
+          if (typeof rawResult === 'number') {
+            resultId = rawResult.toString();
+          } else if (typeof rawResult === 'string') {
+            const numericResult = parseInt(rawResult);
+            if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
+              resultId = numericResult.toString();
+            } else {
+              // String label - find matching result ID
+              const foundEntry = Object.entries(TEST_RESULTS).find(([id, label]) => 
+                label.toLowerCase() === rawResult.toLowerCase()
+              );
+              resultId = foundEntry ? foundEntry[0] : '6'; // Default to Untested
+            }
+          } else {
+            resultId = '6'; // Default to Untested
+          }
+          
+          if (resultCounts[resultId]) {
+            resultCounts[resultId].count++;
+            resultCounts[resultId].testCaseIds.push(testCaseId);
+          }
+        });
+        
+        // Count test cases without executions as "untested"
+        const totalTestCases = testRun?.testCasesCount || 0;
+        const testCasesWithExecutions = lastExecutionPerTestCase.size;
+        const testCasesWithoutExecutions = totalTestCases - testCasesWithExecutions;
+        
+        if (testCasesWithoutExecutions > 0) {
+          // We don't have the IDs of test cases without executions, so we'll handle this in the clone logic
+          resultCounts['6'].count += testCasesWithoutExecutions;
+        }
+      } else {
+        // No executions - all test cases are untested
+        const totalTestCases = testRun?.testCasesCount || 0;
+        resultCounts['6'].count = totalTestCases;
+        // We'll need to get all test case IDs for untested cases
+      }
+      
+      // Transform to display format
+      const displayResults = Object.entries(TEST_RESULTS).map(([resultId, label]) => {
+        const data = resultCounts[resultId];
+        return {
+          id: resultId,
+          label,
+          count: data.count,
+          testCaseIds: data.testCaseIds,
+          color: getResultColor(parseInt(resultId) as TestResultId)
+        };
+      }).filter(result => result.count > 0); // Only show results that have test cases
+      
+      setTestCaseResults(displayResults);
+      console.log('✅ Loaded real execution results:', displayResults);
+      
+    } catch (error) {
+      console.error('❌ Failed to load test case results:', error);
+      setTestCaseResults([]);
+    } finally {
+      setIsLoadingResults(false);
+    }
+  };
+
+  const getResultColor = (resultId: TestResultId): string => {
+    switch (resultId) {
+      case 1: return 'text-green-400';
+      case 2: return 'text-red-400';
+      case 3: return 'text-yellow-400';
+      case 4: return 'text-orange-400';
+      case 5: return 'text-purple-400';
+      case 6: return 'text-gray-400';
+      case 7: return 'text-blue-400';
+      case 8: return 'text-gray-500';
+      default: return 'text-gray-400';
+    }
+  };
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -97,9 +219,37 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
     }));
   };
 
+  const getSelectedTestCaseIds = (): string[] => {
+    if (formData.includeAllTestCases) {
+      return testRun?.testCaseIds || [];
+    } else if (formData.includeByResults && formData.selectedResults.length > 0) {
+      // Collect test case IDs from selected results
+      const selectedTestCaseIds: string[] = [];
+      
+      formData.selectedResults.forEach(resultId => {
+        const resultData = testCaseResults.find(r => r.id === resultId);
+        if (resultData) {
+          selectedTestCaseIds.push(...resultData.testCaseIds);
+        }
+      });
+      
+      return [...new Set(selectedTestCaseIds)]; // Remove duplicates
+    }
+    
+    return [];
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmit(formData);
+    
+    // Get the actual test case IDs based on selection
+    const selectedTestCaseIds = getSelectedTestCaseIds();
+    
+    const submitData = {
+      ...formData,
+      selectedTestCaseIds // Add the actual test case IDs to clone
+    };
+    
+    await onSubmit(submitData);
   };
 
   if (!testRun) return null;
@@ -177,35 +327,71 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
           {/* Test case results selection */}
           {formData.includeByResults && (
             <div className="mt-4 p-4 bg-slate-800 border border-slate-600 rounded-lg">
-              <h4 className="text-sm font-medium text-gray-300 mb-3">Select by results:</h4>
-              <div className="grid grid-cols-2 gap-3">
-                {testCaseResults.map((result) => (
-                  <label key={result.id} className="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.selectedResults.includes(result.id)}
-                      onChange={() => handleResultToggle(result.id)}
-                      className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 focus:ring-blue-500 focus:ring-2 rounded"
-                      disabled={isSubmitting}
-                    />
-                    <div className="ml-3 flex items-center">
-                      <div className={`w-2 h-2 rounded-full mr-2 ${
-                        result.id === 'passed' ? 'bg-green-400' :
-                        result.id === 'failed' ? 'bg-red-400' :
-                        result.id === 'blocked' ? 'bg-purple-400' :
-                        result.id === 'retest' ? 'bg-yellow-400' :
-                        result.id === 'skipped' ? 'bg-gray-400' :
-                        result.id === 'untested' ? 'bg-gray-500' :
-                        result.id === 'in_progress' ? 'bg-blue-400' :
-                        'bg-gray-600'
-                      }`}></div>
-                      <span className={`text-sm ${result.color}`}>
-                        {result.label} ({result.count})
-                      </span>
-                    </div>
-                  </label>
-                ))}
-              </div>
+              <h4 className="text-sm font-medium text-gray-300 mb-3">
+                Select by results:
+                {isLoadingResults && (
+                  <span className="ml-2 text-xs text-cyan-400">Loading real data...</span>
+                )}
+              </h4>
+              
+              {isLoadingResults ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="text-center text-gray-400">
+                    <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    <p className="text-sm">Loading execution results...</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {testCaseResults.map((result) => (
+                    <label key={result.id} className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.selectedResults.includes(result.id)}
+                        onChange={() => handleResultToggle(result.id)}
+                        className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 focus:ring-blue-500 focus:ring-2 rounded"
+                        disabled={isSubmitting}
+                      />
+                      <div className="ml-3 flex items-center">
+                        <div className={`w-2 h-2 rounded-full mr-2 ${
+                          result.id === '1' ? 'bg-green-400' :
+                          result.id === '2' ? 'bg-red-400' :
+                          result.id === '3' ? 'bg-yellow-400' :
+                          result.id === '4' ? 'bg-orange-400' :
+                          result.id === '5' ? 'bg-purple-400' :
+                          result.id === '6' ? 'bg-gray-400' :
+                          result.id === '7' ? 'bg-blue-400' :
+                          result.id === '8' ? 'bg-gray-500' :
+                          'bg-gray-600'
+                        }`}></div>
+                        <span className={`text-sm ${result.color}`}>
+                          {result.label} ({result.count})
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+              
+              {!isLoadingResults && testCaseResults.length === 0 && (
+                <div className="text-center py-4 text-gray-400 text-sm">
+                  No execution results found for this test run
+                </div>
+              )}
+              
+              {formData.selectedResults.length > 0 && (
+                <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                  <div className="flex items-start">
+                    <Info className="w-4 h-4 text-blue-400 mr-2 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-blue-300">
+                      {(() => {
+                        const selectedTestCaseIds = getSelectedTestCaseIds();
+                        return `${selectedTestCaseIds.length} test case${selectedTestCaseIds.length !== 1 ? 's' : ''} will be cloned based on selected results`;
+                      })()}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,8 +1,9 @@
 import React from 'react';
-import { Edit, Trash2, Search, ChevronLeft, ChevronRight, Loader } from 'lucide-react';
+import { SquarePen, Trash2, Search, ChevronLeft, ChevronRight, Loader, Copy } from 'lucide-react';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
 import StatusBadge from '../UI/StatusBadge';
+import DraggableTestCaseRow from './DraggableTestCaseRow';
 import { TestCase, TEST_CASE_TYPES } from '../../types';
 
 interface TestCasesTableProps {
@@ -20,6 +21,7 @@ interface TestCasesTableProps {
   onTestCaseTitleClick: (testCase: TestCase) => void;
   onEditTestCase: (testCase: TestCase) => void;
   onDeleteTestCase: (testCase: TestCase) => void;
+  onDuplicateTestCase: (testCase: TestCase) => void;
   onPageChange: (page: number) => void;
   isSubmitting: boolean;
 }
@@ -34,6 +36,7 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
   onTestCaseTitleClick,
   onEditTestCase,
   onDeleteTestCase,
+  onDuplicateTestCase,
   onPageChange,
   isSubmitting
 }) => {
@@ -61,6 +64,7 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
               <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">ID</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Title</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Type</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">State</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Priority</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Tags</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Automation Status</th>
@@ -69,90 +73,15 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
           </thead>
           <tbody>
             {testCases.map((testCase) => (
-              <tr key={testCase.id} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
-                <td className="py-4 px-6 text-sm text-gray-300 font-mono">
-                  #{testCase.id}
-                </td>
-                <td className="py-4 px-6">
-                  <button
-                    onClick={() => onTestCaseTitleClick(testCase)}
-                    className="text-left w-full group"
-                  >
-                    <h3 className="font-semibold text-white group-hover:text-cyan-400 transition-colors cursor-pointer">
-                      {testCase.title}
-                    </h3>
-                  </button>
-                </td>
-                <td className="py-4 px-6">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/50">
-                    {(() => {
-                      // Map our internal type strings to TEST_CASE_TYPES keys
-                      const typeMapping = {
-                        'other': 1,
-                        'acceptance': 2,
-                        'accessibility': 3,
-                        'compatibility': 4,
-                        'destructive': 5,
-                        'functional': 6,
-                        'performance': 7,
-                        'regression': 8,
-                        'security': 9,
-                        'smoke': 10,
-                        'usability': 11
-                      };
-                      const typeKey = typeMapping[testCase.type as keyof typeof typeMapping] || 6;
-                      return TEST_CASE_TYPES[typeKey as keyof typeof TEST_CASE_TYPES] || testCase.type;
-                    })()}
-                  </span>
-                </td>
-                <td className="py-4 px-6">
-                  <StatusBadge status={testCase.priority} type="priority" />
-                </td>
-                <td className="py-4 px-6">
-                  <div className="flex flex-wrap gap-1">
-                    {Array.isArray(testCase.tags) && testCase.tags.length > 0 ? (
-                      testCase.tags.slice(0, 2).map((tag, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
-                        >
-                          {tag}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-500 text-xs">No tags</span>
-                    )}
-                    {Array.isArray(testCase.tags) && testCase.tags.length > 2 && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30">
-                        +{testCase.tags.length - 2}
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="py-4 px-6">
-                  <StatusBadge status={testCase.automationStatus} type="automation" />
-                </td>
-                <td className="py-4 px-6">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => onEditTestCase(testCase)}
-                      className="p-2 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded-lg transition-colors"
-                      title="Edit"
-                      disabled={isSubmitting}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => onDeleteTestCase(testCase)}
-                      className="p-2 text-gray-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
-                      title="Delete"
-                      disabled={isSubmitting}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
+              <DraggableTestCaseRow
+                key={testCase.id}
+                testCase={testCase}
+                onTestCaseTitleClick={onTestCaseTitleClick}
+                onEditTestCase={onEditTestCase}
+                onDeleteTestCase={onDeleteTestCase}
+                onDuplicateTestCase={onDuplicateTestCase}
+                isSubmitting={isSubmitting}
+              />
             ))}
           </tbody>
         </table>

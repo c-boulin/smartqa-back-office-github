@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader, Calendar, User, Tag as TagIcon, Clock, CheckCircle, Edit, Eye, XCircle, AlertTriangle, Target, Shield, Flame, ZoomIn } from 'lucide-react';
+import { X, Loader, Calendar, User, Tag as TagIcon, Clock, CheckCircle, SquarePen, Eye, XCircle, AlertTriangle, Target, Shield, Flame, ZoomIn } from 'lucide-react';
 import { format } from 'date-fns';
 import { testCasesApiService } from '../../services/testCasesApi';
 import { sharedStepsApiService } from '../../services/sharedStepsApi';
 import { testCaseExecutionsApiService, TestCaseExecution } from '../../services/testCaseExecutionsApi';
 import { testRunsApiService } from '../../services/testRunsApi';
+import { testCaseDataService } from '../../services/testCaseDataService';
 import { TestCase } from '../../types';
 import { TEST_RESULTS, TestResultId } from '../../types';
+import { apiService } from '../../services/api';
 import toast from 'react-hot-toast';
 
 interface TestCaseDetailsSidebarProps {
@@ -59,7 +61,7 @@ interface TestCaseDetails {
 
 const STATES = {
   1: { label: 'Active', icon: CheckCircle, color: 'text-green-400' },
-  2: { label: 'Draft', icon: Edit, color: 'text-orange-400' },
+  2: { label: 'Draft', icon: SquarePen, color: 'text-orange-400' },
   3: { label: 'In Review', icon: Eye, color: 'text-blue-400' },
   4: { label: 'Outdated', icon: Clock, color: 'text-gray-400' },
   5: { label: 'Rejected', icon: XCircle, color: 'text-red-400' }
@@ -178,7 +180,7 @@ const PRIORITIES = {
 // Test Result Dropdown Component
 const TestResultDropdown: React.FC<{
   value: TestResultId;
-  onChange: (value: TestResultId) => void;
+  onChange: (value: TestResultId, comment?: string) => void;
   disabled?: boolean;
   isUpdating?: boolean;
 }> = ({
@@ -188,7 +190,10 @@ const TestResultDropdown: React.FC<{
   isUpdating = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const selectedResult = TEST_RESULTS[value];
+  const [comment, setComment] = useState('');
+  const [isCommentExpanded, setIsCommentExpanded] = useState(false);
+  const [selectedResult, setSelectedResult] = useState<TestResultId>(value);
+  const selectedResultLabel = TEST_RESULTS[value];
 
   const getResultColor = (resultId: TestResultId): string => {
     switch (resultId) {
@@ -204,6 +209,24 @@ const TestResultDropdown: React.FC<{
     }
   };
 
+  const handleResultSelect = (newResultId: TestResultId) => {
+    setSelectedResult(newResultId);
+    // Don't close dropdown or call onChange yet
+  };
+
+  const handleValidate = () => {
+    // Submit the selected result with comment
+    onChange(selectedResult, comment.trim() || undefined);
+    setIsOpen(false);
+    setComment('');
+    setIsCommentExpanded(false);
+  };
+
+  // Update selectedResult when value prop changes
+  React.useEffect(() => {
+    setSelectedResult(value);
+  }, [value]);
+
   return (
     <div className="relative">
       <button
@@ -216,7 +239,7 @@ const TestResultDropdown: React.FC<{
       >
         <div className="flex items-center">
           <div className={`w-3 h-3 rounded-full mr-2 ${getResultColor(value)}`}></div>
-          <span>{selectedResult}</span>
+          <span>{TEST_RESULTS[value]}</span>
         </div>
         {isUpdating ? (
           <Loader className="w-4 h-4 animate-spin text-gray-400" />
@@ -233,21 +256,69 @@ const TestResultDropdown: React.FC<{
             className="fixed inset-0 z-[70]" 
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[71] max-h-60 overflow-y-auto">
-            {Object.entries(TEST_RESULTS).map(([resultId, label]) => (
-              <button
-                key={resultId}
-                type="button"
-                onClick={() => {
-                  onChange(parseInt(resultId) as TestResultId);
-                  setIsOpen(false);
-                }}
-                className="w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors flex items-center text-sm"
-              >
-                <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${getResultColor(parseInt(resultId) as TestResultId)}`}></div>
-                <span className="text-white">{label}</span>
-              </button>
-            ))}
+          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[71] w-80 max-h-96">
+            <div className="p-3 border-b border-slate-600">
+              <h4 className="text-sm font-medium text-white mb-3">Select Result</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {Object.entries(TEST_RESULTS).map(([resultId, label]) => (
+                  <button
+                    key={resultId}
+                    type="button"
+                    onClick={() => handleResultSelect(parseInt(resultId) as TestResultId)}
+                   className={`w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors flex items-center text-sm ${
+                     selectedResult === parseInt(resultId) 
+                       ? 'bg-cyan-600/30 border-l-4 border-cyan-400' 
+                       : ''
+                   }`}
+                  >
+                    <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${getResultColor(parseInt(resultId) as TestResultId)}`}></div>
+                   <span className={`${selectedResult === parseInt(resultId) ? 'text-cyan-300 font-medium' : 'text-white'}`}>
+                     {label}
+                   </span>
+                   {selectedResult === parseInt(resultId) && (
+                     <span className="ml-auto text-cyan-400">✓</span>
+                   )}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Comment Section */}
+            <div className="border-t border-slate-600 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-gray-400">
+                  Comment (Optional)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCommentExpanded(!isCommentExpanded)}
+                  className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  {isCommentExpanded ? 'Collapse' : 'Expand'}
+                </button>
+              </div>
+              
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Add a comment about this execution result..."
+                className={`w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 resize-none transition-all ${
+                  isCommentExpanded ? 'h-20' : 'h-10'
+                }`}
+                disabled={disabled || isUpdating}
+              />
+              
+              <div className="flex justify-end mt-3">
+                <button
+                  type="button"
+                  onClick={handleValidate}
+                  disabled={disabled || isUpdating}
+                  className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm rounded transition-colors disabled:opacity-50 font-medium"
+                >
+                  Validate
+                </button>
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -310,94 +381,85 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
       setLoading(true);
       setError(null);
       
-      console.log('🔄 Fetching test case details for sidebar:', testCaseId);
+      console.log('🔄 Using new API endpoints to fetch test case details for sidebar:', testCaseId);
       
-      // Fetch test case with includes
-      const response = await testCasesApiService.getTestCaseWithIncludes(testCaseId);
+      // Use the new service to fetch data from all three endpoints
+      const result = await testCaseDataService.fetchTestCaseDataForDetails(testCaseId);
       
-      console.log('✅ Received test case details:', response);
+      if (!result.success) {
+        console.error('❌ Failed to fetch complete test case details:', result.error);
+        throw new Error(result.error || 'Failed to fetch test case details');
+      }
       
-      // Process included data to extract step results and shared steps
-      const stepResults: StepResult[] = [];
-      const sharedSteps: SharedStepWithDetails[] = [];
-      const attachments: Array<{ id: string; url: string; fileName: string }> = [];
+      const { stepResults, sharedSteps: fetchedSharedSteps, attachments } = result.data!;
       
-      if (response.included) {
-        // Separate step results and shared steps from included data
-        const stepResultsData = response.included.filter(item => item.type === 'StepResult');
-        const sharedStepsData = response.included.filter(item => item.type === 'SharedStep');
-        
-        // Process step results
-        stepResultsData.forEach(stepResult => {
-          stepResults.push({
-            id: stepResult.id.split('/').pop() || stepResult.attributes.id.toString(),
-            step: stepResult.attributes.step || '',
-            result: stepResult.attributes.result || '',
-            order: stepResult.attributes.order || 0
-          });
-        });
-        
-        // Process shared steps - we'll fetch full details separately
-        sharedStepsData.forEach(sharedStep => {
-          sharedSteps.push({
-            id: sharedStep.id.split('/').pop() || sharedStep.attributes.id.toString(),
-            title: sharedStep.attributes.title || 'Shared Step',
-            description: sharedStep.attributes.description || '',
-            order: sharedStep.attributes.order || 0,
-            stepResults: [] // Will be populated below
-          });
-        });
-        
-        // Fetch full details for each shared step
-        if (sharedSteps.length > 0) {
-          console.log('🔄 Fetching full details for', sharedSteps.length, 'shared steps');
+      console.log('✅ Successfully fetched test case details:', {
+        stepResults: stepResults.length,
+        sharedSteps: fetchedSharedSteps.length,
+        attachments: attachments.length
+      });
+      
+      // Transform step results to StepResult format for sidebar
+      const transformedStepResults: StepResult[] = stepResults.map(sr => ({
+        id: sr.id,
+        step: sr.step,
+        result: sr.result,
+        order: sr.order
+      }));
+      
+      // Transform shared steps to SharedStepWithDetails format for sidebar
+      const transformedSharedSteps: SharedStepWithDetails[] = [];
+      
+      for (const sharedStep of fetchedSharedSteps) {
+        try {
+          // Fetch the internal step results for this shared step
+          console.log('🔄 Fetching internal step results for shared step:', sharedStep.id);
           
-          const sharedStepPromises = sharedSteps.map(async (sharedStep) => {
-            try {
-              console.log('🔄 Fetching shared step details for ID:', sharedStep.id);
-              const sharedStepResponse = await sharedStepsApiService.getSharedStep(sharedStep.id);
-              const fullSharedStep = sharedStepsApiService.transformApiSharedStep(sharedStepResponse.data, sharedStepResponse.included);
-              
-              // Fetch step results for this shared step
-              if (fullSharedStep.stepResults && fullSharedStep.stepResults.length > 0) {
-                console.log('🔄 Fetching step results for shared step:', sharedStep.id);
-                
-                const stepResultPromises = fullSharedStep.stepResults.map(stepResultId => 
-                  sharedStepsApiService.getStepResult(stepResultId)
-                );
-                
-                const stepResultResponses = await Promise.all(stepResultPromises);
-                
-                const stepResultsData = stepResultResponses
-                  .map(response => ({
-                    id: response.data.attributes.id.toString(),
-                    step: response.data.attributes.step,
-                    result: response.data.attributes.result,
-                    order: response.data.attributes.order
-                  }))
-                  .sort((a, b) => a.order - b.order);
-                
-                // Update the shared step with full step results
-                sharedStep.stepResults = stepResultsData;
-                console.log('✅ Loaded', stepResultsData.length, 'step results for shared step:', sharedStep.title);
-              }
-              
-              // Update other details
-              sharedStep.title = fullSharedStep.title;
-              sharedStep.description = fullSharedStep.description;
-              
-            } catch (error) {
-              console.error('❌ Failed to fetch shared step details for ID:', sharedStep.id, error);
-              // Keep the basic shared step info if fetch fails
-            }
+          if (sharedStep.stepResults && sharedStep.stepResults.length > 0) {
+            const stepResultPromises = sharedStep.stepResults.map(stepResultId => 
+              sharedStepsApiService.getStepResult(stepResultId)
+            );
+            
+            const stepResultResponses = await Promise.all(stepResultPromises);
+            
+            const internalStepResults = stepResultResponses
+              .map(response => ({
+                id: response.data.attributes.id.toString(),
+                step: response.data.attributes.step,
+                result: response.data.attributes.result,
+                order: response.data.attributes.order
+              }))
+              .sort((a, b) => a.order - b.order);
+            
+            transformedSharedSteps.push({
+              id: sharedStep.id,
+              title: sharedStep.title,
+              description: sharedStep.description,
+              order: sharedStep.order,
+              stepResults: internalStepResults
+            });
+          } else {
+            transformedSharedSteps.push({
+              id: sharedStep.id,
+              title: sharedStep.title,
+              description: sharedStep.description,
+              order: sharedStep.order,
+              stepResults: []
+            });
+          }
+        } catch (error) {
+          console.error('❌ Failed to fetch internal step results for shared step:', sharedStep.id, error);
+          // Add shared step without internal details
+          transformedSharedSteps.push({
+            id: sharedStep.id,
+            title: sharedStep.title,
+            description: sharedStep.description,
+            order: sharedStep.order,
+            stepResults: []
           });
-          
-          await Promise.all(sharedStepPromises);
-          console.log('✅ Finished fetching all shared step details');
         }
       }
       
-      // Process attachments from relationships
       // Process executions if this is from a test run context
       let executions: TestCaseExecution[] = [];
       if (testRunId) {
@@ -417,6 +479,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
               testRunId: execution.test_run_id.toString(),
               result: execution.result,
               resultLabel: TEST_RESULTS[execution.result as TestResultId] || 'Unknown',
+              comment: execution.comment || undefined,
               createdAt: new Date(execution.created_at),
               updatedAt: new Date(execution.updated_at)
             }));
@@ -431,68 +494,33 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
         }
       }
       
-      if (response.data.relationships.attachments?.data) {
-        console.log('📎 Processing attachments from relationships...');
-        
-        const attachmentPromises = response.data.relationships.attachments.data.map(async (attachmentRef) => {
-          try {
-            const attachmentId = attachmentRef.id.split('/').pop();
-            console.log('📎 Fetching attachment details for ID:', attachmentId);
-            
-            const attachmentResponse = await apiService.authenticatedRequest(`/attachments/${attachmentId}`);
-            
-            if (attachmentResponse?.data?.attributes) {
-              const url = attachmentResponse.data.attributes.url;
-              const fileName = url.split('/').pop() || 'Unknown file';
-              
-              return {
-                id: attachmentId || '',
-                url: url,
-                fileName: fileName
-              };
-            }
-            return null;
-          } catch (error) {
-            console.error('❌ Failed to fetch attachment details:', error);
-            return null;
-          }
-        });
-        
-        const attachmentResults = await Promise.all(attachmentPromises);
-        attachments.push(...attachmentResults.filter(Boolean) as Array<{ id: string; url: string; fileName: string }>);
-        
-        console.log('✅ Processed', attachments.length, 'attachments');
-      }
+      // Transform attachments to the expected format
+      const transformedAttachments = attachments.map(att => ({
+        id: att.id,
+        url: att.url,
+        fileName: att.fileName
+      }));
       
-      // Sort by order
-      stepResults.sort((a, b) => a.order - b.order);
-      sharedSteps.sort((a, b) => a.order - b.order);
-      
-      // Convert API values to display values
-      const priorityMap = { 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Critical' };
-      const typeMap = {
-        1: 'Other', 2: 'Acceptance', 3: 'Accessibility', 4: 'Compatibility',
-        5: 'Destructive', 6: 'Functional', 7: 'Performance', 8: 'Regression',
-        9: 'Security', 10: 'Smoke & Sanity', 11: 'Usability'
-      };
-      const statusMap = { 1: 'Active', 2: 'Draft', 3: 'In Review', 4: 'Outdated', 5: 'Rejected' };
-      
+      // The testCase already has properly formatted string values
+      // We just need to capitalize them for display
+      const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+
       const details: TestCaseDetails = {
-        id: response.data.attributes.id.toString(),
-        title: response.data.attributes.title,
-        description: response.data.attributes.description,
-        preconditions: response.data.attributes.preconditions || '',
-        priority: priorityMap[response.data.attributes.priority as keyof typeof priorityMap] || 'Medium',
-        type: typeMap[response.data.attributes.type as keyof typeof typeMap] || 'Functional',
-        status: statusMap[response.data.attributes.state as keyof typeof statusMap] || 'Draft',
-        automationStatus: response.data.attributes.automation,
-        tags: response.data.attributes.tags || [],
-        stepResults,
-        sharedSteps,
-        attachments,
+        id: testCase.id,
+        title: testCase.title,
+        description: testCase.description,
+        preconditions: testCase.preconditions || '',
+        priority: capitalizeFirst(testCase.priority), // Already a string: 'low', 'medium', 'high', 'critical'
+        type: capitalizeFirst(testCase.type), // Already a string: 'functional', 'regression', 'smoke', etc.
+        status: capitalizeFirst(testCase.status), // Already a string: 'draft', 'active', 'deprecated'
+        automationStatus: testCase.automationStatus, // Already a number: 1-5
+        tags: testCase.tags || [],
+        stepResults: transformedStepResults,
+        sharedSteps: transformedSharedSteps,
+        attachments: transformedAttachments,
         executions,
-        createdAt: new Date(response.data.attributes.createdAt),
-        updatedAt: new Date(response.data.attributes.updatedAt)
+        createdAt: new Date(testCase.createdAt),
+        updatedAt: new Date(testCase.updatedAt)
       };
       
       setTestCaseDetails(details);
@@ -532,7 +560,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
     }
   };
 
-  const handleExecutionResultChange = async (newResultId: TestResultId) => {
+  const handleExecutionResultChange = async (newResultId: TestResultId, comment?: string) => {
     if (!testCase || !testRunId || isTestRunClosed) {
       if (isTestRunClosed) {
         toast.error('Cannot update execution results for closed test runs');
@@ -547,37 +575,36 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
 
       console.log(`🔄 Updating execution result for test case ${testCase.id} in test run ${testRunId} to: ${newResultId} (${newResultLabel})`);
 
-
-      // Use new POST endpoint for test case executions
+      // Create the new execution via API
       const response = await testCaseExecutionsApiService.createTestCaseExecution({
         testCaseId: testCase.id,
-        testRunId,
-        result: newResultId
+        testRunId: testRunId,
+        result: newResultId,
+        comment: comment
       });
-      
-      // Add the new execution to the local state
+
+      // Add the new execution to the local history immediately
       if (testCaseDetails) {
-        const newExecution: TestCaseExecution = {
+        const newExecution = {
           id: response.data.attributes.id.toString(),
           testCaseId: testCase.id,
           testRunId: testRunId,
           result: newResultId,
           resultLabel: newResultLabel,
-          createdAt: response.data.attributes.created_at ? new Date(response.data.attributes.created_at) : new Date(),
-          updatedAt: response.data.attributes.updated_at ? new Date(response.data.attributes.updated_at) : new Date()
+          comment: comment,
+          createdAt: new Date(),
+          updatedAt: new Date()
         };
         
+        // Add to the beginning of the executions array (most recent first)
         setTestCaseDetails(prev => prev ? {
           ...prev,
           executions: [newExecution, ...prev.executions]
-        } : null);
+        } : prev);
       }
 
-      // Notify parent component of the change
-      if (onExecutionResultChange) {
-        onExecutionResultChange(testCase.id, testRunId, newResultId);
-      }
 
+      toast.success(`Execution result updated to ${newResultLabel}`);
 
     } catch (error) {
       console.error('❌ Failed to update execution result:', error);
@@ -872,16 +899,23 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                               <div key={execution.id} className="bg-slate-700/50 border border-slate-600 rounded-lg p-3">
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center">
-                                    <div className={`w-2 h-2 rounded-full mr-2 ${
-                                      execution.result === 1 ? 'bg-green-400' :
-                                      execution.result === 2 ? 'bg-red-400' :
-                                      execution.result === 3 ? 'bg-yellow-400' :
-                                      execution.result === 4 ? 'bg-orange-400' :
-                                      execution.result === 5 ? 'bg-purple-400' :
-                                      execution.result === 6 ? 'bg-gray-400' :
-                                      execution.result === 7 ? 'bg-blue-400' :
-                                      'bg-gray-500'
-                                    }`}></div>
+                                    <div 
+                                      className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
+                                      style={{
+                                        backgroundColor: 
+                                          execution.result === '1' ? '#10B981' : // Passed - Green
+                                          execution.result === '2' ? '#EF4444' : // Failed - Red
+                                          execution.result === '3' ? '#F59E0B' : // Blocked - Yellow
+                                          execution.result === '4' ? '#F97316' : // Retest - Orange
+                                          execution.result === '5' ? '#8B5CF6' : // Skipped - Purple
+                                          execution.result === '6' ? '#6B7280' : // Untested - Gray
+                                          execution.result === '7' ? '#3B82F6' : // In Progress - Blue
+                                          execution.result === '8' ? '#4B5563' : // Unknown - Dark Gray
+                                          '#6B7280' // Default - Gray
+                                      }}
+                                      data-result={execution.result}
+                                      data-label={execution.resultLabel}
+                                    ></div>
                                     <span className="text-sm font-medium text-white">{execution.resultLabel}</span>
                                     {index === 0 && (
                                       <span className="ml-2 text-xs text-cyan-400 bg-cyan-500/20 px-2 py-0.5 rounded-full">
@@ -890,9 +924,12 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                     )}
                                   </div>
                                 </div>
-                                <div className="text-xs text-gray-400">
-                                  {format(execution.createdAt, 'MMM dd, yyyy HH:mm')}
-                                </div>
+                                {execution.comment && (
+                                  <div className="mb-2 p-3 bg-slate-800/50 border border-slate-600 rounded">
+                                    <div className="text-gray-400 mb-1">Comment:</div>
+                                    <div className="text-sm text-gray-300">{execution.comment}</div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>

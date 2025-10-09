@@ -2,7 +2,7 @@ import React from 'react';
 import { FolderPlus } from 'lucide-react';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
-import FolderTree from '../FolderTree/FolderTree';
+import DroppableFolderTree from '../FolderTree/DroppableFolderTree';
 import { Folder } from '../../services/foldersApi';
 
 interface TestCasesFolderSidebarProps {
@@ -11,6 +11,9 @@ interface TestCasesFolderSidebarProps {
   onSelectFolder: (folderId: string | null) => void;
   foldersLoading: boolean;
   onCreateFolder: () => void;
+  onEditFolder: (folder: Folder) => void;
+  onDeleteFolder: (folder: Folder) => void;
+  onTestCaseDropped: (testCaseId: string, targetFolderId: string) => void;
 }
 
 const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
@@ -18,7 +21,10 @@ const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
   selectedFolderId,
   onSelectFolder,
   foldersLoading,
-  onCreateFolder
+  onCreateFolder,
+  onEditFolder,
+  onDeleteFolder,
+  onTestCaseDropped
 }) => {
   return (
     <div className="w-80 flex-shrink-0">
@@ -39,7 +45,7 @@ const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
           <p className="text-sm text-gray-400">Select a folder to view test cases</p>
         </div>
         <div className="p-4">
-          <FolderTree
+          <DroppableFolderTree
             folders={folderTree}
             selectedFolderId={selectedFolderId}
             onSelectFolder={(folderId) => {
@@ -54,6 +60,9 @@ const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
               }
             }}
             loading={foldersLoading}
+            onEditFolder={onEditFolder}
+            onDeleteFolder={onDeleteFolder}
+            onTestCaseDropped={onTestCaseDropped}
           />
         </div>
       </Card>

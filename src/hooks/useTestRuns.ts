@@ -32,7 +32,7 @@ export const useTestRuns = (projectId?: string | null) => {
       setLoading(true);
       setError(null);
       
-      console.log('🏃 Fetching test runs for project:', useProjectId, 'page:', page);
+      console.log('🏃 Fetching ALL test runs (active + closed) for project:', useProjectId, 'page:', page);
       
       let response: TestRunsApiResponse = await testRunsApiService.getTestRuns(
         useProjectId,
@@ -57,6 +57,12 @@ export const useTestRuns = (projectId?: string | null) => {
       );
       
       console.log('✅ Fetched', transformedTestRuns.length, 'test runs');
+      console.log('🏃 Test run states:', transformedTestRuns.map(tr => ({ id: tr.id, name: tr.name, state: tr.state, status: tr.status })));
+      
+      // Count active vs closed
+      const activeCount = transformedTestRuns.filter(tr => tr.state !== 6).length;
+      const closedCount = transformedTestRuns.filter(tr => tr.state === 6).length;
+      console.log('🏃 Active test runs:', activeCount, 'Closed test runs:', closedCount);
       
       setTestRuns(transformedTestRuns);
       setPagination({

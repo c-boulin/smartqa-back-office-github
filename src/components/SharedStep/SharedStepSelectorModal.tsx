@@ -360,6 +360,7 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
                           }}
                           disabled={disabled}
                         >
+                          {/* Always show "Add" since duplicates are allowed */}
                           Add
                         </Button>
                       </div>

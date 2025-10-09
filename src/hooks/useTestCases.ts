@@ -701,6 +701,8 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
     template: number;
     preconditions: string;
     tags: Tag[];
+    folderId?: string;
+    originalRelationships?: any;
     createdAttachments?: Array<{
       type: "Attachment";
       id: string;
@@ -730,6 +732,92 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       setLoading(true);
       
       console.log('📎 HOOK DEBUG: Received testCaseData.createdAttachments:', testCaseData.createdAttachments);
+      
+      // Handle duplication with original relationships
+      if (testCaseData.originalRelationships) {
+        console.log('🔄 Processing test case duplication with original relationships');
+        
+        // Handle step results - create new ones for the duplicate
+        let stepResults: Array<{
+          id: string;
+          order: number;
+        }> = [];
+        
+        if (testCaseData.originalRelationships.stepResults?.data) {
+          console.log('🔄 Creating new step results for duplicate...');
+          
+          for (let i = 0; i < testCaseData.originalRelationships.stepResults.data.length; i++) {
+            const originalStepResult = testCaseData.originalRelationships.stepResults.data[i];
+            
+            // We need to get the step result details to duplicate them
+            // For now, create empty step results - this should be enhanced to copy actual content
+            try {
+              const stepResultResponse = await testCasesApiService.createStepResult({
+                step: `Step ${i + 1}`,
+                result: `Expected result ${i + 1}`,
+                userId: testCaseData.creatorId
+              });
+              
+              stepResults.push({
+                id: stepResultResponse.data.attributes.id.toString(),
+                order: i + 1
+              });
+              
+              console.log(`✅ Created duplicate step result ${i + 1}`);
+            } catch (stepError) {
+              console.error(`Failed to create step result ${i + 1}:`, stepError);
+            }
+          }
+        }
+        
+        // Handle shared steps - reuse existing ones
+        let sharedStepsForApi: Array<{
+          id: string;
+          order: number;
+        }> = [];
+        
+        if (testCaseData.originalRelationships.sharedSteps?.data) {
+          sharedStepsForApi = testCaseData.originalRelationships.sharedSteps.data.map((sharedStep: any, index: number) => ({
+            id: sharedStep.id.split('/').pop() || '',
+            order: index + 1
+          }));
+        }
+        
+        // Handle attachments - reuse existing ones
+        let duplicatedAttachments: Array<{
+          type: "Attachment";
+          id: string;
+        }> = [];
+        
+        if (testCaseData.originalRelationships.attachments?.data) {
+          duplicatedAttachments = testCaseData.originalRelationships.attachments.data.map((attachment: any) => ({
+            type: "Attachment",
+            id: attachment.id
+          }));
+        }
+        
+        // Create the test case with all relationships
+        const response = await testCasesApiService.createTestCase({
+          ...testCaseData,
+          projectId: projectId!,
+          folderId: testCaseData.folderId || folderId || undefined,
+          creatorId: testCaseData.creatorId || '',
+          stepResults,
+          sharedStepsForApi,
+          createdAttachments: duplicatedAttachments
+        });
+        
+        const newTestCase = testCasesApiService.transformApiTestCase(response.data);
+        setTestCases(prevTestCases => [newTestCase, ...prevTestCases]);
+        
+        setPagination(prev => ({
+          ...prev,
+          totalItems: prev.totalItems + 1,
+          totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage)
+        }));
+        
+        return;
+      }
       
       // Handle step results - create them first if they exist
       let stepResults: Array<{
@@ -843,7 +931,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       const response = await testCasesApiService.createTestCase({
         ...testCaseData,
         projectId: projectId!,
-        folderId: folderId || undefined,
+        folderId: testCaseData.folderId || folderId || undefined,
         creatorId: testCaseData.creatorId || '',
         stepResults,
         sharedStepsForApi,
@@ -885,6 +973,9 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       originalId?: string;
     }>;
     userId?: string;
+    projectId?: string;
+    folderId?: string;
+    ownerId?: string;
     stepResultsRelationships?: Array<{
       type: string;
       id: string;

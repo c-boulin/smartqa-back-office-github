@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, Loader, Layers, User } from 'lucide-react';
+import { Plus, Search, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Layers, User } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import Modal from '../components/UI/Modal';
@@ -424,7 +424,7 @@ const SharedSteps: React.FC = () => {
                             title="Edit"
                             disabled={isSubmitting}
                           >
-                            <Edit className="w-4 h-4" />
+                            <SquarePen className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => openDeleteDialog(sharedStep)}

@@ -67,7 +67,7 @@ export const buildStepResultsRelationships = (
 
 export const buildSharedStepsRelationships = (
   stepOrder: Array<{ type: 'step' | 'shared'; id: string }>,
-  sharedSteps: Array<{ id: string; title: string }>
+  sharedSteps: Array<{ id: string; title: string; pivotId?: number }>
 ) => {
   const sharedStepsRelationships: any[] = [];
   
@@ -76,16 +76,48 @@ export const buildSharedStepsRelationships = (
     const order = position + 1;
 
     if (orderItem.type === 'shared') {
-      const sharedStepId = orderItem.id.replace('shared-', '');
-      const sharedStep = sharedSteps.find(s => s.id === sharedStepId);
-      if (sharedStep) {
-        sharedStepsRelationships.push({
-          type: "SharedStep",
-          id: `/api/shared_steps/${sharedStep.id}`,
-          meta: {
-            order: order
+      // Handle both new instance IDs (shared-{id}-{timestamp}) and existing pivot IDs (shared-{id}-{pivotId})
+      const idParts = orderItem.id.split('-');
+      if (idParts.length >= 3 && idParts[0] === 'shared') {
+        const sharedStepId = idParts[1];
+        const thirdPart = idParts[2];
+        
+        // Check if it's a pivot ID (from existing data) or timestamp (from new instances)
+        const isPivotId = !isNaN(parseInt(thirdPart)) && parseInt(thirdPart) < 1000000000000; // Pivot IDs are smaller than timestamps
+        
+        if (isPivotId) {
+          // Existing shared step with pivot ID - find by both ID and pivot ID
+          const pivotId = parseInt(thirdPart);
+          const sharedStep = sharedSteps.find(s => s.id === sharedStepId && s.pivotId === pivotId);
+          if (sharedStep) {
+            sharedStepsRelationships.push({
+              type: "SharedStep",
+              id: `/api/shared_steps/${sharedStep.id}`,
+              meta: {
+                order: order
+              }
+            });
           }
-        });
+        } else {
+          // New shared step instance with timestamp - find by position in array
+          let sharedStepIndex = 0;
+          for (let i = 0; i < position; i++) {
+            if (stepOrder[i].type === 'shared') {
+              sharedStepIndex++;
+            }
+          }
+          
+          const sharedStep = sharedSteps[sharedStepIndex];
+          if (sharedStep) {
+            sharedStepsRelationships.push({
+              type: "SharedStep",
+              id: `/api/shared_steps/${sharedStep.id}`,
+              meta: {
+                order: order
+              }
+            });
+          }
+        }
       }
     }
   }

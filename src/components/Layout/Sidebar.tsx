@@ -204,7 +204,10 @@ const Sidebar: React.FC = () => {
       if (selectedProject) {
         dispatch({ type: 'UPDATE_PROJECT', payload: selectedProject });
       }
-      // Stay on current page with new project filter
+      
+      // Navigate to dashboard with the selected project
+      console.log('Navigating to dashboard with project:', value);
+      navigate('/dashboard');
     }
   };
 
@@ -393,7 +396,7 @@ const Sidebar: React.FC = () => {
                           key={project.id}
                           onClick={() => {
                             console.log('Project clicked:', project.name, 'Current page:', location.pathname);
-                            // Set the selected project but stay on current page
+                            // Set the selected project and navigate to dashboard
                             handleProjectSelect(project.id);
                           }}
                           className={`w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors truncate ${
@@ -459,6 +462,13 @@ const Sidebar: React.FC = () => {
           <NavLink
             key={item.path}
             to={item.path}
+            onClick={(e) => {
+              // If clicking on the current page, force re-navigation to trigger route change
+              if (location.pathname === item.path) {
+                e.preventDefault();
+                navigate(item.path, { replace: false, state: { timestamp: Date.now() } });
+              }
+            }}
             className={({ isActive }) =>
               `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
                 isActive
