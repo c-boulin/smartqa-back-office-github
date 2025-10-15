@@ -6,6 +6,7 @@ export interface ApiTestPlan {
   attributes?: {
     id?: number;
     title?: string;
+    status?: string | number;
     date_start?: string;
     date_end?: string;
     createdAt?: string;
@@ -136,6 +137,7 @@ export interface UpdateTestPlanResponse {
 export interface TestPlan {
   id: string;
   title: string;
+  status: string;
   projectId: string;
   assignedTo?: string;
   dateStart?: Date;
@@ -144,6 +146,7 @@ export interface TestPlan {
   updatedAt: Date;
   totalTestRuns: number;
   closedTestRuns: number;
+  testRunIds: string[];
 }
 
 class TestPlansApiService {
@@ -267,6 +270,50 @@ class TestPlansApiService {
     return response;
   }
 
+  async updateTestPlanStatus(id: string, status: string, currentTestPlan: TestPlan): Promise<UpdateTestPlanResponse> {
+    // Fetch the full test plan data to get all relationships
+    const fullTestPlanResponse = await this.getTestPlanWithTestRuns(id);
+    const fullTestPlan = fullTestPlanResponse.data;
+
+    const requestBody = {
+      data: {
+        id: `/api/test_plans/${id}`,
+        type: "TestPlan",
+        attributes: {
+          title: currentTestPlan.title,
+          status: status,
+          createdAt: currentTestPlan.createdAt.toISOString(),
+          updatedAt: new Date().toISOString(),
+          ...(currentTestPlan.dateStart && { dateStart: currentTestPlan.dateStart.toISOString() }),
+          ...(currentTestPlan.dateEnd && { dateEnd: currentTestPlan.dateEnd.toISOString() })
+        },
+        relationships: {
+          project: fullTestPlan.relationships?.project || { data: { type: "Project", id: `/api/projects/${currentTestPlan.projectId}` } },
+          user: fullTestPlan.relationships?.user || { data: { type: "User", id: `/api/users/${currentTestPlan.assignedTo}` } },
+          testRuns: {
+            data: currentTestPlan.testRunIds.map(testRunId => ({
+              type: "TestRun",
+              id: `/api/test_runs/${testRunId}`
+            }))
+          },
+          creator: fullTestPlan.relationships?.creator || { data: [] },
+          editor: fullTestPlan.relationships?.editor || { data: [] }
+        }
+      }
+    };
+
+    const response = await apiService.authenticatedRequest(`/test_plans/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+
+    return response;
+  }
+
   async updateTestPlan(id: string, testPlanData: {
     title: string;
     projectId?: string;
@@ -373,9 +420,15 @@ class TestPlansApiService {
       console.log(`📋 Final counts for test plan "${apiTestPlan.attributes?.title}": ${closedTestRuns}/${totalTestRuns} closed`);
     }
     
+    // Extract test run IDs
+    const testRunIds = apiTestPlan.relationships?.testRuns?.data?.map(tr =>
+      tr.id.split('/').pop() || ''
+    ) || [];
+
     return {
       id: apiTestPlan.attributes?.id?.toString() || '',
       title: apiTestPlan.attributes?.title || '',
+      status: apiTestPlan.attributes?.status?.toString() || '1',
       projectId: projectId,
       assignedTo: assignedTo,
       dateStart: this.parseOptionalDate(apiTestPlan.attributes?.date_start || apiTestPlan.attributes?.dateStart),
@@ -383,7 +436,8 @@ class TestPlansApiService {
       createdAt: this.parseDate(apiTestPlan.attributes?.createdAt || ''),
       updatedAt: this.parseDate(apiTestPlan.attributes?.updatedAt || ''),
       totalTestRuns: totalTestRuns,
-      closedTestRuns: closedTestRuns
+      closedTestRuns: closedTestRuns,
+      testRunIds: testRunIds
     };
   }
 }

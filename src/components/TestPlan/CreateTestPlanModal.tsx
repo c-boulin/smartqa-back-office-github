@@ -131,6 +131,9 @@ const CreateTestPlanModal: React.FC<CreateTestPlanModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Test Plan Details Card */}
           <div className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-slate-600/50 rounded-xl p-3">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Title
+            </label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               <input
@@ -147,6 +150,9 @@ const CreateTestPlanModal: React.FC<CreateTestPlanModalProps> = ({
           
           {/* Owner Selection Card */}
           <div className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-slate-600/50 rounded-xl p-3">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Owner
+            </label>
             {usersLoading ? (
               <div className="flex items-center justify-center py-4">
                 <div className="text-center">

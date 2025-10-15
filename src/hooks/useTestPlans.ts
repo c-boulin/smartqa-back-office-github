@@ -198,22 +198,51 @@ export const useTestPlans = (projectId?: string | null) => {
     }
   }, []);
 
+  const updateTestPlanStatus = useCallback(async (id: string, status: string) => {
+    try {
+      setLoading(true);
+
+      const currentTestPlan = testPlans.find(tp => tp.id === id);
+      if (!currentTestPlan) {
+        throw new Error('Test plan not found');
+      }
+
+      const response = await testPlansApiService.updateTestPlanStatus(id, status, currentTestPlan);
+
+      const updatedTestPlan = testPlansApiService.transformApiTestPlan(response.data);
+      setTestPlans(prevTestPlans =>
+        prevTestPlans.map(testPlan =>
+          testPlan.id === id ? updatedTestPlan : testPlan
+        )
+      );
+
+      toast.success('Test plan status updated successfully');
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update test plan status';
+      toast.error(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [testPlans]);
+
   const deleteTestPlan = useCallback(async (id: string) => {
     try {
       setLoading(true);
-      
+
       await testPlansApiService.deleteTestPlan(id);
-      
+
       setTestPlans(prevTestPlans => prevTestPlans.filter(testPlan => testPlan.id !== id));
-      
+
       setPagination(prev => ({
         ...prev,
         totalItems: Math.max(0, prev.totalItems - 1),
         totalPages: Math.ceil(Math.max(0, prev.totalItems - 1) / prev.itemsPerPage)
       }));
-      
+
       toast.success('Test plan deleted successfully');
-      
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete test plan';
       toast.error(errorMessage);
@@ -254,6 +283,7 @@ export const useTestPlans = (projectId?: string | null) => {
     searchTestPlans,
     createTestPlan,
     updateTestPlan,
+    updateTestPlanStatus,
     deleteTestPlan
   };
 };

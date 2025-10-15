@@ -21,16 +21,17 @@ const TestPlans: React.FC = () => {
   const { users } = useUsers();
   const selectedProject = getSelectedProject();
   
-  const { 
-    testPlans, 
-    loading, 
-    error, 
-    pagination, 
-    fetchTestPlans, 
+  const {
+    testPlans,
+    loading,
+    error,
+    pagination,
+    fetchTestPlans,
     searchTestPlans,
-    createTestPlan, 
-    updateTestPlan, 
-    deleteTestPlan 
+    createTestPlan,
+    updateTestPlan,
+    updateTestPlanStatus,
+    deleteTestPlan
   } = useTestPlans(selectedProject?.id);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -369,7 +370,6 @@ const TestPlans: React.FC = () => {
               <tr>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">ID</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Title</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Status</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Progress</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Duration</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Actions</th>
@@ -378,22 +378,27 @@ const TestPlans: React.FC = () => {
             <tbody>
               {filteredTestPlans.map((testPlan) => {
                 // Calculate progress based on closed test runs
-                const progress = testPlan.totalTestRuns > 0 
+                const progress = testPlan.totalTestRuns > 0
                   ? Math.round((testPlan.closedTestRuns / testPlan.totalTestRuns) * 100)
                   : 0;
-                
-                // Calculate status based on closed test runs
-                const getStatus = () => {
-                  if (testPlan.totalTestRuns === 0 || testPlan.closedTestRuns === 0) {
-                    return { label: 'New', color: 'text-gray-400 bg-gray-500/20 border-gray-500/50' };
-                  } else if (testPlan.closedTestRuns < testPlan.totalTestRuns) {
-                    return { label: 'In Progress', color: 'text-blue-400 bg-blue-500/20 border-blue-500/50' };
-                  } else {
-                    return { label: 'Complete', color: 'text-green-400 bg-green-500/20 border-green-500/50' };
+
+                // Get status label and color based on status value
+                const getStatusInfo = (statusValue: string) => {
+                  switch (statusValue) {
+                    case '1':
+                      return { label: 'New', color: 'text-gray-400 bg-gray-500/20 border-gray-500/50' };
+                    case '2':
+                      return { label: 'In Progress', color: 'text-blue-400 bg-blue-500/20 border-blue-500/50' };
+                    case '3':
+                      return { label: 'Done', color: 'text-green-400 bg-green-500/20 border-green-500/50' };
+                    case '4':
+                      return { label: 'Closed', color: 'text-purple-400 bg-purple-500/20 border-purple-500/50' };
+                    default:
+                      return { label: 'New', color: 'text-gray-400 bg-gray-500/20 border-gray-500/50' };
                   }
                 };
-                
-                const status = getStatus();
+
+                const statusInfo = getStatusInfo(testPlan.status);
                 
                 const getProgressColor = (progress: number) => {
                   if (progress === 0) return 'from-gray-500 to-gray-600';
@@ -418,11 +423,6 @@ const TestPlans: React.FC = () => {
                           </h3>
                         </button>
                       </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${status.color}`}>
-                        {status.label}
-                      </span>
                     </td>
                     <td className="py-4 px-6">
                       <div className="space-y-2">
@@ -488,6 +488,23 @@ const TestPlans: React.FC = () => {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center space-x-2">
+                        <select
+                          value={testPlan.status}
+                          onChange={async (e) => {
+                            try {
+                              await updateTestPlanStatus(testPlan.id, e.target.value);
+                            } catch (error) {
+                              // Error already handled in hook
+                            }
+                          }}
+                          className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                          disabled={isSubmitting}
+                        >
+                          <option value="1">New</option>
+                          <option value="2">In Progress</option>
+                          <option value="3">Done</option>
+                          <option value="4">Closed</option>
+                        </select>
                         <button
                           onClick={() => openEditModal(testPlan)}
                           className="p-2 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded-lg transition-colors"
