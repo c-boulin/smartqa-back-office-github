@@ -8,6 +8,7 @@ import ShareModal from './ShareModal';
 import { reportDownloadService } from '../../services/reportDownloadService';
 import { reportEmailService, ReportFormat } from '../../services/reportEmailService';
 import { fetchTestCasesForReport } from '../../services/reportsDataService';
+import { testRunsApiService } from '../../services/testRunsApi';
 import { TEST_RESULTS, TestResultId } from '../../types';
 import { PRIORITIES } from '../../constants/testCaseConstants';
 import { useAuth } from '../../context/AuthContext';
@@ -124,6 +125,33 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Helper function to calculate date threshold from creation date filter
+  const calculateDateThreshold = (filter: string | undefined): Date | null => {
+    if (!filter) return null;
+
+    const now = new Date();
+    let threshold = new Date();
+
+    switch (filter) {
+      case 'Last 24 hours':
+        threshold.setHours(now.getHours() - 24);
+        break;
+      case 'Last 48 hours':
+        threshold.setHours(now.getHours() - 48);
+        break;
+      case 'Last 7 days':
+        threshold.setDate(now.getDate() - 7);
+        break;
+      case 'Last 30 days':
+        threshold.setDate(now.getDate() - 30);
+        break;
+      default:
+        return null;
+    }
+
+    return threshold;
+  };
   const fetchInProgressRef = React.useRef(false);
 
   // Log description for debugging
@@ -185,49 +213,100 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
       console.log(`📊 Built users map with ${usersMap.size} users`);
 
       // STEP 3: Build test runs map from included test runs
+      // Use the SAME transformation service as Summary report for consistency
       const testRunsMap = new Map<string, any>();
-      testRuns.forEach((testRun: any) => {
-        const runId = testRun.attributes.id.toString();
+      testRuns.forEach((apiTestRun: any) => {
+        // Transform using the standardized service - same as Summary report
+        const transformed = testRunsApiService.transformApiTestRun(apiTestRun, response.included || []);
 
-        // Parse state properly - handle both number and string "6" for closed test runs
-        let state = testRun.attributes.state || 1;
-        if (typeof state === 'string') {
-          state = parseInt(state, 10) || 1;
-        }
-
-        // Determine status based on state (state 6 = closed)
-        const isClosed = state === 6 || testRun.attributes.state === '6';
-
-        testRunsMap.set(runId, {
-          id: runId,
-          name: testRun.attributes.name || `Test Run ${runId}`,
-          state: state,
-          status: isClosed ? 'closed' : (testRun.attributes.status || 'active'),
-          createdAt: testRun.attributes.created_at ? new Date(testRun.attributes.created_at) : new Date(),
-          assignedTo: {
-            id: testRun.attributes.assigned_to || 'unknown',
-            name: testRun.attributes.assigned_to_name || 'Unassigned',
-            email: testRun.attributes.assigned_to_email || ''
-          },
-          testCaseIds: new Set<string>()
+        testRunsMap.set(transformed.id, {
+          id: transformed.id,
+          name: transformed.name,
+          state: transformed.state,
+          status: transformed.status,
+          createdAt: transformed.createdAt,
+          assignedTo: transformed.assignedTo,
+          testCaseIds: new Set<string>(),
+          testCasesCount: transformed.testCasesCount,
+          passedCount: transformed.passedCount,
+          failedCount: transformed.failedCount,
+          blockedCount: transformed.blockedCount
         });
 
-        console.log(`📊 Test Run ${runId}: state=${state}, isClosed=${isClosed}`);
+        console.log(`📊 Test Run ${transformed.id}: state=${transformed.state}, status=${transformed.status}, createdAt=${transformed.createdAt.toISOString()}`);
       });
 
-      // STEP 4: Build test executions map (testCaseId -> testRunId -> execution)
+      // STEP 4: APPLY ALL FILTERS FIRST (Test Run IDs + Creation Date)
+      // This is CRITICAL - we must filter test runs BEFORE building the executions map
+
+      console.log('📊 ========== STARTING FILTER APPLICATION ==========');
+      console.log('📊 Initial test runs count:', testRunsMap.size);
+      console.log('📊 All test run IDs:', Array.from(testRunsMap.keys()));
+
+      // Start with all test run IDs
+      let filteredTestRunIds = new Set<string>(testRunsMap.keys());
+
+      // FILTER 1: Apply specific test run IDs filter if provided
+      if (testRunIds && testRunIds.length > 0) {
+        console.log('📊 FILTER 1: Applying specific test run IDs filter:', testRunIds);
+        filteredTestRunIds = new Set(testRunIds.filter(id => testRunsMap.has(id)));
+        console.log(`📊 After test run ID filter: ${filteredTestRunIds.size} test runs`);
+      }
+
+      // FILTER 2: Apply creation date filter if provided
+      const dateThreshold = calculateDateThreshold(creationDateFilter);
+      if (dateThreshold) {
+        console.log(`📊 FILTER 2: Applying creation date filter: ${creationDateFilter}`);
+        console.log(`📊 Date threshold: ${dateThreshold.toISOString()}`);
+        console.log(`📊 Current time: ${new Date().toISOString()}`);
+
+        const testRunsBeforeFilter = Array.from(filteredTestRunIds).map(id => testRunsMap.get(id)).filter(Boolean);
+
+        console.log(`📊 Test runs before date filter: ${testRunsBeforeFilter.length}`);
+        testRunsBeforeFilter.forEach(tr => {
+          const trCreatedAt = new Date(tr.createdAt);
+          console.log(`📊 Test Run ${tr.id} (${tr.name}): created ${trCreatedAt.toISOString()}, threshold check: ${trCreatedAt >= dateThreshold}`);
+        });
+
+        const testRunsAfterDateFilter = testRunsBeforeFilter.filter(tr => {
+          const trCreatedAt = new Date(tr.createdAt);
+          const isWithinPeriod = trCreatedAt >= dateThreshold;
+          return isWithinPeriod;
+        });
+
+        filteredTestRunIds = new Set(testRunsAfterDateFilter.map(tr => tr.id));
+        console.log(`📊 After creation date filter: ${filteredTestRunIds.size} test runs`);
+        console.log(`📊 Filtered test run IDs:`, Array.from(filteredTestRunIds));
+      }
+
+      console.log('📊 ========== FILTERS APPLIED ==========');
+      console.log('📊 Final filtered test run IDs:', Array.from(filteredTestRunIds));
+      console.log('📊 Final filtered test runs count:', filteredTestRunIds.size);
+
+      // STEP 5: Build test executions map ONLY from filtered test runs
       // IMPORTANT: The API's execution_result filter returns test cases based on their
       // ABSOLUTE latest execution across ALL test runs. We need to filter executions
-      // PER test run for accurate reporting.
+      // to only include those from the filtered test runs.
       const executionsMap = new Map<string, Map<string, any>>();
 
+      // Create a set of filtered test case IDs for quick lookup
+      const filteredTestCaseIds = new Set(
+        testCases.map((tc: any) => tc.attributes.id.toString())
+      );
+      console.log('📊 Filtered test case IDs from API response:', filteredTestCaseIds.size, 'test cases');
+
       if (testExecutions && Array.isArray(testExecutions)) {
+        console.log('📊 Processing', testExecutions.length, 'total test executions');
+
         testExecutions.forEach((execution: any) => {
           const testCaseId = execution.attributes.test_case_id?.toString();
           const testRunId = execution.attributes.test_run_id?.toString();
           const userId = execution.attributes.user_id?.toString();
 
-          if (testCaseId && testRunId) {
+          // CRITICAL: Only process executions that belong to:
+          // 1. Filtered test runs (by date/ID filters)
+          // 2. Filtered test cases (by type/priority/status filters)
+          if (testCaseId && testRunId && filteredTestRunIds.has(testRunId) && filteredTestCaseIds.has(testCaseId)) {
             if (!executionsMap.has(testCaseId)) {
               executionsMap.set(testCaseId, new Map());
             }
@@ -248,18 +327,24 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         });
       }
 
-      console.log(`📊 Built executions map with ${executionsMap.size} test cases`);
+      console.log(`📊 Built executions map with ${executionsMap.size} test cases after filtering by test runs`);
 
-      // STEP 5: Build test cases included list and update test run stats
-      // IMPORTANT: The API's execution_result filter returns test cases based on their
-      // ABSOLUTE latest execution across ALL test runs. We need to filter on the client
-      // side to only include executions that match the filter PER test run.
+      // STEP 6: Build test cases included list ONLY from filtered test runs
       const testCasesIncluded: TestCaseWithExecution[] = [];
       const testRunStats = new Map<string, { passed: number; failed: number; blocked: number; untested: number; total: number }>();
 
       // Build set of allowed status IDs if filter is applied
       const statusFilterApplied = filters?.statusOfTestCase && filters.statusOfTestCase.length > 0;
       const allowedStatusIds = statusFilterApplied ? new Set(filters!.statusOfTestCase.map(s => parseInt(s, 10))) : null;
+
+      console.log('📊 ========== BUILDING TEST CASES LIST ==========');
+      console.log('📊 Processing test cases...');
+      console.log('📊 Total test cases from API:', testCases.length);
+      console.log('📊 Total executions in map:', executionsMap.size);
+      console.log('📊 Status filter applied:', statusFilterApplied);
+      if (statusFilterApplied) {
+        console.log('📊 Allowed status IDs:', Array.from(allowedStatusIds || []));
+      }
 
       testCases.forEach((testCase: any) => {
         const testCaseId = testCase.attributes.id.toString();
@@ -270,8 +355,17 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         }
 
         testCaseExecutions.forEach((execution: any, testRunId: string) => {
+          // CRITICAL: Only process executions from filtered test runs
+          if (!filteredTestRunIds.has(testRunId)) {
+            console.log(`📊 Skipping execution for test run ${testRunId} - not in filtered test runs`);
+            return;
+          }
+
           const testRun = testRunsMap.get(testRunId);
-          if (!testRun) return;
+          if (!testRun) {
+            console.log(`📊 Skipping execution - test run ${testRunId} not found in map`);
+            return;
+          }
 
           // Get latest execution result
           const rawResult = execution.result;
@@ -295,7 +389,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
           // If status filter is applied, skip executions that don't match
           if (allowedStatusIds && !allowedStatusIds.has(resultId)) {
-            console.log(`📊 Skipping test case ${testCaseId} in test run ${testRunId}: result=${resultId} (not in filter)`);
+            console.log(`📊 Skipping execution for TC ${testCaseId} in TR ${testRunId} - status ${resultId} not in allowed statuses`);
             return;
           }
 
@@ -359,42 +453,63 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         });
       });
 
-      // Filter by specific test run IDs if provided
-      let filteredTestCasesIncluded = testCasesIncluded;
-      let filteredTestRunIds = new Set<string>(testRunsMap.keys());
+      console.log('📊 Test cases included after filtering:', testCasesIncluded.length);
+      console.log('📊 ========== TEST CASES INCLUDED BREAKDOWN ==========');
 
-      if (testRunIds && testRunIds.length > 0) {
-        console.log('📊 Filtering for specific test runs:', testRunIds);
-        filteredTestCasesIncluded = testCasesIncluded.filter(tc => testRunIds.includes(tc.testRunId));
-        filteredTestRunIds = new Set(testRunIds);
-        console.log(`📊 Filtered from ${testCasesIncluded.length} to ${filteredTestCasesIncluded.length} test case executions`);
-      }
+      // Log breakdown by test run
+      const testCasesByTestRun = new Map<string, number>();
+      testCasesIncluded.forEach(tc => {
+        testCasesByTestRun.set(tc.testRunId, (testCasesByTestRun.get(tc.testRunId) || 0) + 1);
+      });
+      testCasesByTestRun.forEach((count, testRunId) => {
+        const testRun = testRunsMap.get(testRunId);
+        console.log(`📊   Test Run ${testRunId} (${testRun?.name}): ${count} test case executions`);
+      });
 
-      // No need to filter by creation date on client side - it's now handled by the API via test_run_created_at parameter
-
-      // Calculate report metrics based on filtered test runs
+      // STEP 7: Calculate ALL report metrics from filtered test runs
       const filteredTestRuns = Array.from(filteredTestRunIds).map(id => testRunsMap.get(id)!).filter(Boolean);
       const totalTestRuns = filteredTestRuns.length;
       const activeTestRuns = filteredTestRuns.filter(tr => tr.state !== 6).length;
       const closedTestRuns = filteredTestRuns.filter(tr => tr.state === 6).length;
 
-      // Calculate aggregate stats
-      let totalTestCases = 0;
+      console.log('📊 ========== CALCULATING METRICS ==========');
+      console.log('📊 Filtered test runs:', totalTestRuns);
+      console.log('📊 Active test runs:', activeTestRuns);
+      console.log('📊 Closed test runs:', closedTestRuns);
+
+      // Calculate aggregate stats directly from testCasesIncluded
+      // This ensures stats match the actual filtered data
+      let totalTestCases = testCasesIncluded.length;
       let totalPassed = 0;
       let totalFailed = 0;
       let totalBlocked = 0;
       let totalUntested = 0;
 
-      filteredTestRunIds.forEach(testRunId => {
-        const stats = testRunStats.get(testRunId);
-        if (stats) {
-          totalTestCases += stats.total;
-          totalPassed += stats.passed;
-          totalFailed += stats.failed;
-          totalBlocked += stats.blocked;
-          totalUntested += stats.untested;
+      testCasesIncluded.forEach(tc => {
+        const status = tc.latestStatus.toLowerCase();
+        switch (status) {
+          case 'passed':
+            totalPassed++;
+            break;
+          case 'failed':
+            totalFailed++;
+            break;
+          case 'blocked':
+            totalBlocked++;
+            break;
+          default:
+            totalUntested++;
+            break;
         }
       });
+
+      console.log('📊 Total test executions:', totalTestCases);
+      console.log('📊 Passed:', totalPassed);
+      console.log('📊 Failed:', totalFailed);
+      console.log('📊 Blocked:', totalBlocked);
+      console.log('📊 Untested:', totalUntested);
+      console.log('📊 Sum of statuses:', totalPassed + totalFailed + totalBlocked + totalUntested);
+      console.log('📊 ========== METRICS CALCULATED ==========');
 
       // Count test runs by state
       const testRunsBreakup = {
@@ -406,9 +521,9 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         closed: filteredTestRuns.filter(tr => tr.state === 6).length
       };
 
-      // Count results by assignee
+      // Count results by assignee (using testCasesIncluded which is already filtered)
       const assigneeMap = new Map<string, number>();
-      filteredTestCasesIncluded.forEach(tc => {
+      testCasesIncluded.forEach(tc => {
         const assigneeName = tc.assignee;
         assigneeMap.set(assigneeName, (assigneeMap.get(assigneeName) || 0) + 1);
       });
@@ -418,9 +533,10 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         count
       })).sort((a, b) => b.count - a.count);
 
-      // STEP 5: Generate performance data (trend based on creation date filter)
-      // Determine the number of data points based on the creation date filter
-      // When specific test runs are selected, always use 7 days
+      // STEP 8: Generate performance data (trend based on creation date filter)
+      // Performance chart shows executions over time from FILTERED test runs only
+      console.log('📊 ========== GENERATING PERFORMANCE DATA ==========');
+
       let dataPoints = 7; // default to 7 days
       let timeUnit: 'hours' | 'days' = 'days';
 
@@ -464,8 +580,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         let failed = 0;
         let other = 0;
 
-        // Count executions by date/hour
-        // IMPORTANT: Apply status filter on client side for per-test-run accuracy
+        // Count executions by date/hour - ONLY from filtered test runs
         if (testExecutions && Array.isArray(testExecutions)) {
           const dayExecutions = new Map<string, any>();
 
@@ -484,7 +599,8 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
             const testRunId = execution.attributes.test_run_id?.toString();
             const testCaseId = execution.attributes.test_case_id?.toString();
 
-            if (!testRunId || !testCaseId || !filteredTestRunIds.has(testRunId)) return;
+            // CRITICAL: Only include executions from filtered test runs AND filtered test cases
+            if (!testRunId || !testCaseId || !filteredTestRunIds.has(testRunId) || !filteredTestCaseIds.has(testCaseId)) return;
 
             // Apply status filter if present
             const rawResult = execution.attributes.result;
@@ -549,6 +665,16 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         });
       }
 
+      console.log('📊 ========== FINAL REPORT DATA ==========');
+      console.log('📊 Total test runs:', totalTestRuns);
+      console.log('📊 Active test runs:', activeTestRuns);
+      console.log('📊 Closed test runs:', closedTestRuns);
+      console.log('📊 Total test executions:', totalTestCases);
+      console.log('📊 Test cases in table:', testCasesIncluded.length);
+      console.log('📊 Breakdown: Passed=' + totalPassed + ', Failed=' + totalFailed + ', Blocked=' + totalBlocked + ', Untested=' + totalUntested);
+      console.log('📊 Consistency check #1 (totalTestCases === table rows):', totalTestCases === testCasesIncluded.length ? '✅ PASS' : '❌ FAIL');
+      console.log('📊 Consistency check #2 (totalTestCases === sum of statuses):', totalTestCases === (totalPassed + totalFailed + totalBlocked + totalUntested) ? '✅ PASS' : '❌ FAIL');
+
       const reportData: ReportData = {
         totalTestRuns,
         activeTestRuns,
@@ -563,12 +689,13 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         },
         testRunsBreakup,
         assigneeResults,
-        testCasesIncluded: filteredTestCasesIncluded,
+        testCasesIncluded: testCasesIncluded,
         performanceData
       };
 
       setReportData(reportData);
-      console.log('📊 Detailed report data calculated:', reportData);
+      console.log('📊 ========== REPORT GENERATION COMPLETE ==========');
+      console.log('📊 Report contains', testCasesIncluded.length, 'test executions from', totalTestRuns, 'test runs');
 
     } catch (err) {
       console.error('❌ Failed to fetch test runs data for detailed report:', err);

@@ -193,6 +193,9 @@ const TestResultDropdown: React.FC<{
   const [comment, setComment] = useState('');
   const [isCommentExpanded, setIsCommentExpanded] = useState(false);
   const [selectedResult, setSelectedResult] = useState<TestResultId>(value);
+  const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
   const selectedResultLabel = TEST_RESULTS[value];
 
   const getResultColor = (resultId: TestResultId): string => {
@@ -227,11 +230,58 @@ const TestResultDropdown: React.FC<{
     setSelectedResult(value);
   }, [value]);
 
+  // Calculate position when opening and handle toggle
+  const handleToggle = () => {
+    if (!disabled && !isUpdating) {
+      const newIsOpen = !isOpen;
+      setIsOpen(newIsOpen);
+
+      // Calculate position when opening
+      if (newIsOpen && buttonRef.current) {
+        const buttonRect = buttonRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - buttonRect.bottom;
+        const modalHeight = 400; // Approximate height of the modal
+
+        // If there's not enough space below, show above
+        if (spaceBelow < modalHeight && buttonRect.top > modalHeight) {
+          setDropdownPosition('top');
+        } else {
+          setDropdownPosition('bottom');
+        }
+      }
+    }
+  };
+
+  // Recalculate position on scroll
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleScroll = () => {
+      if (buttonRef.current) {
+        const buttonRect = buttonRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - buttonRect.bottom;
+        const modalHeight = 400;
+
+        if (spaceBelow < modalHeight && buttonRect.top > modalHeight) {
+          setDropdownPosition('top');
+        } else {
+          setDropdownPosition('bottom');
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [isOpen]);
+
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => !disabled && !isUpdating && setIsOpen(!isOpen)}
+        onClick={handleToggle}
         disabled={disabled || isUpdating}
         className={`w-full px-3 py-2 text-sm font-medium rounded-lg border focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between bg-slate-700 border-slate-600 text-white ${
           disabled || isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'
@@ -252,11 +302,16 @@ const TestResultDropdown: React.FC<{
 
       {isOpen && !disabled && !isUpdating && (
         <>
-          <div 
-            className="fixed inset-0 z-[70]" 
+          <div
+            className="fixed inset-0 z-[70]"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[71] w-80 max-h-96">
+          <div
+            ref={dropdownRef}
+            className={`absolute left-0 right-0 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[71] w-80 max-h-96 ${
+              dropdownPosition === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
+            }`}
+          >
             <div className="p-3 border-b border-slate-600">
               <h4 className="text-sm font-medium text-white mb-3">Select Result</h4>
               <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -899,18 +954,18 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                               <div key={execution.id} className="bg-slate-700/50 border border-slate-600 rounded-lg p-3">
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center">
-                                    <div 
+                                    <div
                                       className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
                                       style={{
-                                        backgroundColor: 
-                                          execution.result === '1' ? '#10B981' : // Passed - Green
-                                          execution.result === '2' ? '#EF4444' : // Failed - Red
-                                          execution.result === '3' ? '#F59E0B' : // Blocked - Yellow
-                                          execution.result === '4' ? '#F97316' : // Retest - Orange
-                                          execution.result === '5' ? '#8B5CF6' : // Skipped - Purple
-                                          execution.result === '6' ? '#6B7280' : // Untested - Gray
-                                          execution.result === '7' ? '#3B82F6' : // In Progress - Blue
-                                          execution.result === '8' ? '#4B5563' : // Unknown - Dark Gray
+                                        backgroundColor:
+                                          execution.result === 1 ? '#10B981' : // Passed - Green
+                                          execution.result === 2 ? '#EF4444' : // Failed - Red
+                                          execution.result === 3 ? '#F59E0B' : // Blocked - Yellow
+                                          execution.result === 4 ? '#F97316' : // Retest - Orange
+                                          execution.result === 5 ? '#8B5CF6' : // Skipped - Purple
+                                          execution.result === 6 ? '#6B7280' : // Untested - Gray
+                                          execution.result === 7 ? '#3B82F6' : // In Progress - Blue
+                                          execution.result === 8 ? '#4B5563' : // Unknown - Dark Gray
                                           '#6B7280' // Default - Gray
                                       }}
                                       data-result={execution.result}

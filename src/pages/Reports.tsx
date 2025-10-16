@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Plus, FileText, MoreHorizontal, BarChart, TrendingUp, Search, X, Code, FileCheck } from 'lucide-react';
+import { Plus, FileText, Edit2, Trash2, BarChart, TrendingUp, Search, X, Code, FileCheck, Loader } from 'lucide-react';
 import { format } from 'date-fns';
 import { useLocation } from 'react-router-dom';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import CreateReportModal from '../components/Reports/CreateReportModal';
+import UpdateScheduledReportModal from '../components/Reports/UpdateScheduledReportModal';
 import TestRunSummaryReport from '../components/Reports/TestRunSummaryReport';
 import TestRunDetailedReport from '../components/Reports/TestRunDetailedReport';
 import ReportsHeader from '../components/Reports/ReportsHeader';
@@ -13,6 +14,8 @@ import TestRunPerformanceChart from '../components/Reports/TestRunPerformanceCha
 import TestRunSummaryCards from '../components/Reports/TestRunSummaryCards';
 import TestCasesReportTable from '../components/Reports/TestCasesReportTable';
 import { useApp } from '../context/AppContext';
+import { useScheduledReports } from '../hooks/useScheduledReports';
+import { scheduledReportsApiService, ScheduledReport } from '../services/scheduledReportsApi';
 import toast from 'react-hot-toast';
 
 interface Report {
@@ -29,24 +32,26 @@ interface Report {
   createdBy: string;
 }
 
-interface ScheduledReport {
-  id: string;
-  title: string;
-  createdBy: string;
-  createdAt: Date;
-  frequency: 'Daily' | 'Weekly';
-  type: 'Test Run Summary' | 'Test Run Detailed Report';
-}
-
 const Reports: React.FC = () => {
   const { getSelectedProject, state } = useApp();
   const selectedProject = getSelectedProject();
   const location = useLocation();
+  const {
+    scheduledReports,
+    loading: scheduledReportsLoading,
+    error: scheduledReportsError,
+    createScheduledReport,
+    updateScheduledReport,
+    deleteScheduledReport,
+  } = useScheduledReports();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [selectedScheduledReport, setSelectedScheduledReport] = useState<ScheduledReport | null>(null);
+  const [selectedScheduledReportId, setSelectedScheduledReportId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'test-run-summary' | 'test-run-detailed' | 'requirement-traceability' | 'detailed'>('list');
   const [selectedProjectForReport, setSelectedProjectForReport] = useState<string>('');
@@ -75,33 +80,6 @@ const Reports: React.FC = () => {
     }
   }, [location.key]); // Trigger when navigation key changes
 
-  // Mock scheduled reports data
-  const mockScheduledReports: ScheduledReport[] = [
-    {
-      id: '1',
-      title: 'Test Run Detailed Report - WEEKLY FAILED',
-      createdBy: 'Michele Pancari',
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-      frequency: 'Weekly',
-      type: 'Test Run Detailed Report'
-    },
-    {
-      id: '2',
-      title: 'SEPT 2023 PASSED-FAILED',
-      createdBy: 'Michele Pancari',
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-      frequency: 'Daily',
-      type: 'Test Run Summary'
-    },
-    {
-      id: '3',
-      title: 'SEPT 2023 UNTESTED/INPROGRESS',
-      createdBy: 'Michele Pancari',
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-      frequency: 'Daily',
-      type: 'Test Run Summary'
-    }
-  ];
 
   // Mock report data for detailed view
   const mockDetailedReportData = {
@@ -141,6 +119,14 @@ const Reports: React.FC = () => {
       setIsSubmitting(true);
 
       console.log('Creating report with data:', data);
+
+      // If this is a scheduled report, create it via API
+      if (data.scheduleReports && data.scheduledReportPayload) {
+        await createScheduledReport(data.scheduledReportPayload);
+        setIsCreateModalOpen(false);
+        setIsSubmitting(false);
+        return;
+      }
 
       // Store filters from the report creation form
       setReportFilters(data.filters || null);
@@ -220,21 +206,59 @@ const Reports: React.FC = () => {
     setIsDeleteDialogOpen(true);
   }, []);
 
-  const handleConfirmDelete = useCallback(async () => {
-    if (!selectedReport) return;
-    
+  const handleUpdateScheduledReport = useCallback(async (id: string, data: Partial<ScheduledReport>) => {
     try {
       setIsSubmitting(true);
-      console.log('Deleting report:', selectedReport.name);
-      toast.success('Report deleted successfully');
-      setSelectedReport(null);
+      await updateScheduledReport(id, data);
+      setIsUpdateModalOpen(false);
+      setSelectedScheduledReport(null);
     } catch (error) {
-      console.error('Failed to delete report:', error);
-      toast.error('Failed to delete report');
+      console.error('Failed to update scheduled report:', error);
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedReport]);
+  }, [updateScheduledReport]);
+
+  const handleStatusChange = useCallback(async (report: ScheduledReport, isActive: boolean) => {
+    try {
+      // Pass the entire report data along with the updated isActive status
+      await updateScheduledReport(report.id, {
+        title: report.title,
+        description: report.description,
+        reportTemplate: report.reportTemplate,
+        testRunSelection: report.testRunSelection,
+        testRunCreationDate: report.testRunCreationDate,
+        specificTestRunIds: report.specificTestRunIds,
+        frequency: report.frequency,
+        scheduleTime: report.scheduleTime,
+        timezone: report.timezone,
+        reportFormat: report.reportFormat,
+        dayToSend: report.dayToSend,
+        recipients: report.recipients,
+        testCaseFilters: report.testCaseFilters,
+        isActive
+      });
+      toast.success(`Report ${isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      console.error('Failed to update report status:', error);
+      toast.error('Failed to update report status');
+    }
+  }, [updateScheduledReport]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!selectedScheduledReportId) return;
+
+    try {
+      setIsSubmitting(true);
+      await deleteScheduledReport(selectedScheduledReportId);
+      setSelectedScheduledReportId(null);
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to delete scheduled report:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [selectedScheduledReportId, deleteScheduledReport]);
 
   const handleDownloadReport = useCallback((report: Report) => {
     console.log('Downloading report:', report.name);
@@ -264,7 +288,8 @@ const Reports: React.FC = () => {
 
     setSelectedTestRunIds(undefined);
     setReportFilters(null);
-    setTestRunCreationDateFilter(undefined);
+    // Set default date filter to "Last 30 days" for template cards
+    setTestRunCreationDateFilter('Last 30 days');
     setReportData(null);
     setReportDescription('');
 
@@ -458,108 +483,136 @@ const Reports: React.FC = () => {
 
         {/* Scheduled Reports Table */}
         <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-800/50 border-b border-slate-700">
-                <tr>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
-                    TITLE
-                  </th>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
-                    CREATED BY
-                  </th>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
-                    FREQUENCY
-                  </th>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
-                    TYPE OF REPORT
-                  </th>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
-                    <MoreHorizontal className="w-4 h-4 text-gray-400" />
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {mockScheduledReports
-                  .filter(report => 
-                    !searchTerm || 
-                    report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    report.createdBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    report.type.toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                  .map((report) => (
-                    <tr key={report.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="py-4 px-6">
-                        <button
-                          onClick={() => handleViewReport({
-                            id: report.id,
-                            name: report.title,
-                            type: report.type === 'Test Run Summary' ? 'execution' : 'project',
-                            dateRange: { start: report.createdAt, end: new Date() },
-                            data: {},
-                            createdAt: report.createdAt,
-                            createdBy: report.createdBy
-                          })}
-                          className="text-left hover:text-cyan-400 transition-colors"
-                        >
+          {scheduledReportsLoading && scheduledReports.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader className="w-8 h-8 text-cyan-400 animate-spin" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-800/50 border-b border-slate-700">
+                  <tr>
+                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                      TITLE
+                    </th>
+                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                      CREATED BY
+                    </th>
+                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                      FREQUENCY
+                    </th>
+                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                      TYPE OF REPORT
+                    </th>
+                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                      STATUS
+                    </th>
+                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                      ACTIONS
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {scheduledReports
+                    .filter(report =>
+                      !searchTerm ||
+                      report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      report.createdBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      scheduledReportsApiService.getReportTemplateLabel(report.reportTemplate).toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    .map((report) => (
+                      <tr key={report.id} className="hover:bg-slate-800/30 transition-colors">
+                        <td className="py-4 px-6">
                           <div className="text-sm font-medium text-white">{report.title}</div>
-                        </button>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div>
-                          <div className="text-sm text-white">{report.createdBy}</div>
-                          <div className="text-sm text-gray-400">
-                            {Math.floor((Date.now() - report.createdAt.getTime()) / (1000 * 60 * 60 * 24))} days ago
+                          {report.description && (
+                            <div className="text-xs text-gray-400 mt-1">{report.description}</div>
+                          )}
+                        </td>
+                        <td className="py-4 px-6">
+                          <div>
+                            <div className="text-sm text-white">{report.createdBy}</div>
+                            <div className="text-sm text-gray-400">
+                              {format(report.createdAt, 'MMM dd, yyyy')}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="text-sm text-white">{report.frequency}</span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="text-sm text-white">{report.type}</span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <button 
-                          className="p-1 text-gray-400 hover:text-cyan-400 transition-colors"
-                          onClick={() => handleViewReport({
-                            id: report.id,
-                            name: report.title,
-                            type: report.type === 'Test Run Summary' ? 'execution' : 'project',
-                            dateRange: { start: report.createdAt, end: new Date() },
-                            data: {},
-                            createdAt: report.createdAt,
-                            createdBy: report.createdBy
-                          })}
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-            
-            {mockScheduledReports.filter(report => 
-              !searchTerm || 
-              report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              report.createdBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              report.type.toLowerCase().includes(searchTerm.toLowerCase())
-            ).length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-400 mb-4">
-                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No scheduled reports found</p>
-                  <p className="text-sm">
-                    {searchTerm 
-                      ? `No reports found matching "${searchTerm}".`
-                      : 'No scheduled reports have been created yet.'
-                    }
-                  </p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm text-white">
+                              {scheduledReportsApiService.getFrequencyLabel(report.frequency)}
+                            </span>
+                            {report.dayToSend && (
+                              <span className="text-xs text-gray-400">
+                                on {scheduledReportsApiService.getDayLabel(report.dayToSend)}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="text-sm text-white">
+                            {scheduledReportsApiService.getReportTemplateLabel(report.reportTemplate)}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <select
+                            value={report.isActive !== false ? 'active' : 'inactive'}
+                            onChange={(e) => handleStatusChange(report, e.target.value === 'active')}
+                            className="px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                          </select>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-2">
+                            <button
+                              className="p-2 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded-lg transition-colors"
+                              onClick={() => {
+                                setSelectedScheduledReport(report);
+                                setIsUpdateModalOpen(true);
+                              }}
+                              title="Edit scheduled report"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              className="p-2 text-gray-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
+                              onClick={() => {
+                                setSelectedScheduledReportId(report.id);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                              title="Delete scheduled report"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+
+              {scheduledReports.filter(report =>
+                !searchTerm ||
+                report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                report.createdBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                scheduledReportsApiService.getReportTemplateLabel(report.reportTemplate).toLowerCase().includes(searchTerm.toLowerCase())
+              ).length === 0 && (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 mb-4">
+                    <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium">No scheduled reports found</p>
+                    <p className="text-sm">
+                      {searchTerm
+                        ? `No reports found matching "${searchTerm}".`
+                        : 'No scheduled reports have been created yet.'
+                      }
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </Card>
       </div>
 
@@ -570,24 +623,26 @@ const Reports: React.FC = () => {
         isSubmitting={isSubmitting}
       />
 
+      <UpdateScheduledReportModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => {
+          setIsUpdateModalOpen(false);
+          setSelectedScheduledReport(null);
+        }}
+        onSubmit={handleUpdateScheduledReport}
+        report={selectedScheduledReport}
+        isSubmitting={isSubmitting}
+      />
+
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={async () => {
-          try {
-            setIsSubmitting(true);
-            console.log('Deleting report:', selectedReport?.name);
-            toast.success('Report deleted successfully');
-            setSelectedReport(null);
-          } catch (error) {
-            console.error('Failed to delete report:', error);
-            toast.error('Failed to delete report');
-          } finally {
-            setIsSubmitting(false);
-          }
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          setSelectedScheduledReportId(null);
         }}
-        title="Delete Report"
-        message={`Are you sure you want to delete the report "${selectedReport?.name}"? This action is irreversible.`}
+        onConfirm={handleConfirmDelete}
+        title="Delete Scheduled Report"
+        message="Are you sure you want to delete this scheduled report? This action is irreversible."
         confirmText="Delete"
         variant="danger"
       />

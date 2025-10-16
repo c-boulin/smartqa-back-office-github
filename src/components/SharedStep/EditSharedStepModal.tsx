@@ -220,44 +220,61 @@ const EditSharedStepModal: React.FC<EditSharedStepModalProps> = ({
                       Define the reusable steps that can be shared across multiple test cases
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="md"
-                    icon={Plus}
-                    onClick={addTestStep}
-                    disabled={isSubmitting}
-                    className="px-6 py-3"
-                  >
-                    Add Step
-                  </Button>
+                  {testSteps.length === 0 && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="md"
+                      icon={Plus}
+                      onClick={addTestStep}
+                      disabled={isSubmitting}
+                      className="px-6 py-3"
+                    >
+                      Add Step
+                    </Button>
+                  )}
                 </div>
-                
+
                 <div className="space-y-6">
                   {testSteps.length > 0 ? (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <SortableContext
-                        items={testSteps.map(step => step.id)}
-                        strategy={verticalListSortingStrategy}
+                    <>
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
                       >
-                        <div className="space-y-4">
-                          {testSteps.map((step, index) => (
-                            <DraggableTestStepWithAutoUpload
-                              key={step.id}
-                              step={step}
-                              index={index}
-                              onUpdate={updateTestStep}
-                              onRemove={removeTestStep}
-                              disabled={isSubmitting}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
-                    </DndContext>
+                        <SortableContext
+                          items={testSteps.map(step => step.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-4">
+                            {testSteps.map((step, index) => (
+                              <DraggableTestStepWithAutoUpload
+                                key={step.id}
+                                step={step}
+                                index={index}
+                                onUpdate={updateTestStep}
+                                onRemove={removeTestStep}
+                                disabled={isSubmitting}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                      <div className="flex justify-end mt-4">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="md"
+                          icon={Plus}
+                          onClick={addTestStep}
+                          disabled={isSubmitting}
+                          className="px-6 py-3"
+                        >
+                          Add Step
+                        </Button>
+                      </div>
+                    </>
                   ) : (
                     <div className="text-center py-16 text-gray-400 border-2 border-dashed border-slate-600 rounded-xl">
                       <div className="max-w-md mx-auto">

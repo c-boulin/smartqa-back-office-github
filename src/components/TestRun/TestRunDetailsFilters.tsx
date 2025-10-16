@@ -180,7 +180,19 @@ const TestRunDetailsFilters: React.FC<TestRunDetailsFiltersProps> = ({
           )}
           {filters.result !== 'all' && (
             <span className="inline-flex items-center px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-full text-sm text-yellow-400">
-              Result: {filters.result === 'passed' ? 'Passed' : filters.result === 'failed' ? 'Failed' : filters.result === 'blocked' ? 'Blocked' : filters.result === 'pending' ? 'Pending' : filters.result}
+              Result: {(() => {
+                const resultLabels: Record<string, string> = {
+                  'passed': 'Passed',
+                  'failed': 'Failed',
+                  'blocked': 'Blocked',
+                  'retest': 'Retest',
+                  'skipped': 'Skipped',
+                  'untested': 'Untested',
+                  'in_progress': 'In Progress',
+                  'unknown': 'Unknown'
+                };
+                return resultLabels[filters.result] || filters.result;
+              })()}
               <button
                 onClick={() => onClearIndividualFilter('result')}
                 className="ml-2 text-yellow-400 hover:text-yellow-300 transition-colors"

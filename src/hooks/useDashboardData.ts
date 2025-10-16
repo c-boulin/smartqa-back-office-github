@@ -941,10 +941,10 @@ export function generateClosedTestRunsLineData(closedTestRuns: any[]): Array<{
   value: number;
 }> {
   console.log('📊 generateClosedTestRunsLineData called with:', closedTestRuns.length, 'closed test runs');
-  
-  // Create a map to count test runs by month-year
-  const monthCounts = new Map<string, number>();
-  
+
+  // Create a map to count test runs by specific date
+  const dateCounts = new Map<string, number>();
+
   // Process each closed test run
   closedTestRuns.forEach(testRun => {
     console.log('📊 Processing closed test run:', {
@@ -953,49 +953,49 @@ export function generateClosedTestRunsLineData(closedTestRuns: any[]): Array<{
       closedAt: testRun.closedAt,
       closedDate: testRun.closedDate
     });
-    
+
     // Use closedAt first, fallback to closedDate
     const closedDate = testRun.closedAt || testRun.closedDate;
-    
+
     if (closedDate) {
-      // Format as MM-YY (e.g., "08-25" for August 2025)
+      // Format as MM-DD (e.g., "08-15" for August 15th)
       const month = String(closedDate.getMonth() + 1).padStart(2, '0'); // getMonth() returns 0-11
-      const year = String(closedDate.getFullYear()).slice(-2); // Get last 2 digits of year
-      const monthKey = `${month}-${year}`;
-      
+      const day = String(closedDate.getDate()).padStart(2, '0');
+      const dateKey = `${month}-${day}`;
+
       console.log(`📊 Test run "${testRun.name}" closed at:`, closedDate);
-      console.log(`📊 Formatted month key: ${monthKey}`);
-      
-      // Increment count for this month
-      const currentCount = monthCounts.get(monthKey) || 0;
-      monthCounts.set(monthKey, currentCount + 1);
-      
-      console.log(`📊 Updated count for ${monthKey}: ${currentCount + 1}`);
+      console.log(`📊 Formatted date key: ${dateKey}`);
+
+      // Increment count for this date
+      const currentCount = dateCounts.get(dateKey) || 0;
+      dateCounts.set(dateKey, currentCount + 1);
+
+      console.log(`📊 Updated count for ${dateKey}: ${currentCount + 1}`);
     } else {
       console.warn('📊 Test run has no closedAt or closedDate:', testRun.name);
     }
   });
-  
-  // Convert to array and sort by month-year
-  const sortedMonths = Array.from(monthCounts.entries())
+
+  // Convert to array and sort by date
+  const sortedDates = Array.from(dateCounts.entries())
     .sort(([a], [b]) => {
-      // Sort by year first, then by month
-      const [monthA, yearA] = a.split('-');
-      const [monthB, yearB] = b.split('-');
-      
-      if (yearA !== yearB) {
-        return parseInt(yearA) - parseInt(yearB);
+      // Sort by month first, then by day
+      const [monthA, dayA] = a.split('-').map(n => parseInt(n));
+      const [monthB, dayB] = b.split('-').map(n => parseInt(n));
+
+      if (monthA !== monthB) {
+        return monthA - monthB;
       }
-      return parseInt(monthA) - parseInt(monthB);
+      return dayA - dayB;
     })
-    .map(([monthKey, count]) => ({
-      month: monthKey,
+    .map(([dateKey, count]) => ({
+      month: dateKey,
       value: count
     }));
-  
-  console.log('📊 Final sorted line chart data:', sortedMonths);
-  
-  return sortedMonths;
+
+  console.log('📊 Final sorted line chart data (by date):', sortedDates);
+
+  return sortedDates;
 }
 
 // Seeded random number generator for consistent results

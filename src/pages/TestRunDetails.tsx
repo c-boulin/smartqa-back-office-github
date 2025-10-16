@@ -34,12 +34,29 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
   const [comment, setComment] = useState('');
   const [isCommentExpanded, setIsCommentExpanded] = useState(false);
   const [selectedResult, setSelectedResult] = useState<TestResultId>(value);
+  const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
   const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
   const currentResultLabel = TEST_RESULTS[value];
 
   const handleToggle = () => {
     if (!disabled && !isUpdating) {
       setIsOpen(!isOpen);
+
+      // Calculate position when opening
+      if (!isOpen && buttonRef.current) {
+        const buttonRect = buttonRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - buttonRect.bottom;
+        const modalHeight = 400; // Approximate height of the modal
+
+        // If there's not enough space below, show above
+        if (spaceBelow < modalHeight && buttonRect.top > modalHeight) {
+          setDropdownPosition('top');
+        } else {
+          setDropdownPosition('bottom');
+        }
+      }
     }
   };
 
@@ -107,6 +124,29 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
     setSelectedResult(value);
   }, [value]);
 
+  // Recalculate position on scroll
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleScroll = () => {
+      if (buttonRef.current) {
+        const buttonRect = buttonRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - buttonRect.bottom;
+        const modalHeight = 400;
+
+        if (spaceBelow < modalHeight && buttonRect.top > modalHeight) {
+          setDropdownPosition('top');
+        } else {
+          setDropdownPosition('bottom');
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [isOpen]);
+
   return (
     <div className="relative">
       <button
@@ -133,12 +173,15 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
 
       {isOpen && !disabled && !isUpdating && (
         <>
-          <div 
-            className="fixed inset-0 z-[100]" 
+          <div
+            className="fixed inset-0 z-[100]"
             onClick={() => setIsOpen(false)}
           />
-          <div 
-            className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96"
+          <div
+            ref={dropdownRef}
+            className={`absolute left-0 right-0 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96 ${
+              dropdownPosition === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
+            }`}
           >
             <div className="p-3 border-b border-slate-600">
               <h4 className="text-sm font-medium text-white mb-3">Select Result</h4>
@@ -574,7 +617,10 @@ const TestRunDetails: React.FC = () => {
     // Apply type filter
     if (criteria.type) {
       filtered = filtered.filter(testCase => {
-        return testCase.type.toLowerCase() === criteria.type?.toLowerCase();
+        // criteria.type is a numeric ID string like "1", "6", etc.
+        // testCase.fullTestCase?.typeId is the numeric ID
+        const typeIdString = testCase.fullTestCase?.typeId?.toString();
+        return typeIdString === criteria.type;
       });
     }
 
@@ -591,9 +637,24 @@ const TestRunDetails: React.FC = () => {
 
     // Apply result filter
     if (criteria.result) {
-      filtered = filtered.filter(testCase => {
-        return testCase.executionStatus === criteria.result;
-      });
+      // Map string values from filter to TestResultId numbers
+      const resultMap: Record<string, TestResultId> = {
+        'passed': 1,
+        'failed': 2,
+        'blocked': 3,
+        'retest': 4,
+        'skipped': 5,
+        'untested': 6,
+        'in_progress': 7,
+        'unknown': 8
+      };
+
+      const targetResultId = resultMap[criteria.result.toLowerCase()];
+      if (targetResultId) {
+        filtered = filtered.filter(testCase => {
+          return testCase.executionStatus === targetResultId;
+        });
+      }
     }
 
     // Apply tags filter

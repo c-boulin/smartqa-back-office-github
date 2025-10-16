@@ -4,9 +4,11 @@ import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import MultiSelectDropdown from '../UI/MultiSelectDropdown';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { useUsers } from '../../context/UsersContext';
 import { testRunsApiService } from '../../services/testRunsApi';
 import { fetchTestCasesForReport } from '../../services/reportsDataService';
+import { buildScheduledReportPayload } from '../../services/scheduledReportPayloadBuilder';
 import { STATES, PRIORITIES, TEST_CASE_TYPES, AUTOMATION_STATUS } from '../../constants/testCaseConstants';
 import { TEST_RESULTS } from '../../types';
 import toast from 'react-hot-toast';
@@ -47,13 +49,24 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
   isSubmitting
 }) => {
   const { getSelectedProject, state } = useApp();
+  const { state: authState } = useAuth();
   const { users } = useUsers();
   const selectedProject = getSelectedProject();
+
+  // Helper function to generate default title
+  const generateDefaultTitle = (reportType: string) => {
+    const today = new Date();
+    const day = today.getDate().toString().padStart(2, '0');
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const year = today.getFullYear().toString().slice(-2);
+    const dateStr = `${day}/${month}/${year}`;
+    return `${reportType} ${dateStr}`;
+  };
 
   const [formData, setFormData] = useState({
     project: '',
     reportType: 'Test Run Summary',
-    title: 'Test Run Summary',
+    title: generateDefaultTitle('Test Run Summary'),
     description: '',
     testRunSelection: 'creation_time' as 'creation_time' | 'specific_test_run',
     includeTestRuns: 'Last 24 hours',
@@ -61,7 +74,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
     scheduleReports: false,
     frequency: 'daily' as 'daily' | 'weekly',
     dayOfWeek: 'monday',
-    time: '0:00',
+    time: '05:00',
     timezone: 'UTC',
     format: 'pdf' as 'pdf' | 'csv',
     recipients: [] as string[],
@@ -88,7 +101,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
       setFormData({
         project: selectedProject?.id || '',
         reportType: 'Test Run Summary',
-        title: 'Test Run Summary',
+        title: generateDefaultTitle('Test Run Summary'),
         description: '',
         testRunSelection: 'creation_time',
         includeTestRuns: 'Last 24 hours',
@@ -96,7 +109,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
         scheduleReports: false,
         frequency: 'daily',
         dayOfWeek: 'monday',
-        time: '0:00',
+        time: '05:00',
         timezone: 'UTC',
         format: 'pdf',
         recipients: [],
@@ -153,7 +166,16 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
   }, [formData.project, formData.testRunSelection]);
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'reportType') {
+      // Update both reportType and title when reportType changes
+      setFormData(prev => ({
+        ...prev,
+        reportType: value,
+        title: generateDefaultTitle(value)
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -164,8 +186,32 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
       return;
     }
 
-    // Fetch report data using the new API endpoint
+    // Validate recipients if scheduling is enabled
+    if (formData.scheduleReports && formData.recipients.length === 0) {
+      toast.error('Please add at least one recipient for scheduled reports');
+      return;
+    }
+
     try {
+      // If this is a scheduled report, build the API payload
+      if (formData.scheduleReports) {
+        if (!authState.user) {
+          toast.error('User not authenticated');
+          return;
+        }
+
+        const payload = buildScheduledReportPayload(formData, users, authState.user.id);
+
+        console.log('📊 Scheduled report payload:', payload);
+
+        await onSubmit({
+          ...formData,
+          scheduledReportPayload: payload
+        });
+        return;
+      }
+
+      // Fetch report data using the new API endpoint
       // Add test run creation date to filters if using creation_time mode
       const filtersWithTestRunDate = {
         ...formData.filters,
@@ -636,7 +682,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                 onClick={() => setShowDescription(!showDescription)}
                 className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
               >
-                {showDescription ? '− Remove Description' : '+ Add Description'}
+                {showDescription ? '− Hide Description' : '+ Add Description'}
               </button>
             </div>
 
@@ -761,31 +807,6 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                       </select>
                     </div>
                   )}
-
-                  {/* Time */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">
-                      {formData.frequency === 'daily' ? 'Everyday at:' : 'At:'}
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <select
-                        value={formData.time}
-                        onChange={(e) => handleInputChange('time', e.target.value)}
-                        className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                        disabled={isSubmitting}
-                      >
-                        {Array.from({ length: 24 }, (_, i) => {
-                          const hour = i.toString().padStart(2, '0');
-                          return (
-                            <option key={i} value={`${hour}:00`}>
-                              {hour}:00 hrs
-                            </option>
-                          );
-                        })}
-                      </select>
-                      <span className="text-gray-400">{formData.timezone}</span>
-                    </div>
-                  </div>
                 </div>
               )}
             </div>

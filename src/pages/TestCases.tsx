@@ -118,9 +118,6 @@ const TestCases: React.FC = () => {
   }, [searchTestCases, showFolderTestCases, setCurrentFilterMode, hasActiveFilters]);
 
   const applyFilters = useCallback(async () => {
-    setCurrentSearchTerm('');
-    setSearchTerm('');
-    
     if (!hasActiveFilters()) {
       setCurrentFilterMode('folder');
       showFolderTestCases();
