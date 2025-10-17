@@ -17,7 +17,16 @@ export interface SignedUrlResponse {
 }
 
 class AttachmentUploadService {
-  private readonly CLOUDFRONT_DOMAIN = 'https://asset.smartqa.dve-dev.com';
+  private readonly CLOUDFRONT_DOMAIN: string;
+
+  constructor() {
+    const domain = import.meta.env.VITE_ASSETS_CLOUDFRONT_DOMAIN;
+    if (!domain || typeof domain !== 'string' || domain.trim() === '') {
+      console.error('VITE_ASSETS_CLOUDFRONT_DOMAIN is not defined or is empty. Please set it in your environment.');
+      throw new Error('VITE_ASSETS_CLOUDFRONT_DOMAIN is not configured. Please check your environment variables.');
+    }
+    this.CLOUDFRONT_DOMAIN = domain;
+  }
 
   /**
    * Generate a unique file name to prevent conflicts
@@ -35,7 +44,7 @@ class AttachmentUploadService {
    * Create S3 key for attachment
    */
   createAttachmentKey(uniqueFileName: string): string {
-    return `assets/attachments/${uniqueFileName}`;
+    return `attachments/${uniqueFileName}`;
   }
 
   /**

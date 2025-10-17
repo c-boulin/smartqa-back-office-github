@@ -10,7 +10,16 @@ export interface ImageProcessingResult {
 export type UploadFieldType = 'description' | 'precondition' | 'step' | 'expected_result';
 
 class ImageProcessingService {
-  private readonly cloudFrontBaseUrl = 'https://asset.smartqa.dve-dev.com';
+  private readonly cloudFrontBaseUrl: string;
+
+  constructor() {
+    const domain = import.meta.env.VITE_ASSETS_CLOUDFRONT_DOMAIN;
+    if (!domain || typeof domain !== 'string' || domain.trim() === '') {
+      console.error('VITE_ASSETS_CLOUDFRONT_DOMAIN is not defined or is empty. Please set it in your environment.');
+      throw new Error('VITE_ASSETS_CLOUDFRONT_DOMAIN is not configured. Please check your environment variables.');
+    }
+    this.cloudFrontBaseUrl = domain;
+  }
 
   /**
    * Process an image file when uploaded
@@ -25,7 +34,7 @@ class ImageProcessingService {
       const randomString = Math.random().toString(36).substring(2, 15);
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const uniqueName = `${timestamp}_${randomString}.${fileExtension}`;
-      const key = `assets/${fieldName}/${uniqueName}`;
+      const key = `${fieldName}/${uniqueName}`;
 
       console.log('🖼️ Generated key:', key);
 

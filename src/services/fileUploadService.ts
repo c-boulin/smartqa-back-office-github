@@ -15,7 +15,16 @@ export interface SignedUrlResponse {
 export type UploadFieldType = 'description' | 'precondition' | 'step' | 'expected_result';
 
 class FileUploadService {
-  private readonly CLOUDFRONT_DOMAIN = 'https://asset.smartqa.dve-dev.com';
+  private readonly CLOUDFRONT_DOMAIN: string;
+
+  constructor() {
+    const domain = import.meta.env.VITE_ASSETS_CLOUDFRONT_DOMAIN;
+    if (!domain || typeof domain !== 'string' || domain.trim() === '') {
+      console.error('VITE_ASSETS_CLOUDFRONT_DOMAIN is not defined or is empty. Please set it in your environment.');
+      throw new Error('VITE_ASSETS_CLOUDFRONT_DOMAIN is not configured. Please check your environment variables.');
+    }
+    this.CLOUDFRONT_DOMAIN = domain;
+  }
 
   /**
    * Generate a unique file name to prevent conflicts
@@ -31,7 +40,7 @@ class FileUploadService {
    * Create S3 key based on field and unique file name
    */
   createS3Key(fieldName: UploadFieldType, uniqueFileName: string): string {
-    return `assets/${fieldName}/${uniqueFileName}`;
+    return `${fieldName}/${uniqueFileName}`;
   }
 
   /**

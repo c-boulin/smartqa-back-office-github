@@ -121,13 +121,13 @@ const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 overflow-hidden">
       {isDragInProgress && (
         <div className="text-xs text-cyan-400 px-3 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg mb-2">
           💡 Drop test case on any folder to move it
         </div>
       )}
-      
+
       {folders.map((folder) => (
         <DroppableFolderNode
           key={folder.id}

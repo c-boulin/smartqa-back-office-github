@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Folder, ChevronRight, ChevronDown, FolderOpen, SquarePen, Trash2, MoreHorizontal } from 'lucide-react';
 import { Folder as FolderType } from '../../services/foldersApi';
+import Tooltip from '../UI/Tooltip';
 
 interface DroppableFolderNodeProps {
   folder: FolderType;
@@ -150,21 +151,22 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
 
   return (
     <div className="relative">
-      <div className="flex items-center">
-        <div
-          className={`flex items-center py-2 px-3 cursor-pointer transition-colors rounded-lg flex-1 ${
-            isSelected
-              ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/30'
-              : isDragOver && isDragInProgress
-              ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400 border border-green-500/50 border-dashed'
-              : 'text-gray-300 hover:text-cyan-400 hover:bg-slate-800/50'
-          }`}
-          style={{ paddingLeft: `${12 + level * 16}px` }}
-          onClick={handleSelect}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
+      <div className="flex items-center min-w-0 gap-1">
+        <Tooltip content={folder.description ? `${folder.name}\n─────\n${folder.description}` : folder.name}>
+          <div
+            className={`flex items-center py-2 px-3 cursor-pointer transition-colors rounded-lg flex-1 min-w-0 max-w-[calc(100%-32px)] ${
+              isSelected
+                ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/30'
+                : isDragOver && isDragInProgress
+                ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400 border border-green-500/50 border-dashed'
+                : 'text-gray-300 hover:text-cyan-400 hover:bg-slate-800/50'
+            }`}
+            style={{ paddingLeft: `${12 + level * 16}px` }}
+            onClick={handleSelect}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
           {hasChildren ? (
             <button
               onClick={handleToggle}
@@ -181,43 +183,44 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
             <div className="w-4 h-4 mr-2" />
           )}
           
-          <div className="flex items-center flex-1 min-w-0">
+          <div className="flex items-center flex-1 min-w-0 overflow-hidden">
             {hasChildren ? (
               <FolderOpen className="w-4 h-4 mr-2 flex-shrink-0" />
             ) : (
               <Folder className="w-4 h-4 mr-2 flex-shrink-0" />
             )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="truncate text-sm font-medium pr-2">{folder.name}</span>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-sm font-medium max-w-[140px]">{folder.name}</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${
-                  testCasesCount > 0 
-                    ? 'text-cyan-400 bg-cyan-500/20 border border-cyan-500/30' 
+                  testCasesCount > 0
+                    ? 'text-cyan-400 bg-cyan-500/20 border border-cyan-500/30'
                     : 'text-gray-500 bg-slate-700/50 border border-slate-600'
                 }`}>
                   {testCasesCount}
                 </span>
               </div>
               {isSelected && folder.description && (
-                <div className="text-xs text-gray-400 mt-1 truncate">
+                <div className="text-xs text-gray-400 mt-1 truncate overflow-hidden">
                   {folder.description}
                 </div>
               )}
               {isDragOver && isDragInProgress && (
-                <div className="text-xs text-green-400 mt-1">
+                <div className="text-xs text-green-400 mt-1 truncate overflow-hidden">
                   Drop test case here
                 </div>
               )}
             </div>
           </div>
-        </div>
-        
+          </div>
+        </Tooltip>
+
         {/* Three-dots button - outside the folder box */}
         {(onEditFolder || onDeleteFolder) && (
-          <div className="relative ml-1">
+          <div className="relative flex-shrink-0">
             <button
               onClick={handleThreeDotsClick}
-              className="p-1 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded transition-colors"
+              className="p-1 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded transition-colors flex-shrink-0"
               title="Folder actions"
             >
               <MoreHorizontal className="w-4 h-4" />
