@@ -11,8 +11,8 @@
     "preview": "vite preview"
   },
   "repository": {
-        "type": "git",
-        "url": "git@gitlab-ssh.dvtech.io:qaautomation/services/back-office.git"
+    "type": "git",
+    "url": "git@gitlab-ssh.dvtech.io:qaautomation/services/back-office.git"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
