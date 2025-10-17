@@ -1,3 +1,9 @@
+## [1.1.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.0.0...1.1.0) (2025-10-17)
+
+### Features
+
+* enhance folder tree UI with tooltips and improve environment configuration ([10a7774](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/10a77747636a1f26e956c64dc27f754dc0edb0a4))
+
 ## 1.0.0 (2025-10-17)
 
 ### Features
