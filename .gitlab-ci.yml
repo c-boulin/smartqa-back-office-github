@@ -111,6 +111,7 @@ deploy:production:
 
 ####### POST ACTION JOBS (RELEASE, UPDATE DOCS) #######
 release-version:
+  image: gitlab-registry.dvtech.io/packages/docker/php-sls-builder:84-composer2-node24
   stage: post-action
   cache:
     key: ${CI_COMMIT_REF_SLUG}
