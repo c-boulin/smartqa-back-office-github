@@ -1,3 +1,9 @@
+## [1.1.1](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.1.0...1.1.1) (2025-10-21)
+
+### Bug Fixes
+
+* update z-index for modal component to ensure proper layering ([580d4ad](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/580d4ad0dbc9a6fc566ec1020fc184ecf28bd031))
+
 ## [1.1.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.0.0...1.1.0) (2025-10-17)
 
 ### Features
