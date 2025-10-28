@@ -28,7 +28,7 @@ export interface ApiProject {
       data: { type: string; id: string };
     };
     destroyer: {
-      data: any[];
+      data: Array<{ id: string; type: string }>;
     };
   };
 }

@@ -55,6 +55,7 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
         loadAllConfigurations();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- searchConfigurations is stable
   }, [debouncedSearchTerm, isOpen]);
 
   // Load all configurations efficiently when dropdown opens

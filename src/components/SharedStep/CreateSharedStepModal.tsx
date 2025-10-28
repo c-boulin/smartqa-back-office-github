@@ -28,7 +28,7 @@ interface TestStep {
 interface CreateSharedStepModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: Record<string, unknown>) => Promise<void>;
   isSubmitting: boolean;
 }
 
@@ -64,7 +64,7 @@ const CreateSharedStepModal: React.FC<CreateSharedStepModalProps> = ({
     }
   }, [isOpen]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 

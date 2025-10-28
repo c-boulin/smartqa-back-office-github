@@ -1,5 +1,5 @@
 import { apiService } from './api';
-import { testCasesApiService } from './testCasesApi';
+// import { testCasesApiService } from './testCasesApi';
 
 export interface ApiFolder {
   id: string;
@@ -47,7 +47,7 @@ export interface FoldersApiResponse {
     currentPage: number;
   };
   data: ApiFolder[];
-  included?: any[];
+  included?: Array<Record<string, unknown>>;
 }
 
 export interface CreateFolderRequest {

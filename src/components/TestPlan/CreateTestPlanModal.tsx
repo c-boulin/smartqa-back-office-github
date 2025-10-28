@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Loader, Calendar, User, FolderOpen, Clock, Sparkles, X } from 'lucide-react';
+import { Loader, Calendar, User, Sparkles, X } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import DatePicker from '../UI/DatePicker';
 import { useUsers } from '../../context/UsersContext';
-import { useApp } from '../../context/AppContext';
 import { formatDateForAPI, parseDateFromInput, validateDateRange, getTodayForInput } from '../../utils/dateHelpers';
 
 interface CreateTestPlanModalProps {
@@ -25,9 +24,7 @@ const CreateTestPlanModal: React.FC<CreateTestPlanModalProps> = ({
   onSubmit,
   isSubmitting
 }) => {
-  const { getSelectedProject } = useApp();
   const { users, loading: usersLoading } = useUsers();
-  const selectedProject = getSelectedProject();
   const [formData, setFormData] = useState({
     title: '',
     assignedTo: '',
@@ -58,7 +55,7 @@ const CreateTestPlanModal: React.FC<CreateTestPlanModalProps> = ({
     }
   }, [isOpen]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number | Date) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear date error when dates change

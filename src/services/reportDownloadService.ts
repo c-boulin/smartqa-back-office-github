@@ -4,6 +4,17 @@ import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Cart
 import { createRoot } from 'react-dom/client';
 import React from 'react';
 
+interface ChartDataPoint {
+  [key: string]: string | number;
+}
+
+interface ReportData {
+  testCasesIncluded?: Array<Record<string, unknown>>;
+  testRuns?: Array<Record<string, unknown>>;
+  assigneeResults?: Array<{ name: string; count: number }>;
+  [key: string]: unknown;
+}
+
 class ReportDownloadService {
   /**
    * Wait for all elements to be fully rendered
@@ -22,7 +33,7 @@ class ReportDownloadService {
   /**
    * Generate a chart as canvas element
    */
-  private async generateChartCanvas(chartData: any[], chartType: 'pie' | 'bar' | 'line', title: string): Promise<HTMLCanvasElement> {
+  private async generateChartCanvas(chartData: ChartDataPoint[], chartType: 'pie' | 'bar' | 'line'): Promise<HTMLCanvasElement> {
     return new Promise((resolve, reject) => {
       try {
         // Create a temporary container
@@ -227,7 +238,7 @@ class ReportDownloadService {
    */
   private async addChartToPDF(
     pdf: jsPDF,
-    chartData: any[],
+    chartData: ChartDataPoint[],
     chartType: 'pie' | 'bar',
     title: string,
     x: number,
@@ -268,7 +279,7 @@ class ReportDownloadService {
       
       // Add legend for pie charts
       if (chartType === 'pie') {
-        let legendY = y + height + 10;
+        const legendY = y + height + 10;
         chartData.forEach((item, index) => {
           pdf.setFontSize(10);
           pdf.setTextColor(31, 41, 59);
@@ -459,12 +470,12 @@ class ReportDownloadService {
    * Internal method to create the Enhanced Visual Summary Report PDF object
    * This is the shared implementation used by both download and email methods
    */
-  private async createEnhancedVisualSummaryReportPDF(projectName: string, userName: string, reportData: any): Promise<jsPDF> {
+  private async createEnhancedVisualSummaryReportPDF(projectName: string, userName: string, reportData: ReportData): Promise<jsPDF> {
     console.log('📄 Creating enhanced PDF matching page layout');
 
     const pdf = new jsPDF('p', 'mm', 'a4');
       let currentY = 15;
-      const pageWidth = 210;
+      // const pageWidth = 210;
       const margin = 12;
       const contentWidth = pageWidth - (margin * 2);
 
@@ -600,7 +611,7 @@ class ReportDownloadService {
           pdf.text('Total', centerX, centerY + 4, { align: 'center' });
 
           // Legend
-          let legendY = currentY + 22;
+          const legendY = currentY + 22;
           pieData.forEach((item, index) => {
             const legendX = margin + 46;
             const rgb = [
@@ -686,9 +697,9 @@ class ReportDownloadService {
 
       if (reportData.assigneeResults && reportData.assigneeResults.length > 0) {
         let assigneeY = currentY + 14;
-        const maxCount = Math.max(...reportData.assigneeResults.map((r: any) => r.count));
+        const maxCount = Math.max(...reportData.assigneeResults.map((r) => r.count));
 
-        reportData.assigneeResults.slice(0, 5).forEach((result: any, index: number) => {
+        reportData.assigneeResults.slice(0, 5).forEach((result, index: number) => {
           pdf.setFontSize(7);
           pdf.setTextColor(55, 65, 81);
           const nameText = `${index + 1}. ${result.assignee}`;
@@ -782,7 +793,7 @@ class ReportDownloadService {
   /**
    * Generate Enhanced Visual Summary Report PDF and download it
    */
-  async generateEnhancedVisualSummaryReportPDF(projectName: string, userName: string, reportData: any): Promise<void> {
+  async generateEnhancedVisualSummaryReportPDF(projectName: string, userName: string, reportData: ReportData): Promise<void> {
     try {
       const pdf = await this.createEnhancedVisualSummaryReportPDF(projectName, userName, reportData);
 
@@ -799,7 +810,7 @@ class ReportDownloadService {
    * Internal method to create the Detailed Report PDF object
    * This is the shared implementation used by both download and email methods
    */
-  private async createDetailedReportPDF(reportData: any, projectName: string, userName: string): Promise<jsPDF> {
+  private async createDetailedReportPDF(reportData: ReportData, projectName: string, userName: string): Promise<jsPDF> {
     console.log('📄 Creating Test Run Detailed Report PDF');
 
     const pdf = new jsPDF('p', 'mm', 'a4');
@@ -851,12 +862,12 @@ class ReportDownloadService {
         const data = reportData.performanceData;
 
         // Calculate total values (passed + failed + other) for each data point
-        const dataWithTotals = data.map((d: any) => ({
+        const dataWithTotals = data.map((d: ChartDataPoint) => ({
           ...d,
-          total: (d.passed ?? 0) + (d.failed ?? 0) + (d.other ?? 0)
+          total: ((d.passed as number) ?? 0) + ((d.failed as number) ?? 0) + ((d.other as number) ?? 0)
         }));
 
-        const maxValue = Math.max(...dataWithTotals.map((d: any) => d.total), 1);
+        const maxValue = Math.max(...dataWithTotals.map((d) => d.total), 1);
         const pointSpacing = data.length > 1 ? chartW / (data.length - 1) : 0;
 
         // Draw Y-axis labels
@@ -881,9 +892,9 @@ class ReportDownloadService {
         if (data.length > 1) {
           // Calculate cumulative values for stacking (bottom to top: passed, failed, other)
           const baselineValues = new Array(data.length).fill(0);
-          const passedValues = dataWithTotals.map((d: any) => d.passed ?? 0);
-          const failedValues = dataWithTotals.map((d: any, i: number) => passedValues[i] + (d.failed ?? 0));
-          const totalValues = dataWithTotals.map((d: any) => d.total);
+          const passedValues = dataWithTotals.map((d) => (d.passed as number) ?? 0);
+          const failedValues = dataWithTotals.map((d, i: number) => passedValues[i] + ((d.failed as number) ?? 0));
+          const totalValues = dataWithTotals.map((d) => d.total);
 
           // Helper function to create smooth curved path using monotone cubic interpolation
           const drawSmoothFilledArea = (lowerValues: number[], upperValues: number[], fillR: number, fillG: number, fillB: number, strokeR: number, strokeG: number, strokeB: number) => {
@@ -1026,7 +1037,7 @@ class ReportDownloadService {
         const maxLabels = Math.floor(chartW / minLabelSpacing);
         const labelInterval = Math.max(1, Math.ceil(data.length / maxLabels));
 
-        data.forEach((point: any, index: number) => {
+        data.forEach((point: ChartDataPoint, index: number) => {
           const x = data.length > 1 ? chartX + (index * pointSpacing) : chartX + chartW / 2;
 
           // Only draw label if x is valid, we have a date, and it's at the right interval
@@ -1126,7 +1137,7 @@ class ReportDownloadService {
       const rowHeight = 12;
       const testCases = reportData.testCasesIncluded.slice(0, maxRows);
 
-      testCases.forEach((tc: any, index: number) => {
+      testCases.forEach((tc: Record<string, unknown>, index: number) => {
         if (currentY + rowHeight > 280) {
           pdf.addPage();
           currentY = 20;
@@ -1206,7 +1217,7 @@ class ReportDownloadService {
   /**
    * Generate Detailed Report PDF and download it
    */
-  async generateDetailedReportPDF(reportData: any, projectName: string, userName: string): Promise<void> {
+  async generateDetailedReportPDF(reportData: ReportData, projectName: string, userName: string): Promise<void> {
     try {
       const pdf = await this.createDetailedReportPDF(reportData, projectName, userName);
 
@@ -1231,7 +1242,7 @@ class ReportDownloadService {
       
       const pdf = new jsPDF('p', 'mm', 'a4');
       let currentY = 20;
-      const pageWidth = 210; // A4 width in mm
+      // const pageWidth = 210; // A4 width in mm
       const contentWidth = 160; // Reduced content width for better margins
 
       // Header with better styling for PDF
@@ -1817,7 +1828,7 @@ class ReportDownloadService {
    * Generate Summary Report PDF as Blob (for email attachment)
    * Uses the EXACT same implementation as the download version
    */
-  async generateSummaryReportPDFBlob(projectName: string, userName: string, reportData: any): Promise<Blob> {
+  async generateSummaryReportPDFBlob(projectName: string, userName: string, reportData: ReportData): Promise<Blob> {
     try {
       console.log('📄 Generating enhanced PDF blob for email attachment');
       const pdf = await this.createEnhancedVisualSummaryReportPDF(projectName, userName, reportData);
@@ -1832,7 +1843,7 @@ class ReportDownloadService {
    * Generate Detailed Report PDF as Blob (for email attachment)
    * Uses the EXACT same implementation as the download version
    */
-  async generateDetailedReportPDFBlob(reportData: any, projectName: string, userName: string): Promise<Blob> {
+  async generateDetailedReportPDFBlob(reportData: ReportData, projectName: string, userName: string): Promise<Blob> {
     try {
       console.log('📄 Generating Test Run Detailed Report PDF blob for email attachment');
       const pdf = await this.createDetailedReportPDF(reportData, projectName, userName);

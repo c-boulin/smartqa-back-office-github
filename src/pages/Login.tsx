@@ -23,6 +23,7 @@ const Login: React.FC = () => {
 
     // Initialize SSO
     initializeSSO();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initializeSSO should only run on mount
   }, [state.isAuthenticated, navigate]);
 
   const initializeSSO = async () => {
@@ -91,39 +92,35 @@ const Login: React.FC = () => {
 
           console.log('🔐 Starting SSO login process with token...');
           
-          // Create a promise that will resolve when the API call is complete
-          const loginPromise = new Promise(async (resolve, reject) => {
-            try {
-              // Call the SSO login endpoint with explicit timeout
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-              
-              const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/sso/login`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ sesame_token }),
-                signal: controller.signal
-              });
-              
-              clearTimeout(timeoutId);
-              
-              if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-              }
-              
-              const data = await response.json();
-              console.log('✅ SSO login API response received successfully');
-              
-              resolve(data);
-            } catch (err) {
-              reject(err);
+          // Perform the SSO login API call
+          const performLogin = async () => {
+            // Call the SSO login endpoint with explicit timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+            
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/sso/login`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ sesame_token }),
+              signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-          });
+            
+            const data = await response.json();
+            console.log('✅ SSO login API response received successfully');
+            
+            return data;
+          };
           
           // Wait for the login API call to complete
-          const response = await loginPromise;
+          const response = await performLogin();
           
           // Extract user data and token
           const userData = {

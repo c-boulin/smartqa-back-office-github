@@ -12,7 +12,7 @@ interface TestRunsFiltersSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   filters: FiltersState;
-  onFilterChange: (filterType: keyof FiltersState, value: any) => void;
+  onFilterChange: (filterType: keyof FiltersState, value: string) => void;
   onApplyFilters: () => void;
   onClearAllFilters: () => void;
   availableUsers: User[];

@@ -7,7 +7,7 @@ import { ScheduledReport } from '../../services/scheduledReportsApi';
 import { useApp } from '../../context/AppContext';
 import { useUsers } from '../../context/UsersContext';
 import { testRunsApiService } from '../../services/testRunsApi';
-import { STATES, PRIORITIES, TEST_CASE_TYPES, AUTOMATION_STATUS } from '../../constants/testCaseConstants';
+import { PRIORITIES, TEST_CASE_TYPES, AUTOMATION_STATUS } from '../../constants/testCaseConstants';
 import { TEST_RESULTS } from '../../types';
 
 interface UpdateScheduledReportModalProps {
@@ -152,7 +152,7 @@ const UpdateScheduledReportModal: React.FC<UpdateScheduledReportModalProps> = ({
     fetchTestRuns();
   }, [report?.projectId, formData.testRunSelection]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number | Date | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 

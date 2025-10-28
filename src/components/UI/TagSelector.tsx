@@ -6,7 +6,7 @@ interface TagSelectorProps {
   availableTags: Tag[];
   selectedTags: Tag[];
   onTagsChange: (tags: Tag[]) => void;
-  onCreateTag: (label: string) => Promise<Tag>;
+  // onCreateTag: (label: string) => Promise<Tag>;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -15,13 +15,12 @@ const TagSelector: React.FC<TagSelectorProps> = ({
   availableTags,
   selectedTags,
   onTagsChange,
-  onCreateTag,
   disabled = false,
   placeholder = 'Search or create tags...'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
+  // const [isCreating, setIsCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -44,22 +43,6 @@ const TagSelector: React.FC<TagSelectorProps> = ({
 
   const handleTagRemove = (tagToRemove: Tag) => {
     onTagsChange(selectedTags.filter(tag => tag.id !== tagToRemove.id));
-  };
-
-  const handleCreateTag = async () => {
-    if (!canCreateNew || isCreating) return;
-
-    try {
-      setIsCreating(true);
-      const newTag = await onCreateTag(searchTerm.trim());
-      onTagsChange([...selectedTags, newTag]);
-      setSearchTerm('');
-      setIsOpen(false);
-    } catch (error) {
-      console.error('Failed to create tag:', error);
-    } finally {
-      setIsCreating(false);
-    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

@@ -13,7 +13,7 @@ interface Report {
     start: Date;
     end: Date;
   };
-  data: any;
+  data: Record<string, unknown>;
   createdAt: Date;
   createdBy: string;
 }

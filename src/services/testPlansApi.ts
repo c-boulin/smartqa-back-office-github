@@ -85,7 +85,7 @@ export interface TestPlansApiResponse {
     currentPage: number;
   };
   data: ApiTestPlan[];
-  included?: any[];
+  included?: Array<Record<string, unknown>>;
 }
 
 export interface CreateTestPlanRequest {
@@ -120,7 +120,7 @@ export interface UpdateTestPlanRequest {
         data: { type: string; id: string };
       };
       test_runs: {
-        data: any[];
+        data: Array<{ id: string; type: string }>;
       };
     };
   };
@@ -224,7 +224,7 @@ class TestPlansApiService {
     return apiService.authenticatedRequest(`/test_plans/${id}`);
   }
 
-  async getTestPlanWithTestRuns(id: string): Promise<{ data: ApiTestPlan; included?: any[] }> {
+  async getTestPlanWithTestRuns(id: string): Promise<{ data: ApiTestPlan; included?: Array<Record<string, unknown>> }> {
     return apiService.authenticatedRequest(`/test_plans/${id}?include=testRuns,user`);
   }
 
@@ -366,7 +366,7 @@ class TestPlansApiService {
   }
 
   // Helper method to transform API test plan to our internal format
-  transformApiTestPlan(apiTestPlan: ApiTestPlan, included?: any[]): TestPlan {
+  transformApiTestPlan(apiTestPlan: ApiTestPlan, included?: Array<Record<string, unknown>>): TestPlan {
     // Extract project ID from relationships if available
     const projectId = apiTestPlan.relationships?.project?.data?.id?.split('/').pop() || '';
     

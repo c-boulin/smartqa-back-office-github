@@ -353,7 +353,7 @@ export function generateProjectDashboardData(
 
   // CONSISTENCY: Test type distribution based on REAL totalTestCases  
   const functionalCount = Math.floor(totalTestCases * rng.nextFloat(0.55, 0.65)); // 55-65% functional
-  const otherCount = Math.max(0, totalTestCases - functionalCount); // Remainder to ensure exact total
+  // const otherCount = Math.max(0, totalTestCases - functionalCount); // Remainder to ensure exact total
   
   // Ensure non-negative values
   const actualFunctionalCount = Math.max(0, Math.min(functionalCount, totalTestCases));
@@ -405,11 +405,10 @@ export function generateProjectDashboardData(
   const executionCount = Math.min(finalExecuted, rng.nextInt(5, 12));
   
   for (let i = 0; i < executionCount; i++) {
-    const statuses: Array<'passed' | 'failed' | 'blocked'> = ['passed', 'failed', 'blocked'];
     const weights = [passRate, failRate, blockedRate];
     
     // Weighted random selection
-    let randomValue = rng.nextFloat(0, 100);
+    const randomValue = rng.nextFloat(0, 100);
     let selectedStatus: 'passed' | 'failed' | 'blocked' = 'passed';
     
     if (randomValue < weights[0]) {

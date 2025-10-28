@@ -74,6 +74,7 @@ export const UsersProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } else if (!authState.isAuthenticated) {
       dispatch({ type: 'CLEAR_DATA' });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchUsers, state.loading, state.users.length are complex dependencies
   }, [authState.isAuthenticated]);
 
   return (
@@ -83,6 +84,7 @@ export const UsersProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- useUsers hook needs to be exported alongside provider
 export const useUsers = () => {
   const context = useContext(UsersContext);
   if (!context) {

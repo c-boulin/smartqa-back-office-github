@@ -43,7 +43,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     }
   }, [isOpen]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 

@@ -22,7 +22,7 @@ export const useScheduledReports = (projectId?: string) => {
     }
   }, [projectId]);
 
-  const createScheduledReport = useCallback(async (payload: any) => {
+  const createScheduledReport = useCallback(async (payload: Record<string, unknown>) => {
     try {
       setLoading(true);
       setError(null);

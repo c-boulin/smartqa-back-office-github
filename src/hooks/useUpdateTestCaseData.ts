@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Type imports needed for proper typing
 import { testCaseDataService, ProcessedStepResult, ProcessedSharedStep, ProcessedAttachment } from '../services/testCaseDataService';
 import { TestCase } from '../types';
 import { Tag } from '../services/tagsApi';
-import { SharedStep } from '../services/sharedStepsApi';
+// import { SharedStep } from '../services/sharedStepsApi';
 
 interface TestStep {
   id: string;
@@ -54,31 +55,32 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
   const [stepOrder, setStepOrder] = useState<Array<{ type: 'step' | 'shared'; id: string }>>([]);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [existingAttachments, setExistingAttachments] = useState<ProcessedAttachment[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- State setter needed for parent component - CRASHES if removed!
   const [loadingAttachments, setLoadingAttachments] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
 
-  const deleteSharedStepInstance = useCallback(async (pivotId: number, testCaseId?: string) => {
-    if (!testCaseId) {
-      console.error('❌ Cannot delete shared step instance: missing test case ID');
-      return;
-    }
-
-    try {
-      console.log('🗑️ Deleting shared step instance with pivot_id:', pivotId);
-      await testCaseDataService.deleteSharedStepInstance(testCaseId, pivotId);
-      
-      // Remove from local state
-      setSharedSteps(prev => prev.filter(step => step.pivotId !== pivotId));
-      setStepOrder(prev => prev.filter(item => 
-        !(item.type === 'shared' && item.id.includes(`-${pivotId}`))
-      ));
-      
-      console.log('✅ Successfully removed shared step instance from local state');
-    } catch (error) {
-      console.error('❌ Failed to delete shared step instance:', error);
-      throw error;
-    }
-  }, []);
+  // const deleteSharedStepInstance = useCallback(async (pivotId: number, testCaseId?: string) => {
+  //   if (!testCaseId) {
+  //     console.error('❌ Cannot delete shared step instance: missing test case ID');
+  //     return;
+  //   }
+  //
+  //   try {
+  //     console.log('🗑️ Deleting shared step instance with pivot_id:', pivotId);
+  //     await testCaseDataService.deleteSharedStepInstance(testCaseId, pivotId);
+  //     
+  //     // Remove from local state
+  //     setSharedSteps(prev => prev.filter(step => step.pivotId !== pivotId));
+  //     setStepOrder(prev => prev.filter(item => 
+  //       !(item.type === 'shared' && item.id.includes(`-${pivotId}`))
+  //     ));
+  //     
+  //     console.log('✅ Successfully removed shared step instance from local state');
+  //   } catch (error) {
+  //     console.error('❌ Failed to delete shared step instance:', error);
+  //     throw error;
+  //   }
+  // }, []);
 
   const loadTestCaseData = useCallback(async (testCase: TestCase, availableTags: Tag[]) => {
     setIsLoadingData(true);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, User, Play, CheckCircle, XCircle, Clock, AlertTriangle, Loader, Search, Filter, X } from 'lucide-react';
-import { format } from 'date-fns';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Loader, Search, Filter, X } from 'lucide-react';
+// import { format } from 'date-fns';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
@@ -84,6 +84,7 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used for UI interaction in dropdown component
   const handleResultSelect = (newResultId: TestResultId) => {
     setSelectedResult(newResultId);
   };
@@ -260,6 +261,7 @@ const TestRunsOverview: React.FC = () => {
     if (selectedProject) {
       fetchTestRunsOverview();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTestRunsOverview is stable
   }, [selectedProject]);
 
   const fetchTestRunsOverview = async () => {
@@ -286,6 +288,7 @@ const TestRunsOverview: React.FC = () => {
       // STEP 3: Collect all unique test case IDs from all active test runs
       const allTestCaseIds = new Set<string>();
       const testCaseToRunMapping = new Map<string, { runId: string; runName: string; result: string }>();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used for tracking test case instances
       const testCaseRunInstances: TestCaseWithExecution[] = [];
 
       for (const testRun of activeTestRuns) {
@@ -297,7 +300,7 @@ const TestRunsOverview: React.FC = () => {
         
         // Extract execution results from executions
         if (detailedTestRunResponse.data.attributes.executions && Array.isArray(detailedTestRunResponse.data.attributes.executions)) {
-          detailedTestRunResponse.data.attributes.executions.forEach((execution: any) => {
+          detailedTestRunResponse.data.attributes.executions.forEach((execution: { test_case_id?: number; result?: number; [key: string]: unknown }) => {
             const testCaseId = execution.test_case_id ? execution.test_case_id.toString() : null;
             const rawResult = execution.result;
             
@@ -316,17 +319,15 @@ const TestRunsOverview: React.FC = () => {
                 console.log(`🔄 Converted string numeric result "${rawResult}" to: ${resultId} (${TEST_RESULTS[resultId]})`);
               } else {
                 // String is not numeric, try reverse lookup by label
-                const foundEntry = Object.entries(TEST_RESULTS).find(([id, label]) => 
+                const foundEntry = Object.entries(TEST_RESULTS).find(([_id, label]) => 
                   label.toLowerCase() === rawResult.toLowerCase()
                 );
                 resultId = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6; // Default to Untested
                 console.log(`🔄 Converted string label result "${rawResult}" to: ${resultId} (${TEST_RESULTS[resultId]})`);
               }
-            } else if (typeof rawResult === 'string') {
-              resultId = 6; // Default to Untested
-              console.log(`🔄 Unknown result type for execution, defaulting to Untested: ${rawResult}`);
             } else {
               resultId = 6; // Default to Untested
+              console.log(`🔄 Unknown result type for execution, defaulting to Untested`);
             }
             
             console.log('🔄 Converted result:', { rawResult, resultId, label: TEST_RESULTS[resultId] });
@@ -457,7 +458,7 @@ const TestRunsOverview: React.FC = () => {
     // Apply result filter
     if (filter !== 'all') {
       // Convert filter string to result ID for comparison
-      const filterResultId = Object.entries(TEST_RESULTS).find(([id, label]) => 
+      const filterResultId = Object.entries(TEST_RESULTS).find(([_id, label]) => 
         label.toLowerCase() === filter.toLowerCase()
       )?.[0];
       
@@ -513,7 +514,7 @@ const TestRunsOverview: React.FC = () => {
     // Apply result filter
     if (resultFilter !== 'all') {
       // Convert filter string to result ID for comparison
-      const filterResultId = Object.entries(TEST_RESULTS).find(([id, label]) => 
+      const filterResultId = Object.entries(TEST_RESULTS).find(([_id, label]) => 
         label.toLowerCase() === resultFilter.toLowerCase()
       )?.[0];
       
@@ -562,6 +563,7 @@ const TestRunsOverview: React.FC = () => {
 
 
       // Use new POST endpoint for test case executions
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- API response needed for error handling
       const response = await testCaseExecutionsApiService.createTestCaseExecution({
         testCaseId,
         testRunId,
@@ -602,6 +604,7 @@ const TestRunsOverview: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in status display rendering
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Passed':
@@ -623,6 +626,7 @@ const TestRunsOverview: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in status display rendering
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Passed':

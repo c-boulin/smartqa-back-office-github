@@ -20,7 +20,7 @@ export const useTestRunDetailsFilters = () => {
     tags: []
   });
 
-  const updateFilter = useCallback((filterType: keyof FiltersState, value: any) => {
+  const updateFilter = useCallback((filterType: keyof FiltersState, value: string | string[]) => {
     setFilters(prev => ({ ...prev, [filterType]: value }));
   }, []);
 

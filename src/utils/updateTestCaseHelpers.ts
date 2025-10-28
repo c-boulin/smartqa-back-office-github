@@ -38,11 +38,19 @@ export const getTestTypeNumber = (type: string): number => {
   return typeMap[type as keyof typeof typeMap] || 6;
 };
 
+interface StepResultRelationship {
+  type: "StepResult";
+  id: string;
+  meta: {
+    order: number;
+  };
+}
+
 export const buildStepResultsRelationships = (
   stepOrder: Array<{ type: 'step' | 'shared'; id: string }>,
   testSteps: Array<{ id: string; step: string; result: string; originalId?: string }>
-) => {
-  const stepResultsRelationships: any[] = [];
+): StepResultRelationship[] => {
+  const stepResultsRelationships: StepResultRelationship[] = [];
   
   for (let position = 0; position < stepOrder.length; position++) {
     const orderItem = stepOrder[position];
@@ -65,11 +73,19 @@ export const buildStepResultsRelationships = (
   return stepResultsRelationships;
 };
 
+interface SharedStepRelationship {
+  type: "SharedStep";
+  id: string;
+  meta: {
+    order: number;
+  };
+}
+
 export const buildSharedStepsRelationships = (
   stepOrder: Array<{ type: 'step' | 'shared'; id: string }>,
   sharedSteps: Array<{ id: string; title: string; pivotId?: number }>
-) => {
-  const sharedStepsRelationships: any[] = [];
+): SharedStepRelationship[] => {
+  const sharedStepsRelationships: SharedStepRelationship[] = [];
   
   for (let position = 0; position < stepOrder.length; position++) {
     const orderItem = stepOrder[position];

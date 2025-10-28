@@ -168,9 +168,9 @@ const transformDataToChartFormat = (apiData: ApiTestRun[]): {
       console.log(`📊 Processing ${testRun.attributes.executions.length} executions`);
       
       // Group executions by test case ID and get the last execution per test case
-      const lastExecutionPerTestCase = new Map<string, any>();
+      const lastExecutionPerTestCase = new Map<string, Record<string, unknown>>();
       
-      testRun.attributes.executions.forEach((execution: any) => {
+      testRun.attributes.executions.forEach((execution: Record<string, unknown>) => {
         const testCaseId = execution.test_case_id.toString();
         const executionDate = new Date(execution.created_at);
         
@@ -184,7 +184,7 @@ const transformDataToChartFormat = (apiData: ApiTestRun[]): {
       console.log(`📊 Found ${lastExecutionPerTestCase.size} unique test cases with executions`);
       
       // Count each result type from the last execution per test case
-      Array.from(lastExecutionPerTestCase.values()).forEach((execution: any, executionIndex: number) => {
+      Array.from(lastExecutionPerTestCase.values()).forEach((execution: Record<string, unknown>, executionIndex: number) => {
         const resultLabel = getResultLabel(execution.result);
         
         if (resultLabel) {
@@ -234,18 +234,18 @@ const transformDataToChartFormat = (apiData: ApiTestRun[]): {
 };
 
 // Custom tooltip component
-const CustomTooltip: React.FC<any> = ({ active, payload, label }) => {
+const CustomTooltip: React.FC<{ active?: boolean; payload?: Array<{ name?: string; value?: number; color?: string }>; label?: string }> = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
-    const total = payload.reduce((sum: number, entry: any) => sum + (entry.value || 0), 0);
+    const total = payload.reduce((sum: number, entry: { value?: number }) => sum + (entry.value || 0), 0);
     
     return (
       <div className="bg-slate-800 border border-slate-600 rounded-lg p-3 shadow-lg">
         <p className="text-cyan-400 font-medium mb-2">{label}</p>
         <div className="space-y-1">
           {payload
-            .filter((entry: any) => entry.value > 0)
-            .sort((a: any, b: any) => b.value - a.value)
-            .map((entry: any, index: number) => (
+            .filter((entry: { value?: number }) => entry.value && entry.value > 0)
+            .sort((a: { value?: number }, b: { value?: number }) => (b.value || 0) - (a.value || 0))
+            .map((entry: { name?: string; value?: number; color?: string }, index: number) => (
               <div key={index} className="flex items-center justify-between min-w-[120px]">
                 <div className="flex items-center">
                   <div 
@@ -268,29 +268,6 @@ const CustomTooltip: React.FC<any> = ({ active, payload, label }) => {
     );
   }
   return null;
-};
-
-// Export to CSV function
-const exportToCSV = (data: ChartRow[], resultLabels: string[]) => {
-  const headers = ['Date', ...resultLabels, 'Total'];
-  const csvContent = [
-    headers.join(','),
-    ...data.map(row => [
-      row.date,
-      ...resultLabels.map(label => row[label] || 0),
-      row.total
-    ].join(','))
-  ].join('\n');
-  
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `closed-runs-results-${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 };
 
 const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedChartProps> = ({
@@ -398,11 +375,8 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
 
   useEffect(() => {
     fetchClosedTestRuns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchClosedTestRuns is stable
   }, [projectId, fromDate, toDate]);
-
-  const handleExportCSV = () => {
-    exportToCSV(data, resultLabels);
-  };
 
   if (loading) {
     return (

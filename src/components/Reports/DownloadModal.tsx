@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, FileText, Table, X } from 'lucide-react';
+import { Download, FileText, Table } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 

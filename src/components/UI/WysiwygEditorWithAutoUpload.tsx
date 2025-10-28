@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import AutoImageUploadButton from './AutoImageUploadButton';
+// import AutoImageUploadButton from './AutoImageUploadButton';
 import { UploadFieldType } from '../../services/fileUploadService';
 import { imageProcessingService } from '../../services/imageProcessingService';
 import toast from 'react-hot-toast';
@@ -25,7 +25,7 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
   disabled = false,
   className = '',
   autoProcessImages = true,
-  accept = 'image/*'
+  accept = 'image/*' // eslint-disable-line @typescript-eslint/no-unused-vars -- Prop definition with default value
 }) => {
   const quillRef = useRef<ReactQuill>(null);
 
@@ -131,19 +131,19 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
     }
   };
 
-  const handleFileDeleted = () => {
-    if (quillRef.current) {
-      const quill = quillRef.current.getEditor();
-      const currentContent = quill.root.innerHTML;
-      
-      // Clean the content by removing image tags
-      const cleanedContent = imageProcessingService.cleanFieldContent(currentContent);
-      
-      // Update the editor content
-      quill.root.innerHTML = cleanedContent;
-      onChange(cleanedContent);
-    }
-  };
+  // const handleFileDeleted = () => {
+  //   if (quillRef.current) {
+  //     const quill = quillRef.current.getEditor();
+  //     const currentContent = quill.root.innerHTML;
+  //     
+  //     // Clean the content by removing image tags
+  //     const cleanedContent = imageProcessingService.cleanFieldContent(currentContent);
+  //     
+  //     // Update the editor content
+  //     quill.root.innerHTML = cleanedContent;
+  //     onChange(cleanedContent);
+  //   }
+  // };
 
   // Handle paste events for automatic image processing
   const handlePaste = async (event: ClipboardEvent) => {
@@ -229,6 +229,7 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
         editorElement.removeEventListener('paste', handlePaste);
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fieldName, handleFileUploaded, handlePaste are stable
   }, [autoProcessImages, disabled]);
 
   // Custom styles for dark theme

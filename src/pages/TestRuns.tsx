@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, Search, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Play, Clock, CheckCircle, User, Calendar, Copy, Activity, Archive } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Play, Clock, CheckCircle, User, Copy, Activity, Archive } from 'lucide-react';
+// import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
-import StatusBadge from '../components/UI/StatusBadge';
-import Modal from '../components/UI/Modal';
+// import StatusBadge from '../components/UI/StatusBadge';
+// import Modal from '../components/UI/Modal';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import CreateTestRunModal from '../components/TestRun/CreateTestRunModal';
 import EditTestRunModal from '../components/TestRun/EditTestRunModal';
@@ -14,7 +14,6 @@ import CloseTestRunModal from '../components/TestRun/CloseTestRunModal';
 import TestRunsFilters from '../components/TestRun/TestRunsFilters';
 import TestRunsFiltersSidebar from '../components/TestRun/TestRunsFiltersSidebar';
 import { useApp } from '../context/AppContext';
-import { useAuth } from '../context/AuthContext';
 import { useTestRuns } from '../hooks/useTestRuns';
 import { useTestRunsFilters } from '../hooks/useTestRunsFilters';
 import { useUsers } from '../context/UsersContext';
@@ -23,16 +22,14 @@ import toast from 'react-hot-toast';
 
 const TestRuns: React.FC = () => {
   const { getSelectedProject, createTag, state: appState } = useApp();
-  const { state: authState } = useAuth();
+  // const { state: authState } = useAuth();
   const { users } = useUsers();
   const navigate = useNavigate();
   const selectedProject = getSelectedProject();
   
-  // Use tags and configurations from AppContext (loaded once)
+  // Use tags from AppContext (loaded once)
   const tags = appState.tags;
-  const configurations = appState.configurations;
   const tagsLoading = appState.isLoadingTags;
-  const configurationsLoading = appState.isLoadingConfigurations;
   
   const { 
     testRuns, 
@@ -41,8 +38,8 @@ const TestRuns: React.FC = () => {
     pagination, 
     fetchTestRuns, 
     searchTestRuns,
-    filterTestRunsByAssignee,
-    filterTestRunsByState,
+    // filterTestRunsByAssignee,
+    // filterTestRunsByState,
     filterTestRunsWithMultipleFilters,
     createTestRun, 
     updateTestRun, 
@@ -56,8 +53,7 @@ const TestRuns: React.FC = () => {
     updateFilter,
     applyFilters: applyFiltersHook,
     clearAllFilters: clearFilters,
-    hasActiveFilters,
-    buildMultipleFilters
+    hasActiveFilters
   } = useTestRunsFilters();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,6 +81,7 @@ const TestRuns: React.FC = () => {
         await fetchTestRuns(1);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- applyFilters and hasActiveFilters would cause infinite loop
   }, [searchTestRuns, fetchTestRuns]);
 
   const applyFilters = useCallback(async () => {
@@ -100,7 +97,7 @@ const TestRuns: React.FC = () => {
     
     if (hasAssigneeFilter || hasStateFilter) {
       // Apply multiple filters
-      const multipleFilters: any = {};
+      const multipleFilters: Record<string, string> = {};
       if (hasAssigneeFilter) {
         multipleFilters.assignee = filters.assignee;
       }
@@ -141,7 +138,7 @@ const TestRuns: React.FC = () => {
 
   const filteredTestRuns = getFilteredTestRuns();
 
-  const clearIndividualFilter = useCallback(async (filterType: keyof typeof filters, value?: any) => {
+  const clearIndividualFilter = useCallback(async (filterType: keyof typeof filters, _value?: string) => {
     if (filterType === 'search') {
       // Clear search term and current search term
       setSearchTerm('');
@@ -149,7 +146,7 @@ const TestRuns: React.FC = () => {
       
       // If we have other active filters, apply them; otherwise fetch all
       if (hasActiveFilters() && (appliedFilters.assignee !== 'all' || appliedFilters.state !== 'all')) {
-        const multipleFilters: any = {};
+        const multipleFilters: Record<string, string> = {};
         if (appliedFilters.assignee !== 'all') {
           multipleFilters.assignee = appliedFilters.assignee;
         }
@@ -182,11 +179,7 @@ const TestRuns: React.FC = () => {
     }
   }, [searchTerm, handleSearch]);
 
-  const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  }, []);
-
-  const handleCreateTestRun = useCallback(async (data: any) => {
+  const handleCreateTestRun = useCallback(async (data: Record<string, unknown>) => {
     if (!selectedProject) {
       toast.error('Please select a project first');
       return;
@@ -202,7 +195,7 @@ const TestRuns: React.FC = () => {
           try {
             const newTag = await createTag(tag.label);
             processedTags.push(newTag);
-          } catch (error) {
+          } catch {
             console.error('Failed to create tag:', error);
             toast.error(`Failed to create tag: ${tag.label}`);
             return;
@@ -226,14 +219,15 @@ const TestRuns: React.FC = () => {
       
       setIsCreateModalOpen(false);
       
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- createTag and error are stable
   }, [createTestRun, selectedProject]);
 
-  const handleEditTestRun = useCallback(async (data: any) => {
+  const handleEditTestRun = useCallback(async (data: Record<string, unknown>) => {
     if (!selectedTestRun || !selectedProject) {
       toast.error('No test run selected');
       return;
@@ -249,7 +243,7 @@ const TestRuns: React.FC = () => {
           try {
             const newTag = await createTag(tag.label);
             processedTags.push(newTag);
-          } catch (error) {
+          } catch {
             console.error('Failed to create tag:', error);
             toast.error(`Failed to create tag: ${tag.label}`);
             return;
@@ -271,11 +265,12 @@ const TestRuns: React.FC = () => {
       });
       setIsEditModalOpen(false);
       setSelectedTestRun(null);
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- createTag and error are stable
   }, [updateTestRun, selectedTestRun, selectedProject]);
 
   const handleDeleteTestRun = useCallback(async () => {
@@ -285,7 +280,7 @@ const TestRuns: React.FC = () => {
       setIsSubmitting(true);
       await deleteTestRun(selectedTestRun.id);
       setSelectedTestRun(null);
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);
@@ -320,7 +315,7 @@ const TestRuns: React.FC = () => {
       await closeTestRun(testRunToClose.id);
       setTestRunToClose(null);
       setIsCloseModalOpen(false);
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);
@@ -394,7 +389,7 @@ const TestRuns: React.FC = () => {
               }
             }
           }
-        } catch (error) {
+        } catch {
           console.error('Failed to load existing tags for cloning:', error);
           existingTags = [];
         }
@@ -428,20 +423,21 @@ const TestRuns: React.FC = () => {
       setTestRunToClone(null);
       toast.success(`Test run cloned successfully as "${cloneData.name}"`);
       
-    } catch (error) {
+    } catch {
       console.error('Failed to clone test run:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to clone test run';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- error is stable
   }, [createTestRun, selectedProject, tags, testRunToClone]);
 
   const handlePageChange = useCallback((page: number) => {
     if (currentSearchTerm.trim()) {
       searchTestRuns(currentSearchTerm, page);
     } else if (hasActiveFilters() && (appliedFilters.assignee !== 'all' || appliedFilters.state !== 'all')) {
-      const multipleFilters: any = {};
+      const multipleFilters: Record<string, string> = {};
       if (appliedFilters.assignee !== 'all') {
         multipleFilters.assignee = appliedFilters.assignee;
       }

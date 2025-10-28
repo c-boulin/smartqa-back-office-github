@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Upload, Loader, AlertCircle } from 'lucide-react';
+import { Upload, Loader } from 'lucide-react';
 import { fileUploadService, UploadFieldType } from '../../services/fileUploadService';
 import toast from 'react-hot-toast';
 

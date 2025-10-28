@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Layers, Plus, Loader, X, User, ArrowLeft, Save } from 'lucide-react';
+import { Search, Layers, Plus, Loader, User, ArrowLeft, Save } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -127,7 +127,7 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
     setCreateTestSteps([]);
   };
 
-  const handleCreateInputChange = (field: string, value: any) => {
+  const handleCreateInputChange = (field: string, value: string | number) => {
     setCreateFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -172,7 +172,7 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
       setIsCreatingSharedStep(true);
       
       // Handle step results - create them first if they exist
-      let stepResults: Array<{
+      const stepResults: Array<{
         id: string;
         order: number;
       }> = [];

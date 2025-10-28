@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Share, Mail, X, Send, Loader, FileText, Download } from 'lucide-react';
+import { Share, Mail, Send, Loader, FileText, Download } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import MultiSelectDropdown from '../UI/MultiSelectDropdown';
@@ -22,8 +22,6 @@ const ShareModal: React.FC<ShareModalProps> = ({
   onClose,
   onSendEmail,
   reportTitle,
-  reportType,
-  projectName,
   isSubmitting = false
 }) => {
   const { users } = useUsers();
@@ -53,7 +51,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
       setSelectedFormat('pdf');
       setEmailError(null);
       onClose();
-    } catch (error) {
+    } catch {
       // Error handling is done in the parent component
     }
   };

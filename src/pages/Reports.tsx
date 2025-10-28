@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Plus, FileText, Edit2, Trash2, BarChart, TrendingUp, Search, X, Code, FileCheck, Loader } from 'lucide-react';
+import { Plus, FileText, Edit2, Trash2, BarChart, Search, X, Loader } from 'lucide-react';
 import { format } from 'date-fns';
 import { useLocation } from 'react-router-dom';
 import Card from '../components/UI/Card';
@@ -9,28 +9,10 @@ import CreateReportModal from '../components/Reports/CreateReportModal';
 import UpdateScheduledReportModal from '../components/Reports/UpdateScheduledReportModal';
 import TestRunSummaryReport from '../components/Reports/TestRunSummaryReport';
 import TestRunDetailedReport from '../components/Reports/TestRunDetailedReport';
-import ReportsHeader from '../components/Reports/ReportsHeader';
-import TestRunPerformanceChart from '../components/Reports/TestRunPerformanceChart';
-import TestRunSummaryCards from '../components/Reports/TestRunSummaryCards';
-import TestCasesReportTable from '../components/Reports/TestCasesReportTable';
 import { useApp } from '../context/AppContext';
 import { useScheduledReports } from '../hooks/useScheduledReports';
 import { scheduledReportsApiService, ScheduledReport } from '../services/scheduledReportsApi';
 import toast from 'react-hot-toast';
-
-interface Report {
-  id: string;
-  name: string;
-  type: 'execution' | 'project' | 'dashboard' | 'trend';
-  projectId?: string;
-  dateRange: {
-    start: Date;
-    end: Date;
-  };
-  data: any;
-  createdAt: Date;
-  createdBy: string;
-}
 
 const Reports: React.FC = () => {
   const { getSelectedProject, state } = useApp();
@@ -39,7 +21,6 @@ const Reports: React.FC = () => {
   const {
     scheduledReports,
     loading: scheduledReportsLoading,
-    error: scheduledReportsError,
     createScheduledReport,
     updateScheduledReport,
     deleteScheduledReport,
@@ -49,7 +30,6 @@ const Reports: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [selectedScheduledReport, setSelectedScheduledReport] = useState<ScheduledReport | null>(null);
   const [selectedScheduledReportId, setSelectedScheduledReportId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,11 +37,10 @@ const Reports: React.FC = () => {
   const [selectedProjectForReport, setSelectedProjectForReport] = useState<string>('');
   const [showIntroPanel, setShowIntroPanel] = useState(true);
   const [showIntroductionPanel, setShowIntroductionPanel] = useState(true);
-  const [currentReportType, setCurrentReportType] = useState<string>('');
   const [selectedTestRunIds, setSelectedTestRunIds] = useState<string[] | undefined>(undefined);
-  const [reportFilters, setReportFilters] = useState<any>(null);
+  const [reportFilters, setReportFilters] = useState<Record<string, unknown> | null>(null);
   const [testRunCreationDateFilter, setTestRunCreationDateFilter] = useState<string | undefined>(undefined);
-  const [reportData, setReportData] = useState<any>(null);
+  const [reportData, setReportData] = useState<Record<string, unknown> | null>(null);
   const [reportDescription, setReportDescription] = useState<string>('');
   const [reportTitle, setReportTitle] = useState<string>('');
 
@@ -78,43 +57,9 @@ const Reports: React.FC = () => {
       setReportDescription('');
       setReportTitle('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- location.pathname and location.state?.resetView are tracked via location.key
   }, [location.key]); // Trigger when navigation key changes
-
-
-  // Mock report data for detailed view
-  const mockDetailedReportData = {
-    testCases: [
-      {
-        id: 'TR-19-TC-102',
-        testRunId: 'TR-19',
-        testRunName: 'Test Run-30/09/2025-10/01/2025',
-        testRunDate: '30/09/2025',
-        testRunStatus: 'Active',
-        testCaseId: 'TC-102',
-        testCaseTitle: 'testestsetestest',
-        latestStatus: 'Untested',
-        priority: 'Medium',
-        assignee: 'Camille Boulin'
-      }
-    ],
-    summary: {
-      activeTestRuns: { current: 2, total: 4 },
-      closedTestRuns: { current: 2, total: 4 },
-      totalTestCases: 9,
-      totalLinkedIssues: 0
-    },
-    chartData: [
-      { date: 'Sep 25', value: 2 },
-      { date: 'Sep 26', value: 3 },
-      { date: 'Sep 27', value: 2 },
-      { date: 'Sep 28', value: 3 },
-      { date: 'Sep 29', value: 2 },
-      { date: 'Sep 30', value: 1 },
-      { date: 'Oct 1', value: 1 }
-    ]
-  };
-
-  const handleCreateReport = useCallback(async (data: any) => {
+  const handleCreateReport = useCallback(async (data: Record<string, unknown>) => {
     try {
       setIsSubmitting(true);
 
@@ -185,25 +130,7 @@ const Reports: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, []);
-
-  const handleViewReport = useCallback((report: Report) => {
-    console.log('Viewing report:', report.name);
-    
-    if (report.name.includes('PASSED-FAILED') || report.type === 'execution') {
-      setSelectedProjectForReport(report.projectId || selectedProject?.id || '');
-      setViewMode('test-run-summary');
-    } else if (report.type === 'execution' || report.name.includes('Detailed')) {
-      setSelectedProjectForReport(report.projectId || selectedProject?.id || '');
-      setViewMode('test-run-detailed');
-    } else {
-      setViewMode('list');
-    }
-  }, [selectedProject]);
-
-  const handleDeleteReport = useCallback((report: Report) => {
-    setSelectedReport(report);
-    setIsDeleteDialogOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- createScheduledReport is stable
   }, []);
 
   const handleUpdateScheduledReport = useCallback(async (id: string, data: Partial<ScheduledReport>) => {
@@ -259,16 +186,6 @@ const Reports: React.FC = () => {
       setIsSubmitting(false);
     }
   }, [selectedScheduledReportId, deleteScheduledReport]);
-
-  const handleDownloadReport = useCallback((report: Report) => {
-    console.log('Downloading report:', report.name);
-    toast.success('Report download started');
-  }, []);
-
-  const handleShareReport = useCallback((report: Report) => {
-    console.log('Sharing report:', report.name);
-    toast.success('Report shared successfully');
-  }, []);
 
   const handleBackToList = () => {
     setViewMode('list');

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, Search, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Calendar, User, Filter, X } from 'lucide-react';
+import { Plus, Search, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Calendar, Filter, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/UI/Card';
@@ -8,15 +8,14 @@ import ConfirmDialog from '../components/UI/ConfirmDialog';
 import CreateTestPlanModal from '../components/TestPlan/CreateTestPlanModal';
 import EditTestPlanModal from '../components/TestPlan/EditTestPlanModal';
 import { useApp } from '../context/AppContext';
-import { useAuth } from '../context/AuthContext';
 import { useUsers } from '../context/UsersContext';
 import { useTestPlans } from '../hooks/useTestPlans';
 import { TestPlan } from '../services/testPlansApi';
 import toast from 'react-hot-toast';
 
 const TestPlans: React.FC = () => {
-  const { getSelectedProject, state: appState } = useApp();
-  const { state: authState } = useAuth();
+  const { getSelectedProject } = useApp();
+  // const { state: authState } = useAuth();
   const navigate = useNavigate();
   const { users } = useUsers();
   const selectedProject = getSelectedProject();
@@ -44,11 +43,11 @@ const TestPlans: React.FC = () => {
   const [ownerFilter, setOwnerFilter] = useState('all');
   const [appliedOwnerFilter, setAppliedOwnerFilter] = useState('all');
 
-  const searchTestPlansWithOwner = async (term: string, ownerId: string) => {
+  const searchTestPlansWithOwner = async (_term: string, _ownerId: string) => {
     // Implementation needed
   };
 
-  const filterTestPlansByOwner = async (ownerId: string) => {
+  const filterTestPlansByOwner = async (_ownerId: string) => {
     // Implementation needed
   };
 
@@ -111,7 +110,7 @@ const TestPlans: React.FC = () => {
     setSearchTerm(e.target.value);
   }, []);
 
-  const handleCreateTestPlan = useCallback(async (data: any) => {
+  const handleCreateTestPlan = useCallback(async (data: Record<string, unknown>) => {
     if (!selectedProject || !data.assignedTo) {
       toast.error('Please select an owner');
       return;
@@ -130,14 +129,15 @@ const TestPlans: React.FC = () => {
       
       setIsCreateModalOpen(false);
       
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedProject is stable
   }, [createTestPlan]);
 
-  const handleEditTestPlan = useCallback(async (data: any) => {
+  const handleEditTestPlan = useCallback(async (data: Record<string, unknown>) => {
     if (!selectedTestPlan) {
       toast.error('No test plan selected');
       return;
@@ -161,11 +161,12 @@ const TestPlans: React.FC = () => {
       setIsEditModalOpen(false);
       setSelectedTestPlan(null);
       
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedProject is stable
   }, [updateTestPlan, selectedTestPlan]);
 
   const handleDeleteTestPlan = useCallback(async () => {
@@ -175,7 +176,7 @@ const TestPlans: React.FC = () => {
       setIsSubmitting(true);
       await deleteTestPlan(selectedTestPlan.id);
       setSelectedTestPlan(null);
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);
@@ -381,24 +382,6 @@ const TestPlans: React.FC = () => {
                 const progress = testPlan.totalTestRuns > 0
                   ? Math.round((testPlan.closedTestRuns / testPlan.totalTestRuns) * 100)
                   : 0;
-
-                // Get status label and color based on status value
-                const getStatusInfo = (statusValue: string) => {
-                  switch (statusValue) {
-                    case '1':
-                      return { label: 'New', color: 'text-gray-400 bg-gray-500/20 border-gray-500/50' };
-                    case '2':
-                      return { label: 'In Progress', color: 'text-blue-400 bg-blue-500/20 border-blue-500/50' };
-                    case '3':
-                      return { label: 'Done', color: 'text-green-400 bg-green-500/20 border-green-500/50' };
-                    case '4':
-                      return { label: 'Closed', color: 'text-purple-400 bg-purple-500/20 border-purple-500/50' };
-                    default:
-                      return { label: 'New', color: 'text-gray-400 bg-gray-500/20 border-gray-500/50' };
-                  }
-                };
-
-                const statusInfo = getStatusInfo(testPlan.status);
                 
                 const getProgressColor = (progress: number) => {
                   if (progress === 0) return 'from-gray-500 to-gray-600';
@@ -493,7 +476,7 @@ const TestPlans: React.FC = () => {
                           onChange={async (e) => {
                             try {
                               await updateTestPlanStatus(testPlan.id, e.target.value);
-                            } catch (error) {
+                            } catch {
                               // Error already handled in hook
                             }
                           }}

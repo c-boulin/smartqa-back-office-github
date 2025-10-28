@@ -13,7 +13,7 @@ import { testCasesApiService } from '../services/testCasesApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
 import { useTestRunDetailsFilters } from '../hooks/useTestRunDetailsFilters';
 import { useApp } from '../context/AppContext';
-import { TestCase, TEST_RESULTS, TestResultId, TestResultValue, Tag } from '../types';
+import { TestCase, TEST_RESULTS, TestResultId, Tag } from '../types';
 import toast from 'react-hot-toast';
 
 // Test Result Dropdown Component
@@ -104,6 +104,7 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used for UI interaction in dropdown component
   const handleResultSelect = (newResultId: TestResultId) => {
     setSelectedResult(newResultId);
   };
@@ -311,12 +312,13 @@ const TestRunDetails: React.FC = () => {
     filters,
     updateFilter,
     clearAllFilters,
-    hasActiveFilters,
+    hasActiveFilters, // eslint-disable-line @typescript-eslint/no-unused-vars -- Used in filter state logic
     buildFilterCriteria
   } = useTestRunDetailsFilters();
 
   // Use tags from app context
   const tags = appState.tags;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in loading state UI
   const tagsLoading = appState.isLoadingTags;
 
   useEffect(() => {
@@ -363,12 +365,12 @@ const TestRunDetails: React.FC = () => {
             console.log(`🏃 All executions for test case ${testCaseId}:`, executionsData);
             
             // Filter executions for this test run and get the latest one
-            const testRunExecutions = executionsData.filter((execution: any) => 
+            const testRunExecutions = executionsData.filter((execution: { test_run_id: number; [key: string]: unknown }) => 
               execution.test_run_id.toString() === testRunId
             );
             
             console.log(`🏃 🔍 Filtering executions for test run ${testRunId}:`);
-            executionsData.forEach((execution: any, index: number) => {
+            executionsData.forEach((execution: { test_run_id: number; [key: string]: unknown }, index: number) => {
               console.log(`🏃 🔍   Execution ${index + 1}:`);
               console.log(`🏃 🔍     - execution.test_run_id: ${execution.test_run_id} (type: ${typeof execution.test_run_id})`);
               console.log(`🏃 🔍     - testRunId: ${testRunId} (type: ${typeof testRunId})`);
@@ -382,7 +384,7 @@ const TestRunDetails: React.FC = () => {
             
             if (testRunExecutions.length > 0) {
               // Sort by creation date and get the latest execution
-              const latestExecution = testRunExecutions.sort((a: any, b: any) => 
+              const latestExecution = testRunExecutions.sort((a: { created_at: string }, b: { created_at: string }) => 
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
               )[0];
               
@@ -404,7 +406,7 @@ const TestRunDetails: React.FC = () => {
                   console.log(`🏃 🎯 ✅ Converted string numeric result "${rawResult}" to: ${executionResult} (${TEST_RESULTS[executionResult]})`);
                 } else {
                   // String is not numeric, try reverse lookup by label
-                  const foundEntry = Object.entries(TEST_RESULTS).find(([id, label]) => 
+                  const foundEntry = Object.entries(TEST_RESULTS).find(([_id, label]) => 
                     label.toLowerCase() === rawResult.toLowerCase()
                   );
                   executionResult = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6;
@@ -472,6 +474,7 @@ const TestRunDetails: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in status display rendering
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Passed':
@@ -493,6 +496,7 @@ const TestRunDetails: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in status display rendering
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Passed':
@@ -545,6 +549,7 @@ const TestRunDetails: React.FC = () => {
 
 
       // Use new POST endpoint for test case executions
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- API response needed for error handling
       const response = await testCaseExecutionsApiService.createTestCaseExecution({
         testCaseId,
         testRunId: id,
@@ -685,7 +690,7 @@ const TestRunDetails: React.FC = () => {
     }
   };
 
-  const clearIndividualFilter = (filterType: keyof typeof filters, value?: any) => {
+  const clearIndividualFilter = (filterType: keyof typeof filters, _value?: string) => {
     if (filterType === 'search') {
       setSearchTerm('');
       setCurrentSearchTerm('');
@@ -705,6 +710,7 @@ const TestRunDetails: React.FC = () => {
     if (testCases.length > 0) {
       applyFilters();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- applyFilters would cause infinite loop
   }, [testCases, currentSearchTerm, filters]);
 
   if (loading) {

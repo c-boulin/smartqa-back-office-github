@@ -1,5 +1,4 @@
 import React from 'react';
-import { AUTOMATION_STATUS_LABELS } from '../../types';
 
 interface StatusBadgeProps {
   status: string | number;

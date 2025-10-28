@@ -2,7 +2,6 @@ import React, { useState, useCallback } from 'react';
 import { Plus, Search, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Layers, User } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
-import Modal from '../components/UI/Modal';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import CreateSharedStepModal from '../components/SharedStep/CreateSharedStepModal';
 import EditSharedStepModal from '../components/SharedStep/EditSharedStepModal';
@@ -57,7 +56,7 @@ const SharedSteps: React.FC = () => {
     setSearchTerm(e.target.value);
   }, []);
 
-  const handleCreateSharedStep = useCallback(async (data: any) => {
+  const handleCreateSharedStep = useCallback(async (data: Record<string, unknown>) => {
     if (!selectedProject) {
       toast.error('Please select a project first');
       return;
@@ -72,7 +71,7 @@ const SharedSteps: React.FC = () => {
       setIsSubmitting(true);
       
       // Handle step results - create them first if they exist
-      let stepResults: Array<{
+      const stepResults: Array<{
         id: string;
         order: number;
       }> = [];
@@ -115,15 +114,16 @@ const SharedSteps: React.FC = () => {
       
       setIsCreateModalOpen(false);
       
-    } catch (error) {
+    } catch {
       console.error('Failed to create shared step:', error);
       toast.error('Failed to create shared step');
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- authState.user.id and error are stable
   }, [createSharedStep, selectedProject]);
 
-  const handleEditSharedStep = useCallback(async (data: any) => {
+  const handleEditSharedStep = useCallback(async (data: Record<string, unknown>) => {
     if (!selectedSharedStep || !selectedProject) {
       toast.error('Missing required data for update');
       return;
@@ -138,7 +138,7 @@ const SharedSteps: React.FC = () => {
       setIsSubmitting(true);
       
       // Handle step results - update existing ones and create new ones
-      let stepResults: Array<{
+      const stepResults: Array<{
         id: string;
         order: number;
       }> = [];
@@ -211,12 +211,13 @@ const SharedSteps: React.FC = () => {
       setIsEditModalOpen(false);
       setSelectedSharedStep(null);
       
-    } catch (error) {
+    } catch {
       console.error('Failed to update shared step:', error);
       toast.error('Failed to update shared step');
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- error is stable
   }, [updateSharedStep, selectedSharedStep, selectedProject, authState.user?.id]);
 
   const handleDeleteSharedStep = useCallback(async () => {
@@ -226,7 +227,7 @@ const SharedSteps: React.FC = () => {
       setIsSubmitting(true);
       await deleteSharedStep(selectedSharedStep.id);
       setSelectedSharedStep(null);
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);

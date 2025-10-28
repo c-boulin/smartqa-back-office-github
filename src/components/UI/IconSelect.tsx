@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 interface IconSelectProps {
   value: number;
   onChange: (value: number) => void;
-  options: Record<number, { label: string; icon: any; color: string }>;
+  options: Record<number, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }>;
   disabled?: boolean;
   placeholder?: string;
 }

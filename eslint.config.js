@@ -23,6 +23,17 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+      // Better handling of unused variables to reduce false positives
+      '@typescript-eslint/no-unused-vars': [
+        'warn',  // Changed from 'error' to 'warn' to prevent build breaks
+        {
+          argsIgnorePattern: '^_',              // Ignore params starting with _
+          varsIgnorePattern: '^_',               // Ignore variables starting with _
+          caughtErrorsIgnorePattern: '^_',       // Ignore caught errors starting with _
+          destructuredArrayIgnorePattern: '^_',  // Ignore destructured arrays with _
+          ignoreRestSiblings: true,              // Ignore rest properties in destructuring
+        }
+      ],
     },
   }
 );

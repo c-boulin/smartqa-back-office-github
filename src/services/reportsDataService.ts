@@ -4,6 +4,13 @@ import { apiService } from './api';
  * Service for fetching report data using test cases API
  */
 
+interface JsonApiResource {
+  id: string;
+  type: string;
+  attributes?: Record<string, unknown>;
+  relationships?: Record<string, unknown>;
+}
+
 export interface ReportFilters {
   statusOfTestCase: string[];
   testCaseType: string[];
@@ -21,7 +28,7 @@ export interface ReportFilters {
  */
 function calculateDateFromPeriod(period: string): string {
   const now = new Date();
-  let startDate = new Date();
+  const startDate = new Date();
 
   switch (period) {
     case 'last_24_hours':
@@ -49,7 +56,7 @@ function calculateDateFromPeriod(period: string): string {
  */
 function calculateTestRunCreationDate(period: string): string {
   const now = new Date();
-  let startDate = new Date();
+  const startDate = new Date();
 
   switch (period) {
     case 'Last 24 hours':
@@ -157,10 +164,10 @@ export async function fetchTestCasesForReport(
   projectId: string,
   filters?: ReportFilters | null
 ): Promise<{
-  testCases: any[];
-  testRuns: any[];
-  testExecutions: any[];
-  included: any[];
+  testCases: JsonApiResource[];
+  testRuns: JsonApiResource[];
+  testExecutions: JsonApiResource[];
+  included: JsonApiResource[];
   totalTestCases: number;
 }> {
   try {
@@ -191,9 +198,9 @@ export async function fetchTestCasesForReport(
     const testCases = response.data || [];
 
     // Extract test runs from included node
-    const testRuns: any[] = [];
+    const testRuns: JsonApiResource[] = [];
     if (response.included && Array.isArray(response.included)) {
-      response.included.forEach((item: any) => {
+      response.included.forEach((item: JsonApiResource) => {
         if (item.type === 'TestRun') {
           testRuns.push(item);
         }
@@ -202,10 +209,10 @@ export async function fetchTestCasesForReport(
 
     // Extract test executions from test case attributes
     // The API returns executions embedded in test case attributes, not in included node
-    const testExecutions: any[] = [];
-    testCases.forEach((testCase: any) => {
+    const testExecutions: JsonApiResource[] = [];
+    testCases.forEach((testCase: JsonApiResource) => {
       if (testCase.attributes?.executions && Array.isArray(testCase.attributes.executions)) {
-        testCase.attributes.executions.forEach((execution: any) => {
+        (testCase.attributes.executions as Array<Record<string, unknown>>).forEach((execution: Record<string, unknown>) => {
           testExecutions.push({
             type: 'TestExecution',
             id: execution.id?.toString() || `${execution.test_case_id}-${execution.test_run_id}`,

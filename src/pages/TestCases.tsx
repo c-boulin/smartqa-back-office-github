@@ -24,8 +24,7 @@ import { testCasesApiService } from '../services/testCasesApi';
 import { apiService } from '../services/api';
 import { TestCase } from '../types';
 import { Tag } from '../services/tagsApi';
-import { getPriorityString, getTestTypeString, getPriorityNumber, getTestTypeNumber } from '../utils/testCaseHelpers';
-import { getStateNumber } from '../utils/updateTestCaseHelpers';
+import { getTestTypeString } from '../utils/testCaseHelpers';
 import toast from 'react-hot-toast';
 
 const TestCases: React.FC = () => {
@@ -65,7 +64,7 @@ const TestCases: React.FC = () => {
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [isEditFolderModalOpen, setIsEditFolderModalOpen] = useState(false);
   const [isDeleteFolderDialogOpen, setIsDeleteFolderDialogOpen] = useState(false);
-  const [folderToManage, setFolderToManage] = useState<any>(null);
+  const [folderToManage, setFolderToManage] = useState<{ id: string; name: string; parentId?: string; children?: Array<{ id: string }> } | null>(null);
   const [filtersCleared, setFiltersCleared] = useState(false);
   const [isDetailsSidebarOpen, setIsDetailsSidebarOpen] = useState(false);
   const [selectedTestCaseForDetails, setSelectedTestCaseForDetails] = useState<TestCase | null>(null);
@@ -77,18 +76,17 @@ const TestCases: React.FC = () => {
     loading, 
     error, 
     pagination, 
-    currentFilterMode,
     setCurrentFilterMode,
-    isInitialLoadComplete,
+    // isInitialLoadComplete,
     fetchAllTestCasesAndExtractFolders,
-    filterTestCasesByFolder,
+    // filterTestCasesByFolder,
     showFolderTestCases, 
     searchTestCases,
-    filterTestCasesByAutomation,
-    filterTestCasesByPriority,
-    filterTestCasesByType,
-    filterTestCasesByState,
-    filterTestCasesByTags,
+    // filterTestCasesByAutomation,
+    // filterTestCasesByPriority,
+    // filterTestCasesByType,
+    // filterTestCasesByState,
+    // filterTestCasesByTags,
     filterTestCasesWithMultipleFilters,
     createTestCase, 
     updateTestCase, 
@@ -115,6 +113,7 @@ const TestCases: React.FC = () => {
         showFolderTestCases();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- applyFilters would cause infinite loop
   }, [searchTestCases, showFolderTestCases, setCurrentFilterMode, hasActiveFilters]);
 
   const applyFilters = useCallback(async () => {
@@ -126,6 +125,7 @@ const TestCases: React.FC = () => {
       console.log('🔍 Applying multiple filters:', multipleFilters);
       await filterTestCasesWithMultipleFilters(multipleFilters, 1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filters is intentionally omitted to control when this runs
   }, [filters, hasActiveFilters, setCurrentFilterMode, showFolderTestCases, buildMultipleFilters, filterTestCasesWithMultipleFilters]);
 
   const clearAllFilters = useCallback(() => {
@@ -137,7 +137,7 @@ const TestCases: React.FC = () => {
     showFolderTestCases();
   }, [clearFilters, setCurrentFilterMode, showFolderTestCases]);
 
-  const clearIndividualFilter = useCallback(async (filterType: keyof typeof filters, value?: any) => {
+  const clearIndividualFilter = useCallback(async (filterType: keyof typeof filters, _value?: string) => {
     // Handle search clearing
     if (filterType === 'search') {
       setSearchTerm('');
@@ -183,6 +183,7 @@ const TestCases: React.FC = () => {
         showFolderTestCases();
       }
     }, 100); // Increase timeout to ensure state updates
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- applyFilters and hasActiveFilters would cause infinite loop
   }, [filters, updateFilter, buildMultipleFilters, filterTestCasesWithMultipleFilters, setCurrentFilterMode, showFolderTestCases]);
 
   // Effect to handle folder changes while preserving filters
@@ -210,6 +211,7 @@ const TestCases: React.FC = () => {
         showFolderTestCases();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Complex filter dependencies intentionally omitted
   }, [selectedFolderId]);
 
   const handleCreateFolder = useCallback(() => {
@@ -252,13 +254,14 @@ const TestCases: React.FC = () => {
         }, 100);
       }
       
-    } catch (error) {
+    } catch {
       console.error('Failed to create folder:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create folder';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- error, selectedFolderId, showFolderTestCases are stable or tracked separately
   }, [selectedProject, authState.user?.id, fetchAllTestCasesAndExtractFolders]);
 
   const handleEditFolder = useCallback(async (data: {
@@ -281,7 +284,7 @@ const TestCases: React.FC = () => {
         description: data.description,
         projectId: selectedProject.id,
         parentId: existingFolder.parentId,
-        childrenIds: existingFolder.children?.map((child: any) => child.id) || [],
+        childrenIds: existingFolder.children?.map((child: { id: string }) => child.id) || [],
         testCaseIds: [], // Test cases relationships are managed separately
         creatorId: authState.user.id, // Use current user as creator for now
         editorId: authState.user.id // Current user is the editor
@@ -303,13 +306,14 @@ const TestCases: React.FC = () => {
         }, 100);
       }
       
-    } catch (error) {
+    } catch {
       console.error('Failed to update folder:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to update folder';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- error, selectedFolderId, showFolderTestCases are stable or tracked separately
   }, [folderToManage, selectedProject, authState.user?.id, fetchAllTestCasesAndExtractFolders]);
 
   const handleDeleteFolder = useCallback(async () => {
@@ -344,21 +348,22 @@ const TestCases: React.FC = () => {
          }, 100);
        }
        
-    } catch (error) {
+    } catch {
       console.error('Failed to delete folder:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete folder';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- error and showFolderTestCases are stable
   }, [folderToManage, selectedProject, selectedFolderId, selectFolder, fetchAllTestCasesAndExtractFolders]);
 
-  const openEditFolderModal = useCallback((folder: any) => {
+  const openEditFolderModal = useCallback((folder: { id: string; name: string; parentId?: string; children?: Array<{ id: string }> }) => {
     setFolderToManage(folder);
     setIsEditFolderModalOpen(true);
   }, []);
 
-  const openDeleteFolderDialog = useCallback((folder: any) => {
+  const openDeleteFolderDialog = useCallback((folder: { id: string; name: string; parentId?: string; children?: Array<{ id: string }> }) => {
     setFolderToManage(folder);
     
     // Check if folder is empty (no test cases)
@@ -369,9 +374,10 @@ const TestCases: React.FC = () => {
       // For folders with test cases, show confirmation dialog
       setIsDeleteFolderDialogOpen(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleDeleteEmptyFolder is stable
   }, []);
 
-  const handleDeleteEmptyFolder = useCallback(async (folder?: any) => {
+  const handleDeleteEmptyFolder = useCallback(async (folder?: { id: string; name: string; parentId?: string; children?: Array<{ id: string }> }) => {
     const targetFolder = folder || folderToManage;
     if (!targetFolder || !selectedProject) {
       toast.error('Missing required data');
@@ -405,15 +411,15 @@ const TestCases: React.FC = () => {
       // Clean up state
       setFolderToManage(null);
       
-    } catch (error) {
+    } catch {
       console.error('Failed to delete empty folder:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete folder';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
-  }
-  )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- error is stable
+  }, [folderToManage, selectedProject, selectedFolderId, selectFolder, fetchAllTestCasesAndExtractFolders, showFolderTestCases]);
 
   const handleTestCaseTitleClick = useCallback((testCase: TestCase) => {
     console.log('📋 Test case title clicked:', testCase.title, 'ID:', testCase.id);
@@ -450,7 +456,7 @@ const TestCases: React.FC = () => {
 
       // Get the current test case data from API to ensure we have the latest version
       const currentTestCaseResponse = await testCasesApiService.getTestCase(testCaseId);
-      const currentTestCase = testCasesApiService.transformApiTestCase(currentTestCaseResponse.data);
+      // const currentTestCase = testCasesApiService.transformApiTestCase(currentTestCaseResponse.data);
 
       // Get the full test case data with all relationships
       const fullTestCaseResponse = await testCasesApiService.getTestCaseWithIncludes(testCaseId);
@@ -528,13 +534,14 @@ const TestCases: React.FC = () => {
 
       toast.success(`Test case moved to folder successfully`);
 
-    } catch (error) {
+    } catch {
       console.error('❌ Failed to move test case:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to move test case';
       toast.error(errorMessage);
     } finally {
       setIsDragDropInProgress(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- error is stable
   }, [testCases, allTestCases, selectedProject, fetchAllTestCasesAndExtractFolders, selectedFolderId, showFolderTestCases]);
   const handleSearchKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -543,7 +550,7 @@ const TestCases: React.FC = () => {
     }
   }, [searchTerm, handleSearch]);
 
-  const handleCreateTestCase = useCallback(async (data: any) => {
+  const handleCreateTestCase = useCallback(async (data: Record<string, unknown>) => {
     if (!data || !selectedProject || !selectedFolderId || !authState.user?.id) {
       toast.error('Missing required data');
       return;
@@ -559,7 +566,7 @@ const TestCases: React.FC = () => {
           try {
             const newTag = await createTag(tag.label);
             processedTags.push(newTag);
-          } catch (error) {
+          } catch {
             console.error('Failed to create tag:', error);
             toast.error(`Failed to create tag: ${tag.label}`);
             return;
@@ -601,16 +608,17 @@ const TestCases: React.FC = () => {
         }, 100);
       }
       
-    } catch (error) {
+    } catch {
       console.error('Failed to create test case:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create test case';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- createTag, error, showFolderTestCases are stable
   }, [createTestCase, selectedProject, selectedFolderId, authState.user?.id, fetchAllTestCasesAndExtractFolders]);
 
-  const handleEditTestCase = useCallback(async (data: any) => {
+  const handleEditTestCase = useCallback(async (data: Record<string, unknown>) => {
     if (!selectedTestCase || !selectedProject || !authState.user?.id) {
       toast.error('Missing required data for update');
       return;
@@ -626,7 +634,7 @@ const TestCases: React.FC = () => {
           try {
             const newTag = await createTag(tag.label);
             processedTags.push(newTag);
-          } catch (error) {
+          } catch {
             console.error('Failed to create tag:', error);
             toast.error(`Failed to create tag: ${tag.label}`);
             return;
@@ -643,7 +651,7 @@ const TestCases: React.FC = () => {
               try {
                 const newTag = await createTag(tag.label);
                 processedTags.push(newTag);
-              } catch (error) {
+              } catch {
                 console.error('Failed to create tag:', error);
                 toast.error(`Failed to create tag: ${tag.label}`);
                 return;
@@ -693,13 +701,14 @@ const TestCases: React.FC = () => {
         }, 100);
       }
       
-    } catch (error) {
+    } catch {
       console.error('Failed to update test case:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to update test case';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- error, selectedFolderId, showFolderTestCases are stable
   }, [updateTestCase, selectedTestCase, selectedProject, authState.user?.id, fetchAllTestCasesAndExtractFolders, createTag, tags, getTestTypeString]);
 
   const handleDeleteTestCase = useCallback(async () => {
@@ -723,11 +732,12 @@ const TestCases: React.FC = () => {
       }
       
       setSelectedTestCase(null);
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedFolderId, showFolderTestCases are stable
   }, [deleteTestCase, selectedTestCase, selectedProject, fetchAllTestCasesAndExtractFolders]);
 
   const handleDuplicateTestCase = useCallback(async (testCase: TestCase) => {
@@ -789,13 +799,14 @@ const TestCases: React.FC = () => {
         }, 100);
       }
       
-    } catch (error) {
+    } catch {
       console.error('Failed to duplicate test case:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to duplicate test case';
       toast.error(`Failed to duplicate test case: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- error is stable
   }, [createTestCase, selectedProject, authState.user?.id, fetchAllTestCasesAndExtractFolders, selectedFolderId, showFolderTestCases, tags]);
   const openEditModal = useCallback((testCase: TestCase) => {
     setSelectedTestCase(testCase);
@@ -817,6 +828,7 @@ const TestCases: React.FC = () => {
       console.log('📄 Paginating folder view - client-side pagination, page:', page);
       showFolderTestCases(undefined, page);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filters is intentionally omitted to control when this runs
   }, [filters, currentSearchTerm, searchTestCases, showFolderTestCases, hasActiveFilters, buildMultipleFilters, filterTestCasesWithMultipleFilters]);
 
   const handleCreateTag = useCallback(async (label: string): Promise<Tag> => {

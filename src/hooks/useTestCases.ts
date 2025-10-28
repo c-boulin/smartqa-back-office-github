@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { testCasesApiService, TestCasesApiResponse } from '../services/testCasesApi';
-import { foldersApiService } from '../services/foldersApi';
+// import { foldersApiService } from '../services/foldersApi';
 import { TestCase } from '../types';
 import toast from 'react-hot-toast';
 
-export const useTestCases = (projectId?: string | null, folderId?: string | null, onFoldersExtracted?: (folders: any[]) => void, skipInitialLoad?: boolean) => {
+export const useTestCases = (projectId?: string | null, folderId?: string | null, onFoldersExtracted?: (folders: Array<Record<string, unknown>>) => void, skipInitialLoad?: boolean) => {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentFilterMode, setCurrentFilterMode] = useState<'folder' | 'search' | 'automation' | 'all'>('all');
-  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+  const [isInitialLoadComplete] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalItems: 0,
@@ -24,7 +24,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   const hasInitialLoad = useRef<boolean>(false);
 
   // Initial load - fetch all test cases for project and extract folders
-  const fetchAllTestCasesAndExtractFolders = useCallback(async (targetProjectId?: string, initialFilters?: any) => {
+  const fetchAllTestCasesAndExtractFolders = useCallback(async (targetProjectId?: string, initialFilters?: Record<string, unknown>) => {
     const useProjectId = targetProjectId || projectId;
     
     if (!useProjectId) {
@@ -58,7 +58,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         
         // Also fetch all test cases for folder extraction (separate call with pagination)
         // But don't update the display test cases with this response
-        let allTestCasesData: any[] = [];
+        let allTestCasesData: Array<Record<string, unknown>> = [];
         let totalPages = 1;
         
         // Fetch first page to get total pages info
@@ -127,8 +127,8 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         
         // For folder extraction, we still need all test cases
         // But we'll fetch them separately and only when needed
-        let allTestCasesData: any[] = [];
-        let totalPages = Math.ceil(response.meta.totalItems / response.meta.itemsPerPage);
+        let allTestCasesData: Array<Record<string, unknown>> = [];
+        const totalPages = Math.ceil(response.meta.totalItems / response.meta.itemsPerPage);
         
         if (totalPages > 1) {
           console.log(`📋 Fetching all ${totalPages} pages for folder extraction...`);
@@ -313,7 +313,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
     }
   }, [projectId, folderId]);
 
-  const searchTestCases = useCallback(async (searchTerm: string, page: number = 1, globalSearch: boolean = false) => {
+  const searchTestCases = useCallback(async (searchTerm: string, page: number = 1, _globalSearch: boolean = false) => {
     if (!projectId) {
       setTestCases([]);
       return;
@@ -702,7 +702,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
     preconditions: string;
     tags: Tag[];
     folderId?: string;
-    originalRelationships?: any;
+    originalRelationships?: Record<string, unknown>;
     createdAttachments?: Array<{
       type: "Attachment";
       id: string;
@@ -738,7 +738,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         console.log('🔄 Processing test case duplication with original relationships');
         
         // Handle step results - create new ones for the duplicate
-        let stepResults: Array<{
+        const stepResults: Array<{
           id: string;
           order: number;
         }> = [];
@@ -747,7 +747,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
           console.log('🔄 Creating new step results for duplicate...');
           
           for (let i = 0; i < testCaseData.originalRelationships.stepResults.data.length; i++) {
-            const originalStepResult = testCaseData.originalRelationships.stepResults.data[i];
+            // const originalStepResult = testCaseData.originalRelationships.stepResults.data[i];
             
             // We need to get the step result details to duplicate them
             // For now, create empty step results - this should be enhanced to copy actual content
@@ -777,7 +777,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         }> = [];
         
         if (testCaseData.originalRelationships.sharedSteps?.data) {
-          sharedStepsForApi = testCaseData.originalRelationships.sharedSteps.data.map((sharedStep: any, index: number) => ({
+          sharedStepsForApi = testCaseData.originalRelationships.sharedSteps.data.map((sharedStep: Record<string, unknown>, index: number) => ({
             id: sharedStep.id.split('/').pop() || '',
             order: index + 1
           }));
@@ -790,7 +790,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         }> = [];
         
         if (testCaseData.originalRelationships.attachments?.data) {
-          duplicatedAttachments = testCaseData.originalRelationships.attachments.data.map((attachment: any) => ({
+          duplicatedAttachments = testCaseData.originalRelationships.attachments.data.map((attachment: Record<string, unknown>) => ({
             type: "Attachment",
             id: attachment.id
           }));
@@ -820,7 +820,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       }
       
       // Handle step results - create them first if they exist
-      let stepResults: Array<{
+      const stepResults: Array<{
         id: string;
         order: number;
       }> = [];
@@ -999,7 +999,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       setLoading(true);
       
       // Handle step results - update existing ones and create new ones
-      let stepResultsRelationships: Array<{
+      const stepResultsRelationships: Array<{
         type: string;
         id: string;
         meta: {

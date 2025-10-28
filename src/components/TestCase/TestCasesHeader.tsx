@@ -6,7 +6,7 @@ import { Project } from '../../types';
 interface TestCasesHeaderProps {
   selectedProject: Project | null;
   totalItems: number;
-  selectedFolder: any;
+  selectedFolder: { id: string; name: string } | null;
   onCreateTestCase: () => void;
   disabled: boolean;
 }

@@ -15,7 +15,7 @@ export const useFolders = (projectId?: string | null) => {
   const isInitialized = useRef(false);
 
   // Function to update folders with extracted data from test cases
-  const updateFoldersFromTestCases = useCallback(async (extractedFolders: any[], forceProjectId?: string) => {
+  const updateFoldersFromTestCases = useCallback(async (extractedFolders: Array<Record<string, unknown>>, forceProjectId?: string) => {
     const targetProjectId = forceProjectId || projectId;
     
     console.log('📁 updateFoldersFromTestCases called with:', extractedFolders, 'project:', targetProjectId);

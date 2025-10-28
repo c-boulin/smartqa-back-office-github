@@ -11,14 +11,14 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (including devDependencies for build)
+RUN npm ci
 
 # Copy source code
 COPY . .
 
 # Build the application
-RUN npm run build
+RUN npm run build-dev
 
 # Production stage with Nginx
 FROM nginx:alpine

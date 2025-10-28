@@ -1,5 +1,3 @@
-import { STATES, PRIORITIES, TEST_CASE_TYPES, AUTOMATION_STATUS } from '../constants/testCaseConstants';
-import { TEST_RESULTS } from '../types';
 
 // Helper function to convert local time to UTC
 const convertTimeToUTC = (timeString: string, timezone: string = 'UTC'): string => {
@@ -126,7 +124,7 @@ interface User {
 
 export const buildScheduledReportPayload = (formData: FormData, users: User[], currentUserId: number) => {
   // Build test case filters
-  const testCaseFilters: any = {};
+  const testCaseFilters: Record<string, string[]> = {};
 
   if (formData.filters.statusOfTestCase.length > 0) {
     testCaseFilters.execution_result = formData.filters.statusOfTestCase.map(id => parseInt(id));
@@ -161,7 +159,7 @@ export const buildScheduledReportPayload = (formData: FormData, users: User[], c
     .filter(email => email !== undefined) as string[];
 
   // Build the payload
-  const payload: any = {
+  const payload: Record<string, unknown> = {
     data: {
       type: 'ScheduledReport',
       attributes: {
@@ -218,7 +216,7 @@ export const buildScheduledReportPayload = (formData: FormData, users: User[], c
   payload.data.attributes.testCaseFilters = testCaseFilters;
 
   // Build date filters separately
-  const dateFilters: any = {};
+  const dateFilters: Record<string, { start_date: string; end_date: string }> = {};
 
   const createdDateRange = calculateDateRange(formData.filters.createdDateRange);
   if (createdDateRange) {

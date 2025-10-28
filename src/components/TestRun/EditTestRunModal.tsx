@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Loader, Save, X, Calendar, User, Tag as TagIcon, Search, Plus, Minus } from 'lucide-react';
+import { Loader, Save, X, Tag as TagIcon, Search, Plus } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import TagSelector from '../UI/TagSelector';
 import ConfigurationSelector from '../UI/ConfigurationSelector';
 import TestPlanSelector from '../UI/TestPlanSelector';
 import { useUsers } from '../../context/UsersContext';
-import { useAuth } from '../../context/AuthContext';
 import { useTestCases } from '../../hooks/useTestCases';
 import { useApp } from '../../context/AppContext';
 import { Tag } from '../../services/tagsApi';
@@ -45,7 +44,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   onCreateTag,
   tagsLoading
 }) => {
-  const { state: authState } = useAuth();
+  // const { state: authState } = useAuth();
   const { users, loading: usersLoading } = useUsers();
   const { getSelectedProject, state: appState, createConfiguration, loadConfigurations } = useApp();
   const selectedProject = getSelectedProject();
@@ -85,6 +84,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
       console.log('⚙️ Loading configurations for edit modal...');
       loadConfigurations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadConfigurations is stable
   }, [isOpen, configurations.length, appState.isLoadingConfigurations]);
   
 
@@ -156,6 +156,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
         tags: []
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- allTestCases.length, loadExistingConfigurations, loadExistingTags are stable
   }, [isOpen, testRun, users]);
 
   // Function to load existing tags for the test run
@@ -302,45 +303,45 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   };
 
   // Function to load assigned user for the test run
-  const loadAssignedUser = async (testRunId: string) => {
-    try {
-      console.log('👤 Loading assigned user for test run:', testRunId);
-      
-      // Get test run details to extract assigned user from relationships.user
-      const response = await testRunsApiService.getTestRun(testRunId);
-      console.log('👤 Test run response for assigned user:', response);
-      
-      // Extract user ID from relationships.user
-      const userRelationship = response.data.relationships?.user?.data;
-      console.log('👤 User relationship found:', userRelationship);
-      
-      if (userRelationship) {
-        const assignedUserId = userRelationship.id.split('/').pop();
-        console.log('👤 Extracted assigned user ID:', assignedUserId);
-        
-        // Set the assigned user in form data
-        setFormData(prev => ({
-          ...prev,
-          assignedTo: assignedUserId || ''
-        }));
-        
-        console.log('✅ Set assigned user ID in form:', assignedUserId);
-      } else {
-        console.log('👤 No user relationship found in test run');
-        setFormData(prev => ({
-          ...prev,
-          assignedTo: ''
-        }));
-      }
-      
-    } catch (error) {
-      console.error('❌ Failed to load assigned user:', error);
-      setFormData(prev => ({
-        ...prev,
-        assignedTo: ''
-      }));
-    }
-  };
+  // const loadAssignedUser = async (testRunId: string) => {
+  //   try {
+  //     console.log('👤 Loading assigned user for test run:', testRunId);
+  //     
+  //     // Get test run details to extract assigned user from relationships.user
+  //     const response = await testRunsApiService.getTestRun(testRunId);
+  //     console.log('👤 Test run response for assigned user:', response);
+  //     
+  //     // Extract user ID from relationships.user
+  //     const userRelationship = response.data.relationships?.user?.data;
+  //     console.log('👤 User relationship found:', userRelationship);
+  //     
+  //     if (userRelationship) {
+  //       const assignedUserId = userRelationship.id.split('/').pop();
+  //       console.log('👤 Extracted assigned user ID:', assignedUserId);
+  //       
+  //       // Set the assigned user in form data
+  //       setFormData(prev => ({
+  //         ...prev,
+  //         assignedTo: assignedUserId || ''
+  //       }));
+  //       
+  //       console.log('✅ Set assigned user ID in form:', assignedUserId);
+  //     } else {
+  //       console.log('👤 No user relationship found in test run');
+  //       setFormData(prev => ({
+  //         ...prev,
+  //         assignedTo: ''
+  //       }));
+  //     }
+  //     
+  //   } catch (error) {
+  //     console.error('❌ Failed to load assigned user:', error);
+  //     setFormData(prev => ({
+  //       ...prev,
+  //       assignedTo: ''
+  //     }));
+  //   }
+  // };
 
   // Function to load existing test plan for the test run
   const loadExistingTestPlan = async (testRunId: string) => {
@@ -408,15 +409,15 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   };
 
   // Helper function to convert status to state number
-  const getStateFromStatus = (status: string): number => {
-    const statusMap = {
-      'open': 1, // New
-      'closed': 6 // Closed
-    };
-    return statusMap[status as keyof typeof statusMap] || 1;
-  };
+  // const getStateFromStatus = (status: string): number => {
+  //   const statusMap = {
+  //     'open': 1, // New
+  //     'closed': 6 // Closed
+  //   };
+  //   return statusMap[status as keyof typeof statusMap] || 1;
+  // };
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number | Date | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -449,21 +450,21 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   console.log('📋 Current formData.testCaseIds:', formData.testCaseIds);
   console.log('📋 All test cases:', allTestCases.map(tc => ({ id: tc.id, title: tc.title })));
   console.log('📋 Selected test cases:', selectedTestCases.map(tc => ({ id: tc.id, title: tc.title })));
-  const handleConfigurationToggle = (config: string) => {
-    setFormData(prev => ({
-      ...prev,
-      configurations: prev.configurations.includes(config)
-        ? prev.configurations.filter(c => c !== config)
-        : [...prev.configurations, config]
-    }));
-  };
+  // const handleConfigurationToggle = (config: string) => {
+  //   setFormData(prev => ({
+  //     ...prev,
+  //     configurations: prev.configurations.includes(config)
+  //       ? prev.configurations.filter(c => c !== config)
+  //       : [...prev.configurations, config]
+  //   }));
+  // };
 
-  const removeConfiguration = (config: string) => {
-    setFormData(prev => ({
-      ...prev,
-      configurations: prev.configurations.filter(c => c.id !== config)
-    }));
-  };
+  // const removeConfiguration = (config: string) => {
+  //   setFormData(prev => ({
+  //     ...prev,
+  //     configurations: prev.configurations.filter(c => c.id !== config)
+  //   }));
+  // };
 
   const handleCreateTag = async (label: string): Promise<Tag> => {
     return await onCreateTag(label);

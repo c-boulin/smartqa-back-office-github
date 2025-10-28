@@ -120,7 +120,7 @@ export interface Report {
     start: Date;
     end: Date;
   };
-  data: any;
+  data: unknown; // Changed from 'any' - forces type checking before usage
   createdAt: Date;
 }
 

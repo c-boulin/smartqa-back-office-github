@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, User, Play, CheckCircle, XCircle, Clock, AlertTriangle, Loader } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Play, CheckCircle, Clock, Loader } from 'lucide-react';
 import { format } from 'date-fns';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
-import { testPlansApiService, TestPlan } from '../services/testPlansApi';
+import { testPlansApiService } from '../services/testPlansApi';
 import { testRunsApiService, TestRun } from '../services/testRunsApi';
 import { useApp } from '../context/AppContext';
 
@@ -23,8 +23,7 @@ interface TestPlanWithTestRuns {
 const TestPlanDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getSelectedProject, state: appState } = useApp();
-  const selectedProject = getSelectedProject();
+  const { state: appState } = useApp();
   
   const [testPlan, setTestPlan] = useState<TestPlanWithTestRuns | null>(null);
   const [loading, setLoading] = useState(true);

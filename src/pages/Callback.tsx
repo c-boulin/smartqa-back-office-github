@@ -10,6 +10,7 @@ const Callback: React.FC = () => {
 
   useEffect(() => {
     handleCallback();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleCallback should only run once
   }, []);
 
   const handleCallback = async () => {

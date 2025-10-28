@@ -3,7 +3,6 @@ import { useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  FolderOpen, 
   TestTube, 
   Play, 
   Calendar, 
@@ -124,6 +123,7 @@ const Sidebar: React.FC = () => {
     } finally {
       setIsLoadingDropdown(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- allProjects.length is not stable
   }, [searchTerm]);
 
   // Search projects with API call

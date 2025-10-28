@@ -18,7 +18,7 @@ export const useTestCasesFilters = () => {
     tags: []
   });
 
-  const updateFilter = useCallback((filterType: keyof FiltersState, value: any) => {
+  const updateFilter = useCallback((filterType: keyof FiltersState, value: string | string[]) => {
     setFilters(prev => ({ ...prev, [filterType]: value }));
   }, []);
 
@@ -46,7 +46,7 @@ export const useTestCasesFilters = () => {
   };
 
   const buildMultipleFilters = useCallback(() => {
-    const multipleFilters: any = {};
+    const multipleFilters: Record<string, string | string[]> = {};
     
     if (filters.automationStatus !== 'all') {
       multipleFilters.automationStatus = parseInt(filters.automationStatus) as 1 | 2 | 3 | 4 | 5;

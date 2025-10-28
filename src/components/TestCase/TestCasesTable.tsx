@@ -1,17 +1,16 @@
 import React from 'react';
-import { SquarePen, Trash2, Search, ChevronLeft, ChevronRight, Loader, Copy } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Loader } from 'lucide-react';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
-import StatusBadge from '../UI/StatusBadge';
 import DraggableTestCaseRow from './DraggableTestCaseRow';
-import { TestCase, TEST_CASE_TYPES } from '../../types';
+import { TestCase } from '../../types';
 
 interface TestCasesTableProps {
   testCases: TestCase[];
   loading: boolean;
   isApplyingNavigationFilter: boolean;
   currentSearchTerm: string;
-  selectedFolder: any;
+  selectedFolder: { id: string; name: string } | null;
   pagination: {
     currentPage: number;
     totalPages: number;

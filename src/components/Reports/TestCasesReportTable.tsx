@@ -1,6 +1,5 @@
 import React from 'react';
 import { MoreHorizontal } from 'lucide-react';
-import Button from '../UI/Button';
 
 interface TestCaseReportData {
   id: string;
@@ -89,7 +88,7 @@ const TestCasesReportTable: React.FC<TestCasesReportTableProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
-            {testCases.map((testCase, index) => (
+            {testCases.map((testCase) => (
               <tr key={testCase.id} className="hover:bg-slate-800/30 transition-colors">
                 <td className="py-4 px-6">
                   <div>

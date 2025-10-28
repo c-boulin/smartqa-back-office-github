@@ -2,26 +2,26 @@ import React from 'react';
 import { 
   Activity, 
   CheckCircle, 
-  XCircle, 
-  Clock,
+  // XCircle, 
+  // Clock,
   Loader,
   TestTube,
-  Layers,
-  FolderOpen,
+  // Layers,
+  // FolderOpen,
   Database,
-  Share,
-  Filter,
-  MoreHorizontal,
-  Info
+  // Share,
+  // Filter,
+  // MoreHorizontal,
+  // Info
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Card from '../components/UI/Card';
-import Button from '../components/UI/Button';
+// import Button from '../components/UI/Button';
 import ClosedRunsCaseResultsStackedChart from '../components/Charts/ClosedRunsCaseResultsStackedChart';
 import { useApp } from '../context/AppContext';
 import { useDashboardData } from '../hooks/useDashboardData';
-import { TEST_CASE_TYPES, TEST_RESULTS, TestResultId } from '../types';
+import { TEST_CASE_TYPES } from '../types';
 
 // Only use dashboard data hook on Dashboard page
 export default function Dashboard() {
@@ -36,7 +36,7 @@ export default function Dashboard() {
     timestamp: new Date().toISOString()
   });
   
-  const { dashboardData, loading, error, refreshData } = useDashboardData(selectedProject, state.projects);
+  const { dashboardData, loading, error } = useDashboardData(selectedProject, state.projects);
 
   // Helper function to get colors for different test case types
   const getTypeColor = (typeId: number): string => {
@@ -127,14 +127,6 @@ export default function Dashboard() {
   // Prepare data for Closed Test Runs (line chart)
   const closedTestRunsLineData = dashboardData.closedTestRunsLineData || [];
 
-  // Prepare data for Results from Closed Test Runs (bar chart)
-  const resultsFromClosedData = dashboardData.closedTestRunsData.map(item => ({
-    month: item.month,
-    Passed: item.passed || 0,
-    Failed: item.failed || 0,
-    Blocked: item.blocked || 0
-  }));
-
   // Prepare data for Type of Test Cases (pie chart)
   const typeOfTestCasesData = Object.entries(dashboardData.testTypeDistribution || {})
     .map(([typeId, count]) => {
@@ -154,7 +146,7 @@ export default function Dashboard() {
   );
 
   // Handler for pie chart click navigation
-  const handleActiveTestRunsClick = (data: any) => {
+  const handleActiveTestRunsClick = (data: { name: string; value: number }) => {
     if (!selectedProject) {
       console.warn('No project selected, cannot navigate to test runs overview');
       return;
@@ -173,7 +165,7 @@ export default function Dashboard() {
     });
   };
 
-  const handleTypeOfTestCasesClick = (data: any) => {
+  const handleTypeOfTestCasesClick = (data: { name: string; value: number }) => {
     if (!selectedProject) {
       console.warn('No project selected, cannot navigate to test cases');
       return;
@@ -563,7 +555,7 @@ export default function Dashboard() {
                 {/* Dynamically render lines for all test case types that exist in the data */}
                 {trendOfTestCasesData.length > 0 && Object.keys(trendOfTestCasesData[0])
                   .filter(key => key !== 'month' && key !== 'date' && key !== 'Total')
-                  .map((typeKey, index) => {
+                  .map((typeKey) => {
                     // Map type name back to ID to get consistent color
                     const typeNameToId: Record<string, number> = {};
                     Object.entries(TEST_CASE_TYPES).forEach(([id, name]) => {

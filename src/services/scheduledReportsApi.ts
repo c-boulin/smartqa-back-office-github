@@ -229,13 +229,13 @@ const DAYS_TO_SEND_REVERSE: Record<string, number> = {
 };
 
 class ScheduledReportsApiService {
-  transformApiScheduledReport(apiReport: ApiScheduledReport, included?: any[]): ScheduledReport {
+  transformApiScheduledReport(apiReport: ApiScheduledReport, included?: Array<{ id: string; type: string; attributes?: Record<string, unknown> }>): ScheduledReport {
     const attrs = apiReport.attributes || apiReport;
     const id = attrs.id?.toString() || apiReport.id?.toString() || '0';
 
     // Extract creator info
     let creatorName = 'Unknown';
-    if (apiReport.relationships?.creator?.data && included) {
+    if (apiReport.relationships?.creator?.data?.id && included) {
       const creatorId = apiReport.relationships.creator.data.id.split('/').pop();
       const creator = included.find(item => {
         const itemId = item.id?.toString().split('/').pop() || item.attributes?.id?.toString();
@@ -313,7 +313,7 @@ class ScheduledReportsApiService {
     }
   }
 
-  async createScheduledReport(payload: any): Promise<ScheduledReport> {
+  async createScheduledReport(payload: Record<string, unknown>): Promise<ScheduledReport> {
     try {
       const response = await apiService.authenticatedRequest('/scheduled_reports?include=creator', {
         method: 'POST',
@@ -329,7 +329,7 @@ class ScheduledReportsApiService {
 
   async updateScheduledReport(id: string, data: Partial<ScheduledReport>): Promise<ScheduledReport> {
     try {
-      const attributes: any = {};
+      const attributes: Record<string, unknown> = {};
 
       if (data.title !== undefined) attributes.title = data.title;
       if (data.description !== undefined) attributes.description = data.description;
@@ -377,7 +377,7 @@ class ScheduledReportsApiService {
 
       // Handle test case filters (excluding date ranges)
       if (data.testCaseFilters !== undefined) {
-        const testCaseFilters: any = {};
+        const testCaseFilters: Record<string, string[] | number[]> = {};
 
         if (data.testCaseFilters.statusOfTestCase && data.testCaseFilters.statusOfTestCase.length > 0) {
           testCaseFilters.execution_result = data.testCaseFilters.statusOfTestCase.map(id => parseInt(id));
@@ -402,7 +402,7 @@ class ScheduledReportsApiService {
         attributes.testCaseFilters = testCaseFilters;
 
         // Handle date filters separately
-        const dateFilters: any = {};
+        const dateFilters: Record<string, { start_date: string; end_date: string }> = {};
 
         const createdDateRange = calculateDateRange(data.testCaseFilters.createdDateRange || '');
         if (createdDateRange) {

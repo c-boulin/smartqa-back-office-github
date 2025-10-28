@@ -33,33 +33,14 @@ interface TestRunDetailedReportProps {
   filters?: ReportFilters | null;
   creationDateFilter?: string;
   reportData?: {
-    testCases: any[];
-    testRuns: any[];
-    testExecutions?: any[];
-    included?: any[];
+    testCases: Array<{ attributes: { id: number; [key: string]: unknown } }>;
+    testRuns: Array<{ attributes: { id: number; [key: string]: unknown } }>;
+    testExecutions?: Array<{ attributes: { test_case_id?: number; result?: number; [key: string]: unknown } }>;
+    included?: Array<Record<string, unknown>>;
     totalTestCases: number;
   } | null;
   description?: string;
   title?: string;
-}
-
-interface TestRunData {
-  id: string;
-  name: string;
-  state: number;
-  status: 'open' | 'closed';
-  testCasesCount: number;
-  passedCount: number;
-  failedCount: number;
-  blockedCount: number;
-  untestedCount: number;
-  assignedTo: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  createdAt: Date;
-  testCaseIds: string[];
 }
 
 interface TestCaseWithExecution {
@@ -131,7 +112,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
     if (!filter) return null;
 
     const now = new Date();
-    let threshold = new Date();
+    const threshold = new Date();
 
     switch (filter) {
       case 'Last 24 hours':
@@ -169,6 +150,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
     fetchTestRunsData().finally(() => {
       fetchInProgressRef.current = false;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTestRunsData is stable
   }, [projectId, passedReportData]);
 
   const fetchTestRunsData = async () => {
@@ -199,7 +181,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
       // STEP 2: Build users map from included data
       const usersMap = new Map<string, { id: string; name: string; email: string }>();
       if (response.included && Array.isArray(response.included)) {
-        response.included.forEach((item: any) => {
+        response.included.forEach((item: Record<string, unknown>) => {
           if (item.type === 'User' && item.attributes) {
             const userId = item.attributes.id.toString();
             usersMap.set(userId, {
@@ -214,8 +196,8 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
       // STEP 3: Build test runs map from included test runs
       // Use the SAME transformation service as Summary report for consistency
-      const testRunsMap = new Map<string, any>();
-      testRuns.forEach((apiTestRun: any) => {
+      const testRunsMap = new Map<string, Record<string, unknown>>();
+      testRuns.forEach((apiTestRun) => {
         // Transform using the standardized service - same as Summary report
         const transformed = testRunsApiService.transformApiTestRun(apiTestRun, response.included || []);
 
@@ -287,18 +269,18 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
       // IMPORTANT: The API's execution_result filter returns test cases based on their
       // ABSOLUTE latest execution across ALL test runs. We need to filter executions
       // to only include those from the filtered test runs.
-      const executionsMap = new Map<string, Map<string, any>>();
+      const executionsMap = new Map<string, Map<string, Record<string, unknown>>>();
 
       // Create a set of filtered test case IDs for quick lookup
       const filteredTestCaseIds = new Set(
-        testCases.map((tc: any) => tc.attributes.id.toString())
+        testCases.map((tc) => tc.attributes.id.toString())
       );
       console.log('📊 Filtered test case IDs from API response:', filteredTestCaseIds.size, 'test cases');
 
       if (testExecutions && Array.isArray(testExecutions)) {
         console.log('📊 Processing', testExecutions.length, 'total test executions');
 
-        testExecutions.forEach((execution: any) => {
+        testExecutions.forEach((execution) => {
           const testCaseId = execution.attributes.test_case_id?.toString();
           const testRunId = execution.attributes.test_run_id?.toString();
           const userId = execution.attributes.user_id?.toString();
@@ -346,7 +328,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         console.log('📊 Allowed status IDs:', Array.from(allowedStatusIds || []));
       }
 
-      testCases.forEach((testCase: any) => {
+      testCases.forEach((testCase) => {
         const testCaseId = testCase.attributes.id.toString();
         const testCaseExecutions = executionsMap.get(testCaseId);
 
@@ -354,7 +336,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
           return;
         }
 
-        testCaseExecutions.forEach((execution: any, testRunId: string) => {
+        testCaseExecutions.forEach((execution, testRunId: string) => {
           // CRITICAL: Only process executions from filtered test runs
           if (!filteredTestRunIds.has(testRunId)) {
             console.log(`📊 Skipping execution for test run ${testRunId} - not in filtered test runs`);
@@ -378,7 +360,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
             if (!isNaN(parsedInt) && TEST_RESULTS[parsedInt as TestResultId]) {
               resultId = parsedInt as TestResultId;
             } else {
-              const foundEntry = Object.entries(TEST_RESULTS).find(([id, label]) =>
+              const foundEntry = Object.entries(TEST_RESULTS).find(([, label]) =>
                 label.toLowerCase() === rawResult.toLowerCase()
               );
               resultId = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6;
@@ -479,7 +461,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
       // Calculate aggregate stats directly from testCasesIncluded
       // This ensures stats match the actual filtered data
-      let totalTestCases = testCasesIncluded.length;
+      const totalTestCases = testCasesIncluded.length;
       let totalPassed = 0;
       let totalFailed = 0;
       let totalBlocked = 0;
@@ -582,9 +564,9 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
         // Count executions by date/hour - ONLY from filtered test runs
         if (testExecutions && Array.isArray(testExecutions)) {
-          const dayExecutions = new Map<string, any>();
+          const dayExecutions = new Map<string, Record<string, number>>();
 
-          testExecutions.forEach((execution: any) => {
+          testExecutions.forEach((execution) => {
             const executionDate = new Date(execution.attributes.created_at || 0);
 
             // Normalize execution date based on time unit
@@ -744,7 +726,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     console.log('📄 Downloading detailed report as PDF...');
 
     if (!reportData) {
@@ -753,7 +735,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
     }
 
     try {
-      reportDownloadService.generateDetailedReportPDF(
+      await reportDownloadService.generateDetailedReportPDF(
         reportData,
         projectName,
         authState.user?.name || 'Unknown User'
@@ -1071,7 +1053,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                {reportData.testCasesIncluded.map((testCase, index) => (
+                {reportData.testCasesIncluded.map((testCase) => (
                   <tr key={`${testCase.testRunId}-${testCase.testCaseId}`} className="hover:bg-slate-800/30 transition-colors">
                     <td className="py-4 px-6">
                       <div>

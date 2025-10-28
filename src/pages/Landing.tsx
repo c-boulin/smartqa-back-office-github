@@ -3,11 +3,10 @@ import { Link } from 'react-router-dom';
 import { Hexagon, ArrowRight, TestTube, BarChart3, Users, Shield, User, LogOut } from 'lucide-react';
 import Button from '../components/UI/Button';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 
 const Landing: React.FC = () => {
   const { state, logout } = useAuth();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();

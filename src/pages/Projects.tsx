@@ -1,9 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, Search, Filter, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, User } from 'lucide-react';
+import { Plus, Search, Filter, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
-import StatusBadge from '../components/UI/StatusBadge';
 import Modal from '../components/UI/Modal';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import { useApp } from '../context/AppContext';
@@ -139,6 +138,7 @@ const Projects: React.FC = () => {
       // Si la recherche est vide, revenir à la liste normale
       await handleFilterChange(filterMode);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_OPTIONS, authState.user?.id, handleFilterChange are stable
   }, [searchProjects, searchProjectsCreatedByUser, filterMode, sortBy]);
 
   const handleFilterChange = useCallback(async (mode: 'all' | 'my-projects') => {
@@ -155,6 +155,7 @@ const Projects: React.FC = () => {
     } else {
       await fetchProjectsWithSort(1, sortOption?.param);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_OPTIONS is a constant
   }, [fetchProjectsCreatedByUser, fetchProjectsWithSort, sortBy, authState]);
 
   const handleSortChange = useCallback(async (newSortBy: string) => {
@@ -180,6 +181,7 @@ const Projects: React.FC = () => {
         await fetchProjectsWithSort(1, sortOption?.param);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_OPTIONS, authState.user?.id are stable
   }, [searchProjects, searchProjectsCreatedByUser, fetchProjectsCreatedByUser, fetchProjectsWithSort, currentSearchTerm, filterMode]);
 
   const handleSearchKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -197,11 +199,12 @@ const Projects: React.FC = () => {
       await loadProjects(true);
       setIsCreateModalOpen(false);
       setNewProject({ name: '', description: '' });
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
   }, [createProject, newProject]);
 
   const handleEditProject = useCallback(async () => {
@@ -215,11 +218,12 @@ const Projects: React.FC = () => {
       setIsEditModalOpen(false);
       setProjectToManage(null);
       setNewProject({ name: '', description: '' });
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
   }, [updateProject, projectToManage, newProject]);
 
   const handleDeleteProject = useCallback(async () => {
@@ -231,11 +235,12 @@ const Projects: React.FC = () => {
       // Refresh the global project list in AppContext
       await loadProjects(true);
       setProjectToManage(null);
-    } catch (error) {
+    } catch {
       // Error is already handled in the hook
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
   }, [deleteProject, projectToManage]);
 
   const openEditModal = useCallback((project: Project) => {
@@ -272,6 +277,7 @@ const Projects: React.FC = () => {
         fetchProjectsWithSort(page, sortOption?.param);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_OPTIONS, authState.user?.id are stable
   }, [currentSearchTerm, filterMode, sortBy, searchProjects, searchProjectsCreatedByUser, fetchProjectsCreatedByUser, fetchProjectsWithSort]);
 
   const clearAllFilters = useCallback(() => {
@@ -281,6 +287,7 @@ const Projects: React.FC = () => {
     setSortBy('createdAt-desc');
     const sortOption = SORT_OPTIONS.find(option => option.value === 'createdAt-desc');
     fetchProjectsWithSort(1, sortOption?.param);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_OPTIONS is a constant
   }, [fetchProjectsWithSort]);
 
   const handleProjectClick = useCallback((project: Project) => {

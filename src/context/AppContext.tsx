@@ -97,7 +97,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, configurations: action.payload };
     case 'SET_LOADING_CONFIGURATIONS':
       return { ...state, isLoadingConfigurations: action.payload };
-    case 'ADD_PROJECT':
+    case 'ADD_PROJECT': {
       // When adding a project, also auto-select it if no project is currently selected
       const shouldAutoSelect = state.projects.length === 0 || !state.selectedProjectId;
       const newState = { 
@@ -114,6 +114,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       }
       
       return newState;
+    }
     case 'ADD_TAG':
       return { ...state, tags: [...state.tags, action.payload] };
     case 'ADD_CONFIGURATION':
@@ -125,7 +126,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           ? state.projects.map(p => p.id === action.payload.id ? action.payload : p)
           : [...state.projects, action.payload]
       };
-    case 'DELETE_PROJECT':
+    case 'DELETE_PROJECT': {
       const newSelectedProjectId = state.selectedProjectId === action.payload ? null : state.selectedProjectId;
       if (newSelectedProjectId !== state.selectedProjectId) {
         setStoredSelectedProjectId(newSelectedProjectId);
@@ -135,6 +136,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         projects: state.projects.filter(p => p.id !== action.payload),
         selectedProjectId: newSelectedProjectId
       };
+    }
     case 'SET_CURRENT_PROJECT':
       return { ...state, currentProject: action.payload };
     case 'SET_SELECTED_PROJECT_ID':
@@ -372,6 +374,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       isInitializing.current = false;
       dispatch({ type: 'CLEAR_DATA' });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadConfigurations, loadProjects, loadTags are stable
   }, [authState.isAuthenticated]); // Only depend on authentication state
 
   return (
@@ -393,6 +396,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- useApp hook needs to be exported alongside provider
 export const useApp = () => {
   const context = useContext(AppContext);
   if (!context) {

@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader, Calendar, User, Tag as TagIcon, Clock, CheckCircle, SquarePen, Eye, XCircle, AlertTriangle, Target, Shield, Flame, ZoomIn } from 'lucide-react';
+import { X, Loader, Calendar, Tag as TagIcon, Clock, CheckCircle, SquarePen, Eye, XCircle, AlertTriangle, Target, Shield, Flame } from 'lucide-react';
 import { format } from 'date-fns';
-import { testCasesApiService } from '../../services/testCasesApi';
 import { sharedStepsApiService } from '../../services/sharedStepsApi';
 import { testCaseExecutionsApiService, TestCaseExecution } from '../../services/testCaseExecutionsApi';
 import { testRunsApiService } from '../../services/testRunsApi';
 import { testCaseDataService } from '../../services/testCaseDataService';
 import { TestCase } from '../../types';
 import { TEST_RESULTS, TestResultId } from '../../types';
-import { apiService } from '../../services/api';
 import toast from 'react-hot-toast';
 
 interface TestCaseDetailsSidebarProps {
@@ -196,7 +194,7 @@ const TestResultDropdown: React.FC<{
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
-  const selectedResultLabel = TEST_RESULTS[value];
+  // const selectedResultLabel = TEST_RESULTS[value];
 
   const getResultColor = (resultId: TestResultId): string => {
     switch (resultId) {
@@ -389,7 +387,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
   testRunId,
   isTestRunClosed = false,
   currentExecutionResult,
-  onExecutionResultChange
+  onExecutionResultChange // eslint-disable-line @typescript-eslint/no-unused-vars -- Prop definition for component interface
 }) => {
   const [testCaseDetails, setTestCaseDetails] = useState<TestCaseDetails | null>(null);
   const [loading, setLoading] = useState(false);
@@ -429,6 +427,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
       setTestCaseDetails(null);
       setError(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTestCaseDetails is stable
   }, [isOpen, testCase]);
 
   const fetchTestCaseDetails = async (testCaseId: string) => {
@@ -525,10 +524,10 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
           if (testRunResponse.data.attributes.executions && Array.isArray(testRunResponse.data.attributes.executions)) {
             // Filter executions for this specific test case
             const testCaseExecutions = testRunResponse.data.attributes.executions.filter(
-              (execution: any) => execution.test_case_id.toString() === testCase.id
+              (execution: { test_case_id: number; [key: string]: unknown }) => execution.test_case_id.toString() === testCase.id
             );
             
-            executions = testCaseExecutions.map((execution: any) => ({
+            executions = testCaseExecutions.map((execution: { id: number; test_case_id: number; result: number; user_id?: number; created_at: string; updated_at: string; [key: string]: unknown }) => ({
               id: execution.id.toString(),
               testCaseId: execution.test_case_id.toString(),
               testRunId: execution.test_run_id.toString(),

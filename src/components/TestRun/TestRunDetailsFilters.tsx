@@ -2,8 +2,7 @@ import React from 'react';
 import { Search, Filter, X } from 'lucide-react';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
-import TagSelector from '../UI/TagSelector';
-import { AUTOMATION_STATUS_LABELS, TEST_CASE_TYPES } from '../../types';
+import { AUTOMATION_STATUS_LABELS } from '../../types';
 import { Tag } from '../../services/tagsApi';
 
 interface FiltersState {
@@ -21,13 +20,13 @@ interface TestRunDetailsFiltersProps {
   onSearchKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   currentSearchTerm: string;
   filters: FiltersState;
-  onFilterChange: (filterType: keyof FiltersState, value: any) => void;
+  onFilterChange: (filterType: keyof FiltersState, value: string | string[]) => void;
   onApplyFilters: () => void;
   onClearAllFilters: () => void;
   onOpenFiltersSidebar: () => void;
   availableTags: Tag[];
   onCreateTag: (label: string) => Promise<Tag>;
-  onClearIndividualFilter: (filterType: keyof FiltersState, value?: any) => void;
+  onClearIndividualFilter: (filterType: keyof FiltersState, value?: string) => void;
 }
 
 const TestRunDetailsFilters: React.FC<TestRunDetailsFiltersProps> = ({
@@ -36,12 +35,9 @@ const TestRunDetailsFilters: React.FC<TestRunDetailsFiltersProps> = ({
   onSearchKeyPress,
   currentSearchTerm,
   filters,
-  onFilterChange,
-  onApplyFilters,
+  // onApplyFilters,
   onClearAllFilters,
   onOpenFiltersSidebar,
-  availableTags,
-  onCreateTag,
   onClearIndividualFilter
 }) => {
   const hasActiveFilters = currentSearchTerm || 
@@ -51,14 +47,6 @@ const TestRunDetailsFilters: React.FC<TestRunDetailsFiltersProps> = ({
     filters.state !== 'all' ||
     filters.result !== 'all' ||
     (filters.tags && filters.tags.length > 0);
-
-  const clearSearchTerm = () => {
-    onSearchTermChange('');
-    // Auto-apply filters after clearing search with proper timing
-    setTimeout(() => {
-      onApplyFilters();
-    }, 10);
-  };
 
   return (
     <Card className="p-6">
@@ -107,7 +95,7 @@ const TestRunDetailsFilters: React.FC<TestRunDetailsFiltersProps> = ({
             <span className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400">
               Search: "{currentSearchTerm}"
               <button
-                onClick={() => onClearIndividualFilter('search' as any)}
+                onClick={() => onClearIndividualFilter('search')}
                 className="ml-2 text-cyan-400 hover:text-cyan-300 transition-colors"
                 title="Clear search"
               >

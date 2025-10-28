@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Loader, CheckCircle, SquarePen, Eye, Clock, XCircle, AlertTriangle, Zap, Target, Shield, Flame, Layers } from 'lucide-react';
+import { Plus, Loader, CheckCircle, SquarePen, Eye, Clock, XCircle, AlertTriangle, Target, Shield, Flame, Layers } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -90,19 +90,19 @@ interface TestStepOrSharedStep {
 interface CreateTestCaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: Record<string, unknown>) => Promise<void>;
   isSubmitting: boolean;
   availableTags: Tag[];
   onCreateTag: (label: string) => Promise<Tag>;
   tagsLoading: boolean;
-  selectedProject: any;
+  selectedProject: { id: string; name: string } | null;
 }
 
 // Custom Select Component with Icons
 const IconSelect: React.FC<{
   value: number;
   onChange: (value: number) => void;
-  options: Record<number, { label: string; icon: any; color: string }>;
+  options: Record<number, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }>;
   disabled?: boolean;
   placeholder?: string;
 }> = ({ value, onChange, options, disabled = false, placeholder }) => {
@@ -168,7 +168,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
   isSubmitting,
   availableTags,
   onCreateTag,
-  tagsLoading,
+  // tagsLoading,
   selectedProject
 }) => {
   const { state: authState } = useAuth();
@@ -252,9 +252,10 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- authState.user and users are complex objects
   }, [isOpen]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number | Date | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -324,7 +325,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
       // Extract shared step ID from instance ID (format: shared-{id}-{timestamp})
       const idParts = orderItem.id.split('-');
       if (idParts.length >= 3 && idParts[0] === 'shared') {
-        const sharedStepId = idParts[1];
+        // const sharedStepId = idParts[1]; // Extracted but unused
         
         // Find the shared step instance at the correct position
         let sharedStepIndex = 0;
@@ -344,7 +345,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
     }
   }).filter(Boolean) as TestStepOrSharedStep[];
 
-  const handleAttachmentUploaded = (uploadData: any) => {
+  const handleAttachmentUploaded = (uploadData: { id: string; filename: string; url: string }) => {
     console.log('📎 Attachment uploaded successfully:', uploadData);
     
     setUploadedAttachments(prev => [...prev, {
@@ -406,8 +407,8 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
     }
     
     // Process stepOrder array - order is simply position in list (1, 2, 3, etc.)
-    const stepResultsRelationships: any[] = [];
-    const sharedStepsRelationships: any[] = [];
+    const stepResultsRelationships: Array<{ type: string; id: string }> = [];
+    const sharedStepsRelationships: Array<{ type: string; id: string }> = [];
     
     for (let position = 0; position < stepOrder.length; position++) {
       const orderItem = stepOrder[position];
@@ -428,7 +429,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
         // Extract shared step ID from instance ID (format: shared-{id}-{timestamp})
         const idParts = orderItem.id.split('-');
         if (idParts.length >= 3 && idParts[0] === 'shared') {
-          const sharedStepId = idParts[1];
+          // const sharedStepId = idParts[1]; // Extracted but unused
           
           // Find the shared step instance at the correct position
           let sharedStepIndex = 0;

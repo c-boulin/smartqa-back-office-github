@@ -29,7 +29,7 @@ const TagsWithTooltip: React.FC<TagsWithTooltipProps> = ({
     
     const tooltipWidth = 260;
     const tooltipHeight = 100;
-    const arrowSize = 8;
+    // const arrowSize = 8;
     const spacing = 4; // Minimal distance from trigger element
     const viewportMargin = 8;
 

@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const user = JSON.parse(userData);
         dispatch({ type: 'SET_USER', payload: user });
-      } catch (error) {
+      } catch {
         // Clear invalid data
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
@@ -94,6 +94,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- useAuth hook needs to be exported alongside provider
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

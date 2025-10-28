@@ -74,6 +74,7 @@ export const useSharedSteps = (projectId?: string | null) => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- projectId is intentionally omitted to avoid re-creation
   }, []); // No dependencies to avoid re-creations
 
   const searchSharedSteps = useCallback(async (searchTerm: string, page: number = 1) => {

@@ -65,6 +65,7 @@ const TestPlanSelector: React.FC<TestPlanSelectorProps> = ({
         loadAllTestPlans();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadAllTestPlans is stable
   }, [debouncedSearchTerm, isOpen, searchTestPlans, fetchTestPlans]);
 
   // Load all test plans efficiently when dropdown opens
@@ -104,6 +105,7 @@ const TestPlanSelector: React.FC<TestPlanSelectorProps> = ({
     if (isOpen && !hasLoadedRef.current && !isLoadingRef.current) {
       loadAllTestPlans();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadAllTestPlans is stable
   }, [isOpen]);
 
   // Filter test plans based on search term (client-side filtering for better UX)

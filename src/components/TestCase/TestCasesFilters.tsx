@@ -2,8 +2,7 @@ import React from 'react';
 import { Search, Filter, X } from 'lucide-react';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
-import TagSelector from '../UI/TagSelector';
-import { AUTOMATION_STATUS_LABELS, TEST_CASE_TYPES } from '../../types';
+import { AUTOMATION_STATUS_LABELS } from '../../types';
 import { Tag } from '../../services/tagsApi';
 
 interface FiltersState {
@@ -20,13 +19,13 @@ interface TestCasesFiltersProps {
   onSearchKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   currentSearchTerm: string;
   filters: FiltersState;
-  onFilterChange: (filterType: keyof FiltersState, value: any) => void;
+  onFilterChange: (filterType: keyof FiltersState, value: string | string[]) => void;
   onApplyFilters: () => void;
   onClearAllFilters: () => void;
   onOpenFiltersSidebar: () => void;
   availableTags: Tag[];
   onCreateTag: (label: string) => Promise<Tag>;
-  onClearIndividualFilter: (filterType: keyof FiltersState, value?: any) => void;
+  onClearIndividualFilter: (filterType: keyof FiltersState, value?: string) => void;
 }
 
 const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
@@ -35,12 +34,9 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
   onSearchKeyPress,
   currentSearchTerm,
   filters,
-  onFilterChange,
-  onApplyFilters,
+  // onApplyFilters,
   onClearAllFilters,
   onOpenFiltersSidebar,
-  availableTags,
-  onCreateTag,
   onClearIndividualFilter
 }) => {
   const hasActiveFilters = currentSearchTerm || 
@@ -49,14 +45,6 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
     filters.type !== 'all' || 
     filters.state !== 'all' ||
     (filters.tags && filters.tags.length > 0);
-
-  const clearSearchTerm = () => {
-    onSearchTermChange('');
-    // Auto-apply filters after clearing search with proper timing
-    setTimeout(() => {
-      onApplyFilters();
-    }, 10);
-  };
 
   return (
     <Card className="p-6">

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Loader } from 'lucide-react';
 import WysiwygEditorWithAutoUpload from '../UI/WysiwygEditorWithAutoUpload';
 import { TEMPLATES } from '../../constants/testCaseConstants';
 
@@ -10,7 +9,7 @@ interface UpdateTestCaseFormProps {
     description: string;
     preconditions: string;
   };
-  onInputChange: (field: string, value: any) => void;
+  onInputChange: (field: string, value: string | number | Date | string[]) => void;
   isSubmitting: boolean;
 }
 

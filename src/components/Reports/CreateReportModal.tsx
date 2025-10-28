@@ -9,7 +9,7 @@ import { useUsers } from '../../context/UsersContext';
 import { testRunsApiService } from '../../services/testRunsApi';
 import { fetchTestCasesForReport } from '../../services/reportsDataService';
 import { buildScheduledReportPayload } from '../../services/scheduledReportPayloadBuilder';
-import { STATES, PRIORITIES, TEST_CASE_TYPES, AUTOMATION_STATUS } from '../../constants/testCaseConstants';
+import { PRIORITIES, TEST_CASE_TYPES, AUTOMATION_STATUS } from '../../constants/testCaseConstants';
 import { TEST_RESULTS } from '../../types';
 import toast from 'react-hot-toast';
 
@@ -165,7 +165,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
     fetchTestRuns();
   }, [formData.project, formData.testRunSelection]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number | Date | string[]) => {
     if (field === 'reportType') {
       // Update both reportType and title when reportType changes
       setFormData(prev => ({
@@ -236,7 +236,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
       // Log test runs extracted from included node
       if (reportData.testRuns.length > 0) {
-        console.log('📊 Test runs from included node:', reportData.testRuns.map((tr: any) => ({
+        console.log('📊 Test runs from included node:', reportData.testRuns.map((tr: { attributes?: { id?: string; name?: string } }) => ({
           id: tr.attributes?.id,
           name: tr.attributes?.name
         })));

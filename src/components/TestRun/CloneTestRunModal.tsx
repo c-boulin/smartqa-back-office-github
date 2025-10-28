@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import { TestRun, testRunsApiService } from '../../services/testRunsApi';
@@ -68,6 +68,7 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
         loadTestCaseResults(testRun.id);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadTestCaseResults is stable
   }, [isOpen, testRun]);
 
   const loadTestCaseResults = async (testRunId: string) => {
@@ -82,7 +83,7 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
       const resultCounts: Record<string, { count: number; testCaseIds: string[] }> = {};
       
       // Initialize all possible results
-      Object.entries(TEST_RESULTS).forEach(([resultId, label]) => {
+      Object.entries(TEST_RESULTS).forEach(([resultId]) => {
         resultCounts[resultId] = { count: 0, testCaseIds: [] };
       });
       
@@ -91,9 +92,9 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
         console.log('🔄 Processing', testRunResponse.data.attributes.executions.length, 'executions');
         
         // Group executions by test case ID and get the latest execution per test case
-        const lastExecutionPerTestCase = new Map<string, any>();
+        const lastExecutionPerTestCase = new Map<string, { test_case_id: number; result: number; created_at: string; [key: string]: unknown }>();
         
-        testRunResponse.data.attributes.executions.forEach((execution: any) => {
+        testRunResponse.data.attributes.executions.forEach((execution: { test_case_id: number; result: number; created_at: string; [key: string]: unknown }) => {
           const testCaseId = execution.test_case_id.toString();
           const executionDate = new Date(execution.created_at);
           
@@ -107,7 +108,7 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
         console.log('🔄 Found', lastExecutionPerTestCase.size, 'unique test cases with executions');
         
         // Count each result type and collect test case IDs
-        Array.from(lastExecutionPerTestCase.values()).forEach((execution: any) => {
+        Array.from(lastExecutionPerTestCase.values()).forEach((execution: { test_case_id: number; result: number; [key: string]: unknown }) => {
           const testCaseId = execution.test_case_id.toString();
           const rawResult = execution.result;
           
@@ -121,7 +122,7 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
               resultId = numericResult.toString();
             } else {
               // String label - find matching result ID
-              const foundEntry = Object.entries(TEST_RESULTS).find(([id, label]) => 
+              const foundEntry = Object.entries(TEST_RESULTS).find(([_id, label]) => 
                 label.toLowerCase() === rawResult.toLowerCase()
               );
               resultId = foundEntry ? foundEntry[0] : '6'; // Default to Untested
@@ -189,7 +190,7 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
     }
   };
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number | Date | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 

@@ -14,7 +14,7 @@ interface UpdateTestCaseSidebarProps {
     testCaseType: number;
     automationStatus: number;
   };
-  onInputChange: (field: string, value: any) => void;
+  onInputChange: (field: string, value: string | number | Date | string[]) => void;
   users: Array<{ id: string; name: string }>;
   usersLoading: boolean;
   selectedTags: Tag[];

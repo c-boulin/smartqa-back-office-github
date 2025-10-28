@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Clock } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import { TestRun } from '../../services/testRunsApi';

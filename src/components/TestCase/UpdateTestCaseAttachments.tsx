@@ -10,7 +10,7 @@ interface UpdateTestCaseAttachmentsProps {
   }>;
   attachments: File[];
   onFilesChange: (files: File[]) => void;
-  onFileUploaded: (uploadData: any) => void;
+  onFileUploaded: (uploadData: { id: string; filename: string; url: string }) => void;
   loadingAttachments: boolean;
   isSubmitting: boolean;
 }

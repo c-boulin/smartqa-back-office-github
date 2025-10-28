@@ -325,7 +325,7 @@ class TestCasesApiService {
     return response || this.getDefaultTestCasesResponse();
   }
 
-  async searchTestCases(searchTerm: string, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string, include?: string): Promise<TestCasesApiResponse> {
+  async searchTestCases(searchTerm: string, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
     const isNumeric = /^\d+$/.test(searchTerm.trim());
     const searchParam = isNumeric ? `id=${encodeURIComponent(searchTerm)}` : `title=${encodeURIComponent(searchTerm)}`;
     
@@ -824,11 +824,15 @@ class TestCasesApiService {
   }
 
   // Helper method to transform API test case to our internal format
-  transformApiTestCase(apiTestCase: ApiTestCase, included?: Array<any>) {
+    transformApiTestCase(apiTestCase: ApiTestCase, included?: Array<Record<string, unknown>>) {
+    console.log('🚨🚨🚨 TRANSFORM FUNCTION CALLED 🚨🚨🚨');
     console.log('🔍 DEBUG: Transforming test case:', apiTestCase.attributes.id);
     console.log('🔍 DEBUG: API test case relationships:', apiTestCase.relationships);
     console.log('🔍 DEBUG: API test case attributes:', apiTestCase.attributes);
+    console.log('🔍 DEBUG: Included parameter received:', included);
     console.log('🔍 DEBUG: Included data length:', included?.length || 0);
+    console.log('🔍 DEBUG: Included is undefined?', included === undefined);
+    console.log('🔍 DEBUG: Included is null?', included === null);
     
     // Extraire l'ID du projet depuis l'URL de l'API
     const projectId = apiTestCase.relationships.project.data.id.split('/').pop() || '';
@@ -841,28 +845,37 @@ class TestCasesApiService {
     let tags: string[] = [];
     
     if (apiTestCase.relationships.tags?.data && included) {
-      console.log('🏷️ Found tag relationships:', apiTestCase.relationships.tags.data);
-      console.log('🏷️ Available included data types:', included.map(item => item.type));
+      console.log('🏷️ Test case', apiTestCase.attributes.id, '- Found tag relationships:', apiTestCase.relationships.tags.data);
+      console.log('🏷️ Included data:', included);
+      console.log('🏷️ Available included data types:', included.map(item => ({ type: item.type, id: item.attributes?.id })));
       
       // Extract tag IDs from relationships
       const tagIds = apiTestCase.relationships.tags.data.map(tagRef => {
         // Extract ID from URL format like "/api/tags/123"
-        return tagRef.id.split('/').pop();
+        const extractedId = tagRef.id.split('/').pop();
+        console.log('🏷️ Extracted tag ID from', tagRef.id, ':', extractedId);
+        return extractedId;
       });
       
-      console.log('🏷️ Extracted tag IDs:', tagIds);
+      console.log('🏷️ All extracted tag IDs:', tagIds);
       
       // Find corresponding tag labels in included data
       tags = tagIds.map(tagId => {
-        const tagData = included.find(item => 
-          item.type === 'Tag' && item.attributes.id.toString() === tagId
-        );
+        console.log('🏷️ Looking for tag with ID:', tagId);
+        const tagData = included.find(item => {
+          const match = item.type === 'Tag' && item.attributes.id.toString() === tagId;
+          if (item.type === 'Tag') {
+            console.log('🏷️ Checking tag:', { id: item.attributes.id, label: item.attributes.label, matches: match });
+          }
+          return match;
+        });
         
         if (tagData) {
-          console.log('🏷️ Found tag data for ID', tagId, ':', tagData.attributes.label);
+          console.log('🏷️ ✅ Found tag data for ID', tagId, ':', tagData.attributes.label);
           return tagData.attributes.label;
         } else {
-          console.warn('🏷️ Tag data not found for ID:', tagId);
+          console.warn('🏷️ ❌ Tag data not found for ID:', tagId);
+          console.warn('🏷️ Available tags in included:', included.filter(i => i.type === 'Tag').map(t => ({ id: t.attributes.id, label: t.attributes.label })));
           return `Tag ${tagId}`;
         }
       }).filter(Boolean);

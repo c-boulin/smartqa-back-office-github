@@ -20,8 +20,7 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
   onEditTestCase,
   onDeleteTestCase,
   onDuplicateTestCase,
-  isSubmitting,
-  isDragging = false
+  isSubmitting
 }) => {
   const [dragStarted, setDragStarted] = useState(false);
 

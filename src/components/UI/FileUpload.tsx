@@ -1,14 +1,18 @@
 import React, { useRef, useState } from 'react';
 import { Upload, X, File, Image, FileText, Loader } from 'lucide-react';
 import { attachmentUploadService } from '../../services/attachmentUploadService';
-import { attachmentsApiService } from '../../services/attachmentsApi';
-import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+
+interface FileUploadResult {
+  url?: string;
+  id?: string;
+  [key: string]: unknown; // Allow additional properties
+}
 
 interface FileUploadProps {
   files: File[];
   onFilesChange: (files: File[]) => void;
-  onFileUploaded?: (result: any) => void;
+  onFileUploaded?: (result: FileUploadResult) => void;
   disabled?: boolean;
   accept?: string;
   multiple?: boolean;
@@ -30,7 +34,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [dragOver, setDragOver] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
   const [uploadedFiles, setUploadedFiles] = useState<Set<string>>(new Set());
-  const { state: authState } = useAuth();
+  // const { state: authState } = useAuth();
 
   const handleFileSelect = async (selectedFiles: FileList | null) => {
     if (!selectedFiles) return;

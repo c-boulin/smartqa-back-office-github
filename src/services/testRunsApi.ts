@@ -2,8 +2,8 @@ import { apiService } from './api';
 
 import { Configuration } from './configurationsApi';
 import { Tag } from './tagsApi';
-import { tagsApiService } from './tagsApi';
-import { TEST_RESULTS, TestResultId, TestResultValue } from '../types';
+// import { tagsApiService } from './tagsApi';
+import { TEST_RESULTS, TestResultId } from '../types';
 
 export interface ApiTestRun {
   id: string;
@@ -225,7 +225,7 @@ class TestRunsApiService {
     return response || this.getDefaultTestRunsResponse();
   }
 
-  async getTestRun(id: string): Promise<{ data: ApiTestRun; included?: any[] }> {
+  async getTestRun(id: string): Promise<{ data: ApiTestRun; included?: Array<Record<string, unknown>> }> {
     console.log('🌐 API: Calling GET /test_runs/' + id + '?include=user,configurations,testPlans');
     const response = await apiService.authenticatedRequest(`/test_runs/${id}?include=user,configurations,testPlans`);
     console.log('🌐 API: GET /test_runs/' + id + ' response:', response);
@@ -474,9 +474,9 @@ class TestRunsApiService {
       console.log(`🏃 executions:`, apiTestRun.attributes.executions);
       
       // Group executions by test case ID and get the last execution per test case
-      const lastExecutionPerTestCase = new Map<string, any>();
+      const lastExecutionPerTestCase = new Map<string, Record<string, unknown>>();
       
-      apiTestRun.attributes.executions.forEach((execution: any) => {
+      apiTestRun.attributes.executions.forEach((execution: Record<string, unknown>) => {
         const testCaseId = execution.test_case_id.toString();
         const executionDate = new Date(execution.created_at);
         
@@ -490,7 +490,7 @@ class TestRunsApiService {
       console.log(`🏃 Found ${lastExecutionPerTestCase.size} unique test cases with executions`);
       
       // Count each result type from the last execution per test case
-      Array.from(lastExecutionPerTestCase.values()).forEach((execution: any, index: number) => {
+      Array.from(lastExecutionPerTestCase.values()).forEach((execution: Record<string, unknown>, index: number) => {
         console.log(`🏃   Test case ${index + 1}:`, execution);
         console.log(`🏃     - test_case_id: ${execution.test_case_id}`);
         console.log(`🏃     - result: ${execution.result}`);

@@ -15,7 +15,7 @@ export const useTestRunsFilters = () => {
     assignee: 'all',
     state: 'all'
   });
-  const updateFilter = useCallback((filterType: keyof FiltersState, value: any) => {
+  const updateFilter = useCallback((filterType: keyof FiltersState, value: string) => {
     setFilters(prev => ({ ...prev, [filterType]: value }));
   }, []);
 
@@ -38,7 +38,7 @@ export const useTestRunsFilters = () => {
   }, [appliedFilters]);
 
   const buildMultipleFilters = useCallback(() => {
-    const multipleFilters: any = {};
+    const multipleFilters: Record<string, string> = {};
     
     if (appliedFilters.assignee !== 'all') {
       multipleFilters.assignee = appliedFilters.assignee;

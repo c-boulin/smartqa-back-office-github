@@ -17,7 +17,7 @@ interface TestCasesFiltersSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   filters: FiltersState;
-  onFilterChange: (filterType: keyof FiltersState, value: any) => void;
+  onFilterChange: (filterType: keyof FiltersState, value: string | string[]) => void;
   onApplyFilters: () => void;
   onClearAllFilters: () => void;
   availableTags: Tag[];

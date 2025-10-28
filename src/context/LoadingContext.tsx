@@ -40,6 +40,7 @@ export const LoadingProvider: React.FC<{ children: ReactNode }> = ({ children })
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- useLoading hook needs to be exported alongside provider
 export const useLoading = () => {
   const context = useContext(LoadingContext);
   if (!context) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useCallback } from 'react';
-import { Project, TestCase, TestExecution, SharedStep, TEST_CASE_TYPES, TEST_RESULTS } from '../types';
+import { Project, TestCase, SharedStep, TEST_RESULTS } from '../types';
 import { testCasesApiService } from '../services/testCasesApi';
 import { sharedStepsApiService } from '../services/sharedStepsApi';
 import { foldersApiService } from '../services/foldersApi';
@@ -83,7 +83,7 @@ interface DashboardData {
     executedAt: Date;
     duration: number;
   }>;
-  closedTestRuns: any[];
+  closedTestRuns: Array<Record<string, unknown>>;
   closedTestRunsData: Array<{
     month: string;
     total: number;
@@ -95,14 +95,14 @@ interface DashboardData {
 }
 
 // State mapping for test runs
-const TEST_RUN_STATES = {
-  1: 'New',
-  2: 'In progress', 
-  3: 'Under review',
-  4: 'Rejected',
-  5: 'Done',
-  6: 'Closed'
-} as const;
+// const TEST_RUN_STATES = {
+//   1: 'New',
+//   2: 'In progress', 
+//   3: 'Under review',
+//   4: 'Rejected',
+//   5: 'Done',
+//   6: 'Closed'
+// } as const;
 
 export const useDashboardData = (selectedProject: Project | null, projects: Project[]) => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -110,10 +110,10 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
   const [error, setError] = useState<string | null>(null);
 
   // Helper function to get test type number from string type
-  const getTestTypeNumber = (type: 'functional' | 'regression' | 'smoke' | 'integration' | 'performance'): number => {
-    const typeMap = { 'functional': 6, 'regression': 8, 'smoke': 10, 'integration': 4, 'performance': 7 };
-    return typeMap[type];
-  };
+  // const getTestTypeNumber = (type: 'functional' | 'regression' | 'smoke' | 'integration' | 'performance'): number => {
+  //   const typeMap = { 'functional': 6, 'regression': 8, 'smoke': 10, 'integration': 4, 'performance': 7 };
+  //   return typeMap[type];
+  // };
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -143,10 +143,10 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
       let actualInProgress = 0;
       let actualUnknown = 0;
       let totalTestCasesInActiveRuns = 0;
-      let closedTestRuns: any[] = [];
+      const closedTestRuns: Array<Record<string, unknown>> = [];
       let closedTestRunsLineData: Array<{ month: string; value: number }> = [];
       let closedTestRunsData: Array<{ month: string; total: number }> = [];
-      let trendsData: Array<any> = [];
+      let trendsData: Array<Record<string, unknown>> = [];
 
       if (selectedProject) {
         console.log(`📊 Fetching data for project: ${selectedProject.name}`);
@@ -232,9 +232,9 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
             console.log(`🏃 executions array length:`, apiTestRun.attributes.executions.length);
             
             // Group executions by test case ID and get the last execution per test case
-            const lastExecutionPerTestCase = new Map<string, any>();
+            const lastExecutionPerTestCase = new Map<string, Record<string, unknown>>();
             
-            apiTestRun.attributes.executions.forEach((execution: any) => {
+            apiTestRun.attributes.executions.forEach((execution: Record<string, unknown>) => {
               const testCaseId = execution.test_case_id.toString();
               const executionDate = new Date(execution.created_at);
               
@@ -257,7 +257,7 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
             let runInProgress = 0;
             let runUnknown = 0;
             
-            Array.from(lastExecutionPerTestCase.values()).forEach((execution: any, index: number) => {
+            Array.from(lastExecutionPerTestCase.values()).forEach((execution: Record<string, unknown>, index: number) => {
               console.log(`🏃   Test case ${index + 1}:`, execution);
               console.log(`🏃     - test_case_id: ${execution.test_case_id}`);
               console.log(`🏃     - result: ${execution.result}`);
@@ -523,9 +523,9 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
         const generatedClosedTestRunsData = generateClosedTestRunsData(closedTestRuns);
         closedTestRunsData = generatedClosedTestRunsData;
         // Generate trends data using real test case creation dates
-        trendsData = generateTrendData(testCases, totalTestCases);
-        
-      } else {
+          trendsData = generateTrendData(testCases);
+          
+        } else {
         // For all projects view, use aggregated data from projects array
         console.log(`📊 All projects view - fetching data across all projects`);
         
@@ -620,13 +620,13 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
       const executionRate = totalTestCases > 0 ? Math.round((totalTestCasesInActiveRuns / totalTestCases) * 100) : 0;
       const passRate = totalTestCasesInActiveRuns > 0 ? Math.round((actualPassed / totalTestCasesInActiveRuns) * 100) : 0;
       const failRate = totalTestCasesInActiveRuns > 0 ? Math.round((actualFailed / totalTestCasesInActiveRuns) * 100) : 0;
-      const blockedRate = totalTestCasesInActiveRuns > 0 ? Math.round((actualBlocked / totalTestCasesInActiveRuns) * 100) : 0;
+      // const blockedRate = totalTestCasesInActiveRuns > 0 ? Math.round((actualBlocked / totalTestCasesInActiveRuns) * 100) : 0;
       
       // Generate REAL closed test runs data from actual API data
       closedTestRunsData = generateClosedTestRunsData(closedTestRuns);
       
       // Generate trends data for last 7 days using real test case creation dates
-      trendsData = selectedProject ? generateTrendData(testCases, totalTestCases) : [];
+      trendsData = selectedProject ? generateTrendData(testCases) : [];
       
       const data: DashboardData = {
         // Real API Data
@@ -682,6 +682,7 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedProject is a complex object
   }, [selectedProject?.id, projects]);
 
   useEffect(() => {
@@ -697,6 +698,7 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
     
     console.log('📊 Will trigger fetchDashboardData now...');
     fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedProject?.id and selectedProject.name are tracked separately
   }, [fetchDashboardData]);
 
   return { dashboardData, loading, error, refreshData: fetchDashboardData };
@@ -704,7 +706,7 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
 
 // Generate bar chart data from closed test runs with real caseResults
 // Generate bar chart data from closed test runs with real executions
-function generateClosedTestRunsBarData(closedTestRuns: any[]): Array<{
+function generateClosedTestRunsBarData(closedTestRuns: Array<Record<string, unknown>>): Array<{
   month: string;
   passed: number;
   failed: number;
@@ -769,7 +771,7 @@ function generateClosedTestRunsBarData(closedTestRuns: any[]): Array<{
     if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
       console.log(`🔍 BAR_CHART_DEBUG: ✅ VALID executions array found with ${apiTestRun.attributes.executions.length} results`);
       
-      apiTestRun.attributes.executions.forEach((execution: any, executionIndex: number) => {
+      apiTestRun.attributes.executions.forEach((execution: Record<string, unknown>, executionIndex: number) => {
         console.log(`🔍 BAR_CHART_DEBUG:   Execution ${executionIndex + 1}:`, execution);
         
         const rawResult = execution.result;
@@ -857,7 +859,7 @@ function generateClosedTestRunsBarData(closedTestRuns: any[]): Array<{
 }
 
 // Generate closed test runs data for bar chart
-function generateClosedTestRunsData(closedTestRuns: any[]): Array<{
+function generateClosedTestRunsData(closedTestRuns: Array<Record<string, unknown>>): Array<{
   month: string;
   total: number;
 }> {
@@ -936,7 +938,7 @@ function generateClosedTestRunsData(closedTestRuns: any[]): Array<{
 }
 
 // Generate line chart data for closed test runs count over time
-export function generateClosedTestRunsLineData(closedTestRuns: any[]): Array<{
+export function generateClosedTestRunsLineData(closedTestRuns: Array<Record<string, unknown>>): Array<{
   month: string;
   value: number;
 }> {
@@ -999,40 +1001,40 @@ export function generateClosedTestRunsLineData(closedTestRuns: any[]): Array<{
 }
 
 // Seeded random number generator for consistent results
-class SeededRandom {
-  private seed: number;
-
-  constructor(seed: number) {
-    this.seed = seed;
-  }
-
-  next(): number {
-    this.seed = (this.seed * 1664525 + 1013904223) % 4294967296;
-    return this.seed / 4294967296;
-  }
-
-  nextInt(min: number, max: number): number {
-    return Math.floor(this.next() * (max - min + 1)) + min;
-  }
-
-  nextFloat(min: number, max: number): number {
-    return this.next() * (max - min) + min;
-  }
-}
+// class SeededRandom {
+//   private seed: number;
+//
+//   constructor(seed: number) {
+//     this.seed = seed;
+//   }
+//
+//   next(): number {
+//     this.seed = (this.seed * 1664525 + 1013904223) % 4294967296;
+//     return this.seed / 4294967296;
+//   }
+//
+//   nextInt(min: number, max: number): number {
+//     return Math.floor(this.next() * (max - min + 1)) + min;
+//   }
+//
+//   nextFloat(min: number, max: number): number {
+//     return this.next() * (max - min) + min;
+//   }
+// }
 
 // Hash function to convert string to number
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return Math.abs(hash);
-}
+// function hashString(str: string): number {
+//   let hash = 0;
+//   for (let i = 0; i < str.length; i++) {
+//     const char = str.charCodeAt(i);
+//     hash = ((hash << 5) - hash) + char;
+//     hash = hash & hash; // Convert to 32-bit integer
+//   }
+//   return Math.abs(hash);
+// }
 
 // Generate trend data based on real test case creation dates
-function generateTrendData(testCases: TestCase[], totalTestCases: number) {
+function generateTrendData(testCases: TestCase[]) {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const currentDate = new Date();
   
@@ -1079,7 +1081,7 @@ function generateTrendData(testCases: TestCase[], totalTestCases: number) {
     );
     
     // Build trend data object dynamically based on actual types
-    const monthData: any = {
+    const monthData: Record<string, unknown> = {
       month: monthKey,
       date: date.toISOString().split('T')[0]
     };

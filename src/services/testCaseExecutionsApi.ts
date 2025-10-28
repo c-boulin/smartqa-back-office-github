@@ -100,7 +100,7 @@ class TestCaseExecutionsApiService {
   }
 
   // Helper method to transform API execution to our internal format
-  transformApiExecution(apiExecution: any): TestCaseExecution {
+  transformApiExecution(apiExecution: Record<string, unknown>): TestCaseExecution {
     const testCaseId = apiExecution.relationships?.test_case?.data?.id?.split('/').pop() || '';
     const testRunId = apiExecution.relationships?.test_run?.data?.id?.split('/').pop() || '';
     

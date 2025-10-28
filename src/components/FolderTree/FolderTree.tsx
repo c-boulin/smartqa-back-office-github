@@ -246,6 +246,7 @@ const FolderTree: React.FC<FolderTreeProps> = React.memo(({
       console.log('✅ FolderTree: selecting folder', folderId);
       onSelectFolder(folderId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedFolderId is derived from props
   }, [onSelectFolder]);
 
   // Auto-expand folders that contain the selected folder

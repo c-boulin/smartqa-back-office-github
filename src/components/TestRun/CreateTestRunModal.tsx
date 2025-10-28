@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader, Play, X, Calendar, User, Tag as TagIcon, Search, Plus, Minus } from 'lucide-react';
+import { Loader, Play, X, Search, Plus } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import TagSelector from '../UI/TagSelector';
@@ -11,7 +11,6 @@ import { useTestCases } from '../../hooks/useTestCases';
 import { useApp } from '../../context/AppContext';
 import { Tag } from '../../services/tagsApi';
 import { Configuration } from '../../services/configurationsApi';
-import { TestCase } from '../../types';
 
 interface CreateTestRunModalProps {
   isOpen: boolean;
@@ -55,6 +54,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
       console.log('⚙️ Loading configurations for create modal...');
       loadConfigurations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadConfigurations is stable
   }, [isOpen, configurations.length, appState.isLoadingConfigurations]);
   
   // Fetch all test cases for the project
@@ -130,7 +130,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
     }
   }, [isOpen]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number | Date | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -160,21 +160,21 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
     formData.testCaseIds.includes(testCase.id)
   ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-  const handleConfigurationToggle = (config: string) => {
-    setFormData(prev => ({
-      ...prev,
-      configurations: prev.configurations.includes(config)
-        ? prev.configurations.filter(c => c !== config)
-        : [...prev.configurations, config]
-    }));
-  };
+  // const handleConfigurationToggle = (config: string) => {
+  //   setFormData(prev => ({
+  //     ...prev,
+  //     configurations: prev.configurations.includes(config)
+  //       ? prev.configurations.filter(c => c !== config)
+  //       : [...prev.configurations, config]
+  //   }));
+  // };
 
-  const removeConfiguration = (config: string) => {
-    setFormData(prev => ({
-      ...prev,
-      configurations: prev.configurations.filter(c => c.id !== config)
-    }));
-  };
+  // const removeConfiguration = (config: string) => {
+  //   setFormData(prev => ({
+  //     ...prev,
+  //     configurations: prev.configurations.filter(c => c.id !== config)
+  //   }));
+  // };
 
   const handleCreateTag = async (label: string): Promise<Tag> => {
     return await onCreateTag(label);

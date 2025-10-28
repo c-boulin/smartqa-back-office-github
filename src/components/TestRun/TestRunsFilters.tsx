@@ -16,12 +16,12 @@ interface TestRunsFiltersProps {
   currentSearchTerm: string;
   filters: FiltersState;
   appliedFilters: FiltersState;
-  onFilterChange: (filterType: keyof FiltersState, value: any) => void;
+  onFilterChange: (filterType: keyof FiltersState, value: string) => void;
   onApplyFilters: () => void;
   onClearAllFilters: () => void;
   onOpenFiltersSidebar: () => void;
   availableUsers: User[];
-  onClearIndividualFilter: (filterType: keyof FiltersState, value?: any) => void;
+  onClearIndividualFilter: (filterType: keyof FiltersState, value?: string) => void;
 }
 
 const TestRunsFilters: React.FC<TestRunsFiltersProps> = ({
@@ -29,10 +29,8 @@ const TestRunsFilters: React.FC<TestRunsFiltersProps> = ({
   onSearchTermChange,
   onSearchKeyPress,
   currentSearchTerm,
-  filters,
   appliedFilters,
-  onFilterChange,
-  onApplyFilters,
+  // onApplyFilters,
   onClearAllFilters,
   onOpenFiltersSidebar,
   availableUsers,
@@ -41,14 +39,6 @@ const TestRunsFilters: React.FC<TestRunsFiltersProps> = ({
   const hasActiveFilters = currentSearchTerm || 
     appliedFilters.assignee !== 'all' ||
     appliedFilters.state !== 'all';
-
-  const clearSearchTerm = () => {
-    onSearchTermChange('');
-    // Auto-apply filters after clearing search with proper timing
-    setTimeout(() => {
-      onApplyFilters();
-    }, 10);
-  };
 
   const getAssigneeName = (assigneeId: string): string => {
     const user = availableUsers.find(u => u.id === assigneeId);
@@ -108,7 +98,7 @@ const TestRunsFilters: React.FC<TestRunsFiltersProps> = ({
             <span className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400">
               Search: "{currentSearchTerm}"
               <button
-                onClick={() => onClearIndividualFilter('search' as any)}
+                onClick={() => onClearIndividualFilter('search')}
                 className="ml-2 text-cyan-400 hover:text-cyan-300 transition-colors"
                 title="Clear search"
               >

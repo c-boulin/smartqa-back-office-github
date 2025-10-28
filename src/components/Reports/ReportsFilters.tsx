@@ -1,7 +1,6 @@
 import React from 'react';
 import { Search, Filter, Calendar, X } from 'lucide-react';
 import Card from '../UI/Card';
-import Button from '../UI/Button';
 
 interface ReportsFiltersProps {
   searchTerm: string;

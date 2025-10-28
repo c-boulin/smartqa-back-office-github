@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Download, Share, MoreHorizontal, Loader } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { ArrowLeft, Download, Share, MoreHorizontal } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
 import DownloadModal from './DownloadModal';
@@ -8,11 +8,8 @@ import ShareModal from './ShareModal';
 import { reportDownloadService } from '../../services/reportDownloadService';
 import { reportEmailService, ReportFormat } from '../../services/reportEmailService';
 import { testRunsApiService } from '../../services/testRunsApi';
-import { testCasesApiService } from '../../services/testCasesApi';
-import { testCaseExecutionsApiService } from '../../services/testCaseExecutionsApi';
 import { fetchTestCasesForReport } from '../../services/reportsDataService';
 import { useAuth } from '../../context/AuthContext';
-import { TEST_RESULTS, TestResultId } from '../../types';
 import toast from 'react-hot-toast';
 
 interface ReportFilters {
@@ -34,9 +31,9 @@ interface TestRunSummaryReportProps {
   filters?: ReportFilters | null;
   creationDateFilter?: string;
   reportData?: {
-    testCases: any[];
-    testRuns: any[];
-    testExecutions?: any[];
+    testCases: Array<{ attributes: { id: number; [key: string]: unknown } }>;
+    testRuns: Array<{ attributes: { id: number; [key: string]: unknown } }>;
+    testExecutions?: Array<{ attributes: { test_case_id?: number; result?: number; [key: string]: unknown } }>;
     totalTestCases: number;
   } | null;
   description?: string;
@@ -126,7 +123,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
     if (!filter) return null;
 
     const now = new Date();
-    let threshold = new Date();
+    const threshold = new Date();
 
     switch (filter) {
       case 'Last 24 hours':
@@ -172,11 +169,11 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         console.log('📊 Data includes:', passedReportData.testCases?.length || 0, 'test cases and', passedReportData.testRuns?.length || 0, 'test runs');
 
         if (passedReportData.testCases && passedReportData.testCases.length > 0) {
-          console.log('📊 Test runs:', passedReportData.testRuns.map((tr: any) => ({
+          console.log('📊 Test runs:', passedReportData.testRuns.map((tr) => ({
             id: tr.attributes?.id,
             name: tr.attributes?.name
           })));
-          console.log('📊 Test cases:', passedReportData.testCases.map((tc: any) => ({
+          console.log('📊 Test cases:', passedReportData.testCases.map((tc) => ({
             id: tc.attributes?.id,
             title: tc.attributes?.title,
             type: tc.attributes?.type,
@@ -190,7 +187,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         // Transform test runs from the included data
         let testRuns: TestRunData[] = [];
         if (passedReportData.testRuns && passedReportData.testRuns.length > 0) {
-          testRuns = passedReportData.testRuns.map((apiTestRun: any) => {
+          testRuns = passedReportData.testRuns.map((apiTestRun) => {
             const transformed = testRunsApiService.transformApiTestRun(apiTestRun, []);
             return {
               id: transformed.id,
@@ -266,7 +263,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         // The API's execution_result filter returns test cases based on their absolute latest execution
         // across ALL test runs, but we need to filter per test run for accurate reporting
         // Declare this outside the block so it can be used later for assignee counting
-        const latestExecutionPerTestCasePerRun = new Map<string, any>();
+        const latestExecutionPerTestCasePerRun = new Map<string, { attributes: { result?: number; [key: string]: unknown } }>();
 
         // Build status filter set for quick lookup - declare outside so it's available for assignee counting
         const statusFilters = filters?.statusOfTestCase && filters.statusOfTestCase.length > 0
@@ -282,7 +279,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
 
           // Create a set of filtered test case IDs for quick lookup
           const filteredTestCaseIds = new Set(
-            passedReportData.testCases.map((tc: any) => tc.attributes.id.toString())
+            passedReportData.testCases.map((tc) => tc.attributes.id.toString())
           );
           console.log('📊 Filtered test case IDs:', Array.from(filteredTestCaseIds));
 
@@ -290,7 +287,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           const relevantTestRunIds = new Set(testRuns.map(tr => tr.id));
           console.log('📊 Relevant test run IDs:', Array.from(relevantTestRunIds));
 
-          passedReportData.testExecutions.forEach((execution: any) => {
+          passedReportData.testExecutions.forEach((execution) => {
             const testCaseId = execution.attributes.test_case_id?.toString();
             const testRunId = execution.attributes.test_run_id?.toString();
 
@@ -316,7 +313,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           // Count executions for the donut chart and totals
           // Each entry in latestExecutionPerTestCasePerRun represents one (test case, test run) pair
           let filteredExecutionCount = 0;
-          latestExecutionPerTestCasePerRun.forEach((execution: any, compositeKey: string) => {
+          latestExecutionPerTestCasePerRun.forEach((execution, compositeKey: string) => {
             const result = execution.attributes.result;
             const resultNum = typeof result === 'string' ? parseInt(result, 10) : result;
 
@@ -381,7 +378,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         // Build users map from included data
         const usersMap = new Map<string, { id: string; name: string; email: string }>();
         if (passedReportData.included && Array.isArray(passedReportData.included)) {
-          passedReportData.included.forEach((item: any) => {
+          passedReportData.included.forEach((item: Record<string, unknown>) => {
             if (item.type === 'User' && item.attributes) {
               const userId = item.attributes.id.toString();
               usersMap.set(userId, {
@@ -397,7 +394,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         // Each execution counted in latestExecutionPerTestCasePerRun represents one (test case, test run) pair
         if (passedReportData.testExecutions && passedReportData.testExecutions.length > 0) {
           // For each (test case, test run) pair that matched our filters, count by assignee
-          latestExecutionPerTestCasePerRun.forEach((execution: any, compositeKey: string) => {
+          latestExecutionPerTestCasePerRun.forEach((execution, compositeKey: string) => {
             const result = execution.attributes.result;
             const resultNum = typeof result === 'string' ? parseInt(result, 10) : result;
 
@@ -406,10 +403,10 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
               return;
             }
 
-            const [testRunId, testCaseId] = compositeKey.split('-');
+            const [, testCaseId] = compositeKey.split('-');
 
             // Find the test case to get its assignee
-            const testCase = passedReportData.testCases.find((tc: any) =>
+            const testCase = passedReportData.testCases.find((tc) =>
               tc.attributes.id.toString() === testCaseId
             );
 
@@ -488,7 +485,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
       // Transform test runs from the included data
       let testRuns: TestRunData[] = [];
       if (fetchedReportData.testRuns && fetchedReportData.testRuns.length > 0) {
-        testRuns = fetchedReportData.testRuns.map((apiTestRun: any) => {
+        testRuns = fetchedReportData.testRuns.map((apiTestRun) => {
           const transformed = testRunsApiService.transformApiTestRun(apiTestRun, []);
           return {
             id: transformed.id,
@@ -553,15 +550,15 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
       let totalUntested = 0;
 
       // Calculate from executions data
-      const latestExecutionPerTestCasePerRun = new Map<string, any>();
+      const latestExecutionPerTestCasePerRun = new Map<string, { attributes: { result?: number; [key: string]: unknown } }>();
 
       if (fetchedReportData.testExecutions && fetchedReportData.testExecutions.length > 0) {
         const filteredTestCaseIds = new Set(
-          fetchedReportData.testCases.map((tc: any) => tc.attributes.id.toString())
+          fetchedReportData.testCases.map((tc) => tc.attributes.id.toString())
         );
         const relevantTestRunIds = new Set(testRuns.map(tr => tr.id));
 
-        fetchedReportData.testExecutions.forEach((execution: any) => {
+        fetchedReportData.testExecutions.forEach((execution) => {
           const testCaseId = execution.attributes.test_case_id?.toString();
           const testRunId = execution.attributes.test_run_id?.toString();
 
@@ -584,7 +581,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         const statusFilterApplied = filters?.statusOfTestCase && filters.statusOfTestCase.length > 0;
         const allowedStatusIds = statusFilterApplied ? new Set(filters!.statusOfTestCase.map(s => parseInt(s, 10))) : null;
 
-        latestExecutionPerTestCasePerRun.forEach((execution: any) => {
+        latestExecutionPerTestCasePerRun.forEach((execution) => {
           const result = execution.attributes.result;
           const resultNum = typeof result === 'string' ? parseInt(result, 10) : result;
 
@@ -627,7 +624,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
       // Build users map from included data
       const usersMap = new Map<string, { id: string; name: string; email: string }>();
       if (fetchedReportData.included && Array.isArray(fetchedReportData.included)) {
-        fetchedReportData.included.forEach((item: any) => {
+        fetchedReportData.included.forEach((item: Record<string, unknown>) => {
           if (item.type === 'User' && item.attributes) {
             const userId = item.attributes.id.toString();
             usersMap.set(userId, {
@@ -641,10 +638,10 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
 
       // Count test case/test run pairs per assignee
       if (fetchedReportData.testExecutions && fetchedReportData.testExecutions.length > 0) {
-        latestExecutionPerTestCasePerRun.forEach((execution: any, compositeKey: string) => {
-          const [testRunId, testCaseId] = compositeKey.split('-');
+        latestExecutionPerTestCasePerRun.forEach((execution, compositeKey: string) => {
+          const [, testCaseId] = compositeKey.split('-');
 
-          const testCase = fetchedReportData.testCases.find((tc: any) =>
+          const testCase = fetchedReportData.testCases.find((tc) =>
             tc.attributes.id.toString() === testCaseId
           );
 
@@ -711,7 +708,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     console.log('📄 Downloading report as PDF...');
 
     if (!reportData) {
@@ -720,7 +717,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
     }
 
     try {
-      reportDownloadService.generateEnhancedVisualSummaryReportPDF(
+      await reportDownloadService.generateEnhancedVisualSummaryReportPDF(
         projectName,
         authState.user?.name || 'Unknown User',
         reportData
