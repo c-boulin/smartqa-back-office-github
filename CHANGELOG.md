@@ -1,3 +1,9 @@
+## [1.2.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.1.1...1.2.0) (2025-11-05)
+
+### Features
+
+* add availableTags prop to TestCaseDetailsSidebar for enhanced tag management ([c5b0a09](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/c5b0a0934347665ececa56bf367680f2a1ee96d0))
+
 ## [1.1.1](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.1.0...1.1.1) (2025-10-21)
 
 ### Bug Fixes
