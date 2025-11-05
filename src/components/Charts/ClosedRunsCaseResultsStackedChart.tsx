@@ -166,25 +166,27 @@ const transformDataToChartFormat = (apiData: ApiTestRun[]): {
     // Process executions
     if (testRun.attributes.executions && Array.isArray(testRun.attributes.executions)) {
       console.log(`📊 Processing ${testRun.attributes.executions.length} executions`);
-      
-      // Group executions by test case ID and get the last execution per test case
-      const lastExecutionPerTestCase = new Map<string, Record<string, unknown>>();
-      
+
+      // Group executions by test case ID + configuration ID and get the last execution per combination
+      const lastExecutionPerTestCaseConfig = new Map<string, Record<string, unknown>>();
+
       testRun.attributes.executions.forEach((execution: Record<string, unknown>) => {
         const testCaseId = execution.test_case_id.toString();
+        const configId = execution.configuration_id ? execution.configuration_id.toString() : 'no-config';
+        const key = `${testCaseId}-${configId}`;
         const executionDate = new Date(execution.created_at);
-        
-        // Keep only the latest execution for each test case
-        const existing = lastExecutionPerTestCase.get(testCaseId);
+
+        // Keep only the latest execution for each test case + configuration combination
+        const existing = lastExecutionPerTestCaseConfig.get(key);
         if (!existing || new Date(existing.created_at) < executionDate) {
-          lastExecutionPerTestCase.set(testCaseId, execution);
+          lastExecutionPerTestCaseConfig.set(key, execution);
         }
       });
-      
-      console.log(`📊 Found ${lastExecutionPerTestCase.size} unique test cases with executions`);
-      
-      // Count each result type from the last execution per test case
-      Array.from(lastExecutionPerTestCase.values()).forEach((execution: Record<string, unknown>, executionIndex: number) => {
+
+      console.log(`📊 Found ${lastExecutionPerTestCaseConfig.size} unique test case + configuration combinations with executions`);
+
+      // Count each result type from the last execution per test case + configuration
+      Array.from(lastExecutionPerTestCaseConfig.values()).forEach((execution: Record<string, unknown>, executionIndex: number) => {
         const resultLabel = getResultLabel(execution.result);
         
         if (resultLabel) {

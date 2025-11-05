@@ -45,10 +45,10 @@ const STATES = {
 } as const;
 
 const PRIORITIES = {
-  1: { label: 'Low', icon: Shield, color: 'text-green-400' },
-  2: { label: 'Medium', icon: Target, color: 'text-yellow-400' },
+  1: { label: 'Medium', icon: Target, color: 'text-yellow-400' },
+  2: { label: 'Critical', icon: AlertTriangle, color: 'text-red-500' },
   3: { label: 'High', icon: Flame, color: 'text-orange-500' },
-  4: { label: 'Critical', icon: AlertTriangle, color: 'text-red-500' }
+  4: { label: 'Low', icon: Shield, color: 'text-green-400' }
 } as const;
 
 const TEST_CASE_TYPES = {
@@ -182,7 +182,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
     preconditions: '',
     owner: '',
     state: 2, // Draft by default
-    priority: 2, // Medium by default
+    priority: 1, // Medium by default
     testCaseType: 6, // Functional by default
     automationStatus: 1 // Not automated by default
   });
@@ -233,7 +233,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
         preconditions: '',
         owner: '', // Will be set by the user effect above
         state: 2,
-        priority: 2,
+        priority: 1,
         testCaseType: 6,
         automationStatus: 1
       });

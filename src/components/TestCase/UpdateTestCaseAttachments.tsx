@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, Loader } from 'lucide-react';
+import { CheckCircle, Loader, X } from 'lucide-react';
 import FileUpload from '../UI/FileUpload';
 
 interface UpdateTestCaseAttachmentsProps {
@@ -11,6 +11,7 @@ interface UpdateTestCaseAttachmentsProps {
   attachments: File[];
   onFilesChange: (files: File[]) => void;
   onFileUploaded: (uploadData: { id: string; filename: string; url: string }) => void;
+  onRemoveExistingAttachment: (attachmentId: string) => void;
   loadingAttachments: boolean;
   isSubmitting: boolean;
 }
@@ -20,6 +21,7 @@ const UpdateTestCaseAttachments: React.FC<UpdateTestCaseAttachmentsProps> = ({
   attachments,
   onFilesChange,
   onFileUploaded,
+  onRemoveExistingAttachment,
   loadingAttachments,
   isSubmitting
 }) => {
@@ -58,14 +60,25 @@ const UpdateTestCaseAttachments: React.FC<UpdateTestCaseAttachmentsProps> = ({
                     <p className="text-xs text-green-400">Existing attachment</p>
                   </div>
                 </div>
-                <a
-                  href={attachment.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-green-400 hover:text-green-300 text-sm underline"
-                >
-                  View
-                </a>
+                <div className="flex items-center space-x-2">
+                  <a
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-green-400 hover:text-green-300 text-sm underline"
+                  >
+                    View
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveExistingAttachment(attachment.id)}
+                    disabled={isSubmitting}
+                    className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Remove attachment"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

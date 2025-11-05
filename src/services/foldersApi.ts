@@ -72,6 +72,34 @@ export interface CreateFolderResponse {
   data: ApiFolder;
 }
 
+export interface UpdateFolderRequest {
+  data: {
+    type: "Folder";
+    attributes: {
+      name: string;
+      description: string;
+    };
+    relationships: {
+      user: {
+        type: "User";
+        id: string;
+      };
+      parent: {
+        type: "Folder";
+        id: string;
+      } | null;
+      children: Array<{
+        type: "Folder";
+        id: string;
+      }>;
+    };
+  };
+}
+
+export interface UpdateFolderResponse {
+  data: ApiFolder;
+}
+
 export interface Folder {
   id: string;
   name: string;
@@ -186,7 +214,15 @@ class FoldersApiService {
           user: {
             type: "User",
             id: `/api/users/${folderData.editorId}`
-          }
+          },
+          parent: folderData.parentId ? {
+            type: "Folder",
+            id: `/api/folders/${folderData.parentId}`
+          } : null,
+          children: (folderData.childrenIds || []).map(childId => ({
+            type: "Folder",
+            id: `/api/folders/${childId}`
+          }))
         }
       }
     };

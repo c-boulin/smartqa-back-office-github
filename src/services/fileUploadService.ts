@@ -12,7 +12,7 @@ export interface SignedUrlResponse {
   };
 }
 
-export type UploadFieldType = 'description' | 'precondition' | 'step' | 'expected_result';
+export type UploadFieldType = 'description' | 'precondition' | 'step' | 'expected_result' | 'execution-comments';
 
 class FileUploadService {
   private readonly CLOUDFRONT_DOMAIN: string;
@@ -140,7 +140,7 @@ class FileUploadService {
    */
   generateFileHtml(file: File, cloudFrontUrl: string): string {
     if (this.isImage(file)) {
-      return `<img src="${cloudFrontUrl}" alt="${file.name}" style="max-width: 100%; height: auto; border-radius: 4px; margin: 8px 0;" />`;
+      return `<img src="${cloudFrontUrl}" alt="${file.name}" style="max-width: 300px; max-height: 200px; width: auto; height: auto; border-radius: 8px; margin: 8px; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3); object-fit: contain; display: inline-block; vertical-align: top;" />`;
     } else {
       return `<a href="${cloudFrontUrl}" target="_blank" style="color: #06b6d4; text-decoration: underline;">${file.name}</a>`;
     }

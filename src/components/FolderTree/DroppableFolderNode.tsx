@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Folder, ChevronRight, ChevronDown, FolderOpen, SquarePen, Trash2, MoreHorizontal } from 'lucide-react';
 import { Folder as FolderType } from '../../services/foldersApi';
 import Tooltip from '../UI/Tooltip';
@@ -30,6 +31,8 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; alignTop: boolean } | null>(null);
+  const dropdownButtonRef = React.useRef<HTMLButtonElement>(null);
   const isSelected = selectedFolderId === folder.id;
   const isExpanded = expandedFolders.has(folder.id);
   const hasChildren = folder.children.length > 0;
@@ -119,6 +122,24 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
   const handleThreeDotsClick = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!isDropdownOpen && dropdownButtonRef.current) {
+      const rect = dropdownButtonRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const dropdownHeight = 100;
+
+      const alignTop = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+
+      setDropdownPosition({
+        top: alignTop ? rect.top : rect.bottom,
+        left: rect.right,
+        alignTop
+      });
+    } else {
+      setDropdownPosition(null);
+    }
+
     setIsDropdownOpen(!isDropdownOpen);
   }, [isDropdownOpen]);
 
@@ -143,7 +164,10 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
   // Close dropdown when clicking outside
   React.useEffect(() => {
     if (isDropdownOpen) {
-      const handleClickOutside = () => setIsDropdownOpen(false);
+      const handleClickOutside = () => {
+        setIsDropdownOpen(false);
+        setDropdownPosition(null);
+      };
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
@@ -219,25 +243,36 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
         {(onEditFolder || onDeleteFolder) && (
           <div className="relative flex-shrink-0">
             <button
+              ref={dropdownButtonRef}
               onClick={handleThreeDotsClick}
               className="p-1 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded transition-colors flex-shrink-0"
               title="Folder actions"
             >
               <MoreHorizontal className="w-4 h-4" />
             </button>
-            
-            {/* Dropdown menu */}
-            {isDropdownOpen && (
+
+            {/* Dropdown menu using portal */}
+            {isDropdownOpen && dropdownPosition && createPortal(
               <>
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setIsDropdownOpen(false)}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    setDropdownPosition(null);
+                  }}
                 />
-                <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50 min-w-[120px]">
+                <div
+                  className="fixed bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 min-w-[120px]"
+                  style={{
+                    top: dropdownPosition.alignTop ? 'auto' : `${dropdownPosition.top}px`,
+                    bottom: dropdownPosition.alignTop ? `${window.innerHeight - dropdownPosition.top}px` : 'auto',
+                    left: `${dropdownPosition.left - 120}px`,
+                  }}
+                >
                   {onEditFolder && (
                     <button
                       onClick={handleEdit}
-                      className="w-full px-3 py-2 text-left text-gray-300 hover:text-cyan-400 hover:bg-slate-700 transition-colors flex items-center text-sm"
+                      className="w-full px-3 py-2 text-left text-gray-300 hover:text-cyan-400 hover:bg-slate-700 transition-colors flex items-center text-sm rounded-t-lg"
                     >
                       <SquarePen className="w-3 h-3 mr-2" />
                       Edit
@@ -246,14 +281,15 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
                   {onDeleteFolder && (
                     <button
                       onClick={handleDelete}
-                      className="w-full px-3 py-2 text-left text-gray-300 hover:text-red-400 hover:bg-slate-700 transition-colors flex items-center text-sm"
+                      className="w-full px-3 py-2 text-left text-gray-300 hover:text-red-400 hover:bg-slate-700 transition-colors flex items-center text-sm rounded-b-lg"
                     >
                       <Trash2 className="w-3 h-3 mr-2" />
                       Delete
                     </button>
                   )}
                 </div>
-              </>
+              </>,
+              document.body
             )}
           </div>
         )}

@@ -270,7 +270,7 @@ class TestPlansApiService {
     return response;
   }
 
-  async updateTestPlanStatus(id: string, status: string, currentTestPlan: TestPlan): Promise<UpdateTestPlanResponse> {
+  async updateTestPlanStatus(id: string, status: string, currentTestPlan: TestPlan): Promise<UpdateTestPlanResponse & { included?: Array<Record<string, unknown>> }> {
     // Fetch the full test plan data to get all relationships
     const fullTestPlanResponse = await this.getTestPlanWithTestRuns(id);
     const fullTestPlan = fullTestPlanResponse.data;
@@ -302,7 +302,7 @@ class TestPlansApiService {
       }
     };
 
-    const response = await apiService.authenticatedRequest(`/test_plans/${id}`, {
+    const response = await apiService.authenticatedRequest(`/test_plans/${id}?include=testRuns`, {
       method: 'PATCH',
       body: JSON.stringify(requestBody),
     });

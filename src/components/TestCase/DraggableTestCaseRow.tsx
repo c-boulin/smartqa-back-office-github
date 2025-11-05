@@ -65,7 +65,7 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
           <div className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-cyan-400 transition-colors mr-2">
             <GripVertical className="w-4 h-4" />
           </div>
-          #{testCase.id}
+          TC{testCase.id}
         </div>
       </td>
       <td className="py-4 px-6">

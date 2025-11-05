@@ -20,6 +20,12 @@ export interface CreateTestCaseExecutionRequest {
           id: string;
         };
       };
+      configuration?: {
+        data: {
+          type: "Configuration";
+          id: string;
+        };
+      };
     };
   };
 }
@@ -62,6 +68,7 @@ class TestCaseExecutionsApiService {
     testRunId: string;
     result: number;
     comment?: string;
+    configurationId?: string;
   }): Promise<CreateTestCaseExecutionResponse> {
     const requestBody: CreateTestCaseExecutionRequest = {
       data: {
@@ -82,7 +89,15 @@ class TestCaseExecutionsApiService {
               type: "test_cases",
               id: `/api/test_cases/${data.testCaseId}`
             }
-          }
+          },
+          ...(data.configurationId ? {
+            configuration: {
+              data: {
+                type: "Configuration",
+                id: `/api/configurations/${data.configurationId}`
+              }
+            }
+          } : {})
         }
       }
     };

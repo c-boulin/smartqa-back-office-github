@@ -8,17 +8,17 @@ export const getStateNumber = (status: string): number => {
     'outdated': 4,
     'rejected': 5
   };
-  return stateMap[status as keyof typeof stateMap] || 2;
+  return stateMap[status as keyof typeof stateMap] || 1;
 };
 
 export const getPriorityNumber = (priority: string): number => {
   const priorityMap = {
-    'low': 1,
-    'medium': 2,
+    'low': 4,
+    'medium': 1,
     'high': 3,
-    'critical': 4
+    'critical': 2
   };
-  return priorityMap[priority as keyof typeof priorityMap] || 2;
+  return priorityMap[priority as keyof typeof priorityMap] || 1;
 };
 
 export const getTestTypeNumber = (type: string): number => {

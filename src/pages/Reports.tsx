@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Plus, FileText, Edit2, Trash2, BarChart, Search, X, Loader } from 'lucide-react';
+import { Plus, FileText, Edit2, Trash2, BarChart, Search, X, Loader, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { useLocation } from 'react-router-dom';
 import Card from '../components/UI/Card';
@@ -65,12 +65,12 @@ const Reports: React.FC = () => {
 
       console.log('Creating report with data:', data);
 
-      // If this is a scheduled report, create it via API
-      if (data.scheduleReports && data.scheduledReportPayload) {
+      // Create the scheduled report via API (always happens now)
+      if (data.scheduledReportPayload) {
         await createScheduledReport(data.scheduledReportPayload);
-        setIsCreateModalOpen(false);
-        setIsSubmitting(false);
-        return;
+        console.log('✅ Scheduled report created successfully');
+      } else {
+        console.warn('⚠️ No scheduled report payload found');
       }
 
       // Store filters from the report creation form
@@ -122,7 +122,7 @@ const Reports: React.FC = () => {
       }
 
       setIsCreateModalOpen(false);
-      toast.success('Report created successfully');
+      toast.success('Report created and scheduled successfully');
 
     } catch (error) {
       console.error('Failed to create report:', error);
@@ -195,7 +195,46 @@ const Reports: React.FC = () => {
     setTestRunCreationDateFilter(undefined);
     setReportData(null);
     setReportDescription('');
+    setReportTitle('');
   };
+
+  const handleViewReport = useCallback((report: ScheduledReport) => {
+    if (!selectedProject && report.projectId) {
+      toast.error('Please select a project to view this report');
+      return;
+    }
+
+    setSelectedProjectForReport(report.projectId || selectedProject?.id || '');
+    setReportTitle(report.title);
+    setReportDescription(report.description || '');
+
+    if (report.testRunSelection === 'specific_test_run' && report.specificTestRunIds) {
+      setSelectedTestRunIds(report.specificTestRunIds);
+      setTestRunCreationDateFilter(undefined);
+    } else if (report.testRunSelection === 'creation_time' && report.testRunCreationDate) {
+      setSelectedTestRunIds(undefined);
+      setTestRunCreationDateFilter(report.testRunCreationDate);
+    } else {
+      setSelectedTestRunIds(undefined);
+      setTestRunCreationDateFilter(undefined);
+    }
+
+    if (report.testCaseFilters) {
+      setReportFilters(report.testCaseFilters);
+    } else {
+      setReportFilters(null);
+    }
+
+    setReportData(null);
+
+    if (report.reportTemplate === 'test_run_summary') {
+      setViewMode('test-run-summary');
+    } else if (report.reportTemplate === 'test_run_detailed') {
+      setViewMode('test-run-detailed');
+    } else {
+      toast.error('Unknown report template');
+    }
+  }, [selectedProject]);
 
   const handleTemplateClick = (templateType: string) => {
     if (!selectedProject) {
@@ -440,10 +479,17 @@ const Reports: React.FC = () => {
                     .map((report) => (
                       <tr key={report.id} className="hover:bg-slate-800/30 transition-colors">
                         <td className="py-4 px-6">
-                          <div className="text-sm font-medium text-white">{report.title}</div>
-                          {report.description && (
-                            <div className="text-xs text-gray-400 mt-1">{report.description}</div>
-                          )}
+                          <button
+                            onClick={() => handleViewReport(report)}
+                            className="text-left w-full"
+                          >
+                            <div className="text-sm font-medium text-white hover:text-cyan-400 transition-colors">
+                              {report.title}
+                            </div>
+                            {report.description && (
+                              <div className="text-xs text-gray-400 mt-1">{report.description}</div>
+                            )}
+                          </button>
                         </td>
                         <td className="py-4 px-6">
                           <div>
@@ -482,6 +528,13 @@ const Reports: React.FC = () => {
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
+                            <button
+                              className="p-2 text-gray-400 hover:text-green-400 hover:bg-slate-700 rounded-lg transition-colors"
+                              onClick={() => handleViewReport(report)}
+                              title="View report"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
                             <button
                               className="p-2 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded-lg transition-colors"
                               onClick={() => {

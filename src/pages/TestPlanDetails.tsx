@@ -236,7 +236,7 @@ const TestPlanDetails: React.FC = () => {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-white">{testPlan.title}</h1>
-            <p className="text-gray-400">Test Plan #{testPlan.id}</p>
+            <p className="text-gray-400">Test Plan TP{testPlan.id}</p>
           </div>
         </div>
       </div>
@@ -360,7 +360,7 @@ const TestPlanDetails: React.FC = () => {
                     onClick={() => handleTestRunClick(testRun)}
                   >
                     <td className="py-4 px-6 text-sm text-gray-300 font-mono">
-                      #{testRun.id}
+                      TR{testRun.id}
                     </td>
                     <td className="py-4 px-6">
                       <div>

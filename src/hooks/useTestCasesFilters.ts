@@ -41,7 +41,7 @@ export const useTestCasesFilters = () => {
   }, [filters]);
 
   const getPriorityNumber = (priority: 'low' | 'medium' | 'high' | 'critical'): number => {
-    const priorityMap = { 'low': 1, 'medium': 2, 'high': 3, 'critical': 4 };
+    const priorityMap = { 'low': 4, 'medium': 1, 'high': 3, 'critical': 2 };
     return priorityMap[priority];
   };
 

@@ -40,15 +40,15 @@ export const parseDateFromInput = (inputValue: string): Date | null => {
 };
 
 /**
- * Validate that end date is after start date
+ * Validate that end date is not before start date
  */
 export const validateDateRange = (startDate: Date | null, endDate: Date | null): string | null => {
   if (!startDate || !endDate) return null;
-  
-  if (endDate <= startDate) {
-    return 'End date must be after start date';
+
+  if (endDate < startDate) {
+    return 'End date cannot be before start date';
   }
-  
+
   return null;
 };
 

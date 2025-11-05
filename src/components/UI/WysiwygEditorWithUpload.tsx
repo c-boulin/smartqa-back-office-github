@@ -38,7 +38,8 @@ const WysiwygEditorWithUpload: React.FC<WysiwygEditorWithUploadProps> = ({
     'header',
     'bold', 'italic', 'underline', 'strike',
     'list', 'bullet', 'indent',
-    'link'
+    'link',
+    'image'
   ];
 
   const handleFileUploaded = (fileHtml: string) => {

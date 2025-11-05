@@ -44,7 +44,7 @@ const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
           </div>
           <p className="text-sm text-gray-400">Select a folder to view test cases</p>
         </div>
-        <div className="p-4 overflow-hidden">
+        <div className="p-4 overflow-auto max-h-[calc(100vh-200px)]">
           <DroppableFolderTree
             folders={folderTree}
             selectedFolderId={selectedFolderId}

@@ -475,7 +475,7 @@ class ReportDownloadService {
 
     const pdf = new jsPDF('p', 'mm', 'a4');
       let currentY = 15;
-      // const pageWidth = 210;
+      const pageWidth = 210;
       const margin = 12;
       const contentWidth = pageWidth - (margin * 2);
 

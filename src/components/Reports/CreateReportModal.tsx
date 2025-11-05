@@ -24,7 +24,6 @@ interface CreateReportModalProps {
     testRunSelection: 'creation_time' | 'specific_test_run';
     includeTestRuns: string;
     specificTestRunIds?: string[];
-    scheduleReports: boolean;
     frequency: 'daily' | 'weekly';
     dayOfWeek?: string;
     time: string;
@@ -71,7 +70,6 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
     testRunSelection: 'creation_time' as 'creation_time' | 'specific_test_run',
     includeTestRuns: 'Last 24 hours',
     specificTestRunIds: [] as string[],
-    scheduleReports: false,
     frequency: 'daily' as 'daily' | 'weekly',
     dayOfWeek: 'monday',
     time: '05:00',
@@ -106,7 +104,6 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
         testRunSelection: 'creation_time',
         includeTestRuns: 'Last 24 hours',
         specificTestRunIds: [],
-        scheduleReports: false,
         frequency: 'daily',
         dayOfWeek: 'monday',
         time: '05:00',
@@ -186,30 +183,22 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
       return;
     }
 
-    // Validate recipients if scheduling is enabled
-    if (formData.scheduleReports && formData.recipients.length === 0) {
-      toast.error('Please add at least one recipient for scheduled reports');
+    // Validate recipients
+    if (formData.recipients.length === 0) {
+      toast.error('Please add at least one recipient');
       return;
     }
 
     try {
-      // If this is a scheduled report, build the API payload
-      if (formData.scheduleReports) {
-        if (!authState.user) {
-          toast.error('User not authenticated');
-          return;
-        }
-
-        const payload = buildScheduledReportPayload(formData, users, authState.user.id);
-
-        console.log('📊 Scheduled report payload:', payload);
-
-        await onSubmit({
-          ...formData,
-          scheduledReportPayload: payload
-        });
+      // Build the scheduled report API payload
+      if (!authState.user) {
+        toast.error('User not authenticated');
         return;
       }
+
+      const payload = buildScheduledReportPayload(formData, users, authState.user.id);
+
+      console.log('📊 Scheduled report payload:', payload);
 
       // Fetch report data using the new API endpoint
       // Add test run creation date to filters if using creation_time mode
@@ -248,10 +237,11 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
         console.log('📊 Sample execution:', reportData.testExecutions[0]);
       }
 
-      // Pass the form data AND report data to parent component
+      // Pass the form data, report data, AND scheduled report payload to parent component
       await onSubmit({
         ...formData,
-        reportData
+        reportData,
+        scheduledReportPayload: payload
       });
 
     } catch (error) {
@@ -705,134 +695,118 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
             {/* Schedule reports */}
             <div className="bg-slate-800/50 border border-slate-600 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h4 className="text-white font-medium">Schedule reports</h4>
-                  <p className="text-sm text-gray-400">Automate report generation at specific intervals</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.scheduleReports}
-                    onChange={(e) => handleInputChange('scheduleReports', e.target.checked)}
-                    className="sr-only peer"
-                    disabled={isSubmitting}
-                  />
-                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
+              <div className="mb-4">
+                <h4 className="text-white font-medium">Schedule reports</h4>
+                <p className="text-sm text-gray-400">Automate report generation at specific intervals</p>
               </div>
 
-              {formData.scheduleReports && (
-                <div className="space-y-4">
-                  {/* Frequency */}
+              <div className="space-y-4">
+                {/* Frequency */}
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('frequency', 'daily')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      formData.frequency === 'daily'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    Daily
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('frequency', 'weekly')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      formData.frequency === 'weekly'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    Weekly
+                  </button>
+                </div>
+
+                {/* Format selector */}
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">
+                    Report format:
+                  </label>
                   <div className="flex space-x-2">
                     <button
                       type="button"
-                      onClick={() => handleInputChange('frequency', 'daily')}
+                      onClick={() => handleInputChange('format', 'pdf')}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        formData.frequency === 'daily'
+                        formData.format === 'pdf'
                           ? 'bg-blue-600 text-white'
                           : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
                       }`}
                       disabled={isSubmitting}
                     >
-                      Daily
+                      PDF
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleInputChange('frequency', 'weekly')}
+                      onClick={() => handleInputChange('format', 'csv')}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        formData.frequency === 'weekly'
+                        formData.format === 'csv'
                           ? 'bg-blue-600 text-white'
                           : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
                       }`}
                       disabled={isSubmitting}
                     >
-                      Weekly
+                      CSV
                     </button>
                   </div>
+                </div>
 
-                  {/* Format selector */}
+                {/* Day of Week (for weekly) */}
+                {formData.frequency === 'weekly' && (
                   <div>
                     <label className="block text-sm text-gray-400 mb-2">
-                      Report format:
+                      Day of the week:
                     </label>
-                    <div className="flex space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => handleInputChange('format', 'pdf')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          formData.format === 'pdf'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-                        }`}
-                        disabled={isSubmitting}
-                      >
-                        PDF
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleInputChange('format', 'csv')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          formData.format === 'csv'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-                        }`}
-                        disabled={isSubmitting}
-                      >
-                        CSV
-                      </button>
-                    </div>
+                    <select
+                      value={formData.dayOfWeek}
+                      onChange={(e) => handleInputChange('dayOfWeek', e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                      disabled={isSubmitting}
+                    >
+                      <option value="monday">Monday</option>
+                      <option value="tuesday">Tuesday</option>
+                      <option value="wednesday">Wednesday</option>
+                      <option value="thursday">Thursday</option>
+                      <option value="friday">Friday</option>
+                      <option value="saturday">Saturday</option>
+                      <option value="sunday">Sunday</option>
+                    </select>
                   </div>
-
-                  {/* Day of Week (for weekly) */}
-                  {formData.frequency === 'weekly' && (
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-2">
-                        Day of the week:
-                      </label>
-                      <select
-                        value={formData.dayOfWeek}
-                        onChange={(e) => handleInputChange('dayOfWeek', e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                        disabled={isSubmitting}
-                      >
-                        <option value="monday">Monday</option>
-                        <option value="tuesday">Tuesday</option>
-                        <option value="wednesday">Wednesday</option>
-                        <option value="thursday">Thursday</option>
-                        <option value="friday">Friday</option>
-                        <option value="saturday">Saturday</option>
-                        <option value="sunday">Sunday</option>
-                      </select>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Recipients (only show when schedule is enabled) */}
-            {formData.scheduleReports && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Recipients *
-                </label>
+            {/* Recipients */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Recipients *
+              </label>
 
-                <MultiSelectDropdown
-                  label=""
-                  options={users
-                    .filter(user => user && user.id && user.name)
-                    .map(user => ({
-                      id: user.id,
-                      label: `${user.name} (${user.email})`
-                    }))}
-                  selectedIds={formData.recipients}
-                  onChange={(selectedIds) => handleInputChange('recipients', selectedIds)}
-                  placeholder="Add recipient..."
-                  disabled={isSubmitting}
-                />
-              </div>
-            )}
+              <MultiSelectDropdown
+                label=""
+                options={users
+                  .filter(user => user && user.id && user.name)
+                  .map(user => ({
+                    id: user.id,
+                    label: `${user.name} (${user.email})`
+                  }))}
+                selectedIds={formData.recipients}
+                onChange={(selectedIds) => handleInputChange('recipients', selectedIds)}
+                placeholder="Add recipient..."
+                disabled={isSubmitting}
+              />
+            </div>
           </div>
 
           {/* Footer */}

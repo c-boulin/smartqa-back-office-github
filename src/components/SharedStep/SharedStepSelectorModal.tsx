@@ -473,44 +473,61 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
                         Define the reusable steps that can be shared across multiple test cases
                       </p>
                     </div>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="md"
-                      icon={Plus}
-                      onClick={addCreateTestStep}
-                      disabled={isCreatingSharedStep}
-                      className="px-6 py-3"
-                    >
-                      Add Step
-                    </Button>
+                    {createTestSteps.length === 0 && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        icon={Plus}
+                        onClick={addCreateTestStep}
+                        disabled={isCreatingSharedStep}
+                        className="px-6 py-3"
+                      >
+                        Add Step
+                      </Button>
+                    )}
                   </div>
-                  
+
                   <div className="space-y-6">
                     {createTestSteps.length > 0 ? (
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleCreateDragEnd}
-                      >
-                        <SortableContext
-                          items={createTestSteps.map(step => step.id)}
-                          strategy={verticalListSortingStrategy}
+                      <>
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleCreateDragEnd}
                         >
-                          <div className="space-y-4">
-                            {createTestSteps.map((step, index) => (
-                              <DraggableTestStepWithAutoUpload
-                                key={step.id}
-                                step={step}
-                                index={index}
-                                onUpdate={updateCreateTestStep}
-                                onRemove={removeCreateTestStep}
-                                disabled={isCreatingSharedStep}
-                              />
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
+                          <SortableContext
+                            items={createTestSteps.map(step => step.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-4">
+                              {createTestSteps.map((step, index) => (
+                                <DraggableTestStepWithAutoUpload
+                                  key={step.id}
+                                  step={step}
+                                  index={index}
+                                  onUpdate={updateCreateTestStep}
+                                  onRemove={removeCreateTestStep}
+                                  disabled={isCreatingSharedStep}
+                                />
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                        <div className="flex justify-end mt-4">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="md"
+                            icon={Plus}
+                            onClick={addCreateTestStep}
+                            disabled={isCreatingSharedStep}
+                            className="px-6 py-3"
+                          >
+                            Add Step
+                          </Button>
+                        </div>
+                      </>
                     ) : (
                       <div className="text-center py-16 text-gray-400 border-2 border-dashed border-slate-600 rounded-xl">
                         <div className="max-w-md mx-auto">

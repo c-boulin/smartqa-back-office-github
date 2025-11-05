@@ -15,10 +15,10 @@ export const STATES = {
 } as const;
 
 export const PRIORITIES = {
-  1: { label: 'Low', icon: Shield, color: 'text-green-400' },
-  2: { label: 'Medium', icon: Target, color: 'text-yellow-400' },
+  1: { label: 'Medium', icon: Target, color: 'text-yellow-400' },
+  2: { label: 'Critical', icon: AlertTriangle, color: 'text-red-500' },
   3: { label: 'High', icon: Flame, color: 'text-orange-500' },
-  4: { label: 'Critical', icon: AlertTriangle, color: 'text-red-500' }
+  4: { label: 'Low', icon: Shield, color: 'text-green-400' }
 } as const;
 
 export const TEST_CASE_TYPES = {

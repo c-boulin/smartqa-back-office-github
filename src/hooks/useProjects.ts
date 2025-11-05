@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { projectsApiService, ProjectsApiResponse } from '../services/projectsApi';
+import { projectCloneService } from '../services/projectCloneService';
 import { Project } from '../types';
 import toast from 'react-hot-toast';
 import { useLoading } from '../context/LoadingContext';
@@ -326,20 +327,53 @@ export const useProjects = () => {
     return withLoading(
       (async () => {
         await projectsApiService.deleteProject(id);
-        
+
         // Remove the project from the current list
         setProjects(prevProjects => prevProjects.filter(project => project.id !== id));
-        
+
         // Update pagination to reflect the new total
         setPagination(prev => ({
           ...prev,
           totalItems: Math.max(0, prev.totalItems - 1),
           totalPages: Math.ceil(Math.max(0, prev.totalItems - 1) / prev.itemsPerPage)
         }));
-        
+
         toast.success('Project deleted successfully');
       })(),
       'Deleting project...'
+    );
+  };
+
+  const cloneProject = async (
+    sourceProjectId: string,
+    newProjectName: string,
+    newProjectDescription: string,
+    userId: string
+  ) => {
+    return withLoading(
+      (async () => {
+        const newProjectId = await projectCloneService.cloneProject(
+          sourceProjectId,
+          newProjectName,
+          newProjectDescription,
+          userId
+        );
+
+        const projectResponse = await projectsApiService.getProject(newProjectId);
+        const clonedProject = projectsApiService.transformApiProject(projectResponse.data);
+
+        setProjects(prevProjects => [clonedProject, ...prevProjects]);
+
+        setPagination(prev => ({
+          ...prev,
+          totalItems: prev.totalItems + 1,
+          totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage)
+        }));
+
+        toast.success('Project cloned successfully');
+        return newProjectId;
+      })(),
+      'Cloning project...'
     );
   };
 
@@ -361,6 +395,7 @@ export const useProjects = () => {
     fetchProjectsWithSort,
     createProject,
     updateProject,
-    deleteProject
+    deleteProject,
+    cloneProject
   };
 };

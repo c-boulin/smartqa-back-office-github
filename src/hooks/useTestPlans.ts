@@ -209,7 +209,7 @@ export const useTestPlans = (projectId?: string | null) => {
 
       const response = await testPlansApiService.updateTestPlanStatus(id, status, currentTestPlan);
 
-      const updatedTestPlan = testPlansApiService.transformApiTestPlan(response.data);
+      const updatedTestPlan = testPlansApiService.transformApiTestPlan(response.data, response.included);
       setTestPlans(prevTestPlans =>
         prevTestPlans.map(testPlan =>
           testPlan.id === id ? updatedTestPlan : testPlan

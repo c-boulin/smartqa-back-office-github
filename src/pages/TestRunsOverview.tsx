@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Loader, Search, Filter, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Loader, Search, Filter, X, MessageSquare } from 'lucide-react';
 // import { format } from 'date-fns';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
 import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSidebar';
+import AddExecutionCommentModal from '../components/TestRun/AddExecutionCommentModal';
 import { testRunsApiService, TestRun } from '../services/testRunsApi';
 import { testCasesApiService } from '../services/testCasesApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
 import { useApp } from '../context/AppContext';
 import { TestCase, TEST_RESULTS, TestResultId } from '../types';
+import { getDeviceIcon, getDeviceColor } from '../utils/deviceIcons';
 import toast from 'react-hot-toast';
 
 // Test Result Dropdown Component
@@ -19,23 +21,50 @@ interface TestResultDropdownProps {
   onChange: (value: TestResultId, comment?: string) => void;
   disabled?: boolean;
   isUpdating?: boolean;
+  testCaseTitle?: string;
+  onOpenCommentModal: (selectedResultId: TestResultId) => void;
 }
 
 const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
   value,
   onChange,
   disabled = false,
-  isUpdating = false
+  isUpdating = false,
+  testCaseTitle: _testCaseTitle = '',
+  onOpenCommentModal
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [comment, setComment] = useState('');
-  const [isCommentExpanded, setIsCommentExpanded] = useState(false);
   const [selectedResult, setSelectedResult] = useState<TestResultId>(value);
+  const [dropdownPosition, setDropdownPosition] = useState<{ vertical: 'bottom' | 'top'; horizontal: 'left' | 'right' }>({ vertical: 'bottom', horizontal: 'left' });
   const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
   const currentResultLabel = TEST_RESULTS[value];
+
+  const calculatePosition = () => {
+    if (buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      const modalHeight = 400;
+      const modalWidth = 320;
+
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+      const spaceRight = viewportWidth - buttonRect.left;
+      const spaceLeft = buttonRect.right;
+
+      const vertical = (spaceBelow < modalHeight && spaceAbove > modalHeight) ? 'top' : 'bottom';
+      const horizontal = (spaceRight < modalWidth && spaceLeft > modalWidth) ? 'right' : 'left';
+
+      setDropdownPosition({ vertical, horizontal });
+    }
+  };
 
   const handleToggle = () => {
     if (!disabled && !isUpdating) {
+      if (!isOpen) {
+        calculatePosition();
+      }
       setIsOpen(!isOpen);
     }
   };
@@ -93,17 +122,35 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
     setSelectedResult(newResultId);
   };
 
-  const handleValidate = () => {
-    onChange(selectedResult, comment.trim() || undefined);
+  const handleQuickUpdate = () => {
+    onChange(selectedResult, undefined);
     setIsOpen(false);
-    setComment('');
-    setIsCommentExpanded(false);
+  };
+
+  const handleOpenCommentModal = () => {
+    setIsOpen(false);
+    onOpenCommentModal(selectedResult);
   };
 
   // Update selectedResult when value prop changes
   React.useEffect(() => {
     setSelectedResult(value);
   }, [value]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleScrollOrResize = () => {
+      calculatePosition();
+    };
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [isOpen]);
 
   return (
     <div className="relative">
@@ -131,23 +178,17 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
 
       {isOpen && !disabled && !isUpdating && (
         <>
-          <div 
-            className="fixed inset-0 z-[100]" 
+          <div
+            className="fixed inset-0 z-[100]"
             onClick={() => setIsOpen(false)}
           />
-          <div 
-            className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96"
-            style={{
-              position: 'absolute',
-              top: '100%',
-              left: 'auto',
-              right: '0',
-              marginTop: '4px',
-              width: '320px',
-              maxWidth: '90vw',
-              transform: 'translateX(0)',
-              zIndex: 101
-            }}
+          <div
+            ref={dropdownRef}
+            className={`absolute bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96 ${
+              dropdownPosition.vertical === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
+            } ${
+              dropdownPosition.horizontal === 'left' ? 'left-0' : 'right-0'
+            }`}
           >
             <div className="p-3 border-b border-slate-600">
               <h4 className="text-sm font-medium text-white mb-3">Select Result</h4>
@@ -173,49 +214,36 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
                 </button>
               ))}
             </div>
-            
-            {/* Comment Section */}
-            <div className="border-t border-slate-600 p-3">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-medium text-gray-400">
-                  Comment (Optional)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setIsCommentExpanded(!isCommentExpanded)}
-                  className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
-                >
-                  {isCommentExpanded ? 'Collapse' : 'Expand'}
-                </button>
-              </div>
-              
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Add a comment about this execution result..."
-                className={`w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 resize-none transition-all ${
-                  isCommentExpanded ? 'h-24' : 'h-12'
-                }`}
-                disabled={disabled || isUpdating}
-              />
-              
-              <div className="flex justify-end space-x-2 mt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleValidate}
-                  className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors"
-                >
-                  Validate
-                </button>
-              </div>
             </div>
+
+            {/* Action Buttons */}
+            <div className="border-t border-slate-600 p-3">
+              <div className="flex flex-col space-y-2">
+                <button
+                  type="button"
+                  onClick={handleOpenCommentModal}
+                  className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-sm rounded transition-colors flex items-center justify-center"
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Add Comment
+                </button>
+                <div className="flex justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleQuickUpdate}
+                    className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors"
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </>
@@ -234,6 +262,8 @@ interface TestCaseWithExecution {
   testRunId: string;
   testRunName: string;
   fullTestCase: TestCase | null;
+  configurationId?: string;
+  configurationLabel?: string;
 }
 
 const TestRunsOverview: React.FC = () => {
@@ -256,6 +286,11 @@ const TestRunsOverview: React.FC = () => {
   const [updatingResults, setUpdatingResults] = useState<Set<string>>(new Set());
   const [isDetailsSidebarOpen, setIsDetailsSidebarOpen] = useState(false);
   const [selectedTestCaseForDetails, setSelectedTestCaseForDetails] = useState<TestCase | null>(null);
+  const [selectedConfigurationId, setSelectedConfigurationId] = useState<string | undefined>(undefined);
+  const [selectedConfigurationLabel, setSelectedConfigurationLabel] = useState<string | undefined>(undefined);
+  const [selectedTestRunId, setSelectedTestRunId] = useState<string | undefined>(undefined);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [selectedTestCaseForComment, setSelectedTestCaseForComment] = useState<TestCaseWithExecution | null>(null);
 
   useEffect(() => {
     if (selectedProject) {
@@ -287,25 +322,74 @@ const TestRunsOverview: React.FC = () => {
 
       // STEP 3: Collect all unique test case IDs from all active test runs
       const allTestCaseIds = new Set<string>();
-      const testCaseToRunMapping = new Map<string, { runId: string; runName: string; result: string }>();
+      const testCaseToRunMapping = new Map<string, { runId: string; runName: string; result: string; configurationId?: string; configurationLabel?: string }>();
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used for tracking test case instances
       const testCaseRunInstances: TestCaseWithExecution[] = [];
 
       for (const testRun of activeTestRuns) {
         console.log('🔄 Processing test run:', testRun.name);
 
-        // Get detailed test run data with caseResults (we need this for execution results)
         // Get detailed test run data with executions (we need this for execution results)
         const detailedTestRunResponse = await testRunsApiService.getTestRun(testRun.id);
-        
+
+        // Extract configurations from included data
+        const configurations = new Map<string, string>();
+        let defaultConfigId: string | undefined = undefined;
+        if (detailedTestRunResponse.included) {
+          detailedTestRunResponse.included
+            .filter(item => item.type === 'Configuration')
+            .forEach(configItem => {
+              const configId = configItem.attributes.id.toString();
+              const configLabel = configItem.attributes.label || configItem.attributes.name || `Config ${configId}`;
+              configurations.set(configId, configLabel);
+              console.log(`🔧 Found configuration: ID=${configId}, Label=${configLabel}`);
+            });
+
+          // If there's only one configuration, use it as the default for executions without configuration_id
+          if (configurations.size === 1) {
+            defaultConfigId = Array.from(configurations.keys())[0];
+            console.log(`🔧 Using single configuration ${defaultConfigId} as default for test run ${testRun.name}`);
+          }
+        }
+
         // Extract execution results from executions
         if (detailedTestRunResponse.data.attributes.executions && Array.isArray(detailedTestRunResponse.data.attributes.executions)) {
-          detailedTestRunResponse.data.attributes.executions.forEach((execution: { test_case_id?: number; result?: number; [key: string]: unknown }) => {
+          // Group by test case + configuration and keep only the latest execution per combination
+          const latestExecutionPerCombo = new Map<string, { test_case_id?: number; result?: number; configuration_id?: number; created_at: string; [key: string]: unknown }>();
+
+          detailedTestRunResponse.data.attributes.executions.forEach((execution: { test_case_id?: number; result?: number; configuration_id?: number; created_at: string; [key: string]: unknown }) => {
             const testCaseId = execution.test_case_id ? execution.test_case_id.toString() : null;
+            const configId = execution.configuration_id ? execution.configuration_id.toString() : 'no-config';
+            const comboKey = `${testCaseId}-${configId}`;
+            const executionDate = new Date(execution.created_at);
+
+            // Keep only the latest execution for each test case + configuration combination
+            const existing = latestExecutionPerCombo.get(comboKey);
+            if (!existing || new Date(existing.created_at) < executionDate) {
+              latestExecutionPerCombo.set(comboKey, execution);
+            }
+          });
+
+          console.log(`🔄 Found ${latestExecutionPerCombo.size} unique test case + configuration combinations in test run ${testRun.name}`);
+
+          // Now process only the latest execution per test case + configuration
+          Array.from(latestExecutionPerCombo.values()).forEach((execution: { test_case_id?: number; result?: number; configuration_id?: number; created_at: string; [key: string]: unknown }) => {
+            const testCaseId = execution.test_case_id ? execution.test_case_id.toString() : null;
+
+            // If execution has no configuration_id, use the default if available (single configuration case)
+            let configId = execution.configuration_id ? execution.configuration_id.toString() : undefined;
+            if (!configId && defaultConfigId) {
+              configId = defaultConfigId;
+              console.log(`⚠️ Execution for test case ${testCaseId} has no configuration_id, using default: ${defaultConfigId}`);
+            } else if (!configId) {
+              console.warn(`⚠️ Execution for test case ${testCaseId} in test run ${testRun.name} has no configuration_id and no default available. This should not happen!`);
+            }
+
+            const configLabel = configId && configId !== 'no-config' ? configurations.get(configId) : undefined;
             const rawResult = execution.result;
-            
-            console.log('🔄 Processing execution:', { testCaseId, rawResult, type: typeof rawResult });
-            
+
+            console.log('🔄 Processing unique execution:', { testCaseId, configId, rawResult, type: typeof rawResult });
+
             // Convert numeric result to TestResultId
             let resultId: TestResultId;
             if (typeof rawResult === 'number') {
@@ -319,7 +403,7 @@ const TestRunsOverview: React.FC = () => {
                 console.log(`🔄 Converted string numeric result "${rawResult}" to: ${resultId} (${TEST_RESULTS[resultId]})`);
               } else {
                 // String is not numeric, try reverse lookup by label
-                const foundEntry = Object.entries(TEST_RESULTS).find(([_id, label]) => 
+                const foundEntry = Object.entries(TEST_RESULTS).find(([_id, label]) =>
                   label.toLowerCase() === rawResult.toLowerCase()
                 );
                 resultId = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6; // Default to Untested
@@ -329,18 +413,20 @@ const TestRunsOverview: React.FC = () => {
               resultId = 6; // Default to Untested
               console.log(`🔄 Unknown result type for execution, defaulting to Untested`);
             }
-            
+
             console.log('🔄 Converted result:', { rawResult, resultId, label: TEST_RESULTS[resultId] });
-            
+
             if (testCaseId) {
               allTestCaseIds.add(testCaseId);
-              
-              // Create a unique key for each test case + test run combination
-              const uniqueKey = `${testCaseId}-${testRun.id}`;
+
+              // Create a unique key for each test case + test run + configuration combination
+              const uniqueKey = `${testCaseId}-${testRun.id}-${configId || 'no-config'}`;
               testCaseToRunMapping.set(uniqueKey, {
                 runId: testRun.id,
                 runName: testRun.name,
-                result: resultId
+                result: resultId,
+                configurationId: configId,
+                configurationLabel: configLabel
               });
             }
           });
@@ -367,12 +453,12 @@ const TestRunsOverview: React.FC = () => {
         const batchPromises = batch.map(async (testCaseId) => {
           try {
             const testCaseResponse = await testCasesApiService.getTestCase(testCaseId);
-            const testCase = testCasesApiService.transformApiTestCase(testCaseResponse.data);
+            const testCase = testCasesApiService.transformApiTestCase(testCaseResponse.data, testCaseResponse.included);
             
-            // Create instances for each test run this test case appears in
+            // Create instances for each test run + configuration this test case appears in
             const instances: TestCaseWithExecution[] = [];
-            
-            // Find all test runs that contain this test case
+
+            // Find all test run + configuration combinations that contain this test case
             for (const [uniqueKey, runMapping] of testCaseToRunMapping.entries()) {
               if (uniqueKey.startsWith(`${testCaseId}-`)) {
                 instances.push({
@@ -384,18 +470,20 @@ const TestRunsOverview: React.FC = () => {
                   executionResult: TEST_RESULTS[runMapping.result as TestResultId],
                   testRunId: runMapping.runId,
                   testRunName: runMapping.runName,
-                  fullTestCase: testCase
+                  fullTestCase: testCase,
+                  configurationId: runMapping.configurationId,
+                  configurationLabel: runMapping.configurationLabel
                 });
               }
             }
-            
+
             return instances;
           } catch (error) {
             console.error(`Failed to fetch test case ${testCaseId}:`, error);
             
             // Create fallback instances for failed fetches
             const fallbackInstances: TestCaseWithExecution[] = [];
-            
+
             for (const [uniqueKey, runMapping] of testCaseToRunMapping.entries()) {
               if (uniqueKey.startsWith(`${testCaseId}-`)) {
                 fallbackInstances.push({
@@ -407,11 +495,13 @@ const TestRunsOverview: React.FC = () => {
                   executionResult: TEST_RESULTS[runMapping.result as TestResultId],
                   testRunId: runMapping.runId,
                   testRunName: runMapping.runName,
-                  fullTestCase: null
+                  fullTestCase: null,
+                  configurationId: runMapping.configurationId,
+                  configurationLabel: runMapping.configurationLabel
                 });
               }
             }
-            
+
             return fallbackInstances;
           }
         });
@@ -478,6 +568,9 @@ const TestRunsOverview: React.FC = () => {
   const handleTestCaseTitleClick = (testCaseWithExecution: TestCaseWithExecution) => {
     if (testCaseWithExecution.fullTestCase) {
       setSelectedTestCaseForDetails(testCaseWithExecution.fullTestCase);
+      setSelectedConfigurationId(testCaseWithExecution.configurationId);
+      setSelectedConfigurationLabel(testCaseWithExecution.configurationLabel);
+      setSelectedTestRunId(testCaseWithExecution.testRunId);
       setIsDetailsSidebarOpen(true);
     }
   };
@@ -485,6 +578,9 @@ const TestRunsOverview: React.FC = () => {
   const closeDetailsSidebar = () => {
     setIsDetailsSidebarOpen(false);
     setSelectedTestCaseForDetails(null);
+    setSelectedConfigurationId(undefined);
+    setSelectedConfigurationLabel(undefined);
+    setSelectedTestRunId(undefined);
   };
 
   const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -544,7 +640,7 @@ const TestRunsOverview: React.FC = () => {
     setFilteredTestCases(allTestCasesWithExecution);
   };
 
-  const handleExecutionResultChange = async (testCaseId: string, testRunId: string, newResultId: TestResultId, comment?: string) => {
+  const handleExecutionResultChange = async (testCaseId: string, testRunId: string, newResultId: TestResultId, comment?: string, configurationId?: string) => {
     // Find the test run to check if it's closed
     const testRun = testRuns.find(tr => tr.id === testRunId);
     if (testRun?.state === 6) {
@@ -553,42 +649,83 @@ const TestRunsOverview: React.FC = () => {
     }
 
     const newResultLabel = TEST_RESULTS[newResultId];
-    const updateKey = `${testCaseId}-${testRunId}`;
-    
+    const updateKey = `${testCaseId}-${configurationId || 'default'}-${testRunId}`;
+
     try {
       // Add to updating set to show loading state
       setUpdatingResults(prev => new Set([...prev, updateKey]));
 
-      console.log(`🔄 Updating execution result for test case ${testCaseId} in test run ${testRunId} to: ${newResultId} (${newResultLabel})`);
+      console.log(`🔄 Updating execution result for test case ${testCaseId} in test run ${testRunId} with config ${configurationId || 'none'} to: ${newResultId} (${newResultLabel})`);
 
+      // Check if this is the first execution being created for this test run
+      const testRunTestCases = allTestCasesWithExecution.filter(tc => tc.testRunId === testRunId);
+      const isFirstExecution = testRunTestCases.every(tc =>
+        tc.id !== testCaseId || tc.configurationId !== configurationId || tc.executionStatus === 6
+      );
 
       // Use new POST endpoint for test case executions
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- API response needed for error handling
       const response = await testCaseExecutionsApiService.createTestCaseExecution({
         testCaseId,
-        testRunId,
+        testRunId: testRunId,
         result: newResultId,
-        comment: comment
+        comment: comment || undefined,
+        configurationId: configurationId
       });
 
       // Update local state to reflect the change immediately
-      setAllTestCasesWithExecution(prevTestCases => 
-        prevTestCases.map(tc => 
-          tc.id === testCaseId && tc.testRunId === testRunId
+      const updatedAllTestCases = allTestCasesWithExecution.map(tc =>
+        tc.id === testCaseId && tc.testRunId === testRunId && tc.configurationId === configurationId
+          ? { ...tc, executionStatus: newResultId, executionResult: newResultLabel }
+          : tc
+      );
+
+      setAllTestCasesWithExecution(updatedAllTestCases);
+
+      setFilteredTestCases(prevFiltered =>
+        prevFiltered.map(tc =>
+          tc.id === testCaseId && tc.testRunId === testRunId && tc.configurationId === configurationId
             ? { ...tc, executionStatus: newResultId, executionResult: newResultLabel }
             : tc
         )
       );
 
-      setFilteredTestCases(prevFiltered => 
-        prevFiltered.map(tc => 
-          tc.id === testCaseId && tc.testRunId === testRunId
-            ? { ...tc, executionStatus: newResultId, executionResult: newResultLabel }
-            : tc
-        )
-      );
+      // Check if we need to update test run state
+      if (testRun) {
+        if (isFirstExecution && testRun.state === 1) {
+          // First execution created, move test run to "In Progress" (state 2)
+          console.log('🏃 First execution created, updating test run state to In Progress');
+          try {
+            await testRunsApiService.updateTestRunState(testRunId, 2);
+            setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 2 } : tr));
+            toast.success(`Execution result updated to ${newResultLabel}. Test run is now In Progress.`);
+          } catch (error) {
+            console.error('❌ Failed to update test run state:', error);
+            toast.success(`Execution result updated to ${newResultLabel}`);
+          }
+        } else {
+          // Check if all test cases for this test run now have results (not Untested - state 6)
+          const updatedTestRunTestCases = updatedAllTestCases.filter(tc => tc.testRunId === testRunId);
+          const allTestCasesHaveResults = updatedTestRunTestCases.every(tc => tc.executionStatus !== 6);
 
-      toast.success(`Execution result updated to ${newResultLabel}`);
+          if (allTestCasesHaveResults && testRun.state !== 5 && testRun.state !== 6) {
+            // All test cases have results, move test run to "Done" (state 5)
+            console.log('🏃 All test cases have results, updating test run state to Done');
+            try {
+              await testRunsApiService.updateTestRunState(testRunId, 5);
+              setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 5 } : tr));
+              toast.success(`Execution result updated to ${newResultLabel}. Test run is now Done.`);
+            } catch (error) {
+              console.error('❌ Failed to update test run state:', error);
+              toast.success(`Execution result updated to ${newResultLabel}`);
+            }
+          } else {
+            toast.success(`Execution result updated to ${newResultLabel}`);
+          }
+        }
+      } else {
+        toast.success(`Execution result updated to ${newResultLabel}`);
+      }
 
     } catch (error) {
       console.error('❌ Failed to update execution result:', error);
@@ -832,7 +969,7 @@ const TestRunsOverview: React.FC = () => {
       </Card>
 
       {/* Test Cases Table */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-visible">
         <div className="p-6 border-b border-slate-700">
           <h3 className="text-lg font-semibold text-white">
             Test Cases ({filteredTestCases.length}{filteredTestCases.length !== allTestCasesWithExecution.length ? ` of ${allTestCasesWithExecution.length}` : ''})
@@ -841,14 +978,15 @@ const TestRunsOverview: React.FC = () => {
             Test cases from all active test runs in {selectedProject?.name}
           </p>
         </div>
-        
-        <div className="overflow-x-auto">
+
+        <div className="overflow-x-auto" style={{ overflow: 'visible' }}>
           <table className="w-full">
             <thead className="bg-slate-800/50 border-b border-slate-700">
               <tr>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Test Case ID</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Title</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Test Run</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Configuration</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Priority</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Type</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Execution Result</th>
@@ -856,9 +994,9 @@ const TestRunsOverview: React.FC = () => {
             </thead>
             <tbody>
               {filteredTestCases.map((testCase) => (
-                <tr key={`${testCase.testRunId}-${testCase.id}`} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+                <tr key={`${testCase.testRunId}-${testCase.id}-${testCase.configurationId || 'no-config'}`} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
                   <td className="py-4 px-6 text-sm text-gray-300 font-mono">
-                    TC-{testCase.id}
+                    TC{testCase.id}
                   </td>
                   <td className="py-4 px-6">
                     <button
@@ -880,6 +1018,18 @@ const TestRunsOverview: React.FC = () => {
                     </button>
                   </td>
                   <td className="py-4 px-6">
+                    {testCase.configurationLabel ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700/50 text-gray-200 border border-slate-600">
+                        <span className={getDeviceColor(testCase.configurationLabel)}>
+                          {getDeviceIcon(testCase.configurationLabel)}
+                        </span>
+                        {testCase.configurationLabel}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">N/A</span>
+                    )}
+                  </td>
+                  <td className="py-4 px-6">
                     <StatusBadge status={testCase.priority} type="priority" />
                   </td>
                   <td className="py-4 px-6">
@@ -890,9 +1040,14 @@ const TestRunsOverview: React.FC = () => {
                   <td className="py-4 px-6">
                     <TestResultDropdown
                       value={testCase.executionStatus}
-                      onChange={(newResultId, comment) => handleExecutionResultChange(testCase.id, testCase.testRunId, newResultId, comment)}
-                      disabled={testRuns.find(tr => tr.id === testCase.testRunId)?.state === 6 || updatingResults.has(`${testCase.id}-${testCase.testRunId}`)}
-                      isUpdating={updatingResults.has(`${testCase.id}-${testCase.testRunId}`)}
+                      onChange={(newResultId, comment) => handleExecutionResultChange(testCase.id, testCase.testRunId, newResultId, comment, testCase.configurationId)}
+                      disabled={testRuns.find(tr => tr.id === testCase.testRunId)?.state === 6 || updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testCase.testRunId}`)}
+                      isUpdating={updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testCase.testRunId}`)}
+                      testCaseTitle={testCase.title}
+                      onOpenCommentModal={(selectedResultId) => {
+                        setSelectedTestCaseForComment({ ...testCase, executionStatus: selectedResultId });
+                        setIsCommentModalOpen(true);
+                      }}
                     />
                   </td>
                 </tr>
@@ -908,19 +1063,49 @@ const TestRunsOverview: React.FC = () => {
         onClose={closeDetailsSidebar}
         testCase={selectedTestCaseForDetails}
         context="test-runs-overview"
-        testRunId={selectedTestCaseForDetails ? 
-          allTestCasesWithExecution.find(tc => tc.id === selectedTestCaseForDetails.id)?.testRunId : undefined
+        testRunId={selectedTestRunId}
+        isTestRunClosed={selectedTestCaseForDetails && selectedTestRunId ?
+          testRuns.find(tr => tr.id === selectedTestRunId)?.state === 6 : false
         }
-        isTestRunClosed={selectedTestCaseForDetails ? 
-          testRuns.find(tr => tr.id === allTestCasesWithExecution.find(tc => tc.id === selectedTestCaseForDetails.id)?.testRunId)?.state === 6 : false
-        }
-        currentExecutionResult={selectedTestCaseForDetails ? 
-          allTestCasesWithExecution.find(tc => tc.id === selectedTestCaseForDetails.id)?.executionStatus : undefined
+        configurationId={selectedConfigurationId}
+        configurationLabel={selectedConfigurationLabel}
+        currentExecutionResult={selectedTestCaseForDetails && selectedTestRunId ?
+          allTestCasesWithExecution.find(tc =>
+            tc.id === selectedTestCaseForDetails.id &&
+            tc.testRunId === selectedTestRunId &&
+            tc.configurationId === selectedConfigurationId
+          )?.executionStatus : undefined
         }
         onExecutionResultChange={(testCaseId, testRunId, newResultId) => {
-          handleExecutionResultChange(testCaseId, testRunId, newResultId);
+          handleExecutionResultChange(testCaseId, testRunId, newResultId, undefined, selectedConfigurationId);
         }}
       />
+
+      {/* Add Comment Modal */}
+      {selectedTestCaseForComment && (
+        <AddExecutionCommentModal
+          isOpen={isCommentModalOpen}
+          onClose={() => {
+            setIsCommentModalOpen(false);
+            setSelectedTestCaseForComment(null);
+          }}
+          onSubmit={(resultId, comment) => {
+            if (selectedTestCaseForComment) {
+              handleExecutionResultChange(
+                selectedTestCaseForComment.id,
+                selectedTestCaseForComment.testRunId,
+                resultId,
+                comment,
+                selectedTestCaseForComment.configurationId
+              );
+            }
+            setIsCommentModalOpen(false);
+            setSelectedTestCaseForComment(null);
+          }}
+          currentResult={selectedTestCaseForComment.executionStatus}
+          testCaseTitle={selectedTestCaseForComment.title}
+        />
+      )}
     </div>
   );
 };

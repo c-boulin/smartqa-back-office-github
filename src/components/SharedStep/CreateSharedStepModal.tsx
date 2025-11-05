@@ -142,28 +142,13 @@ const CreateSharedStepModal: React.FC<CreateSharedStepModalProps> = ({
 
               {/* Steps and Results with Drag & Drop - Full width */}
               <div>
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <label className="block text-lg font-medium text-gray-300 mb-1">
-                      Steps and Results
-                    </label>
-                    <p className="text-sm text-gray-400">
-                      Define the reusable steps that can be shared across multiple test cases
-                    </p>
-                  </div>
-                  {testSteps.length === 0 && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="md"
-                      icon={Plus}
-                      onClick={addTestStep}
-                      disabled={isSubmitting}
-                      className="px-6 py-3"
-                    >
-                      Add Step
-                    </Button>
-                  )}
+                <div className="mb-6">
+                  <label className="block text-lg font-medium text-gray-300 mb-1">
+                    Steps and Results
+                  </label>
+                  <p className="text-sm text-gray-400">
+                    Define the reusable steps that can be shared across multiple test cases
+                  </p>
                 </div>
 
                 <div className="space-y-6">

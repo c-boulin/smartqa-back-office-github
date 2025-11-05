@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, User, Play, CheckCircle, XCircle, Clock, AlertTriangle, Loader } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Play, CheckCircle, XCircle, Clock, AlertTriangle, Loader, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
@@ -8,12 +8,14 @@ import StatusBadge from '../components/UI/StatusBadge';
 import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSidebar';
 import TestRunDetailsFilters from '../components/TestRun/TestRunDetailsFilters';
 import TestRunDetailsFiltersSidebar from '../components/TestRun/TestRunDetailsFiltersSidebar';
+import AddExecutionCommentModal from '../components/TestRun/AddExecutionCommentModal';
 import { testRunsApiService, TestRun } from '../services/testRunsApi';
 import { testCasesApiService } from '../services/testCasesApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
 import { useTestRunDetailsFilters } from '../hooks/useTestRunDetailsFilters';
 import { useApp } from '../context/AppContext';
 import { TestCase, TEST_RESULTS, TestResultId, Tag } from '../types';
+import { getDeviceIcon, getDeviceColor } from '../utils/deviceIcons';
 import toast from 'react-hot-toast';
 
 // Test Result Dropdown Component
@@ -22,41 +24,51 @@ interface TestResultDropdownProps {
   onChange: (value: TestResultId, comment?: string) => void;
   disabled?: boolean;
   isUpdating?: boolean;
+  testCaseTitle?: string;
+  onOpenCommentModal: (selectedResultId: TestResultId) => void;
 }
 
 const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
   value,
   onChange,
   disabled = false,
-  isUpdating = false
+  isUpdating = false,
+  testCaseTitle: _testCaseTitle = '',
+  onOpenCommentModal
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [comment, setComment] = useState('');
-  const [isCommentExpanded, setIsCommentExpanded] = useState(false);
   const [selectedResult, setSelectedResult] = useState<TestResultId>(value);
-  const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
+  const [dropdownPosition, setDropdownPosition] = useState<{ vertical: 'bottom' | 'top'; horizontal: 'left' | 'right' }>({ vertical: 'bottom', horizontal: 'left' });
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const currentResultLabel = TEST_RESULTS[value];
 
+  const calculatePosition = () => {
+    if (buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      const modalHeight = 400;
+      const modalWidth = 320;
+
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+      const spaceRight = viewportWidth - buttonRect.left;
+      const spaceLeft = buttonRect.right;
+
+      const vertical = (spaceBelow < modalHeight && spaceAbove > modalHeight) ? 'top' : 'bottom';
+      const horizontal = (spaceRight < modalWidth && spaceLeft > modalWidth) ? 'right' : 'left';
+
+      setDropdownPosition({ vertical, horizontal });
+    }
+  };
+
   const handleToggle = () => {
     if (!disabled && !isUpdating) {
-      setIsOpen(!isOpen);
-
-      // Calculate position when opening
-      if (!isOpen && buttonRef.current) {
-        const buttonRect = buttonRef.current.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const spaceBelow = viewportHeight - buttonRect.bottom;
-        const modalHeight = 400; // Approximate height of the modal
-
-        // If there's not enough space below, show above
-        if (spaceBelow < modalHeight && buttonRect.top > modalHeight) {
-          setDropdownPosition('top');
-        } else {
-          setDropdownPosition('bottom');
-        }
+      if (!isOpen) {
+        calculatePosition();
       }
+      setIsOpen(!isOpen);
     }
   };
 
@@ -113,11 +125,14 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
     setSelectedResult(newResultId);
   };
 
-  const handleValidate = () => {
-    onChange(selectedResult, comment.trim() || undefined);
+  const handleQuickUpdate = () => {
+    onChange(selectedResult, undefined);
     setIsOpen(false);
-    setComment('');
-    setIsCommentExpanded(false);
+  };
+
+  const handleOpenCommentModal = () => {
+    setIsOpen(false);
+    onOpenCommentModal(selectedResult);
   };
 
   // Update selectedResult when value prop changes
@@ -125,27 +140,19 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
     setSelectedResult(value);
   }, [value]);
 
-  // Recalculate position on scroll
   React.useEffect(() => {
     if (!isOpen) return;
 
-    const handleScroll = () => {
-      if (buttonRef.current) {
-        const buttonRect = buttonRef.current.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const spaceBelow = viewportHeight - buttonRect.bottom;
-        const modalHeight = 400;
-
-        if (spaceBelow < modalHeight && buttonRect.top > modalHeight) {
-          setDropdownPosition('top');
-        } else {
-          setDropdownPosition('bottom');
-        }
-      }
+    const handleScrollOrResize = () => {
+      calculatePosition();
     };
 
-    window.addEventListener('scroll', handleScroll, true);
-    return () => window.removeEventListener('scroll', handleScroll, true);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
   }, [isOpen]);
 
   return (
@@ -180,8 +187,10 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
           />
           <div
             ref={dropdownRef}
-            className={`absolute left-0 right-0 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96 ${
-              dropdownPosition === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
+            className={`absolute bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96 ${
+              dropdownPosition.vertical === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
+            } ${
+              dropdownPosition.horizontal === 'left' ? 'left-0' : 'right-0'
             }`}
           >
             <div className="p-3 border-b border-slate-600">
@@ -209,48 +218,34 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
               ))}
             </div>
             </div>
-            
-            {/* Comment Section */}
+
+            {/* Action Buttons */}
             <div className="border-t border-slate-600 p-3">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-medium text-gray-400">
-                  Comment (Optional)
-                </label>
+              <div className="flex flex-col space-y-2">
                 <button
                   type="button"
-                  onClick={() => setIsCommentExpanded(!isCommentExpanded)}
-                  className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                  onClick={handleOpenCommentModal}
+                  className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-sm rounded transition-colors flex items-center justify-center"
                 >
-                  {isCommentExpanded ? 'Collapse' : 'Expand'}
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Add Comment
                 </button>
-              </div>
-              
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Add a comment about this execution result..."
-                className={`w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 resize-none transition-all ${
-                  isCommentExpanded ? 'h-24' : 'h-12'
-                }`}
-                disabled={disabled || isUpdating}
-              />
-              
-              {/* Action Buttons */}
-              <div className="flex justify-end space-x-2 mt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleValidate}
-                  className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors"
-                >
-                  Validate
-                </button>
+                <div className="flex justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleQuickUpdate}
+                    className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors"
+                  >
+                    Update
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -268,6 +263,8 @@ interface TestCaseWithExecution {
   executionStatus: TestResultId;
   executionResult: string;
   fullTestCase: TestCase | null;
+  configurationId?: string;
+  configurationLabel?: string;
 }
 
 const TestRunDetails: React.FC = () => {
@@ -281,10 +278,13 @@ const TestRunDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isDetailsSidebarOpen, setIsDetailsSidebarOpen] = useState(false);
   const [selectedTestCaseForDetails, setSelectedTestCaseForDetails] = useState<TestCase | null>(null);
+  const [selectedConfigurationId, setSelectedConfigurationId] = useState<string | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const [isFiltersSidebarOpen, setIsFiltersSidebarOpen] = useState(false);
   const [updatingResults, setUpdatingResults] = useState<Set<string>>(new Set());
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [selectedTestCaseForComment, setSelectedTestCaseForComment] = useState<TestCaseWithExecution | null>(null);
 
   // Check if test run is closed (state 6)
   const isTestRunClosed = testRun?.state === 6;
@@ -340,119 +340,114 @@ const TestRunDetails: React.FC = () => {
       );
       setTestRun(transformedTestRun);
 
+      // Get configurations from test run
+      const configurations = transformedTestRun.configurations || [];
+      console.log(`🏃 📋 Test run has ${configurations.length} configurations:`, configurations);
+
+      // If no configurations, add a default empty config
+      const configsToProcess = configurations.length > 0 ? configurations : [{ id: '', label: '' }];
+
       // Fetch test case details for each test case in the test run
-      const testCasePromises = transformedTestRun.testCaseIds.map(async (testCaseId) => {
-        try {
-          const testCaseResponse = await testCasesApiService.getTestCase(testCaseId);
-          const testCase = testCasesApiService.transformApiTestCase(testCaseResponse.data);
-          
-          // Get execution result from test case's executions array
-          let executionResult: TestResultId = 6; // Default to 'Untested'
-          
-          console.log(`🏃 ===== PROCESSING TEST CASE ${testCaseId} =====`);
-          console.log(`🏃 Test case title: ${testCase.title}`);
-          console.log(`🏃 Test run ID we're looking for: ${testRunId}`);
-          console.log(`🏃 Raw API response attributes:`, testCaseResponse.data.attributes);
-          console.log(`🏃 Raw executions data:`, testCaseResponse.data.attributes.executions);
-          console.log(`🏃 Executions data type:`, typeof testCaseResponse.data.attributes.executions);
-          console.log(`🏃 Is executions an array:`, Array.isArray(testCaseResponse.data.attributes.executions));
-          
-          // Check if executions exist in the API response
-          const executionsData = testCaseResponse.data.attributes.executions;
-          
-          if (executionsData && Array.isArray(executionsData) && executionsData.length > 0) {
-            console.log(`🏃 ✅ Valid executions array found with ${executionsData.length} executions`);
-            console.log(`🏃 All executions for test case ${testCaseId}:`, executionsData);
-            
-            // Filter executions for this test run and get the latest one
-            const testRunExecutions = executionsData.filter((execution: { test_run_id: number; [key: string]: unknown }) => 
-              execution.test_run_id.toString() === testRunId
-            );
-            
-            console.log(`🏃 🔍 Filtering executions for test run ${testRunId}:`);
-            executionsData.forEach((execution: { test_run_id: number; [key: string]: unknown }, index: number) => {
-              console.log(`🏃 🔍   Execution ${index + 1}:`);
-              console.log(`🏃 🔍     - execution.test_run_id: ${execution.test_run_id} (type: ${typeof execution.test_run_id})`);
-              console.log(`🏃 🔍     - testRunId: ${testRunId} (type: ${typeof testRunId})`);
-              console.log(`🏃 🔍     - Match: ${execution.test_run_id.toString() === testRunId}`);
-              console.log(`🏃 🔍     - execution.result: ${execution.result} (type: ${typeof execution.result})`);
-              console.log(`🏃 🔍     - execution.created_at: ${execution.created_at}`);
-            });
-            
-            console.log(`🏃 ✅ Found ${testRunExecutions.length} executions for test case ${testCaseId} in test run ${testRunId}`);
-            console.log(`🏃 ✅ Filtered executions:`, testRunExecutions);
-            
-            if (testRunExecutions.length > 0) {
-              // Sort by creation date and get the latest execution
-              const latestExecution = testRunExecutions.sort((a: { created_at: string }, b: { created_at: string }) => 
-                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-              )[0];
-              
-              console.log(`🏃 🎯 Latest execution for test case ${testCaseId}:`, latestExecution);
-              console.log(`🏃 🎯 Latest execution result field:`, latestExecution.result, 'type:', typeof latestExecution.result);
-              
-              // Extract result ID from the latest execution
-              const rawResult = latestExecution.result;
-              
-              if (typeof rawResult === 'number') {
-                executionResult = rawResult as TestResultId;
-                console.log(`🏃 🎯 ✅ Using numeric result: ${executionResult} (${TEST_RESULTS[executionResult]})`);
-              } else if (typeof rawResult === 'string') {
-                // First try to cast string to integer
-                const parsedInt = parseInt(rawResult);
-                if (!isNaN(parsedInt) && TEST_RESULTS[parsedInt as TestResultId]) {
-                  // String is a valid numeric ID
-                  executionResult = parsedInt as TestResultId;
-                  console.log(`🏃 🎯 ✅ Converted string numeric result "${rawResult}" to: ${executionResult} (${TEST_RESULTS[executionResult]})`);
+      const testCasePromises = transformedTestRun.testCaseIds.flatMap(testCaseId =>
+        configsToProcess.map(async (config) => {
+          try {
+            const testCaseResponse = await testCasesApiService.getTestCase(testCaseId);
+            const testCase = testCasesApiService.transformApiTestCase(testCaseResponse.data, testCaseResponse.included);
+
+            // Get execution result from test case's executions array
+            let executionResult: TestResultId = 6; // Default to 'Untested'
+
+            console.log(`🏃 ===== PROCESSING TEST CASE ${testCaseId} for config ${config.label || 'None'} =====`);
+            console.log(`🏃 Test case title: ${testCase.title}`);
+            console.log(`🏃 Configuration: ${config.label} (ID: ${config.id})`);
+            console.log(`🏃 Test run ID we're looking for: ${testRunId}`);
+
+            // Check if executions exist in the API response
+            const executionsData = testCaseResponse.data.attributes.executions;
+
+            if (executionsData && Array.isArray(executionsData) && executionsData.length > 0) {
+              console.log(`🏃 ✅ Valid executions array found with ${executionsData.length} executions`);
+
+              // Filter executions for this test run and configuration
+              const testRunExecutions = executionsData.filter((execution: { test_run_id: number; configuration_id?: number; [key: string]: unknown }) => {
+                const matchesTestRun = execution.test_run_id.toString() === testRunId;
+                const matchesConfig = config.id ?
+                  (execution.configuration_id && execution.configuration_id.toString() === config.id) :
+                  !execution.configuration_id;
+                return matchesTestRun && matchesConfig;
+              });
+
+              console.log(`🏃 ✅ Found ${testRunExecutions.length} executions for test case ${testCaseId} in test run ${testRunId} with config ${config.label || 'None'}`);
+
+              if (testRunExecutions.length > 0) {
+                // Sort by creation date and get the latest execution
+                const latestExecution = testRunExecutions.sort((a: { created_at: string }, b: { created_at: string }) =>
+                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                )[0];
+
+                console.log(`🏃 🎯 Latest execution for test case ${testCaseId}:`, latestExecution);
+
+                // Extract result ID from the latest execution
+                const rawResult = latestExecution.result;
+
+                if (typeof rawResult === 'number') {
+                  executionResult = rawResult as TestResultId;
+                  console.log(`🏃 🎯 ✅ Using numeric result: ${executionResult} (${TEST_RESULTS[executionResult]})`);
+                } else if (typeof rawResult === 'string') {
+                  const parsedInt = parseInt(rawResult);
+                  if (!isNaN(parsedInt) && TEST_RESULTS[parsedInt as TestResultId]) {
+                    executionResult = parsedInt as TestResultId;
+                    console.log(`🏃 🎯 ✅ Converted string numeric result "${rawResult}" to: ${executionResult} (${TEST_RESULTS[executionResult]})`);
+                  } else {
+                    const foundEntry = Object.entries(TEST_RESULTS).find(([_id, label]) =>
+                      label.toLowerCase() === rawResult.toLowerCase()
+                    );
+                    executionResult = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6;
+                    console.log(`🏃 🎯 ✅ Converted string label result "${rawResult}" to: ${executionResult} (${TEST_RESULTS[executionResult]})`);
+                  }
                 } else {
-                  // String is not numeric, try reverse lookup by label
-                  const foundEntry = Object.entries(TEST_RESULTS).find(([_id, label]) => 
-                    label.toLowerCase() === rawResult.toLowerCase()
-                  );
-                  executionResult = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6;
-                  console.log(`🏃 🎯 ✅ Converted string label result "${rawResult}" to: ${executionResult} (${TEST_RESULTS[executionResult]})`);
+                  console.log(`🏃 🎯 ⚠️ Unknown result type, defaulting to Untested`);
+                  executionResult = 6;
                 }
+
+                console.log(`🏃 🎯 ✅ FINAL: Test case ${testCaseId} execution result: ${executionResult} (${TEST_RESULTS[executionResult]})`);
               } else {
-                console.log(`🏃 🎯 ⚠️ Unknown result type for test case ${testCaseId}:`, rawResult, 'defaulting to Untested');
-                executionResult = 6; // Default to Untested
+                console.log(`🏃 🎯 ❌ No executions found for test case ${testCaseId} in test run ${testRunId} with config ${config.label || 'None'}`);
               }
-              
-              console.log(`🏃 🎯 ✅ FINAL: Test case ${testCaseId} execution result: ${executionResult} (${TEST_RESULTS[executionResult]})`);
             } else {
-              console.log(`🏃 🎯 ❌ No executions found for test case ${testCaseId} in test run ${testRunId} after filtering`);
+              console.log(`🏃 🎯 ❌ No executions data found for test case ${testCaseId}`);
             }
-          } else if (executionsData) {
-            console.log(`🏃 🎯 ❌ Executions data exists but is not a valid array for test case ${testCaseId}:`, typeof executionsData, executionsData);
-          } else {
-            console.log(`🏃 🎯 ❌ No executions data found for test case ${testCaseId}`);
+
+            console.log(`🏃 ===== END PROCESSING TEST CASE ${testCaseId} for config ${config.label || 'None'} =====`);
+
+            return {
+              id: testCase.id,
+              title: testCase.title,
+              priority: testCase.priority,
+              type: testCase.type,
+              executionStatus: executionResult,
+              executionResult: TEST_RESULTS[executionResult],
+              fullTestCase: testCase,
+              configurationId: config.id || undefined,
+              configurationLabel: config.label || undefined
+            };
+          } catch (error) {
+            console.error(`Failed to fetch test case ${testCaseId}:`, error);
+
+            return {
+              id: testCaseId,
+              title: `Test Case ${testCaseId}`,
+              priority: 'medium',
+              type: 'functional',
+              executionStatus: 6 as TestResultId,
+              executionResult: TEST_RESULTS[6],
+              fullTestCase: null,
+              configurationId: config.id || undefined,
+              configurationLabel: config.label || undefined
+            };
           }
-          
-          console.log(`🏃 🎯 📊 FINAL RESULT for test case ${testCaseId}: ${executionResult} (${TEST_RESULTS[executionResult]})`);
-          console.log(`🏃 ===== END PROCESSING TEST CASE ${testCaseId} =====`);
-          
-          return {
-            id: testCase.id,
-            title: testCase.title,
-            priority: testCase.priority,
-            type: testCase.type,
-            executionStatus: executionResult,
-            executionResult: TEST_RESULTS[executionResult],
-            fullTestCase: testCase
-          };
-        } catch (error) {
-          console.error(`Failed to fetch test case ${testCaseId}:`, error);
-          
-          return {
-            id: testCaseId,
-            title: `Test Case ${testCaseId}`,
-            priority: 'medium',
-            type: 'functional',
-            executionStatus: 6 as TestResultId, // Default to 'Untested'
-            executionResult: TEST_RESULTS[6],
-            fullTestCase: null
-          };
-        }
-      });
+        })
+      );
 
       const testCasesWithExecution = await Promise.all(testCasePromises);
       
@@ -521,6 +516,7 @@ const TestRunDetails: React.FC = () => {
   const handleTestCaseTitleClick = (testCaseWithExecution: TestCaseWithExecution) => {
     if (testCaseWithExecution.fullTestCase) {
       setSelectedTestCaseForDetails(testCaseWithExecution.fullTestCase);
+      setSelectedConfigurationId(testCaseWithExecution.configurationId);
       setIsDetailsSidebarOpen(true);
     }
   };
@@ -528,9 +524,10 @@ const TestRunDetails: React.FC = () => {
   const closeDetailsSidebar = () => {
     setIsDetailsSidebarOpen(false);
     setSelectedTestCaseForDetails(null);
+    setSelectedConfigurationId(undefined);
   };
 
-  const handleExecutionResultChange = async (testCaseId: string, newResultId: TestResultId, comment?: string) => {
+  const handleExecutionResultChange = async (testCaseId: string, newResultId: TestResultId, comment?: string, configurationId?: string) => {
     if (!testRun || !id || isTestRunClosed) {
       if (isTestRunClosed) {
         toast.error('Cannot update execution results for closed test runs');
@@ -539,14 +536,18 @@ const TestRunDetails: React.FC = () => {
     }
 
     const newResultLabel = TEST_RESULTS[newResultId];
-    const updateKey = `${testCaseId}-${id}`;
-    
+    const updateKey = `${testCaseId}-${configurationId || 'default'}-${id}`;
+
     try {
       // Add to updating set to show loading state
       setUpdatingResults(prev => new Set([...prev, updateKey]));
 
-      console.log(`🔄 Updating execution result for test case ${testCaseId} in test run ${testRun.id} to: ${newResultId} (${newResultLabel})`);
+      console.log(`🔄 Updating execution result for test case ${testCaseId} in test run ${testRun.id} with config ${configurationId || 'none'} to: ${newResultId} (${newResultLabel})`);
 
+      // Check if this is the first execution being created for this test run
+      const isFirstExecution = testCases.every(tc =>
+        tc.id !== testCaseId || tc.configurationId !== configurationId || tc.executionStatus === 6
+      );
 
       // Use new POST endpoint for test case executions
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- API response needed for error handling
@@ -554,27 +555,58 @@ const TestRunDetails: React.FC = () => {
         testCaseId,
         testRunId: id,
         result: newResultId,
-        comment: comment || undefined
+        comment: comment || undefined,
+        configurationId: configurationId
       });
 
-      // Update local state to reflect the change immediately
-      setTestCases(prevTestCases => 
-        prevTestCases.map(tc => 
-          tc.id === testCaseId 
+      // Update local state to reflect the change immediately - match by both test case ID and configuration ID
+      const updatedTestCases = testCases.map(tc =>
+        tc.id === testCaseId && tc.configurationId === configurationId
+          ? { ...tc, executionStatus: newResultId, executionResult: newResultLabel }
+          : tc
+      );
+
+      setTestCases(updatedTestCases);
+
+      setFilteredTestCases(prevFiltered =>
+        prevFiltered.map(tc =>
+          tc.id === testCaseId && tc.configurationId === configurationId
             ? { ...tc, executionStatus: newResultId, executionResult: newResultLabel }
             : tc
         )
       );
 
-      setFilteredTestCases(prevFiltered => 
-        prevFiltered.map(tc => 
-          tc.id === testCaseId 
-            ? { ...tc, executionStatus: newResultId, executionResult: newResultLabel }
-            : tc
-        )
-      );
+      // Check if we need to update test run state
+      if (isFirstExecution && testRun.state === 1) {
+        // First execution created, move test run to "In Progress" (state 2)
+        console.log('🏃 First execution created, updating test run state to In Progress');
+        try {
+          await testRunsApiService.updateTestRunState(id, 2);
+          setTestRun({ ...testRun, state: 2 });
+          toast.success(`Execution result updated to ${newResultLabel}. Test run is now In Progress.`);
+        } catch (error) {
+          console.error('❌ Failed to update test run state:', error);
+          toast.success(`Execution result updated to ${newResultLabel}`);
+        }
+      } else {
+        // Check if all test cases now have results (not Untested - state 6)
+        const allTestCasesHaveResults = updatedTestCases.every(tc => tc.executionStatus !== 6);
 
-      toast.success(`Execution result updated to ${newResultLabel}`);
+        if (allTestCasesHaveResults && testRun.state !== 5 && testRun.state !== 6) {
+          // All test cases have results, move test run to "Done" (state 5)
+          console.log('🏃 All test cases have results, updating test run state to Done');
+          try {
+            await testRunsApiService.updateTestRunState(id, 5);
+            setTestRun({ ...testRun, state: 5 });
+            toast.success(`Execution result updated to ${newResultLabel}. Test run is now Done.`);
+          } catch (error) {
+            console.error('❌ Failed to update test run state:', error);
+            toast.success(`Execution result updated to ${newResultLabel}`);
+          }
+        } else {
+          toast.success(`Execution result updated to ${newResultLabel}`);
+        }
+      }
 
     } catch (error) {
       console.error('❌ Failed to update execution result:', error);
@@ -754,7 +786,7 @@ const TestRunDetails: React.FC = () => {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-white">{testRun.name}</h1>
-            <p className="text-gray-400">Test Run #{testRun.id}</p>
+            <p className="text-gray-400">Test Run TR{testRun.id}</p>
           </div>
         </div>
       </div>
@@ -908,14 +940,17 @@ const TestRunDetails: React.FC = () => {
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Title</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Priority</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Type</th>
+                {testRun && testRun.configurations && testRun.configurations.length > 0 && (
+                  <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Configuration</th>
+                )}
                 <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Execution Result</th>
               </tr>
             </thead>
             <tbody style={{ position: 'relative', overflow: 'visible' }}>
-              {filteredTestCases.map((testCase) => (
-                <tr key={testCase.id} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors" style={{ position: 'relative', overflow: 'visible' }}>
+              {filteredTestCases.map((testCase, index) => (
+                <tr key={`${testCase.id}-${testCase.configurationId || 'default'}-${index}`} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors" style={{ position: 'relative', overflow: 'visible' }}>
                   <td className="py-4 px-6 text-sm text-gray-300 font-mono">
-                    TC-{testCase.id}
+                    TC{testCase.id}
                   </td>
                   <td className="py-4 px-6">
                     <button
@@ -936,13 +971,28 @@ const TestRunDetails: React.FC = () => {
                       {testCase.type}
                     </span>
                   </td>
+                  {testRun && testRun.configurations && testRun.configurations.length > 0 && (
+                    <td className="py-4 px-6">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700/50 text-gray-200 border border-slate-600">
+                        <span className={getDeviceColor(testCase.configurationLabel || '')}>
+                          {getDeviceIcon(testCase.configurationLabel || '')}
+                        </span>
+                        {testCase.configurationLabel || 'N/A'}
+                      </span>
+                    </td>
+                  )}
                   <td className="py-4 px-6" style={{ position: 'relative', overflow: 'visible' }}>
                     <div className="space-y-2">
                       <TestResultDropdown
                         value={testCase.executionStatus}
-                        onChange={(newResultId, comment) => handleExecutionResultChange(testCase.id, newResultId, comment)}
-                        disabled={isTestRunClosed || updatingResults.has(`${testCase.id}-${testRun?.id}`)}
-                        isUpdating={updatingResults.has(`${testCase.id}-${testRun?.id}`)}
+                        onChange={(newResultId, comment) => handleExecutionResultChange(testCase.id, newResultId, comment, testCase.configurationId)}
+                        disabled={isTestRunClosed || updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testRun?.id}`)}
+                        isUpdating={updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testRun?.id}`)}
+                        testCaseTitle={testCase.title}
+                        onOpenCommentModal={(selectedResultId) => {
+                          setSelectedTestCaseForComment({ ...testCase, executionStatus: selectedResultId });
+                          setIsCommentModalOpen(true);
+                        }}
                       />
                     </div>
                   </td>
@@ -961,11 +1011,15 @@ const TestRunDetails: React.FC = () => {
         context="test-run-details"
         testRunId={testRun?.id}
         isTestRunClosed={isTestRunClosed}
-        currentExecutionResult={selectedTestCaseForDetails ? 
-          testCases.find(tc => tc.id === selectedTestCaseForDetails.id)?.executionStatus : undefined
+        configurationId={selectedConfigurationId}
+        configurationLabel={selectedTestCaseForDetails ?
+          testCases.find(tc => tc.id === selectedTestCaseForDetails.id && tc.configurationId === selectedConfigurationId)?.configurationLabel : undefined
+        }
+        currentExecutionResult={selectedTestCaseForDetails ?
+          testCases.find(tc => tc.id === selectedTestCaseForDetails.id && tc.configurationId === selectedConfigurationId)?.executionStatus : undefined
         }
         onExecutionResultChange={(testCaseId, testRunId, newResultId) => {
-          handleExecutionResultChange(testCaseId, newResultId, undefined);
+          handleExecutionResultChange(testCaseId, newResultId, undefined, selectedConfigurationId);
         }}
       />
 
@@ -984,6 +1038,31 @@ const TestRunDetails: React.FC = () => {
         availableTags={tags}
         onCreateTag={handleCreateTag}
       />
+
+      {/* Add Comment Modal */}
+      {selectedTestCaseForComment && (
+        <AddExecutionCommentModal
+          isOpen={isCommentModalOpen}
+          onClose={() => {
+            setIsCommentModalOpen(false);
+            setSelectedTestCaseForComment(null);
+          }}
+          onSubmit={(resultId, comment) => {
+            if (selectedTestCaseForComment) {
+              handleExecutionResultChange(
+                selectedTestCaseForComment.id,
+                resultId,
+                comment,
+                selectedTestCaseForComment.configurationId
+              );
+            }
+            setIsCommentModalOpen(false);
+            setSelectedTestCaseForComment(null);
+          }}
+          currentResult={selectedTestCaseForComment.executionStatus}
+          testCaseTitle={selectedTestCaseForComment.title}
+        />
+      )}
     </div>
   );
 };

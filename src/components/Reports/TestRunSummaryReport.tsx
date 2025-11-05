@@ -290,11 +290,13 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           passedReportData.testExecutions.forEach((execution) => {
             const testCaseId = execution.attributes.test_case_id?.toString();
             const testRunId = execution.attributes.test_run_id?.toString();
+            const configurationId = execution.attributes.configuration_id?.toString() || 'no-config';
 
             // Only process if this execution is for a filtered test case and relevant test run
             if (filteredTestCaseIds.has(testCaseId) && relevantTestRunIds.has(testRunId)) {
               const executionDate = new Date(execution.attributes.updated_at || execution.attributes.created_at);
-              const compositeKey = `${testRunId}-${testCaseId}`;
+              // Include configuration in the composite key
+              const compositeKey = `${testRunId}-${testCaseId}-${configurationId}`;
 
               const existing = latestExecutionPerTestCasePerRun.get(compositeKey);
               if (!existing) {
@@ -561,10 +563,12 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         fetchedReportData.testExecutions.forEach((execution) => {
           const testCaseId = execution.attributes.test_case_id?.toString();
           const testRunId = execution.attributes.test_run_id?.toString();
+          const configurationId = execution.attributes.configuration_id?.toString() || 'no-config';
 
           if (filteredTestCaseIds.has(testCaseId) && relevantTestRunIds.has(testRunId)) {
             const executionDate = new Date(execution.attributes.updated_at || execution.attributes.created_at);
-            const compositeKey = `${testRunId}-${testCaseId}`;
+            // Include configuration in the composite key
+            const compositeKey = `${testRunId}-${testCaseId}-${configurationId}`;
 
             const existing = latestExecutionPerTestCasePerRun.get(compositeKey);
             if (!existing) {

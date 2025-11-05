@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader, FolderPlus } from 'lucide-react';
+import { Loader, FolderPlus, X } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import { Folder } from '../../services/foldersApi';
@@ -120,8 +120,34 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
   const availableParentFolders = getAvailableParentFolders();
   const availableChildrenFolders = getAvailableChildrenFolders();
   const flatParentFolders = flattenFolders(availableParentFolders);
-  // Don't flatten children folders - we want only the immediate level
   const flatChildrenFolders = availableChildrenFolders.map(folder => ({ folder, level: 0 }));
+
+  const handleRemoveParent = () => {
+    setFormData(prev => ({ ...prev, parentId: '' }));
+  };
+
+  const handleRemoveChild = (childId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      childrenIds: prev.childrenIds.filter(id => id !== childId)
+    }));
+  };
+
+  const selectedParentFolder = formData.parentId
+    ? flatParentFolders.find(({ folder: f }) => f.id === formData.parentId)?.folder
+    : null;
+
+  // Helper to find any folder by ID in the entire tree
+  const findFolderById = (folders: Folder[], targetId: string): Folder | null => {
+    for (const folder of folders) {
+      if (folder.id === targetId) return folder;
+      if (folder.children.length > 0) {
+        const found = findFolderById(folder.children, targetId);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
 
   return (
     <Modal 
@@ -167,6 +193,24 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Parent Folder
           </label>
+
+          {selectedParentFolder && (
+            <div className="mb-2">
+              <div className="inline-flex items-center gap-2 px-3 py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-sm text-cyan-400">
+                <span>📁 {selectedParentFolder.name}</span>
+                <button
+                  type="button"
+                  onClick={handleRemoveParent}
+                  className="text-cyan-400 hover:text-red-400 transition-colors"
+                  title="Remove parent"
+                  disabled={isSubmitting}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
           <select
             value={formData.parentId}
             onChange={(e) => handleInputChange('parentId', e.target.value)}
@@ -224,14 +268,23 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
             </label>
             <div className="flex flex-wrap gap-2">
               {formData.childrenIds.map(childId => {
-                const folder = flatChildrenFolders.find(({ folder: f }) => f.id === childId)?.folder;
+                const folder = findFolderById(availableFolders, childId);
                 return folder ? (
-                  <span
+                  <div
                     key={childId}
-                    className="inline-flex items-center px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-sm text-purple-400"
+                    className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-sm text-purple-400"
                   >
-                    📁 {folder.name}
-                  </span>
+                    <span>📁 {folder.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveChild(childId)}
+                      className="text-purple-400 hover:text-red-400 transition-colors"
+                      title="Remove child"
+                      disabled={isSubmitting}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
                 ) : null;
               })}
             </div>

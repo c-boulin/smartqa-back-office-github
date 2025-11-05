@@ -16,6 +16,7 @@ interface CloneTestRunModalProps {
     copyTestCaseAssignee: boolean;
     copyTags: boolean;
     copyLinkedIssues: boolean;
+    selectedTestCaseConfigPairs: Array<{ testCaseId: string; configurationId: string | null }>;
   }) => Promise<void>;
   testRun: TestRun | null;
   isSubmitting: boolean;
@@ -43,7 +44,7 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
     label: string;
     count: number;
     color: string;
-    testCaseIds: string[];
+    testCaseConfigPairs: Array<{ testCaseId: string; configurationId: string | null }>;
   }>>([]);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
 
@@ -75,45 +76,65 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
     try {
       setIsLoadingResults(true);
       console.log('🔄 Loading real execution results for test run:', testRunId);
-      
+
       // Get detailed test run data with executions
       const testRunResponse = await testRunsApiService.getTestRun(testRunId);
-      
-      // Initialize result counts and test case mappings
-      const resultCounts: Record<string, { count: number; testCaseIds: string[] }> = {};
-      
+
+      // Initialize result counts and test case-config mappings
+      const resultCounts: Record<string, { count: number; testCaseConfigPairs: Array<{ testCaseId: string; configurationId: string | null }> }> = {};
+
       // Initialize all possible results
       Object.entries(TEST_RESULTS).forEach(([resultId]) => {
-        resultCounts[resultId] = { count: 0, testCaseIds: [] };
+        resultCounts[resultId] = { count: 0, testCaseConfigPairs: [] };
       });
-      
-      // Process executions to count results and map test cases
+
+      // Process executions to count results and map test case-config pairs
       if (testRunResponse.data.attributes.executions && Array.isArray(testRunResponse.data.attributes.executions)) {
         console.log('🔄 Processing', testRunResponse.data.attributes.executions.length, 'executions');
-        
-        // Group executions by test case ID and get the latest execution per test case
-        const lastExecutionPerTestCase = new Map<string, { test_case_id: number; result: number; created_at: string; [key: string]: unknown }>();
-        
-        testRunResponse.data.attributes.executions.forEach((execution: { test_case_id: number; result: number; created_at: string; [key: string]: unknown }) => {
+
+        // Group executions by test case ID + configuration ID and get the latest execution per pair
+        const lastExecutionPerPair = new Map<string, {
+          test_case_id: number;
+          configuration_id: number | null;
+          result: number;
+          created_at: string;
+          [key: string]: unknown
+        }>();
+
+        testRunResponse.data.attributes.executions.forEach((execution: {
+          test_case_id: number;
+          configuration_id?: number | null;
+          result: number;
+          created_at: string;
+          [key: string]: unknown
+        }) => {
           const testCaseId = execution.test_case_id.toString();
+          const configurationId = execution.configuration_id?.toString() || null;
+          const pairKey = `${testCaseId}-${configurationId || 'null'}`;
           const executionDate = new Date(execution.created_at);
-          
-          // Keep only the latest execution for each test case
-          const existing = lastExecutionPerTestCase.get(testCaseId);
+
+          // Keep only the latest execution for each test case-config pair
+          const existing = lastExecutionPerPair.get(pairKey);
           if (!existing || new Date(existing.created_at) < executionDate) {
-            lastExecutionPerTestCase.set(testCaseId, execution);
+            lastExecutionPerPair.set(pairKey, {
+              test_case_id: execution.test_case_id,
+              configuration_id: execution.configuration_id || null,
+              result: execution.result,
+              created_at: execution.created_at
+            });
           }
         });
-        
-        console.log('🔄 Found', lastExecutionPerTestCase.size, 'unique test cases with executions');
-        
-        // Count each result type and collect test case IDs
-        Array.from(lastExecutionPerTestCase.values()).forEach((execution: { test_case_id: number; result: number; [key: string]: unknown }) => {
+
+        console.log('🔄 Found', lastExecutionPerPair.size, 'unique test case-configuration pairs with executions');
+
+        // Count each result type and collect test case-config pairs
+        Array.from(lastExecutionPerPair.values()).forEach((execution) => {
           const testCaseId = execution.test_case_id.toString();
+          const configurationId = execution.configuration_id?.toString() || null;
           const rawResult = execution.result;
-          
+
           let resultId: string;
-          
+
           if (typeof rawResult === 'number') {
             resultId = rawResult.toString();
           } else if (typeof rawResult === 'string') {
@@ -122,7 +143,7 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
               resultId = numericResult.toString();
             } else {
               // String label - find matching result ID
-              const foundEntry = Object.entries(TEST_RESULTS).find(([_id, label]) => 
+              const foundEntry = Object.entries(TEST_RESULTS).find(([_id, label]) =>
                 label.toLowerCase() === rawResult.toLowerCase()
               );
               resultId = foundEntry ? foundEntry[0] : '6'; // Default to Untested
@@ -130,29 +151,18 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
           } else {
             resultId = '6'; // Default to Untested
           }
-          
+
           if (resultCounts[resultId]) {
             resultCounts[resultId].count++;
-            resultCounts[resultId].testCaseIds.push(testCaseId);
+            resultCounts[resultId].testCaseConfigPairs.push({ testCaseId, configurationId });
           }
         });
-        
-        // Count test cases without executions as "untested"
-        const totalTestCases = testRun?.testCasesCount || 0;
-        const testCasesWithExecutions = lastExecutionPerTestCase.size;
-        const testCasesWithoutExecutions = totalTestCases - testCasesWithExecutions;
-        
-        if (testCasesWithoutExecutions > 0) {
-          // We don't have the IDs of test cases without executions, so we'll handle this in the clone logic
-          resultCounts['6'].count += testCasesWithoutExecutions;
-        }
-      } else {
-        // No executions - all test cases are untested
-        const totalTestCases = testRun?.testCasesCount || 0;
-        resultCounts['6'].count = totalTestCases;
-        // We'll need to get all test case IDs for untested cases
+
+        // Note: We're not counting "untested" pairs here because we don't know which
+        // test case-config combinations exist but haven't been executed yet.
+        // The "All test cases" option will handle including everything.
       }
-      
+
       // Transform to display format
       const displayResults = Object.entries(TEST_RESULTS).map(([resultId, label]) => {
         const data = resultCounts[resultId];
@@ -160,14 +170,14 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
           id: resultId,
           label,
           count: data.count,
-          testCaseIds: data.testCaseIds,
+          testCaseConfigPairs: data.testCaseConfigPairs,
           color: getResultColor(parseInt(resultId) as TestResultId)
         };
       }).filter(result => result.count > 0); // Only show results that have test cases
-      
+
       setTestCaseResults(displayResults);
       console.log('✅ Loaded real execution results:', displayResults);
-      
+
     } catch (error) {
       console.error('❌ Failed to load test case results:', error);
       setTestCaseResults([]);
@@ -220,36 +230,37 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
     }));
   };
 
-  const getSelectedTestCaseIds = (): string[] => {
+  const getSelectedTestCaseConfigPairs = (): Array<{ testCaseId: string; configurationId: string | null }> => {
     if (formData.includeAllTestCases) {
-      return testRun?.testCaseIds || [];
+      // Return all test case IDs with null configuration (meaning all configurations)
+      return (testRun?.testCaseIds || []).map(testCaseId => ({ testCaseId, configurationId: null }));
     } else if (formData.includeByResults && formData.selectedResults.length > 0) {
-      // Collect test case IDs from selected results
-      const selectedTestCaseIds: string[] = [];
-      
+      // Collect test case-config pairs from selected results
+      const selectedPairs: Array<{ testCaseId: string; configurationId: string | null }> = [];
+
       formData.selectedResults.forEach(resultId => {
         const resultData = testCaseResults.find(r => r.id === resultId);
         if (resultData) {
-          selectedTestCaseIds.push(...resultData.testCaseIds);
+          selectedPairs.push(...resultData.testCaseConfigPairs);
         }
       });
-      
-      return [...new Set(selectedTestCaseIds)]; // Remove duplicates
+
+      return selectedPairs;
     }
-    
+
     return [];
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Get the actual test case IDs based on selection
-    const selectedTestCaseIds = getSelectedTestCaseIds();
-    
+
+    // Get the actual test case-config pairs based on selection
+    const selectedTestCaseConfigPairs = getSelectedTestCaseConfigPairs();
+
     const submitData = {
       ...formData,
-      selectedTestCaseIds // Add the actual test case IDs to clone
+      selectedTestCaseConfigPairs // Add the actual test case-config pairs to clone
     };
-    
+
     await onSubmit(submitData);
   };
 
@@ -386,8 +397,9 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
                     <Info className="w-4 h-4 text-blue-400 mr-2 mt-0.5 flex-shrink-0" />
                     <p className="text-sm text-blue-300">
                       {(() => {
-                        const selectedTestCaseIds = getSelectedTestCaseIds();
-                        return `${selectedTestCaseIds.length} test case${selectedTestCaseIds.length !== 1 ? 's' : ''} will be cloned based on selected results`;
+                        const selectedPairs = getSelectedTestCaseConfigPairs();
+                        const uniqueTestCases = new Set(selectedPairs.map(p => p.testCaseId)).size;
+                        return `${selectedPairs.length} test case-configuration combination${selectedPairs.length !== 1 ? 's' : ''} (${uniqueTestCases} unique test case${uniqueTestCases !== 1 ? 's' : ''}) will be cloned based on selected results`;
                       })()}
                     </p>
                   </div>

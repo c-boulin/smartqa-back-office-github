@@ -102,7 +102,7 @@ const Landing: React.FC = () => {
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
-            The ultimate automated testing management platform. Streamline your QA processes, 
+            The ultimate test management platform. Streamline your QA processes,
             track test executions, and generate comprehensive reports with our futuristic interface.
           </p>
 

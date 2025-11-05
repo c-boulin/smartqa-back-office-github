@@ -129,10 +129,13 @@ const Sidebar: React.FC = () => {
   // Search projects with API call
   const searchProjects = useCallback(async (term: string) => {
     if (!term.trim()) {
-      // If search is cleared, just filter the already loaded projects
+      // If search is cleared, reset to show state.projects
+      console.log('🔄 Search cleared, resetting project list');
+      setAllProjects([]);
+      hasLoadedAllProjects.current = false;
       return;
     }
-    
+
     try {
       setIsSearching(true);
       console.log('🔍 Searching projects:', term);
@@ -186,26 +189,24 @@ const Sidebar: React.FC = () => {
   }, []);
 
   const handleProjectSelect = (value: string) => {
-    console.log('Project selected:', value); // Debug log
-    
+    console.log('Project selected:', value);
+
     setIsDropdownOpen(false);
-    setSearchTerm(''); // Clear search when selecting
-    
+    setSearchTerm('');
+
     if (value === 'all') {
-      console.log('Navigating to /projects'); // Debug log
-      // Don't change the selected project when viewing all projects
+      console.log('Navigating to /projects');
+      dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: null });
       navigate('/projects');
     } else {
-      console.log('Setting selected project ID:', value); // Debug log
+      console.log('Setting selected project ID:', value);
       dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: value });
-      
-      // Ensure the selected project exists in App context
+
       const selectedProject = allProjects.find(p => p.id === value);
       if (selectedProject) {
         dispatch({ type: 'UPDATE_PROJECT', payload: selectedProject });
       }
-      
-      // Navigate to dashboard with the selected project
+
       console.log('Navigating to dashboard with project:', value);
       navigate('/dashboard');
     }
@@ -232,6 +233,9 @@ const Sidebar: React.FC = () => {
       clearTimeout(searchTimeoutRef.current);
       searchTimeoutRef.current = null;
     }
+    // Reset allProjects to show state.projects
+    setAllProjects([]);
+    hasLoadedAllProjects.current = false;
   };
 
   const handleDropdownClose = () => {
@@ -241,44 +245,45 @@ const Sidebar: React.FC = () => {
       clearTimeout(searchTimeoutRef.current);
       searchTimeoutRef.current = null;
     }
+    // Reset allProjects when closing dropdown
+    setAllProjects([]);
+    hasLoadedAllProjects.current = false;
   };
   
   const getSelectedProjectName = () => {
+    if (location.pathname === '/projects') {
+      return 'All Projects';
+    }
+
     const selectedProject = getSelectedProject();
     if (selectedProject) {
       return selectedProject.name;
     }
-    
+
     if (state.isLoadingProjects) {
       return '🔄 Loading projects...';
     }
-    
+
     if (state.projects.length === 0) {
       return '❌ No projects available';
     }
-    
+
     return '🔍 Select Project';
   };
 
   const getProjectFilterInfo = () => {
+    if (location.pathname === '/projects') {
+      return null;
+    }
+
     const selectedProject = getSelectedProject();
     if (selectedProject) {
-      if (location.pathname === '/projects') {
-        return (
-          <div className="px-4 py-2 mb-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-            <div className="text-xs text-blue-400 font-medium">Selected project:</div>
-            <div className="text-sm text-white truncate">{selectedProject.name}</div>
-            <div className="text-xs text-gray-400 mt-1">On projects page</div>
-          </div>
-        );
-      } else {
-        return (
-          <div className="px-4 py-2 mb-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-            <div className="text-xs text-cyan-400 font-medium">Filtered by:</div>
-            <div className="text-sm text-white truncate">{selectedProject.name}</div>
-          </div>
-        );
-      }
+      return (
+        <div className="px-4 py-2 mb-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+          <div className="text-xs text-cyan-400 font-medium">Filtered by:</div>
+          <div className="text-sm text-white truncate">{selectedProject.name}</div>
+        </div>
+      );
     }
     return null;
   };
@@ -290,6 +295,17 @@ const Sidebar: React.FC = () => {
       loadProjects();
     }
   }, [state.projects.length, state.isLoadingProjects, authState.isAuthenticated, loadProjects]);
+
+  // Reset local allProjects cache when AppContext projects change
+  useEffect(() => {
+    // If we have loaded all projects and the AppContext projects change,
+    // reset the cache so it will be reloaded next time the dropdown opens
+    if (hasLoadedAllProjects.current && state.projects.length > 0) {
+      console.log('📊 AppContext projects changed, resetting sidebar cache');
+      setAllProjects([]);
+      hasLoadedAllProjects.current = false;
+    }
+  }, [state.projects]);
 
   return (
     <aside className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 border-r border-purple-500/20 shadow-2xl">
@@ -310,12 +326,12 @@ const Sidebar: React.FC = () => {
                 setIsDropdownOpen(!isDropdownOpen);
               }}
               className={`w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent hover:bg-slate-700/50 transition-colors text-left flex items-center justify-between ${
-                getSelectedProject() ? 'border-cyan-500/50 bg-slate-700/50' : ''
+                getSelectedProject() || location.pathname === '/projects' ? 'border-cyan-500/50 bg-slate-700/50' : ''
               }`}
               disabled={state.isLoadingProjects}
             >
               <span className="truncate">
-                {getSelectedProject() ? (
+                {getSelectedProject() || location.pathname === '/projects' ? (
                   <>
                     <span className="text-cyan-400">📁 </span>
                     <span className="text-white">{getSelectedProjectName()}</span>

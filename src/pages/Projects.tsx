@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, Search, Filter, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader } from 'lucide-react';
+import { Plus, Search, Filter, SquarePen, Trash2, Copy, ChevronLeft, ChevronRight, Loader } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
@@ -64,10 +64,10 @@ const ProjectModal: React.FC<{
             {isSubmitting ? (
               <>
                 <Loader className="w-4 h-4 mr-2 animate-spin" />
-                {title.includes('Create') ? 'Creating...' : 'Updating...'}
+                {title.includes('Create') ? 'Creating...' : title.includes('Clone') ? 'Duplicating...' : 'Updating...'}
               </>
             ) : (
-              title.includes('Create') ? 'Create' : 'Update'
+              title.includes('Create') ? 'Create' : title.includes('Clone') ? 'Duplicate' : 'Update'
             )}
           </Button>
         </div>
@@ -81,21 +81,22 @@ const Projects: React.FC = () => {
   const { getSelectedProject } = useApp();
   const { state: authState } = useAuth();
   const { dispatch, loadProjects } = useApp();
-  const selectedProject = getSelectedProject();
+  const _selectedProject = getSelectedProject();
   
-  const { 
-    projects, 
-    loading, 
-    error, 
-    pagination, 
-    fetchProjects, 
+  const {
+    projects,
+    loading,
+    error,
+    pagination,
+    fetchProjects,
     searchProjects,
     fetchProjectsCreatedByUser,
     searchProjectsCreatedByUser,
     fetchProjectsWithSort,
-    createProject, 
-    updateProject, 
-    deleteProject 
+    createProject,
+    updateProject,
+    deleteProject,
+    cloneProject
   } = useProjects();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -104,6 +105,7 @@ const Projects: React.FC = () => {
   const [sortBy, setSortBy] = useState('createdAt-desc');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToManage, setProjectToManage] = useState<Project | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -226,6 +228,31 @@ const Projects: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
   }, [updateProject, projectToManage, newProject]);
 
+  const handleCloneProject = useCallback(async () => {
+    if (!projectToManage || !authState.user?.id) return;
+
+    try {
+      setIsSubmitting(true);
+
+      await cloneProject(
+        projectToManage.id,
+        newProject.name,
+        newProject.description,
+        authState.user.id.toString()
+      );
+
+      await loadProjects(true);
+      setIsCloneModalOpen(false);
+      setProjectToManage(null);
+      setNewProject({ name: '', description: '' });
+    } catch (error) {
+      console.error('Error cloning project:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects, authState.user are stable
+  }, [cloneProject, projectToManage, newProject]);
+
   const handleDeleteProject = useCallback(async () => {
     if (!projectToManage) return;
     
@@ -250,6 +277,15 @@ const Projects: React.FC = () => {
       description: project.description
     });
     setIsEditModalOpen(true);
+  }, []);
+
+  const openCloneModal = useCallback((project: Project) => {
+    setProjectToManage(project);
+    setNewProject({
+      name: `${project.name} (copy)`,
+      description: project.description
+    });
+    setIsCloneModalOpen(true);
   }, []);
 
   const openDeleteDialog = useCallback((project: Project) => {
@@ -346,13 +382,6 @@ const Projects: React.FC = () => {
           <p className="text-gray-400">
             Manage your testing projects ({pagination.totalItems} total)
           </p>
-          {selectedProject && (
-            <div className="mt-2">
-              <div className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400">
-                📁 Selected: {selectedProject.name}
-              </div>
-            </div>
-          )}
         </div>
         <Button 
           icon={Plus} 
@@ -510,6 +539,14 @@ const Projects: React.FC = () => {
                         <SquarePen className="w-4 h-4" />
                       </button>
                       <button
+                        onClick={() => openCloneModal(project)}
+                        className="p-2 text-gray-400 hover:text-green-400 hover:bg-slate-700 rounded-lg transition-colors"
+                        title="Clone"
+                        disabled={isSubmitting}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => openDeleteDialog(project)}
                         className="p-2 text-gray-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
                         title="Delete"
@@ -593,6 +630,16 @@ const Projects: React.FC = () => {
         onClose={() => setIsEditModalOpen(false)}
         onSubmit={handleEditProject}
         title="Edit Project"
+        projectData={newProject}
+        setProjectData={setNewProject}
+        isSubmitting={isSubmitting}
+      />
+
+      <ProjectModal
+        isOpen={isCloneModalOpen}
+        onClose={() => setIsCloneModalOpen(false)}
+        onSubmit={handleCloneProject}
+        title="Clone Project"
         projectData={newProject}
         setProjectData={setNewProject}
         isSubmitting={isSubmitting}

@@ -2,14 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Loader, Play, X, Search, Plus } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
-import TagSelector from '../UI/TagSelector';
 import ConfigurationSelector from '../UI/ConfigurationSelector';
 import TestPlanSelector from '../UI/TestPlanSelector';
 import { useUsers } from '../../context/UsersContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTestCases } from '../../hooks/useTestCases';
 import { useApp } from '../../context/AppContext';
-import { Tag } from '../../services/tagsApi';
 import { Configuration } from '../../services/configurationsApi';
 
 interface CreateTestRunModalProps {
@@ -23,22 +21,15 @@ interface CreateTestRunModalProps {
     testPlan: string;
     assignedTo: string;
     state: string;
-    tags: Tag[];
   }) => Promise<void>;
   isSubmitting: boolean;
-  availableTags: Tag[];
-  onCreateTag: (label: string) => Promise<Tag>;
-  tagsLoading: boolean;
 }
 
 const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  isSubmitting,
-  availableTags,
-  onCreateTag,
-  tagsLoading
+  isSubmitting
 }) => {
   const { state: authState } = useAuth();
   const { users, loading: usersLoading } = useUsers();
@@ -71,8 +62,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
     configurations: [] as Configuration[],
     testPlanId: '',
     assignedTo: '',
-    state: 'new',
-    tags: [] as Tag[]
+    state: 'new'
   });
 
   const [testCaseSearch, setTestCaseSearch] = useState('');
@@ -122,8 +112,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
         configurations: [] as Configuration[],
         testPlanId: '',
         assignedTo: '',
-        state: 1,
-        tags: []
+        state: 1
       });
       setTestCaseSearch('');
       setShowTestCaseSelector(false);
@@ -176,10 +165,6 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
   //   }));
   // };
 
-  const handleCreateTag = async (label: string): Promise<Tag> => {
-    return await onCreateTag(label);
-  };
-
   const handleCreateConfiguration = async (label: string): Promise<Configuration> => {
     try {
       console.log('⚙️ Creating new configuration:', label);
@@ -219,8 +204,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
       configurations: processedConfigurations,
       testPlanId: formData.testPlanId,
       assignedTo: formData.assignedTo,
-      state: formData.state,
-      tags: formData.tags
+      state: formData.state
     };
     
     console.log('📅 CREATE: Final submitData.testPlanId:', submitData.testPlanId);
@@ -269,7 +253,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
                     <div key={`selected-${testCase.id}`} className="flex items-center justify-between bg-slate-700 border border-slate-600 rounded-lg p-3 min-w-0">
                       <div className="flex-1 min-w-0 pr-3">
                         <span className="text-white text-sm font-medium">{testCase.title}</span>
-                        <p className="text-xs text-gray-400">TC-{testCase.id}</p>
+                        <p className="text-xs text-gray-400">TC{testCase.id}</p>
                       </div>
                       <button
                         type="button"
@@ -333,7 +317,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
                             <div className="flex items-center justify-between min-w-0">
                               <div className="flex-1 min-w-0 pr-3">
                                 <span className="text-sm font-medium block truncate">{testCase.title}</span>
-                                <p className="text-xs text-gray-400">TC-{testCase.id}</p>
+                                <p className="text-xs text-gray-400">TC{testCase.id}</p>
                               </div>
                               <Plus className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                             </div>
@@ -449,21 +433,6 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
                 disabled={isSubmitting}
                 placeholder="Select test plan..."
                 projectId={selectedProject?.id}
-              />
-            </div>
-
-            {/* Tags */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Tags
-              </label>
-              <TagSelector
-                availableTags={availableTags}
-                selectedTags={formData.tags}
-                onTagsChange={(selectedTags) => handleInputChange('tags', selectedTags)}
-                onCreateTag={handleCreateTag}
-                disabled={isSubmitting || tagsLoading}
-                placeholder="Add tags and hit +"
               />
             </div>
 

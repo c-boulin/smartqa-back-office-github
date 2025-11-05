@@ -7,7 +7,7 @@ export interface ImageProcessingResult {
   originalFile: File;
 }
 
-export type UploadFieldType = 'description' | 'precondition' | 'step' | 'expected_result';
+export type UploadFieldType = 'description' | 'precondition' | 'step' | 'expected_result' | 'execution-comments';
 
 class ImageProcessingService {
   private readonly cloudFrontBaseUrl: string;

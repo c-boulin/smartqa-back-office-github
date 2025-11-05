@@ -10,6 +10,7 @@ import TestCasesFolderSidebar from '../components/TestCase/TestCasesFolderSideba
 import TestCasesFiltersSidebar from '../components/TestCase/TestCasesFiltersSidebar';
 import CreateTestCaseModal from '../components/TestCase/CreateTestCaseModal';
 import UpdateTestCaseModal from '../components/TestCase/UpdateTestCaseModal';
+import DuplicateTestCaseModal from '../components/TestCase/DuplicateTestCaseModal';
 import CreateFolderModal from '../components/Folder/CreateFolderModal';
 import EditFolderModal from '../components/Folder/EditFolderModal';
 import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSidebar';
@@ -57,8 +58,10 @@ const TestCases: React.FC = () => {
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
+  const [testCaseToDuplicate, setTestCaseToDuplicate] = useState<TestCase | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFiltersSidebarOpen, setIsFiltersSidebarOpen] = useState(false);
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
@@ -267,6 +270,8 @@ const TestCases: React.FC = () => {
   const handleEditFolder = useCallback(async (data: {
     name: string;
     description: string;
+    parentId?: string;
+    childrenIds: string[];
   }) => {
     if (!folderToManage || !selectedProject || !authState.user?.id) {
       toast.error('Missing required data');
@@ -276,18 +281,15 @@ const TestCases: React.FC = () => {
     try {
       setIsSubmitting(true);
       
-      // Get all the existing folder data to preserve relationships
-      const existingFolder = folderToManage;
-      
       await foldersApiService.updateFolder(folderToManage.id, {
         name: data.name,
         description: data.description,
         projectId: selectedProject.id,
-        parentId: existingFolder.parentId,
-        childrenIds: existingFolder.children?.map((child: { id: string }) => child.id) || [],
-        testCaseIds: [], // Test cases relationships are managed separately
-        creatorId: authState.user.id, // Use current user as creator for now
-        editorId: authState.user.id // Current user is the editor
+        parentId: data.parentId,
+        childrenIds: data.childrenIds,
+        testCaseIds: [],
+        creatorId: authState.user.id,
+        editorId: authState.user.id
       });
       
       setIsEditFolderModalOpen(false);
@@ -664,7 +666,7 @@ const TestCases: React.FC = () => {
       const updateData = {
         title: data.title || '',
         description: data.description || '',
-        priority: data.priority === 1 ? 'low' : data.priority === 2 ? 'medium' : data.priority === 3 ? 'high' : data.priority === 4 ? 'critical' : 'medium',
+        priority: data.priority === 1 ? 'medium' : data.priority === 2 ? 'critical' : data.priority === 3 ? 'high' : data.priority === 4 ? 'low' : 'medium',
         testType: getTestTypeString(data.testCaseType),
         status: data.state === 1 ? 'active' :
                 data.state === 2 ? 'draft' :
@@ -740,33 +742,80 @@ const TestCases: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedFolderId, showFolderTestCases are stable
   }, [deleteTestCase, selectedTestCase, selectedProject, fetchAllTestCasesAndExtractFolders]);
 
-  const handleDuplicateTestCase = useCallback(async (testCase: TestCase) => {
-    if (!selectedProject || !authState.user?.id) {
+  const handleDuplicateTestCase = useCallback((testCase: TestCase) => {
+    setTestCaseToDuplicate(testCase);
+    setIsDuplicateModalOpen(true);
+  }, []);
+
+  const handleDuplicateSubmit = useCallback(async (testCase: TestCase, targetProjectId: string, targetFolderId: string) => {
+    if (!authState.user?.id) {
       toast.error('Missing required data for duplication');
       return;
     }
 
     try {
-      setIsSubmitting(true);
-      
       console.log('🔄 Starting test case duplication for:', testCase.title);
-      
-      // Get complete test case data with all relationships first
-      const fullTestCaseResponse = await testCasesApiService.getTestCase(testCase.id);
+      console.log('🎯 Target project:', targetProjectId, 'Target folder:', targetFolderId);
+
+      // Get complete test case data with all relationships including order metadata
+      const fullTestCaseResponse = await testCasesApiService.getTestCaseWithIncludes(testCase.id);
       console.log('📋 Full test case data:', fullTestCaseResponse);
-      
+
       // Prepare the duplicate payload based on the original test case data
       const originalData = fullTestCaseResponse.data;
       const originalAttributes = originalData.attributes;
       const originalRelationships = originalData.relationships;
-      
-      // Determine the folder ID - use original folder or current selection
-      let targetFolderId = testCase.folderId || selectedFolderId;
-      if (!targetFolderId) {
-        // If no folder is specified, use the project root (assuming project ID as root folder)
-        targetFolderId = selectedProject.id;
-      }
-      
+      const _includedData = fullTestCaseResponse.included || [];
+
+      // The order information MUST come from the relationship's meta field, not from included data
+      // This is critical: if the same shared step appears multiple times (e.g., at positions 1 and 3),
+      // each relationship instance must preserve its own unique order
+      console.log('📋 Original relationships data:');
+      console.log('  - stepResults:', originalRelationships.stepResults?.data?.map((sr: { id: string; meta?: { order: number } }) => ({
+        id: sr.id,
+        metaOrder: sr.meta?.order
+      })));
+      console.log('  - sharedSteps:', originalRelationships.sharedSteps?.data?.map((ss: { id: string; meta?: { order: number } }) => ({
+        id: ss.id,
+        metaOrder: ss.meta?.order
+      })));
+
+      // Use the relationship data as-is, ensuring each instance retains its order
+      const enrichedRelationships = {
+        ...originalRelationships,
+        stepResults: originalRelationships.stepResults?.data ? {
+          data: originalRelationships.stepResults.data.map((sr: { id: string; meta?: { order: number } }, index: number) => {
+            // Prefer meta.order if available, otherwise use index + 1 as fallback
+            const order = sr.meta?.order !== undefined ? sr.meta.order : (index + 1);
+            return {
+              ...sr,
+              meta: { ...sr.meta, order }
+            };
+          })
+        } : undefined,
+        sharedSteps: originalRelationships.sharedSteps?.data ? {
+          data: originalRelationships.sharedSteps.data.map((ss: { id: string; meta?: { order: number } }, index: number) => {
+            // Prefer meta.order if available, otherwise use index + 1 as fallback
+            const order = ss.meta?.order !== undefined ? ss.meta.order : (index + 1);
+            return {
+              ...ss,
+              meta: { ...ss.meta, order }
+            };
+          })
+        } : undefined
+      };
+
+      console.log('📋 Enriched relationships with order:', {
+        stepResults: enrichedRelationships.stepResults?.data?.map((sr: { id: string; meta?: { order: number } }) => ({
+          id: sr.id,
+          order: sr.meta?.order
+        })),
+        sharedSteps: enrichedRelationships.sharedSteps?.data?.map((ss: { id: string; meta?: { order: number } }) => ({
+          id: ss.id,
+          order: ss.meta?.order
+        }))
+      });
+
       // Create the duplicate payload with all original data
       await createTestCase({
         title: `${originalAttributes.title} (Copy)`,
@@ -781,30 +830,37 @@ const TestCases: React.FC = () => {
           const foundTag = tags.find(t => t.label === tagLabel);
           return foundTag || { id: tagLabel, label: tagLabel };
         }) || [],
-        projectId: selectedProject.id,
+        projectId: targetProjectId,
         folderId: targetFolderId,
         creatorId: authState.user.id,
-        // Pass the original relationships to be handled by the createTestCase function
-        originalRelationships: originalRelationships
+        // Pass the enriched relationships with order information
+        originalRelationships: enrichedRelationships
       });
-      
-      await fetchAllTestCasesAndExtractFolders(selectedProject.id);
-      toast.success(`Test case duplicated successfully as "${originalAttributes.title} (Copy)"`);
-      
-      // Re-apply current view context
-      if (selectedFolderId) {
-        console.log('🔄 Re-applying folder filter after duplication to maintain folder context');
-        setTimeout(() => {
-          showFolderTestCases(selectedFolderId);
-        }, 100);
+
+      // If duplicating within the current project, refresh the list
+      if (targetProjectId === selectedProject?.id) {
+        await fetchAllTestCasesAndExtractFolders(selectedProject.id);
+
+        // Re-apply current view context
+        if (selectedFolderId) {
+          console.log('🔄 Re-applying folder filter after duplication to maintain folder context');
+          setTimeout(() => {
+            showFolderTestCases(selectedFolderId);
+          }, 100);
+        }
+        toast.success(`Test case duplicated successfully as "${originalAttributes.title} (Copy)"`);
+      } else {
+        // Duplicated to a different project
+        const targetProject = appState.projects.find(p => p.id === targetProjectId);
+        const projectName = targetProject?.name || 'another project';
+        toast.success(`Test case duplicated successfully to ${projectName} as "${originalAttributes.title} (Copy)"`);
       }
-      
-    } catch {
+
+    } catch (error) {
       console.error('Failed to duplicate test case:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to duplicate test case';
       toast.error(`Failed to duplicate test case: ${errorMessage}`);
-    } finally {
-      setIsSubmitting(false);
+      throw error;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- error is stable
   }, [createTestCase, selectedProject, authState.user?.id, fetchAllTestCasesAndExtractFolders, selectedFolderId, showFolderTestCases, tags]);
@@ -968,6 +1024,18 @@ const TestCases: React.FC = () => {
         selectedProject={selectedProject}
       />
 
+      <DuplicateTestCaseModal
+        isOpen={isDuplicateModalOpen}
+        onClose={() => {
+          setIsDuplicateModalOpen(false);
+          setTestCaseToDuplicate(null);
+        }}
+        onDuplicate={handleDuplicateSubmit}
+        testCase={testCaseToDuplicate}
+        projects={appState.projects}
+        currentProjectId={selectedProject?.id || ''}
+      />
+
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
@@ -995,6 +1063,7 @@ const TestCases: React.FC = () => {
         onSubmit={handleEditFolder}
         isSubmitting={isSubmitting}
         folder={folderToManage}
+        availableFolders={folderTree}
       />
 
       <ConfirmDialog
@@ -1017,6 +1086,7 @@ const TestCases: React.FC = () => {
         onClose={closeDetailsSidebar}
         testCase={selectedTestCaseForDetails}
         context="test-cases"
+        availableTags={tags}
       />
     </div>
   );

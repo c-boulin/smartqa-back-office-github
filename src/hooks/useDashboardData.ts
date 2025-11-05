@@ -198,177 +198,125 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
           }
         });
         
-        // Extract REAL execution data from caseResults in ACTIVE test runs only
+        // Extract REAL execution data from ACTIVE test runs only
+        // Group by test case ID + configuration ID + test run ID across ALL active test runs
+        const globalLastExecutionPerTestCaseConfigRun = new Map<string, Record<string, unknown>>();
+
         testRunsResponse.data.forEach(apiTestRun => {
-          // Active test runs are those with state 1 (New), 2 (In Progress), or 3 (Under Review)
+          // Active test runs are ALL test runs EXCEPT Closed (state 6)
           // Handle both string and number state values
           const state = apiTestRun.attributes.state;
-          const isActiveTestRun = state === "1" || state === 1 || // New
-                                  state === "2" || state === 2 || // In progress  
-                                  state === "3" || state === 3;   // Under review
-          
+          const isClosed = state === "6" || state === 6; // Closed
+          const isActiveTestRun = !isClosed;
+
           console.log(`🏃 Processing test run: ${apiTestRun.attributes.name}`);
-          console.log(`🏃 Test run state: ${state} (type: ${typeof state}) (1=New, 2=In Progress, 3=Under Review)`);
+          console.log(`🏃 Test run state: ${state} (type: ${typeof state})`);
+          console.log(`🏃 Is closed: ${isClosed}`);
           console.log(`🏃 Is active test run: ${isActiveTestRun}`);
-          
+
           if (!isActiveTestRun) {
-            console.log(`🏃 ⏭️ SKIPPING test run "${apiTestRun.attributes.name}" - not active (state: ${state})`);
+            console.log(`🏃 ⏭️ SKIPPING test run "${apiTestRun.attributes.name}" - it's closed (state: ${state})`);
             return;
           }
-          
-          console.log(`🏃 ✅ ACTIVE test run "${apiTestRun.attributes.name}" - processing caseResults...`);
-          console.log(`🏃 caseResults:`, apiTestRun.attributes.caseResults);
-          
-          // Count ALL test cases in this active test run (from relationships)
-          const testCasesInThisRun = apiTestRun.relationships.testCases?.data?.length || 0;
-          totalTestCasesInActiveRuns += testCasesInThisRun;
-          
-          console.log(`🏃 Test cases in this run: ${testCasesInThisRun}`);
-          console.log(`🏃 Running total test cases in active runs: ${totalTestCasesInActiveRuns}`);
-          
+
+          console.log(`🏃 ✅ ACTIVE test run "${apiTestRun.attributes.name}" - processing executions...`);
+
           // Check if this test run has executions data (it's an array of individual results)
           if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
             console.log(`🏃 ✅ VALID executions array found for "${apiTestRun.attributes.name}"`);
             console.log(`🏃 executions array length:`, apiTestRun.attributes.executions.length);
-            
-            // Group executions by test case ID and get the last execution per test case
-            const lastExecutionPerTestCase = new Map<string, Record<string, unknown>>();
-            
+
             apiTestRun.attributes.executions.forEach((execution: Record<string, unknown>) => {
               const testCaseId = execution.test_case_id.toString();
+              const configId = execution.configuration_id ? execution.configuration_id.toString() : 'no-config';
+              const testRunId = execution.test_run_id.toString();
+              const key = `${testCaseId}-${configId}-${testRunId}`;
               const executionDate = new Date(execution.created_at);
-              
-              // Keep only the latest execution for each test case
-              const existing = lastExecutionPerTestCase.get(testCaseId);
+
+              // Keep only the latest execution for each test case + configuration + test run combination
+              const existing = globalLastExecutionPerTestCaseConfigRun.get(key);
               if (!existing || new Date(existing.created_at) < executionDate) {
-                lastExecutionPerTestCase.set(testCaseId, execution);
+                globalLastExecutionPerTestCaseConfigRun.set(key, execution);
               }
             });
-            
-            console.log(`🏃 Found ${lastExecutionPerTestCase.size} unique test cases with executions`);
-            
-            // Count each result type from the last execution per test case
-            let runPassed = 0;
-            let runFailed = 0;
-            let runBlocked = 0;
-            let runRetest = 0;
-            let runSkipped = 0;
-            let runUntested = 0;
-            let runInProgress = 0;
-            let runUnknown = 0;
-            
-            Array.from(lastExecutionPerTestCase.values()).forEach((execution: Record<string, unknown>, index: number) => {
-              console.log(`🏃   Test case ${index + 1}:`, execution);
-              console.log(`🏃     - test_case_id: ${execution.test_case_id}`);
-              console.log(`🏃     - result: ${execution.result}`);
-              console.log(`🏃     - result type: ${typeof execution.result}`);
-              
-              // Handle both numeric and string result values
-              const rawResult = execution.result;
-              let resultLabel: string;
-              
-              if (typeof rawResult === 'number') {
-                // Convert numeric ID to string label
-                resultLabel = TEST_RESULTS[rawResult as TestResultId]?.toLowerCase() || 'unknown';
-                console.log(`🏃     - converted numeric ${rawResult} to: ${resultLabel}`);
-              } else if (typeof rawResult === 'string') {
-                // Handle string results - could be numeric string or label string
-                const numericResult = parseInt(rawResult);
-                if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
-                  // String is a numeric ID
-                  resultLabel = TEST_RESULTS[numericResult as TestResultId]?.toLowerCase() || 'unknown';
-                  console.log(`🏃     - converted string numeric "${rawResult}" to: ${resultLabel}`);
-                } else {
-                  // String is already a label
-                  resultLabel = rawResult.toLowerCase();
-                  console.log(`🏃     - using string label: ${resultLabel}`);
-                }
-              } else {
-                resultLabel = 'unknown';
-                console.log(`🏃     - unknown result type, defaulting to: unknown`);
-              }
-              
-              console.log(`🏃     - processed result: ${resultLabel}`);
-              
-              switch (resultLabel) {
-                case 'passed':
-                  runPassed++;
-                  break;
-                case 'failed':
-                  runFailed++;
-                  break;
-                case 'blocked':
-                  runBlocked++;
-                  break;
-                case 'retest':
-                  runRetest++;
-                  break;
-                case 'skipped':
-                  runSkipped++;
-                  break;
-                case 'untested':
-                  runUntested++;
-                  break;
-                case 'in progress':
-                  runInProgress++;
-                  break;
-                case 'unknown':
-                  runUnknown++;
-                  break;
-                default:
-                  console.log(`🏃     - Unknown result type: ${resultLabel}`);
-                  runUnknown++;
-              }
-            });
-            
-            console.log(`🏃 Calculated counts for "${apiTestRun.attributes.name}":`, {
-              passed: runPassed,
-              failed: runFailed,
-              blocked: runBlocked,
-              retest: runRetest,
-              skipped: runSkipped,
-              untested: runUntested,
-              inProgress: runInProgress,
-              unknown: runUnknown
-            });
-            
-            actualPassed += runPassed;
-            actualFailed += runFailed;
-            actualBlocked += runBlocked;
-            actualRetest += runRetest;
-            actualSkipped += runSkipped;
-            actualUntested += runUntested;
-            actualInProgress += runInProgress;
-            actualUnknown += runUnknown;
-            
-            // For test cases without execution results, count them as "untested"
-            const testCasesWithResults = lastExecutionPerTestCase.size;
-            const testCasesWithoutResults = testCasesInThisRun - testCasesWithResults;
-            if (testCasesWithoutResults > 0) {
-              actualUntested += testCasesWithoutResults;
-              console.log(`🏃 Added ${testCasesWithoutResults} test cases without results as "untested"`);
-            }
-            
-            console.log(`🏃 Running totals after "${apiTestRun.attributes.name}":`, {
-              totalTestCasesInActiveRuns,
-              actualPassed,
-              actualFailed,
-              actualBlocked,
-              actualRetest,
-              actualSkipped,
-              actualUntested,
-              actualInProgress,
-              actualUnknown
-            });
+
+            console.log(`🏃 Added executions from "${apiTestRun.attributes.name}" to global map`);
           } else {
             console.log(`🏃 ❌ Test run "${apiTestRun.attributes.name}" has NO VALID executions array`);
             console.log(`🏃    - executions value:`, apiTestRun.attributes.executions);
             console.log(`🏃    - executions type:`, typeof apiTestRun.attributes.executions);
             console.log(`🏃    - Is array:`, Array.isArray(apiTestRun.attributes.executions));
-            
-            // If no executions, count all test cases in this run as "untested"
-            actualUntested += testCasesInThisRun;
-            console.log(`🏃 No executions - counted ${testCasesInThisRun} test cases as "untested"`);
+            console.log(`🏃 Skipping this test run - no executions to count`);
+          }
+        });
+
+        console.log(`🏃 Found ${globalLastExecutionPerTestCaseConfigRun.size} unique test case + configuration + test run combinations globally`);
+        totalTestCasesInActiveRuns = globalLastExecutionPerTestCaseConfigRun.size;
+
+        // Now count each result type from ALL unique combinations
+        Array.from(globalLastExecutionPerTestCaseConfigRun.values()).forEach((execution: Record<string, unknown>, index: number) => {
+          console.log(`🏃   Global execution ${index + 1}:`, execution);
+          console.log(`🏃     - test_case_id: ${execution.test_case_id}`);
+          console.log(`🏃     - configuration_id: ${execution.configuration_id}`);
+          console.log(`🏃     - test_run_id: ${execution.test_run_id}`);
+          console.log(`🏃     - result: ${execution.result}`);
+          console.log(`🏃     - result type: ${typeof execution.result}`);
+
+          // Handle both numeric and string result values
+          const rawResult = execution.result;
+          let resultLabel: string;
+
+          if (typeof rawResult === 'number') {
+            // Convert numeric ID to string label
+            resultLabel = TEST_RESULTS[rawResult as TestResultId]?.toLowerCase() || 'unknown';
+            console.log(`🏃     - converted numeric ${rawResult} to: ${resultLabel}`);
+          } else if (typeof rawResult === 'string') {
+            // Handle string results - could be numeric string or label string
+            const numericResult = parseInt(rawResult);
+            if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
+              // String is a numeric ID
+              resultLabel = TEST_RESULTS[numericResult as TestResultId]?.toLowerCase() || 'unknown';
+              console.log(`🏃     - converted string numeric "${rawResult}" to: ${resultLabel}`);
+            } else {
+              // String is already a label
+              resultLabel = rawResult.toLowerCase();
+              console.log(`🏃     - using string label: ${resultLabel}`);
+            }
+          } else {
+            resultLabel = 'unknown';
+            console.log(`🏃     - unknown result type, defaulting to: unknown`);
+          }
+
+          console.log(`🏃     - processed result: ${resultLabel}`);
+
+          switch (resultLabel) {
+            case 'passed':
+              actualPassed++;
+              break;
+            case 'failed':
+              actualFailed++;
+              break;
+            case 'blocked':
+              actualBlocked++;
+              break;
+            case 'retest':
+              actualRetest++;
+              break;
+            case 'skipped':
+              actualSkipped++;
+              break;
+            case 'untested':
+              actualUntested++;
+              break;
+            case 'in progress':
+              actualInProgress++;
+              break;
+            case 'unknown':
+              actualUnknown++;
+              break;
+            default:
+              console.log(`🏃     - Unknown result type: ${resultLabel}`);
+              actualUnknown++;
           }
         });
         
@@ -770,15 +718,33 @@ function generateClosedTestRunsBarData(closedTestRuns: Array<Record<string, unkn
     // Process executions to count each result type
     if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
       console.log(`🔍 BAR_CHART_DEBUG: ✅ VALID executions array found with ${apiTestRun.attributes.executions.length} results`);
-      
-      apiTestRun.attributes.executions.forEach((execution: Record<string, unknown>, executionIndex: number) => {
+
+      // Group by test case ID + configuration ID to get the latest execution per combination
+      const lastExecutionPerTestCaseConfig = new Map<string, Record<string, unknown>>();
+
+      apiTestRun.attributes.executions.forEach((execution: Record<string, unknown>) => {
+        const testCaseId = execution.test_case_id.toString();
+        const configId = execution.configuration_id ? execution.configuration_id.toString() : 'no-config';
+        const key = `${testCaseId}-${configId}`;
+        const executionDate = new Date(execution.created_at);
+
+        const existing = lastExecutionPerTestCaseConfig.get(key);
+        if (!existing || new Date(existing.created_at) < executionDate) {
+          lastExecutionPerTestCaseConfig.set(key, execution);
+        }
+      });
+
+      console.log(`🔍 BAR_CHART_DEBUG: Found ${lastExecutionPerTestCaseConfig.size} unique test case + configuration combinations`);
+
+      // Now process only the latest execution per test case + configuration
+      Array.from(lastExecutionPerTestCaseConfig.values()).forEach((execution: Record<string, unknown>, executionIndex: number) => {
         console.log(`🔍 BAR_CHART_DEBUG:   Execution ${executionIndex + 1}:`, execution);
-        
+
         const rawResult = execution.result;
         console.log(`🔍 BAR_CHART_DEBUG:   Raw result value: ${rawResult} (type: ${typeof rawResult})`);
-        
+
         let resultLabel: string;
-        
+
         if (typeof rawResult === 'number') {
           // Use the TEST_RESULTS mapping and convert to lowercase
           resultLabel = (TEST_RESULTS[rawResult as TestResultId] || 'Unknown').toLowerCase();
@@ -790,9 +756,9 @@ function generateClosedTestRunsBarData(closedTestRuns: Array<Record<string, unkn
           resultLabel = 'untested';
           console.log(`🔍 BAR_CHART_DEBUG:   Unknown result type, defaulting to: untested`);
         }
-        
+
         console.log(`🔍 BAR_CHART_DEBUG:   BEFORE increment - ${monthKey} ${resultLabel}:`, monthlyData[monthKey][resultLabel as keyof typeof monthlyData[string]]);
-        
+
         // Count each result type
         switch (resultLabel) {
           case 'passed':
@@ -825,7 +791,7 @@ function generateClosedTestRunsBarData(closedTestRuns: Array<Record<string, unkn
             console.log(`🔍 BAR_CHART_DEBUG:   ❓ Unknown result type: ${resultLabel}, adding to untested`);
             monthlyData[monthKey].untested++;
         }
-        
+
         console.log(`🔍 BAR_CHART_DEBUG:   AFTER increment - ${monthKey} ${resultLabel}:`, monthlyData[monthKey][resultLabel as keyof typeof monthlyData[string]]);
       });
       

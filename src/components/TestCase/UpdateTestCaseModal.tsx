@@ -58,7 +58,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
     preconditions: '',
     owner: '',
     state: 2,
-    priority: 2,
+    priority: 1,
     testCaseType: 6,
     automationStatus: 1
   });
@@ -87,7 +87,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
     selectedTags,
     setSelectedTags,
     existingAttachments,
-    setExistingAttachments, // eslint-disable-line @typescript-eslint/no-unused-vars -- Attachment state setter needed
+    setExistingAttachments,
     loadingAttachments,
     isLoadingData, // eslint-disable-line @typescript-eslint/no-unused-vars -- Loading state needed
     loadTestCaseData,
@@ -123,7 +123,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
         preconditions: '',
         owner: currentUser?.id || '',
         state: 2,
-        priority: 2,
+        priority: 1,
         testCaseType: 6,
         automationStatus: 1
       });
@@ -291,6 +291,10 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
     return await onCreateTag(label);
   };
 
+  const handleRemoveExistingAttachment = (attachmentId: string) => {
+    setExistingAttachments(prev => prev.filter(att => att.id !== attachmentId));
+  };
+
   return (
     <Modal 
       isOpen={isOpen} 
@@ -330,6 +334,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
                 attachments={attachments}
                 onFilesChange={setAttachments}
                 onFileUploaded={handleAttachmentUploaded}
+                onRemoveExistingAttachment={handleRemoveExistingAttachment}
                 loadingAttachments={loadingAttachments}
                 isSubmitting={isSubmitting}
               />

@@ -231,17 +231,17 @@ class TestCasesApiService {
 
   // Mappings pour convertir entre notre format et l'API
   private priorityToApi = {
-    'low': 1,
-    'medium': 2,
+    'low': 4,
+    'medium': 1,
     'high': 3,
-    'critical': 4
+    'critical': 2
   };
 
   private priorityFromApi = {
-    1: 'low' as const,
-    2: 'medium' as const,
+    1: 'medium' as const,
+    2: 'critical' as const,
     3: 'high' as const,
-    4: 'critical' as const
+    4: 'low' as const
   };
 
   private typeToApi = {
@@ -500,12 +500,12 @@ class TestCasesApiService {
     return response;
   }
 
-  async getTestCase(id: string): Promise<{ data: ApiTestCase }> {
-    return apiService.authenticatedRequest(`/test_cases/${id}?include=attachments`);
+  async getTestCase(id: string): Promise<{ data: ApiTestCase; included?: Array<Record<string, unknown>> }> {
+    return apiService.authenticatedRequest(`/test_cases/${id}?include=attachments,tags`);
   }
 
-  async getTestCaseWithIncludes(id: string): Promise<{ 
-    data: ApiTestCase; 
+  async getTestCaseWithIncludes(id: string): Promise<{
+    data: ApiTestCase;
     included?: Array<{
       id: string;
       type: string;
@@ -518,10 +518,11 @@ class TestCasesApiService {
         description?: string;
         createdAt?: string;
         updatedAt?: string;
+        label?: string;
       };
     }>;
   }> {
-    return apiService.authenticatedRequest(`/test_cases/${id}?include=stepResults,sharedSteps,attachments`);
+    return apiService.authenticatedRequest(`/test_cases/${id}?include=stepResults,sharedSteps,attachments,tags`);
   }
 
   async createTestCase(testCaseData: {
@@ -918,7 +919,9 @@ class TestCasesApiService {
       type: this.typeFromApi[apiTestCase.attributes.type as keyof typeof this.typeFromApi] || 'functional',
       typeId: apiTestCase.attributes.type, // Store numeric type ID for filtering
       status: this.statusFromApi[apiTestCase.attributes.state as keyof typeof this.statusFromApi] || 'draft',
-      automationStatus: apiTestCase.attributes.automation, // Utilise directement le champ automation de l'API
+      automationStatus: typeof apiTestCase.attributes.automation === 'string'
+        ? parseInt(apiTestCase.attributes.automation, 10) as 1 | 2 | 3 | 4 | 5
+        : apiTestCase.attributes.automation, // Utilise directement le champ automation de l'API
       steps: [], // Steps are handled via stepResults
       stepResults: stepResults, // Add step result IDs
       sharedSteps: sharedStepIds, // Add shared step IDs from relationships

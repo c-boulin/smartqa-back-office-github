@@ -17,19 +17,15 @@ import { useApp } from '../context/AppContext';
 import { useTestRuns } from '../hooks/useTestRuns';
 import { useTestRunsFilters } from '../hooks/useTestRunsFilters';
 import { useUsers } from '../context/UsersContext';
-import { TestRun, testRunsApiService } from '../services/testRunsApi';
+import { TestRun } from '../services/testRunsApi';
 import toast from 'react-hot-toast';
 
 const TestRuns: React.FC = () => {
-  const { getSelectedProject, createTag, state: appState } = useApp();
+  const { getSelectedProject } = useApp();
   // const { state: authState } = useAuth();
   const { users } = useUsers();
   const navigate = useNavigate();
   const selectedProject = getSelectedProject();
-  
-  // Use tags from AppContext (loaded once)
-  const tags = appState.tags;
-  const tagsLoading = appState.isLoadingTags;
   
   const { 
     testRuns, 
@@ -187,24 +183,7 @@ const TestRuns: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      
-      // Handle new tags creation first
-      const processedTags = [];
-      for (const tag of data.tags || []) {
-        if (tag && tag.id && typeof tag.id === 'string' && tag.id.startsWith('temp-')) {
-          try {
-            const newTag = await createTag(tag.label);
-            processedTags.push(newTag);
-          } catch {
-            console.error('Failed to create tag:', error);
-            toast.error(`Failed to create tag: ${tag.label}`);
-            return;
-          }
-        } else if (tag && tag.id && tag.label) {
-          processedTags.push(tag);
-        }
-      }
-      
+
       await createTestRun({
         name: data.name,
         description: data.description,
@@ -213,7 +192,6 @@ const TestRuns: React.FC = () => {
         configurations: data.configurations, // Pass configurations array
         assignedTo: data.assignedTo,
         state: data.state,
-        tags: processedTags,
         testPlanId: data.testPlanId
       });
       
@@ -224,7 +202,6 @@ const TestRuns: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- createTag and error are stable
   }, [createTestRun, selectedProject]);
 
   const handleEditTestRun = useCallback(async (data: Record<string, unknown>) => {
@@ -235,24 +212,7 @@ const TestRuns: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      
-      // Handle new tags creation first
-      const processedTags = [];
-      for (const tag of data.tags || []) {
-        if (tag && tag.id && typeof tag.id === 'string' && tag.id.startsWith('temp-')) {
-          try {
-            const newTag = await createTag(tag.label);
-            processedTags.push(newTag);
-          } catch {
-            console.error('Failed to create tag:', error);
-            toast.error(`Failed to create tag: ${tag.label}`);
-            return;
-          }
-        } else if (tag && tag.id && tag.label) {
-          processedTags.push(tag);
-        }
-      }
-      
+
       await updateTestRun(selectedTestRun.id, {
         name: data.name,
         description: data.description,
@@ -260,7 +220,6 @@ const TestRuns: React.FC = () => {
         testCaseIds: data.testCaseIds,
         configurations: data.configurations,
         assignedTo: data.assignedTo,
-        tags: processedTags,
         testPlanId: data.testPlanId
       });
       setIsEditModalOpen(false);
@@ -270,7 +229,6 @@ const TestRuns: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- createTag and error are stable
   }, [updateTestRun, selectedTestRun, selectedProject]);
 
   const handleDeleteTestRun = useCallback(async () => {
@@ -327,7 +285,7 @@ const TestRuns: React.FC = () => {
     includeAllTestCases: boolean;
     includeByResults: boolean;
     selectedResults: string[];
-    selectedTestCaseIds?: string[];
+    selectedTestCaseConfigPairs: Array<{ testCaseId: string; configurationId: string | null }>;
     copyTestCaseAssignee: boolean;
     copyTags: boolean;
     copyLinkedIssues: boolean;
@@ -344,94 +302,71 @@ const TestRuns: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      
-      // Determine which test cases to include
+
+      // Determine which test cases and configurations to include
       let testCaseIds: string[] = [];
+      let configurations: string[] = [];
+
       if (cloneData.includeAllTestCases) {
+        // Include all test cases from the original run
         testCaseIds = testRunToClone.testCaseIds;
+        // Include all configurations from the original run
+        configurations = testRunToClone.configurations || [];
       } else if (cloneData.includeByResults) {
-        // Use the actual selected test case IDs from the modal
-        testCaseIds = cloneData.selectedTestCaseIds || [];
-      }
-      
-      // Get existing tags if copyTags is enabled
-      let existingTags = [];
-      if (cloneData.copyTags) {
-        try {
-          console.log('🏷️ Loading existing tags for cloning test run:', testRunToClone.id);
-          const testRunResponse = await testRunsApiService.getTestRun(testRunToClone.id);
-          
-          // Extract tag IDs from relationships
-          const tagRelationships = testRunResponse.data.relationships?.tags?.data || [];
-          
-          if (tagRelationships.length > 0) {
-            for (const tagRef of tagRelationships) {
-              const tagId = tagRef.id.split('/').pop();
-              
-              // Find tag in available tags or included data
-              let foundTag = tags.find(tag => tag.id === tagId);
-              
-              if (!foundTag && testRunResponse.included) {
-                const includedTag = testRunResponse.included.find(item => 
-                  item.type === 'Tag' && item.attributes.id.toString() === tagId
-                );
-                
-                if (includedTag) {
-                  foundTag = {
-                    id: includedTag.attributes.id.toString(),
-                    label: includedTag.attributes.label
-                  };
-                }
-              }
-              
-              if (foundTag) {
-                existingTags.push(foundTag);
-              }
-            }
-          }
-        } catch {
-          console.error('Failed to load existing tags for cloning:', error);
-          existingTags = [];
+        // Extract unique test case IDs from selected pairs
+        const uniqueTestCaseIds = new Set(
+          cloneData.selectedTestCaseConfigPairs.map(pair => pair.testCaseId)
+        );
+        testCaseIds = Array.from(uniqueTestCaseIds);
+
+        // Extract unique configuration IDs from selected pairs (excluding null)
+        const uniqueConfigIds = new Set(
+          cloneData.selectedTestCaseConfigPairs
+            .map(pair => pair.configurationId)
+            .filter((id): id is string => id !== null)
+        );
+        configurations = Array.from(uniqueConfigIds);
+
+        // If there are pairs with null configuration, include all original configurations
+        const hasNullConfig = cloneData.selectedTestCaseConfigPairs.some(
+          pair => pair.configurationId === null
+        );
+        if (hasNullConfig && testRunToClone.configurations) {
+          configurations = [...new Set([...configurations, ...testRunToClone.configurations])];
         }
       }
-      
-      // Get existing configurations (always include them)
-      const existingConfigurations = testRunToClone.configurations || [];
-      
+
       console.log('🔄 Cloning test run with data:', {
         name: cloneData.name,
         testCaseIds: testCaseIds.length,
-        configurations: existingConfigurations.length,
-        tags: existingTags.length,
+        configurations: configurations.length,
         includeAllTestCases: cloneData.includeAllTestCases,
-        copyTags: cloneData.copyTags
+        selectedPairs: cloneData.selectedTestCaseConfigPairs.length
       });
-      
+
       // Create the cloned test run
       await createTestRun({
         name: cloneData.name,
         description: testRunToClone.description || '',
         projectId: selectedProject.id,
         testCaseIds: testCaseIds,
-        configurations: existingConfigurations,
+        configurations: configurations,
         assignedTo: cloneData.copyTestCaseAssignee ? testRunToClone.assignedTo.id : '',
-        state: 1, // Set to "New" state for the clone
-        tags: existingTags
+        state: 1 // Set to "New" state for the clone
       });
-      
+
       setIsCloneModalOpen(false);
       setTestRunToClone(null);
       toast.success(`Test run cloned successfully as "${cloneData.name}"`);
-      
-    } catch {
+
+    } catch (error) {
       console.error('Failed to clone test run:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to clone test run';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- error is stable
-  }, [createTestRun, selectedProject, tags, testRunToClone]);
+  }, [createTestRun, selectedProject, testRunToClone]);
 
   const handlePageChange = useCallback((page: number) => {
     if (currentSearchTerm.trim()) {
@@ -653,7 +588,7 @@ const TestRuns: React.FC = () => {
                   {filteredTestRuns.map((testRun) => (
                     <tr key={testRun.id} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
                       <td className="py-4 px-6 text-sm text-gray-300 font-mono">
-                        #{testRun.id}
+                        TR{testRun.id}
                       </td>
                       <td className="py-4 px-6">
                         <div>
@@ -832,9 +767,6 @@ const TestRuns: React.FC = () => {
         onClose={closeCreateModal}
         onSubmit={handleCreateTestRun}
         isSubmitting={isSubmitting}
-        availableTags={tags}
-        onCreateTag={createTag}
-        tagsLoading={tagsLoading}
       />
 
       <EditTestRunModal
@@ -843,9 +775,6 @@ const TestRuns: React.FC = () => {
         onSubmit={handleEditTestRun}
         testRun={selectedTestRun}
         isSubmitting={isSubmitting}
-        availableTags={tags}
-        onCreateTag={createTag}
-        tagsLoading={tagsLoading}
       />
 
       <CloneTestRunModal

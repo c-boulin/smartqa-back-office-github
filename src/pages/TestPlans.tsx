@@ -393,7 +393,7 @@ const TestPlans: React.FC = () => {
                 return (
                   <tr key={testPlan.id} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
                     <td className="py-4 px-6 text-sm text-gray-300 font-mono">
-                      #{testPlan.id}
+                      TP{testPlan.id}
                     </td>
                     <td className="py-4 px-6">
                       <div>

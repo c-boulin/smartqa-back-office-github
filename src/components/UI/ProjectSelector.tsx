@@ -107,17 +107,16 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           </div>
           <div className="flex items-center space-x-2 flex-shrink-0">
             {selectedProject && (
-              <button
-                type="button"
+              <span
                 onClick={(e) => {
                   e.stopPropagation();
                   handleClearSelection();
                 }}
-                className="text-gray-400 hover:text-red-400 transition-colors p-1 rounded hover:bg-slate-600"
+                className="text-gray-400 hover:text-red-400 transition-colors p-1 rounded hover:bg-slate-600 cursor-pointer"
                 title="Clear selection"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </span>
             )}
             {state.isLoadingProjects ? (
               <Loader className="w-4 h-4 text-gray-400 animate-spin" />

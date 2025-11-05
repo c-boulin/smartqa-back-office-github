@@ -90,7 +90,7 @@ function buildReportQueryParams(
 
   // Base parameters
   params.set('project', projectId);
-  params.set('include', 'testRuns,user');
+  params.set('include', 'testRuns,user,configurations');
 
   if (!filters) {
     return params.toString();

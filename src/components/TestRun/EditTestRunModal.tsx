@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Loader, Save, X, Tag as TagIcon, Search, Plus } from 'lucide-react';
+import { Loader, Save, X, Search, Plus } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
-import TagSelector from '../UI/TagSelector';
 import ConfigurationSelector from '../UI/ConfigurationSelector';
 import TestPlanSelector from '../UI/TestPlanSelector';
 import { useUsers } from '../../context/UsersContext';
 import { useTestCases } from '../../hooks/useTestCases';
 import { useApp } from '../../context/AppContext';
-import { Tag } from '../../services/tagsApi';
 import { Configuration } from '../../services/configurationsApi';
 import { TestRun } from '../../services/testRunsApi';
 import { testRunsApiService } from '../../services/testRunsApi';
@@ -25,13 +23,9 @@ interface EditTestRunModalProps {
     testPlan: string;
     assignedTo: string;
     state: number;
-    tags: Tag[];
   }) => Promise<void>;
   isSubmitting: boolean;
   testRun: TestRun | null;
-  availableTags: Tag[];
-  onCreateTag: (label: string) => Promise<Tag>;
-  tagsLoading: boolean;
 }
 
 const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
@@ -39,10 +33,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   onClose,
   onSubmit,
   isSubmitting,
-  testRun,
-  availableTags,
-  onCreateTag,
-  tagsLoading
+  testRun
 }) => {
   // const { state: authState } = useAuth();
   const { users, loading: usersLoading } = useUsers();
@@ -63,14 +54,11 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
     configurations: [] as Configuration[],
     testPlanId: '',
     assignedTo: '',
-    state: 1,
-    tags: [] as Tag[]
+    state: 1
   });
 
   const [testCaseSearch, setTestCaseSearch] = useState('');
   const [showTestCaseSelector, setShowTestCaseSelector] = useState(false);
-  const [existingTags, setExistingTags] = useState<Tag[]>([]);
-  const [isLoadingTags, setIsLoadingTags] = useState(false);
   const [existingConfigurations, setExistingConfigurations] = useState<Configuration[]>([]);
   const [isLoadingConfigurations, setIsLoadingConfigurations] = useState(false);
   const [originalTestPlanId, setOriginalTestPlanId] = useState<string>('');
@@ -117,16 +105,14 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
         configurations: [], // Will be populated from new selections only
         testPlanId: '', // Will be loaded from API
         assignedTo: testRun.assignedTo?.id || '', // Use assigned user ID from test run
-        state: testRun.state, // Use the actual state number from the test run
-        tags: [] // Will be populated from existing tags
+        state: testRun.state // Use the actual state number from the test run
       });
       
       console.log('📋 Set formData.testCaseIds to:', testRun.testCaseIds);
       console.log('📋 Set formData.testPlanId to: (will be loaded from API)');
       console.log('📋 Set formData.assignedTo to:', testRun.assignedTo?.id || '');
-      
-      // Load existing tags and configurations by calling the API  
-      loadExistingTags(testRun.id);
+
+      // Load existing configurations by calling the API
       loadExistingConfigurations(testRun.id);
       loadExistingTestPlan(testRun.id);
       loadExistingTestPlan(testRun.id);
@@ -134,7 +120,6 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
       console.log('📋 Setting existing test case IDs:', testRun.testCaseIds);
     } else if (isOpen && !testRun) {
       // Reset form for new test run
-      setExistingTags([]);
       setExistingConfigurations([]);
       setOriginalTestPlanId('');
       
@@ -152,75 +137,11 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
         configurations: [],
         testPlanId: '',
         assignedTo: '',
-        state: 1,
-        tags: []
+        state: 1
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- allTestCases.length, loadExistingConfigurations, loadExistingTags are stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- allTestCases.length, loadExistingConfigurations are stable
   }, [isOpen, testRun, users]);
-
-  // Function to load existing tags for the test run
-  const loadExistingTags = async (testRunId: string) => {
-    try {
-      setIsLoadingTags(true);
-      console.log('🏷️ Loading existing tags for test run:', testRunId);
-      
-      // Get test run details with tags included
-      const response = await testRunsApiService.getTestRun(testRunId);
-      console.log('🏷️ Test run response:', response);
-      
-      // Extract tag IDs from relationships
-      const tagRelationships = response.data.relationships?.tags?.data || [];
-      console.log('🏷️ Tag relationships found:', tagRelationships);
-      
-      if (tagRelationships.length > 0) {
-        // Extract tag IDs and find corresponding tags
-        const existingTagsData: Tag[] = [];
-        
-        for (const tagRef of tagRelationships) {
-          const tagId = tagRef.id.split('/').pop();
-          console.log('🏷️ Looking for tag with ID:', tagId);
-          
-          // First try to find in available tags
-          let foundTag = availableTags.find(tag => tag.id === tagId);
-          
-          // If not found in available tags, check if it's in the included data
-          if (!foundTag && response.included) {
-            const includedTag = response.included.find(item => 
-              item.type === 'Tag' && item.attributes.id.toString() === tagId
-            );
-            
-            if (includedTag) {
-              foundTag = {
-                id: includedTag.attributes.id.toString(),
-                label: includedTag.attributes.label
-              };
-              console.log('🏷️ Found tag in included data:', foundTag);
-            }
-          }
-          
-          if (foundTag) {
-            existingTagsData.push(foundTag);
-            console.log('🏷️ Added existing tag:', foundTag);
-          } else {
-            console.warn('🏷️ Tag not found for ID:', tagId);
-          }
-        }
-        
-        setExistingTags(existingTagsData);
-        console.log('✅ Final existing tags loaded:', existingTagsData);
-      } else {
-        console.log('🏷️ No tag relationships found');
-        setExistingTags([]);
-      }
-      
-    } catch (error) {
-      console.error('❌ Failed to load existing tags:', error);
-      setExistingTags([]);
-    } finally {
-      setIsLoadingTags(false);
-    }
-  };
 
   // Function to load existing configurations for the test run
   const loadExistingConfigurations = async (testRunId: string) => {
@@ -398,11 +319,6 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
     }
   };
 
-  // Function to remove an existing tag
-  const removeExistingTag = (tagToRemove: Tag) => {
-    setExistingTags(prev => prev.filter(tag => tag.id !== tagToRemove.id));
-  };
-
   // Function to remove an existing configuration
   const removeExistingConfiguration = (configToRemove: Configuration) => {
     setExistingConfigurations(prev => prev.filter(config => config.id !== configToRemove.id));
@@ -466,10 +382,6 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   //   }));
   // };
 
-  const handleCreateTag = async (label: string): Promise<Tag> => {
-    return await onCreateTag(label);
-  };
-
   const handleCreateConfiguration = async (label: string): Promise<Configuration> => {
     try {
       console.log('⚙️ Creating new configuration:', label);
@@ -501,10 +413,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
         processedConfigurations.push(config);
       }
     }
-    
-    // Combine existing tags with new tags from form
-    const allTags = [...existingTags, ...formData.tags];
-    
+
     // Combine existing configurations with new configurations from form
     const allConfigurations = [...existingConfigurations, ...processedConfigurations];
     
@@ -531,7 +440,6 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
       testCaseIds: formData.testCaseIds,
       configurations: allConfigurations,
       assignedTo: formData.assignedTo,
-      tags: allTags,
       testPlanId: finalTestPlanId
     };
     
@@ -581,7 +489,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
                     <div key={`selected-${testCase.id}`} className="flex items-center justify-between bg-slate-700 border border-slate-600 rounded-lg p-3 min-w-0">
                       <div className="flex-1 min-w-0 pr-3">
                         <span className="text-white text-sm font-medium">{testCase.title}</span>
-                        <p className="text-xs text-gray-400">TC-{testCase.id}</p>
+                        <p className="text-xs text-gray-400">TC{testCase.id}</p>
                       </div>
                       <button
                         type="button"
@@ -645,7 +553,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
                             <div className="flex items-center justify-between min-w-0">
                               <div className="flex-1 min-w-0 pr-3">
                                 <span className="text-sm font-medium block truncate">{testCase.title}</span>
-                                <p className="text-xs text-gray-400">TC-{testCase.id}</p>
+                                <p className="text-xs text-gray-400">TC{testCase.id}</p>
                               </div>
                               <Plus className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                             </div>
@@ -807,59 +715,6 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
                 disabled={isSubmitting}
                 placeholder="Select test plan..."
                 projectId={selectedProject?.id}
-              />
-            </div>
-
-            {/* Tags */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Tags
-              </label>
-              
-              {/* Loading existing tags */}
-              {isLoadingTags && (
-                <div className="flex items-center text-gray-400 text-sm mb-3">
-                  <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  Loading existing tags...
-                </div>
-              )}
-              
-              {/* Display existing tags */}
-              {!isLoadingTags && existingTags.length > 0 && (
-                <div className="mb-3">
-                  <h4 className="text-sm font-medium text-gray-400 mb-2">
-                    Current Tags ({existingTags.length})
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {existingTags.map((tag) => (
-                      <span
-                        key={tag.id}
-                        className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400"
-                      >
-                        <TagIcon className="w-3 h-3 mr-1" />
-                        {tag.label}
-                        <button
-                          type="button"
-                          onClick={() => removeExistingTag(tag)}
-                          className="ml-2 text-cyan-400 hover:text-cyan-300 transition-colors"
-                          disabled={isSubmitting}
-                          title="Remove tag"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <TagSelector
-                availableTags={availableTags}
-                selectedTags={formData.tags}
-                onTagsChange={(selectedTags) => handleInputChange('tags', selectedTags)}
-                onCreateTag={handleCreateTag}
-                disabled={isSubmitting || tagsLoading}
-                placeholder="Add new tags..."
               />
             </div>
 

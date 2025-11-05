@@ -12,6 +12,8 @@ interface TestCaseReportData {
   latestStatus: string;
   priority: string;
   assignee: string;
+  configurationId?: string;
+  configurationName?: string;
 }
 
 interface TestCasesReportTableProps {
@@ -105,6 +107,11 @@ const TestCasesReportTable: React.FC<TestCasesReportTableProps> = ({
                   <div>
                     <div className="text-sm font-medium text-white">{testCase.testCaseId}</div>
                     <div className="text-sm text-gray-400">{testCase.testCaseTitle}</div>
+                    {testCase.configurationName && (
+                      <div className="text-xs text-cyan-400 mt-1">
+                        {testCase.configurationName}
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="py-4 px-6">

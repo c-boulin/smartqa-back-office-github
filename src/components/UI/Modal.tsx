@@ -22,10 +22,10 @@ const Modal: React.FC<ModalProps> = ({
     sm: 'max-w-md',
     md: 'max-w-lg',
     lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
+    xl: 'w-[900px] max-w-[900px]',
     full: 'max-w-[90vw] w-[90vw] max-h-[95vh]',
-    custom: 'max-w-[75vw] w-[75vw] max-h-[95vh]', // Nouvelle taille personnalisée à 75%
-    small: 'w-[400px] h-[500px] max-w-[400px] max-h-[500px]' // Square-ish modal for projects
+    custom: 'max-w-[75vw] w-[75vw] max-h-[95vh]',
+    small: 'w-[400px] h-[500px] max-w-[400px] max-h-[500px]'
   };
 
   return (

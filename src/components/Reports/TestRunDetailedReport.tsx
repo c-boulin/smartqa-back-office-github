@@ -9,6 +9,7 @@ import { reportDownloadService } from '../../services/reportDownloadService';
 import { reportEmailService, ReportFormat } from '../../services/reportEmailService';
 import { fetchTestCasesForReport } from '../../services/reportsDataService';
 import { testRunsApiService } from '../../services/testRunsApi';
+import { configurationsApiService } from '../../services/configurationsApi';
 import { TEST_RESULTS, TestResultId } from '../../types';
 import { PRIORITIES } from '../../constants/testCaseConstants';
 import { useAuth } from '../../context/AuthContext';
@@ -53,6 +54,8 @@ interface TestCaseWithExecution {
   priority: string;
   assignee: string;
   typeId?: number | string;
+  configurationId?: string;
+  configurationName?: string;
 }
 
 interface ReportData {
@@ -178,8 +181,25 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
       console.log(`📊 Received ${testCases.length} test cases, ${testRuns.length} test runs, ${testExecutions?.length || 0} test executions`);
 
-      // STEP 2: Build users map from included data
+      // STEP 2: Fetch all configurations for the project
+      console.log('📊 Fetching all configurations for project');
+      const configurationsResponse = await configurationsApiService.getConfigurations();
+      const configurationsMap = new Map<string, { id: string; name: string }>();
+
+      if (configurationsResponse.data && Array.isArray(configurationsResponse.data)) {
+        configurationsResponse.data.forEach((config) => {
+          const configId = config.attributes.id.toString();
+          configurationsMap.set(configId, {
+            id: configId,
+            name: config.attributes.label || `Configuration ${configId}`
+          });
+        });
+      }
+      console.log(`📊 Built configurations map with ${configurationsMap.size} configurations from API`);
+
+      // STEP 3: Build users map from included data
       const usersMap = new Map<string, { id: string; name: string; email: string }>();
+
       if (response.included && Array.isArray(response.included)) {
         response.included.forEach((item: Record<string, unknown>) => {
           if (item.type === 'User' && item.attributes) {
@@ -194,7 +214,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
       }
       console.log(`📊 Built users map with ${usersMap.size} users`);
 
-      // STEP 3: Build test runs map from included test runs
+      // STEP 4: Build test runs map from included test runs
       // Use the SAME transformation service as Summary report for consistency
       const testRunsMap = new Map<string, Record<string, unknown>>();
       testRuns.forEach((apiTestRun) => {
@@ -218,7 +238,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         console.log(`📊 Test Run ${transformed.id}: state=${transformed.state}, status=${transformed.status}, createdAt=${transformed.createdAt.toISOString()}`);
       });
 
-      // STEP 4: APPLY ALL FILTERS FIRST (Test Run IDs + Creation Date)
+      // STEP 5: APPLY ALL FILTERS FIRST (Test Run IDs + Creation Date)
       // This is CRITICAL - we must filter test runs BEFORE building the executions map
 
       console.log('📊 ========== STARTING FILTER APPLICATION ==========');
@@ -265,7 +285,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
       console.log('📊 Final filtered test run IDs:', Array.from(filteredTestRunIds));
       console.log('📊 Final filtered test runs count:', filteredTestRunIds.size);
 
-      // STEP 5: Build test executions map ONLY from filtered test runs
+      // STEP 6: Build test executions map ONLY from filtered test runs
       // IMPORTANT: The API's execution_result filter returns test cases based on their
       // ABSOLUTE latest execution across ALL test runs. We need to filter executions
       // to only include those from the filtered test runs.
@@ -283,35 +303,40 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         testExecutions.forEach((execution) => {
           const testCaseId = execution.attributes.test_case_id?.toString();
           const testRunId = execution.attributes.test_run_id?.toString();
+          const configurationId = execution.attributes.configuration_id?.toString() || 'no-config';
           const userId = execution.attributes.user_id?.toString();
 
           // CRITICAL: Only process executions that belong to:
           // 1. Filtered test runs (by date/ID filters)
           // 2. Filtered test cases (by type/priority/status filters)
           if (testCaseId && testRunId && filteredTestRunIds.has(testRunId) && filteredTestCaseIds.has(testCaseId)) {
-            if (!executionsMap.has(testCaseId)) {
-              executionsMap.set(testCaseId, new Map());
+            // Create unique key for test case + configuration combination
+            const testCaseConfigKey = `${testCaseId}-${configurationId}`;
+
+            if (!executionsMap.has(testCaseConfigKey)) {
+              executionsMap.set(testCaseConfigKey, new Map());
             }
 
-            const testRunExecutions = executionsMap.get(testCaseId)!;
+            const testRunExecutions = executionsMap.get(testCaseConfigKey)!;
 
-            // Keep only the latest execution per test case per test run
+            // Keep only the latest execution per test case + configuration per test run
             const existingExecution = testRunExecutions.get(testRunId);
             const currentDate = new Date(execution.attributes.updated_at || execution.attributes.created_at || 0);
 
             if (!existingExecution || currentDate > new Date(existingExecution.updated_at || existingExecution.created_at || 0)) {
               testRunExecutions.set(testRunId, {
                 ...execution.attributes,
-                userId: userId
+                userId: userId,
+                configurationId: configurationId
               });
             }
           }
         });
       }
 
-      console.log(`📊 Built executions map with ${executionsMap.size} test cases after filtering by test runs`);
+      console.log(`📊 Built executions map with ${executionsMap.size} test case+configuration combinations after filtering by test runs`);
 
-      // STEP 6: Build test cases included list ONLY from filtered test runs
+      // STEP 7: Build test cases included list ONLY from filtered test runs
       const testCasesIncluded: TestCaseWithExecution[] = [];
       const testRunStats = new Map<string, { passed: number; failed: number; blocked: number; untested: number; total: number }>();
 
@@ -328,15 +353,19 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         console.log('📊 Allowed status IDs:', Array.from(allowedStatusIds || []));
       }
 
-      testCases.forEach((testCase) => {
-        const testCaseId = testCase.attributes.id.toString();
-        const testCaseExecutions = executionsMap.get(testCaseId);
+      // Iterate over all test case + configuration combinations in the executions map
+      executionsMap.forEach((testRunExecutions, testCaseConfigKey) => {
+        // Extract testCaseId and configurationId from the key
+        const [testCaseId, configurationId] = testCaseConfigKey.split('-');
 
-        if (!testCaseExecutions || testCaseExecutions.size === 0) {
+        // Find the test case in the testCases array
+        const testCase = testCases.find(tc => tc.attributes.id.toString() === testCaseId);
+
+        if (!testCase) {
           return;
         }
 
-        testCaseExecutions.forEach((execution, testRunId: string) => {
+        testRunExecutions.forEach((execution, testRunId: string) => {
           // CRITICAL: Only process executions from filtered test runs
           if (!filteredTestRunIds.has(testRunId)) {
             console.log(`📊 Skipping execution for test run ${testRunId} - not in filtered test runs`);
@@ -415,6 +444,13 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
             testCaseOwner = user ? user.name : 'Unassigned';
           }
 
+          // Get configuration name from configurations map
+          let configName: string | undefined = undefined;
+          if (configurationId && configurationId !== 'no-config') {
+            const config = configurationsMap.get(configurationId);
+            configName = config ? config.name : `Configuration ${configurationId}`;
+          }
+
           // Add to test cases included list
           testCasesIncluded.push({
             testRunId: testRun.id,
@@ -430,7 +466,9 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
             latestStatus: latestStatus,
             priority: priorityLabel,
             assignee: testCaseOwner,
-            typeId: testCase.attributes.typeId || testCase.attributes.type
+            typeId: testCase.attributes.typeId || testCase.attributes.type,
+            configurationId: configurationId !== 'no-config' ? configurationId : undefined,
+            configurationName: configName
           });
         });
       });
@@ -448,7 +486,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         console.log(`📊   Test Run ${testRunId} (${testRun?.name}): ${count} test case executions`);
       });
 
-      // STEP 7: Calculate ALL report metrics from filtered test runs
+      // STEP 8: Calculate ALL report metrics from filtered test runs
       const filteredTestRuns = Array.from(filteredTestRunIds).map(id => testRunsMap.get(id)!).filter(Boolean);
       const totalTestRuns = filteredTestRuns.length;
       const activeTestRuns = filteredTestRuns.filter(tr => tr.state !== 6).length;
@@ -515,7 +553,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         count
       })).sort((a, b) => b.count - a.count);
 
-      // STEP 8: Generate performance data (trend based on creation date filter)
+      // STEP 9: Generate performance data (trend based on creation date filter)
       // Performance chart shows executions over time from FILTERED test runs only
       console.log('📊 ========== GENERATING PERFORMANCE DATA ==========');
 
@@ -580,6 +618,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
             const testRunId = execution.attributes.test_run_id?.toString();
             const testCaseId = execution.attributes.test_case_id?.toString();
+            const configurationId = execution.attributes.configuration_id?.toString() || 'no-config';
 
             // CRITICAL: Only include executions from filtered test runs AND filtered test cases
             if (!testRunId || !testCaseId || !filteredTestRunIds.has(testRunId) || !filteredTestCaseIds.has(testCaseId)) return;
@@ -591,7 +630,8 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
               return;
             }
 
-            const compositeKey = `${testRunId}-${testCaseId}`;
+            // Include configuration in composite key to count each test case × configuration combination
+            const compositeKey = `${testRunId}-${testCaseId}-${configurationId}`;
             const existing = dayExecutions.get(compositeKey);
             const currentDate = new Date(execution.attributes.updated_at || execution.attributes.created_at || 0);
 
@@ -1048,6 +1088,9 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                     TEST CASE ASSIGNEE
                   </th>
                   <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                    CONFIGURATION
+                  </th>
+                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
                     <MoreHorizontal className="w-4 h-4 text-gray-400" />
                   </th>
                 </tr>
@@ -1084,6 +1127,11 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                     </td>
                     <td className="py-4 px-6">
                       <span className="text-sm text-white">{testCase.assignee}</span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="text-sm text-gray-400">
+                        {testCase.configurationName || 'Default'}
+                      </span>
                     </td>
                     <td className="py-4 px-6">
                       <button className="p-1 text-gray-400 hover:text-cyan-400 transition-colors">

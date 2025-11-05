@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { testCasesApiService, TestCasesApiResponse } from '../services/testCasesApi';
+import { sharedStepsApiService } from '../services/sharedStepsApi';
 // import { foldersApiService } from '../services/foldersApi';
 import { TestCase } from '../types';
 import toast from 'react-hot-toast';
@@ -701,7 +702,9 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
     template: number;
     preconditions: string;
     tags: Tag[];
+    projectId?: string;
     folderId?: string;
+    creatorId?: string;
     originalRelationships?: Record<string, unknown>;
     createdAttachments?: Array<{
       type: "Attachment";
@@ -736,86 +739,210 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       // Handle duplication with original relationships
       if (testCaseData.originalRelationships) {
         console.log('🔄 Processing test case duplication with original relationships');
-        
-        // Handle step results - create new ones for the duplicate
+
+        const targetProjectId = testCaseData.projectId || projectId!;
+        const targetFolderId = testCaseData.folderId || folderId || undefined;
+        const originalProjectId = testCaseData.originalRelationships.project?.data?.id?.split('/').pop();
+        const isDifferentProject = targetProjectId !== originalProjectId;
+
+        console.log('🎯 Duplication context:', {
+          targetProjectId,
+          originalProjectId,
+          isDifferentProject
+        });
+
+        console.log('📦 Original relationships to duplicate:', {
+          stepResultsCount: testCaseData.originalRelationships.stepResults?.data?.length || 0,
+          sharedStepsCount: testCaseData.originalRelationships.sharedSteps?.data?.length || 0,
+          stepResults: testCaseData.originalRelationships.stepResults?.data?.map((sr: { id: string; meta?: { order: number } }) => ({
+            id: sr.id,
+            order: sr.meta?.order,
+            type: 'StepResult'
+          })),
+          sharedSteps: testCaseData.originalRelationships.sharedSteps?.data?.map((ss: { id: string; meta?: { order: number } }) => ({
+            id: ss.id,
+            order: ss.meta?.order,
+            type: 'SharedStep'
+          }))
+        });
+
+        // Combine step results and shared steps, then sort by order
+        const allItems: Array<{
+          type: 'stepResult' | 'sharedStep';
+          ref: { id: string; meta?: { order: number } };
+          originalOrder: number;
+        }> = [];
+
+        // Add step results to the list
+        if (testCaseData.originalRelationships.stepResults?.data) {
+          testCaseData.originalRelationships.stepResults.data.forEach((sr: { id: string; meta?: { order: number } }) => {
+            allItems.push({
+              type: 'stepResult',
+              ref: sr,
+              originalOrder: sr.meta?.order || 0
+            });
+          });
+        }
+
+        // Add shared steps to the list
+        if (testCaseData.originalRelationships.sharedSteps?.data) {
+          testCaseData.originalRelationships.sharedSteps.data.forEach((ss: { id: string; meta?: { order: number } }) => {
+            allItems.push({
+              type: 'sharedStep',
+              ref: ss,
+              originalOrder: ss.meta?.order || 0
+            });
+          });
+        }
+
+        // Sort all items by their original order
+        allItems.sort((a, b) => a.originalOrder - b.originalOrder);
+
+        console.log('🔄 Combined and sorted items:', allItems.map((item, index) => ({
+          position: index + 1,
+          type: item.type,
+          originalOrder: item.originalOrder
+        })));
+
+        // Process each item in order
         const stepResults: Array<{
           id: string;
           order: number;
         }> = [];
-        
-        if (testCaseData.originalRelationships.stepResults?.data) {
-          console.log('🔄 Creating new step results for duplicate...');
-          
-          for (let i = 0; i < testCaseData.originalRelationships.stepResults.data.length; i++) {
-            // const originalStepResult = testCaseData.originalRelationships.stepResults.data[i];
-            
-            // We need to get the step result details to duplicate them
-            // For now, create empty step results - this should be enhanced to copy actual content
-            try {
-              const stepResultResponse = await testCasesApiService.createStepResult({
-                step: `Step ${i + 1}`,
-                result: `Expected result ${i + 1}`,
-                userId: testCaseData.creatorId
-              });
-              
-              stepResults.push({
-                id: stepResultResponse.data.attributes.id.toString(),
-                order: i + 1
-              });
-              
-              console.log(`✅ Created duplicate step result ${i + 1}`);
-            } catch (stepError) {
-              console.error(`Failed to create step result ${i + 1}:`, stepError);
-            }
-          }
-        }
-        
-        // Handle shared steps - reuse existing ones
-        let sharedStepsForApi: Array<{
+
+        const sharedStepsForApi: Array<{
           id: string;
           order: number;
         }> = [];
-        
-        if (testCaseData.originalRelationships.sharedSteps?.data) {
-          sharedStepsForApi = testCaseData.originalRelationships.sharedSteps.data.map((sharedStep: Record<string, unknown>, index: number) => ({
-            id: sharedStep.id.split('/').pop() || '',
-            order: index + 1
-          }));
+
+        for (let i = 0; i < allItems.length; i++) {
+          const item = allItems[i];
+          const newOrder = i + 1;
+
+          if (item.type === 'stepResult') {
+            try {
+              const stepResultId = item.ref.id.split('/').pop();
+              const originalStepResult = await testCasesApiService.getStepResult(stepResultId);
+
+              const stepResultResponse = await testCasesApiService.createStepResult({
+                step: originalStepResult.data.attributes.step,
+                result: originalStepResult.data.attributes.result,
+                userId: testCaseData.creatorId
+              });
+
+              stepResults.push({
+                id: stepResultResponse.data.attributes.id.toString(),
+                order: newOrder
+              });
+
+              console.log(`✅ Created step result at position ${newOrder} (original order: ${item.originalOrder})`);
+            } catch (stepError) {
+              console.error('Failed to create step result:', stepError);
+            }
+          } else if (item.type === 'sharedStep') {
+            if (isDifferentProject) {
+              try {
+                const sharedStepId = item.ref.id.split('/').pop();
+                const originalSharedStep = await sharedStepsApiService.getSharedStep(sharedStepId);
+
+                const originalStepResults = originalSharedStep.data.relationships?.stepResults?.data || [];
+                const sortedOriginalStepResults = [...originalStepResults].sort(
+                  (a: { meta?: { order: number } }, b: { meta?: { order: number } }) => (a.meta?.order || 0) - (b.meta?.order || 0)
+                );
+                const newSharedStepResults: Array<{ id: string; order: number }> = [];
+
+                for (let j = 0; j < sortedOriginalStepResults.length; j++) {
+                  const stepResultRef = sortedOriginalStepResults[j];
+                  const stepResultOrder = j + 1;
+
+                  try {
+                    const stepResultId = stepResultRef.id.split('/').pop();
+                    const originalStepResult = await testCasesApiService.getStepResult(stepResultId);
+
+                    const newStepResult = await testCasesApiService.createStepResult({
+                      step: originalStepResult.data.attributes.step,
+                      result: originalStepResult.data.attributes.result,
+                      userId: testCaseData.creatorId
+                    });
+
+                    newSharedStepResults.push({
+                      id: newStepResult.data.attributes.id.toString(),
+                      order: stepResultOrder
+                    });
+                  } catch (stepError) {
+                    console.error('Failed to duplicate step result for shared step:', stepError);
+                  }
+                }
+
+                const newSharedStep = await sharedStepsApiService.createSharedStep({
+                  title: originalSharedStep.data.attributes.title,
+                  projectId: targetProjectId,
+                  creatorId: testCaseData.creatorId!,
+                  stepResults: newSharedStepResults
+                });
+
+                sharedStepsForApi.push({
+                  id: newSharedStep.data.attributes.id.toString(),
+                  order: newOrder
+                });
+
+                console.log(`✅ Created shared step at position ${newOrder} (original order: ${item.originalOrder})`);
+              } catch (sharedStepError) {
+                console.error('Failed to duplicate shared step:', sharedStepError);
+              }
+            } else {
+              sharedStepsForApi.push({
+                id: item.ref.id.split('/').pop() || '',
+                order: newOrder
+              });
+              console.log(`✅ Reusing shared step at position ${newOrder} (original order: ${item.originalOrder})`);
+            }
+          }
         }
-        
+
         // Handle attachments - reuse existing ones
         let duplicatedAttachments: Array<{
           type: "Attachment";
           id: string;
         }> = [];
-        
+
         if (testCaseData.originalRelationships.attachments?.data) {
           duplicatedAttachments = testCaseData.originalRelationships.attachments.data.map((attachment: Record<string, unknown>) => ({
             type: "Attachment",
             id: attachment.id
           }));
         }
-        
+
         // Create the test case with all relationships
+        console.log('📤 Final payload for duplicated test case:', {
+          stepResults: stepResults.map(sr => ({ id: sr.id, order: sr.order })),
+          sharedStepsForApi: sharedStepsForApi.map(ss => ({ id: ss.id, order: ss.order }))
+        });
+
         const response = await testCasesApiService.createTestCase({
           ...testCaseData,
-          projectId: projectId!,
-          folderId: testCaseData.folderId || folderId || undefined,
+          projectId: targetProjectId,
+          folderId: targetFolderId,
           creatorId: testCaseData.creatorId || '',
           stepResults,
           sharedStepsForApi,
           createdAttachments: duplicatedAttachments
         });
-        
-        const newTestCase = testCasesApiService.transformApiTestCase(response.data);
-        setTestCases(prevTestCases => [newTestCase, ...prevTestCases]);
-        
-        setPagination(prev => ({
-          ...prev,
-          totalItems: prev.totalItems + 1,
-          totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage)
-        }));
-        
+
+        // Only add to current list if created in the current project
+        if (targetProjectId === projectId) {
+          const newTestCase = testCasesApiService.transformApiTestCase(response.data);
+          setTestCases(prevTestCases => [newTestCase, ...prevTestCases]);
+
+          setPagination(prev => ({
+            ...prev,
+            totalItems: prev.totalItems + 1,
+            totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage)
+          }));
+        } else {
+          console.log('✅ Test case created in different project, not adding to current list');
+        }
+
         return;
       }
       
@@ -928,24 +1055,34 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       }
       
       // STEP 2: Create the test case with attachment relationships
+      // Use the projectId and folderId from testCaseData if provided (for cross-project operations)
+      // Fall back to hook context values if not provided
+      const targetProjectId = testCaseData.projectId || projectId!;
+      const targetFolderId = testCaseData.folderId || folderId || undefined;
+
       const response = await testCasesApiService.createTestCase({
         ...testCaseData,
-        projectId: projectId!,
-        folderId: testCaseData.folderId || folderId || undefined,
+        projectId: targetProjectId,
+        folderId: targetFolderId,
         creatorId: testCaseData.creatorId || '',
         stepResults,
         sharedStepsForApi,
         createdAttachments: testCaseData.createdAttachments
       });
-      
-      const newTestCase = testCasesApiService.transformApiTestCase(response.data);
-      setTestCases(prevTestCases => [newTestCase, ...prevTestCases]);
-      
-      setPagination(prev => ({
-        ...prev,
-        totalItems: prev.totalItems + 1,
-        totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage)
-      }));
+
+      // Only add to current list if created in the current project
+      if (targetProjectId === projectId) {
+        const newTestCase = testCasesApiService.transformApiTestCase(response.data);
+        setTestCases(prevTestCases => [newTestCase, ...prevTestCases]);
+
+        setPagination(prev => ({
+          ...prev,
+          totalItems: prev.totalItems + 1,
+          totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage)
+        }));
+      } else {
+        console.log('✅ Test case created in different project, not adding to current list');
+      }
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create test case';
