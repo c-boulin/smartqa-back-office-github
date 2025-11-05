@@ -24,6 +24,7 @@ interface TestCaseDetailsSidebarProps {
   configurationLabel?: string;
   onExecutionResultChange?: (testCaseId: string, testRunId: string, newResultId: TestResultId) => void;
   onAttachmentRemoved?: () => void;
+  availableTags?: Array<{ id: string; label: string }>;
 }
 
 interface StepResult {
@@ -392,7 +393,8 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
   configurationId,
   configurationLabel,
   onExecutionResultChange,
-  onAttachmentRemoved
+  onAttachmentRemoved,
+  availableTags = []
 }) => {
   const [testCaseDetails, setTestCaseDetails] = useState<TestCaseDetails | null>(null);
   const [loading, setLoading] = useState(false);
@@ -641,6 +643,11 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
           id: `/api/attachments/${att.id}`
         }));
 
+      const testCaseTags = testCase.tags.map(tagLabel => {
+        const foundTag = availableTags.find(t => t.label === tagLabel);
+        return foundTag || { id: tagLabel, label: tagLabel };
+      });
+
       await testCasesApiService.updateTestCase(testCase.id, {
         title: testCase.title,
         description: testCase.description,
@@ -650,7 +657,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
         automationStatus: testCase.automationStatus,
         template: 1,
         preconditions: testCase.preconditions || '',
-        tags: [],
+        tags: testCaseTags,
         createdAttachments: updatedAttachments
       });
 

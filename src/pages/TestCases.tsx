@@ -1086,6 +1086,7 @@ const TestCases: React.FC = () => {
         onClose={closeDetailsSidebar}
         testCase={selectedTestCaseForDetails}
         context="test-cases"
+        availableTags={tags}
       />
     </div>
   );
