@@ -57,23 +57,12 @@ const EditFolderModal: React.FC<EditFolderModalProps> = ({
   };
 
   const handleChildrenChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const clickedValue = e.target.value;
+    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
 
-    setFormData(prev => {
-      const currentChildren = prev.childrenIds || [];
-
-      if (currentChildren.includes(clickedValue)) {
-        return {
-          ...prev,
-          childrenIds: currentChildren.filter(id => id !== clickedValue)
-        };
-      } else {
-        return {
-          ...prev,
-          childrenIds: [...currentChildren, clickedValue]
-        };
-      }
-    });
+    setFormData(prev => ({
+      ...prev,
+      childrenIds: selectedOptions
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -244,7 +233,7 @@ const EditFolderModal: React.FC<EditFolderModalProps> = ({
             Children Folders
           </label>
           <select
-            value=""
+            value={formData.childrenIds}
             onChange={handleChildrenChange}
             disabled={isSubmitting}
             multiple

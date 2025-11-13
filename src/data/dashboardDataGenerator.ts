@@ -98,12 +98,10 @@ function generateClosedTestRuns(
 ): TestRun[] {
   // Only generate closed test runs if ALL tests are passed (no failed or blocked tests)
   if (actualFailed > 0 || actualBlocked > 0) {
-    console.log(`🚫 Project ${projectId}: Not generating closed test runs - has ${actualFailed} failed and ${actualBlocked} blocked tests`);
+
     return [];
   }
-  
-  console.log(`✅ Project ${projectId}: All tests passed, generating closed test runs`);
-  
+
   const closedRuns: TestRun[] = [];
   const runCount = rng.nextInt(2, 6); // 2-6 closed test runs
   
@@ -188,8 +186,7 @@ export function generateProjectDashboardData(
   selectedProject: Project | null,
   allProjects: Project[]
 ): ProjectDashboardMetrics {
-  console.log('🔍 Dashboard data generation:', { selectedProject, allProjects: allProjects.length });
-  
+
   // Default fallback data
   const defaultData: ProjectDashboardMetrics = {
     totalProjects: allProjects.length || 3,
@@ -229,13 +226,13 @@ export function generateProjectDashboardData(
 
   // If no projects at all, return default data
   if (!allProjects || allProjects.length === 0) {
-    console.log('⚠️ No projects found, using default data');
+
     return defaultData;
   }
 
   // Use aggregated data from all projects if no specific project is selected
   if (!selectedProject) {
-    console.log('📊 No project selected, aggregating all projects');
+
     const totalTestCases = allProjects.reduce((sum, project) => sum + (project.testCasesCount || 0), 0);
     const totalPassed = allProjects.reduce((sum, project) => sum + (project.testsPassedCount || 0), 0);
     const totalFailed = allProjects.reduce((sum, project) => sum + (project.testsFailedCount || 0), 0);
@@ -269,14 +266,6 @@ export function generateProjectDashboardData(
       }
     };
   }
-  
-  console.log('🎯 Selected project data:', {
-    id: selectedProject.id,
-    name: selectedProject.name,
-    testCasesCount: selectedProject.testCasesCount,
-    testsPassedCount: selectedProject.testsPassedCount,
-    testsFailedCount: selectedProject.testsFailedCount
-  });
 
   // Generate seeded random data based on project characteristics
   const rng = new SeededRandom(`${selectedProject.id}-${selectedProject.name}`);
@@ -335,18 +324,6 @@ export function generateProjectDashboardData(
   const failRate = finalExecuted > 0 ? Math.round((finalFailed / finalExecuted) * 100) : 0;
   const blockedRate = finalExecuted > 0 ? Math.round((finalBlocked / finalExecuted) * 100) : 0;
 
-  console.log('📈 CONSISTENT execution data:', {
-    totalTestCases,
-    executed: finalExecuted,
-    passed: finalPassed,
-    failed: finalFailed,
-    blocked: finalBlocked,
-    passRate,
-    failRate,
-    blockedRate,
-    executionRate
-  });
-
   // CONSISTENCY: Automation distribution based on REAL totalTestCases
   const automatedCount = Math.floor(totalTestCases * rng.nextFloat(0.2, 0.4)); // 20-40% automated
   const notAutomatedCount = totalTestCases - automatedCount;
@@ -358,15 +335,6 @@ export function generateProjectDashboardData(
   // Ensure non-negative values
   const actualFunctionalCount = Math.max(0, Math.min(functionalCount, totalTestCases));
   const actualOtherCount = totalTestCases - actualFunctionalCount; // Force exact total
-  
-  console.log('🧮 FIXED Test type distribution:', {
-    totalTestCases,
-    functional: actualFunctionalCount,
-    other: actualOtherCount,
-    sum: actualFunctionalCount + actualOtherCount,
-    shouldEqual: totalTestCases,
-    isConsistent: (actualFunctionalCount + actualOtherCount) === totalTestCases
-  });
 
   // Generate trends data (7 days) - CONSISTENT with actual execution counts
   const trendsData: TrendData[] = [];
@@ -474,6 +442,5 @@ export function generateProjectDashboardData(
     }
   };
 
-  console.log('✅ CONSISTENT dashboard data:', result);
   return result;
 }

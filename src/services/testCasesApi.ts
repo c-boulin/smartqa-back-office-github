@@ -306,22 +306,18 @@ class TestCasesApiService {
   }
 
   async getTestCases(page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    let url = `/test_cases?page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc&include=tags`;
-    
-    console.log('🌐 API Request URL for getTestCases:', url);
-    
+    let url = `/test_cases?page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc&include=tags,folder`;
+
     if (projectId) {
       url += `&project=${projectId}`;
     }
-    
+
     if (folderId) {
       url += `&folder=${folderId}`;
     }
-    
-    console.log('🌐 FINAL API Request URL:', url);
-    
+
     const response = await apiService.authenticatedRequest(url);
-    console.log('🌐 API Response for getTestCases:', response);
+
     return response || this.getDefaultTestCasesResponse();
   }
 
@@ -620,16 +616,12 @@ class TestCasesApiService {
     // ALWAYS add attachments relationship (required by API)
     // ALWAYS add attachments relationship - fill with created attachment IDs if available
     if (testCaseData.createdAttachments && testCaseData.createdAttachments.length > 0) {
-      console.log('📎 API SERVICE: Adding attachments to payload:', testCaseData.createdAttachments);
-      
+
       requestBody.data.relationships.attachments = {
         data: testCaseData.createdAttachments
       };
-      
-      console.log('📎 API SERVICE: Using pre-formatted attachments for payload:', testCaseData.createdAttachments);
+
     }
-    
-    console.log('📎 API SERVICE: Final attachments in payload:', requestBody.data.relationships.attachments);
 
     const response = await apiService.authenticatedRequest('/test_cases', {
       method: 'POST',
@@ -675,9 +667,7 @@ class TestCasesApiService {
       id: string;
     }>;
   }): Promise<UpdateTestCaseResponse> {
-    console.log('🔧 API Service - Received testCaseData:', testCaseData);
-    console.log('🔧 API Service - automationStatus type:', typeof testCaseData.automationStatus);
-    console.log('🔧 API Service - template type:', typeof testCaseData.template);
+
 
     // Ensure all numeric fields are numbers
     const priorityNum = this.priorityToApi[testCaseData.priority];
@@ -706,8 +696,7 @@ class TestCasesApiService {
       }
     };
 
-    console.log('________________');
-    console.log(testCaseData.createdAttachments);
+
     // Initialize relationships object
     requestBody.data.relationships = {};
     
@@ -759,8 +748,6 @@ class TestCasesApiService {
       };
     }
 
-    console.log('🚀 Final PATCH payload being sent:', JSON.stringify(requestBody, null, 2));
-    console.log('🚀 Automation field in payload:', requestBody.data.attributes.automation, 'type:', typeof requestBody.data.attributes.automation);
 
     const response = await apiService.authenticatedRequest(`/test_cases/${id}`, {
       method: 'PATCH',
@@ -826,53 +813,40 @@ class TestCasesApiService {
 
   // Helper method to transform API test case to our internal format
     transformApiTestCase(apiTestCase: ApiTestCase, included?: Array<Record<string, unknown>>) {
-    console.log('🚨🚨🚨 TRANSFORM FUNCTION CALLED 🚨🚨🚨');
-    console.log('🔍 DEBUG: Transforming test case:', apiTestCase.attributes.id);
-    console.log('🔍 DEBUG: API test case relationships:', apiTestCase.relationships);
-    console.log('🔍 DEBUG: API test case attributes:', apiTestCase.attributes);
-    console.log('🔍 DEBUG: Included parameter received:', included);
-    console.log('🔍 DEBUG: Included data length:', included?.length || 0);
-    console.log('🔍 DEBUG: Included is undefined?', included === undefined);
-    console.log('🔍 DEBUG: Included is null?', included === null);
-    
+
+
     // Extraire l'ID du projet depuis l'URL de l'API
     const projectId = apiTestCase.relationships.project.data.id.split('/').pop() || '';
     const folderId = apiTestCase.relationships.folder?.data?.id?.split('/').pop();
     const ownerId = apiTestCase.relationships.user?.data?.id?.split('/').pop();
 
-    console.log('🔄 Transforming test case:', apiTestCase.attributes.id, 'folderId from API:', folderId, 'ownerId:', ownerId);
-    
     // Extract tags from relationships and resolve them using included data
     let tags: string[] = [];
     
     if (apiTestCase.relationships.tags?.data && included) {
-      console.log('🏷️ Test case', apiTestCase.attributes.id, '- Found tag relationships:', apiTestCase.relationships.tags.data);
-      console.log('🏷️ Included data:', included);
-      console.log('🏷️ Available included data types:', included.map(item => ({ type: item.type, id: item.attributes?.id })));
-      
+
+
       // Extract tag IDs from relationships
       const tagIds = apiTestCase.relationships.tags.data.map(tagRef => {
         // Extract ID from URL format like "/api/tags/123"
         const extractedId = tagRef.id.split('/').pop();
-        console.log('🏷️ Extracted tag ID from', tagRef.id, ':', extractedId);
+
         return extractedId;
       });
-      
-      console.log('🏷️ All extracted tag IDs:', tagIds);
-      
+
       // Find corresponding tag labels in included data
       tags = tagIds.map(tagId => {
-        console.log('🏷️ Looking for tag with ID:', tagId);
+
         const tagData = included.find(item => {
           const match = item.type === 'Tag' && item.attributes.id.toString() === tagId;
           if (item.type === 'Tag') {
-            console.log('🏷️ Checking tag:', { id: item.attributes.id, label: item.attributes.label, matches: match });
+            // Tag type matched
           }
           return match;
         });
         
         if (tagData) {
-          console.log('🏷️ ✅ Found tag data for ID', tagId, ':', tagData.attributes.label);
+
           return tagData.attributes.label;
         } else {
           console.warn('🏷️ ❌ Tag data not found for ID:', tagId);
@@ -881,7 +855,7 @@ class TestCasesApiService {
         }
       }).filter(Boolean);
     } else if (apiTestCase.relationships.tags?.data && !included) {
-      console.log('🏷️ Found tag relationships but no included data');
+
       // Try to extract tag IDs at least
       const tagIds = apiTestCase.relationships.tags.data.map(tagRef => {
         return tagRef.id.split('/').pop();
@@ -890,13 +864,11 @@ class TestCasesApiService {
     } else if (Array.isArray(apiTestCase.attributes.tags)) {
       // Fallback: use tags from attributes if available
       tags = apiTestCase.attributes.tags;
-      console.log('🏷️ Using tags from attributes:', tags);
+
     } else {
-      console.log('🏷️ No tags found for test case:', apiTestCase.attributes.id);
+      // No tags relationship data
     }
-    
-    console.log('🏷️ FINAL EXTRACTED TAGS:', tags);
-    
+
     // Extract step result IDs from relationships
     const stepResults = apiTestCase.relationships.stepResults?.data?.map(stepResult => 
       stepResult.id.split('/').pop() || stepResult.id
@@ -930,8 +902,7 @@ class TestCasesApiService {
       updatedAt: this.parseDate(apiTestCase.attributes.updatedAt),
       estimatedDuration: apiTestCase.attributes.estimatedDuration || 5
     };
-    
-    console.log('✅ Transformed test case:', transformed.id, 'with tags:', transformed.tags);
+
     return transformed;
   }
 }

@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { projectsApiService, ProjectsApiResponse } from '../services/projectsApi';
 import { Project } from '../types';
 import toast from 'react-hot-toast';
 import { useLoading } from '../context/LoadingContext';
 
 // Import SORT_OPTIONS from the component or define it here
-const SORT_OPTIONS = [
+const _SORT_OPTIONS = [
   { value: 'createdAt-desc', label: 'Creation Date (New → Old)', param: 'order[createdAt]=desc' },
   { value: 'createdAt-asc', label: 'Creation Date (Old → New)', param: 'order[createdAt]=asc' },
   { value: 'id-asc', label: 'ID (Ascending)', param: 'order[id]=asc' },
@@ -50,9 +50,7 @@ export const useProjects = () => {
       const transformedProjects = responseData.map(apiProject => 
         projectsApiService.transformApiProject(apiProject)
       );
-      
-      console.log('📊 Transformed projects:', transformedProjects.map(p => ({ id: p.id, name: p.name })));
-      
+
       // Check for projects with invalid IDs
       const invalidProjects = transformedProjects.filter(p => !p.id || p.id === '' || p.id === 'undefined');
       if (invalidProjects.length > 0) {
@@ -100,9 +98,7 @@ export const useProjects = () => {
       const transformedProjects = responseData.map(apiProject => 
         projectsApiService.transformApiProject(apiProject)
       );
-      
-      console.log('📊 Transformed projects:', transformedProjects.map(p => ({ id: p.id, name: p.name })));
-      
+
       // Check for projects with invalid IDs
       const invalidProjects = transformedProjects.filter(p => !p.id || p.id === '' || p.id === 'undefined');
       if (invalidProjects.length > 0) {
@@ -150,9 +146,7 @@ export const useProjects = () => {
       const transformedProjects = responseData.map(apiProject => 
         projectsApiService.transformApiProject(apiProject)
       );
-      
-      console.log('📊 Transformed projects:', transformedProjects.map(p => ({ id: p.id, name: p.name })));
-      
+
       // Check for projects with invalid IDs
       const invalidProjects = transformedProjects.filter(p => !p.id || p.id === '' || p.id === 'undefined');
       if (invalidProjects.length > 0) {
@@ -200,9 +194,7 @@ export const useProjects = () => {
       const transformedProjects = responseData.map(apiProject => 
         projectsApiService.transformApiProject(apiProject)
       );
-      
-      console.log('📊 Transformed projects:', transformedProjects.map(p => ({ id: p.id, name: p.name })));
-      
+
       // Check for projects with invalid IDs
       const invalidProjects = transformedProjects.filter(p => !p.id || p.id === '' || p.id === 'undefined');
       if (invalidProjects.length > 0) {
@@ -230,7 +222,7 @@ export const useProjects = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       let response: ProjectsApiResponse = await projectsApiService.getProjectsWithSort(page, 30, sortParam);
       
       // Ensure response is defined, if not use default
@@ -249,9 +241,7 @@ export const useProjects = () => {
       const transformedProjects = responseData.map(apiProject => 
         projectsApiService.transformApiProject(apiProject)
       );
-      
-      console.log('📊 Transformed projects:', transformedProjects.map(p => ({ id: p.id, name: p.name })));
-      
+
       // Check for projects with invalid IDs
       const invalidProjects = transformedProjects.filter(p => !p.id || p.id === '' || p.id === 'undefined');
       if (invalidProjects.length > 0) {
@@ -374,12 +364,6 @@ export const useProjects = () => {
       throw error;
     }
   };
-
-  useEffect(() => {
-    // Load projects with default sort (creation date desc)
-    const defaultSort = SORT_OPTIONS.find(option => option.value === 'createdAt-desc');
-    fetchProjectsWithSort(1, defaultSort?.param);
-  }, []);
 
   return {
     projects,

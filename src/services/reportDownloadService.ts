@@ -247,8 +247,7 @@ class ReportDownloadService {
     height: number
   ): Promise<number> {
     try {
-      console.log('📊 Generating chart:', title, 'Type:', chartType);
-      
+
       // Check if we need a new page
       const pageHeight = 280;
       if (y + height > pageHeight - 30) {
@@ -311,8 +310,7 @@ class ReportDownloadService {
     minHeight: number = 50
   ): Promise<number> {
     try {
-      console.log('📸 Capturing element with improved styling:', element.className || element.tagName);
-      
+
       // Apply PDF-friendly styles
       const cleanupStyles = this.applyPDFStyles(element);
       
@@ -328,19 +326,13 @@ class ReportDownloadService {
       const scale = Math.min(maxWidth / elementWidth, 1);
       const scaledWidth = elementWidth * scale;
       const scaledHeight = elementHeight * scale;
-      
-      console.log('📸 Element dimensions:', { 
-        original: { width: elementWidth, height: elementHeight },
-        scaled: { width: scaledWidth, height: scaledHeight },
-        scale 
-      });
-      
+
       // Check if we need a new page with more conservative margins
       const pageHeight = 280; // More conservative page height
       if (addPageIfNeeded && y + Math.max(scaledHeight, minHeight) > pageHeight - 30) {
         pdf.addPage();
         y = 20; // Reset to top of new page
-        console.log('📄 Added new page, reset Y to:', y);
+
       }
       
       // Capture the element with high quality settings and white background
@@ -455,8 +447,7 @@ class ReportDownloadService {
       
       // Add image to PDF
       pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
-      
-      console.log('✅ Successfully captured and added element to PDF');
+
       return y + Math.max(scaledHeight, minHeight) + 15; // Ensure minimum spacing
       
     } catch (error) {
@@ -471,7 +462,6 @@ class ReportDownloadService {
    * This is the shared implementation used by both download and email methods
    */
   private async createEnhancedVisualSummaryReportPDF(projectName: string, userName: string, reportData: ReportData): Promise<jsPDF> {
-    console.log('📄 Creating enhanced PDF matching page layout');
 
     const pdf = new jsPDF('p', 'mm', 'a4');
       let currentY = 15;
@@ -799,7 +789,7 @@ class ReportDownloadService {
 
       const fileName = `test-run-summary-${projectName.replace(/[^a-zA-Z0-9]/g, '_')}-${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
-      console.log('✅ Enhanced PDF with page layout generated and downloaded successfully');
+
     } catch (error) {
       console.error('❌ Failed to generate enhanced PDF:', error);
       throw error;
@@ -811,7 +801,6 @@ class ReportDownloadService {
    * This is the shared implementation used by both download and email methods
    */
   private async createDetailedReportPDF(reportData: ReportData, projectName: string, userName: string): Promise<jsPDF> {
-    console.log('📄 Creating Test Run Detailed Report PDF');
 
     const pdf = new jsPDF('p', 'mm', 'a4');
       const margin = 20;
@@ -1223,7 +1212,7 @@ class ReportDownloadService {
 
       const fileName = `test-run-detailed-${projectName.replace(/[^a-zA-Z0-9]/g, '_')}-${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
-      console.log('✅ Detailed report PDF generated and downloaded successfully');
+
     } catch (error) {
       console.error('❌ Failed to generate detailed report PDF:', error);
       throw error;
@@ -1235,8 +1224,7 @@ class ReportDownloadService {
    */
   async generateVisualSummaryReportPDF(projectName: string, userName: string): Promise<void> {
     try {
-      console.log('📄 Starting comprehensive PDF generation for Test Run Summary Report');
-      
+
       // Wait for all elements to render completely
       await this.waitForElementsToRender();
       
@@ -1298,8 +1286,7 @@ class ReportDownloadService {
       // Capture each section
       for (let i = 0; i < reportSections.length; i++) {
         const section = reportSections[i];
-        console.log(`📸 Processing section ${i + 1}/${reportSections.length}: ${section.title}`);
-        
+
         const element = document.querySelector(section.selector) as HTMLElement;
         if (element) {
           // Check if we need a new page for the section
@@ -1351,7 +1338,6 @@ class ReportDownloadService {
       // Download the PDF
       const fileName = `test-run-summary-${projectName.replace(/[^a-zA-Z0-9]/g, '_')}-${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
-      console.log('✅ Complete PDF with improved readability generated and downloaded:', fileName);
 
     } catch (error) {
       console.error('❌ Failed to generate complete visual PDF:', error);
@@ -1364,8 +1350,7 @@ class ReportDownloadService {
    */
   async generateVisualDetailedReportPDF(projectName: string, userName: string): Promise<void> {
     try {
-      console.log('📄 Starting comprehensive PDF generation for Test Run Detailed Report');
-      
+
       // Wait for all elements to render completely
       await this.waitForElementsToRender();
       
@@ -1411,8 +1396,7 @@ class ReportDownloadService {
       // Capture each section
       for (let i = 0; i < reportSections.length; i++) {
         const section = reportSections[i];
-        console.log(`📸 Processing detailed section ${i + 1}/${reportSections.length}: ${section.title}`);
-        
+
         const element = document.querySelector(section.selector) as HTMLElement;
         if (element) {
           // Check if we need a new page for the section
@@ -1464,7 +1448,6 @@ class ReportDownloadService {
       // Download the PDF
       const fileName = `test-run-detailed-${projectName.replace(/[^a-zA-Z0-9]/g, '_')}-${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
-      console.log('✅ Complete detailed PDF with improved readability generated and downloaded:', fileName);
 
     } catch (error) {
       console.error('❌ Failed to generate complete detailed visual PDF:', error);
@@ -1477,7 +1460,6 @@ class ReportDownloadService {
    * This is the shared implementation used by both download and email methods
    */
   private createSummaryReportCSV(reportData: ReportData, projectName: string, userName: string): string {
-    console.log('📊 Creating optimized CSV for Test Run Summary Report');
 
     // Use array buffer for faster string concatenation
     const rows: string[] = [];
@@ -1608,7 +1590,6 @@ class ReportDownloadService {
 
       URL.revokeObjectURL(url);
 
-      console.log('✅ Optimized CSV generated and downloaded');
     } catch (error) {
       console.error('❌ Failed to generate CSV:', error);
       throw error;
@@ -1620,7 +1601,6 @@ class ReportDownloadService {
    * This is the shared implementation used by both download and email methods
    */
   private createDetailedReportCSV(reportData: DetailedReportData, projectName: string, userName: string): string {
-    console.log('📊 Creating optimized CSV for Test Run Detailed Report');
 
     // Use array buffer for faster string concatenation
     const rows: string[] = [];
@@ -1817,7 +1797,6 @@ class ReportDownloadService {
 
       URL.revokeObjectURL(url);
 
-      console.log('✅ Optimized detailed CSV generated and downloaded');
     } catch (error) {
       console.error('❌ Failed to generate detailed CSV:', error);
       throw error;
@@ -1830,7 +1809,7 @@ class ReportDownloadService {
    */
   async generateSummaryReportPDFBlob(projectName: string, userName: string, reportData: ReportData): Promise<Blob> {
     try {
-      console.log('📄 Generating enhanced PDF blob for email attachment');
+
       const pdf = await this.createEnhancedVisualSummaryReportPDF(projectName, userName, reportData);
       return pdf.output('blob');
     } catch (error) {
@@ -1845,7 +1824,7 @@ class ReportDownloadService {
    */
   async generateDetailedReportPDFBlob(reportData: ReportData, projectName: string, userName: string): Promise<Blob> {
     try {
-      console.log('📄 Generating Test Run Detailed Report PDF blob for email attachment');
+
       const pdf = await this.createDetailedReportPDF(reportData, projectName, userName);
       return pdf.output('blob');
     } catch (error) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -63,6 +63,7 @@ interface ClosedRunsCaseResultsStackedChartProps {
   fromDate?: string;
   toDate?: string;
   className?: string;
+  closedTestRunsData?: Array<Record<string, unknown>>;
 }
 
 // Color utility for stable colors based on result labels
@@ -129,35 +130,22 @@ const transformDataToChartFormat = (apiData: ApiTestRun[]): {
   chartData: ChartRow[], 
   resultLabels: string[] 
 } => {
-  console.log('📊 Transforming', apiData.length, 'closed test runs to chart format');
   
   // Step 1: Group by date and collect result counts
   const dateGroups: Record<string, Record<string, number>> = {};
   const allResultLabels = new Set<string>();
   
-  apiData.forEach((testRun, index) => {
-    console.log(`📊 Processing test run ${index + 1}:`, {
-      id: testRun.attributes.id || testRun.id,
-      state: testRun.attributes.state,
-      closedAt: testRun.attributes.closedAt,
-      executionsCount: testRun.attributes.executions?.length || 0
-    });
-    
-    // Skip if no closedAt or invalid
+  apiData.forEach((testRun) => {
     if (!testRun.attributes.closedAt) {
-      console.warn('📊 Skipping test run - no closedAt:', testRun.id);
       return;
     }
     
     // Convert to Paris date
     const parisDate = convertToParisDate(testRun.attributes.closedAt);
     if (!parisDate) {
-      console.warn('📊 Skipping test run - invalid closedAt:', testRun.attributes.closedAt);
       return;
     }
-    
-    console.log(`📊 Test run closed on Paris date: ${parisDate}`);
-    
+
     // Initialize date group if not exists
     if (!dateGroups[parisDate]) {
       dateGroups[parisDate] = {};
@@ -165,8 +153,6 @@ const transformDataToChartFormat = (apiData: ApiTestRun[]): {
     
     // Process executions
     if (testRun.attributes.executions && Array.isArray(testRun.attributes.executions)) {
-      console.log(`📊 Processing ${testRun.attributes.executions.length} executions`);
-
       // Group executions by test case ID + configuration ID and get the last execution per combination
       const lastExecutionPerTestCaseConfig = new Map<string, Record<string, unknown>>();
 
@@ -183,10 +169,9 @@ const transformDataToChartFormat = (apiData: ApiTestRun[]): {
         }
       });
 
-      console.log(`📊 Found ${lastExecutionPerTestCaseConfig.size} unique test case + configuration combinations with executions`);
 
       // Count each result type from the last execution per test case + configuration
-      Array.from(lastExecutionPerTestCaseConfig.values()).forEach((execution: Record<string, unknown>, executionIndex: number) => {
+      Array.from(lastExecutionPerTestCaseConfig.values()).forEach((execution: Record<string, unknown>) => {
         const resultLabel = getResultLabel(execution.result);
         
         if (resultLabel) {
@@ -200,17 +185,12 @@ const transformDataToChartFormat = (apiData: ApiTestRun[]): {
           
           // Increment count
           dateGroups[parisDate][resultLabel]++;
-          
-          console.log(`📊   Test case ${executionIndex + 1}: ${resultLabel} (total for ${parisDate}: ${dateGroups[parisDate][resultLabel]})`);
+
         }
       });
-    } else {
-      console.log(`📊 No valid executions array for this test run`);
     }
   });
   
-  console.log('📊 Date groups created:', dateGroups);
-  console.log('📊 All result labels found:', Array.from(allResultLabels));
   
   // Step 2: Convert to chart format
   const resultLabels = Array.from(allResultLabels).sort();
@@ -224,13 +204,10 @@ const transformDataToChartFormat = (apiData: ApiTestRun[]): {
         row.total += row[label] as number;
       });
       
-      console.log(`📊 Chart row for ${date}:`, row);
       return row;
     })
     .sort((a, b) => a.date.localeCompare(b.date)); // Sort by date ascending
   
-  console.log('📊 Final chart data:', chartData);
-  console.log('📊 Result labels for bars:', resultLabels);
   
   return { chartData, resultLabels };
 };
@@ -276,13 +253,15 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
   projectId,
   fromDate,
   toDate,
-  className = ''
+  className = '',
+  closedTestRunsData: propsClosedTestRunsData
 }) => {
   const [data, setData] = useState<ChartRow[]>([]);
   const [resultLabels, setResultLabels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPercentage, setShowPercentage] = useState(false);
+  const isFetchingRef = useRef(false);
 
   // Memoized data transformation to avoid recomputing on every render
   const { chartData, percentageData } = useMemo(() => {
@@ -307,11 +286,15 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
   const displayData = showPercentage ? percentageData : chartData;
 
   const fetchClosedTestRuns = async () => {
+    if (isFetchingRef.current) {
+      return;
+    }
+
     try {
+      isFetchingRef.current = true;
       setLoading(true);
       setError(null);
       
-      console.log('📊 Fetching closed test runs for chart...');
       
       // Build API URL with filters
       let url = '/test_runs?state=6&order[closedAt]=asc';
@@ -335,12 +318,10 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
       
       while (hasMorePages) {
         const pageUrl = `${url}&page=${currentPage}&itemsPerPage=100`;
-        console.log(`📊 Fetching page ${currentPage}:`, pageUrl);
         
         const response: ApiResponse = await apiService.authenticatedRequest(pageUrl);
         
         if (!response || !response.data) {
-          console.warn('📊 No data in response for page', currentPage);
           break;
         }
         
@@ -350,35 +331,43 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
         hasMorePages = currentPage < totalPages;
         currentPage++;
         
-        console.log(`📊 Page ${currentPage - 1} fetched: ${response.data.length} items, total so far: ${allTestRuns.length}`);
       }
       
-      console.log(`📊 Fetched ${allTestRuns.length} total closed test runs`);
       
       // Transform data
       const { chartData, resultLabels: labels } = transformDataToChartFormat(allTestRuns);
       
       setData(chartData);
       setResultLabels(labels);
-      
-      console.log('📊 Chart data ready:', {
-        dataPoints: chartData.length,
-        resultLabels: labels,
-        dateRange: chartData.length > 0 ? `${chartData[0].date} to ${chartData[chartData.length - 1].date}` : 'none'
-      });
-      
+
     } catch (err) {
-      console.error('📊 Failed to fetch closed test runs:', err);
+      console.error('Failed to fetch closed test runs:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   };
 
   useEffect(() => {
-    fetchClosedTestRuns();
+    if (propsClosedTestRunsData !== undefined) {
+      try {
+        setLoading(true);
+        const { chartData, resultLabels: labels } = transformDataToChartFormat(propsClosedTestRunsData as ApiTestRun[]);
+        setData(chartData);
+        setResultLabels(labels);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to transform provided data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to transform data');
+      } finally {
+        setLoading(false);
+      }
+    } else if (projectId || fromDate || toDate) {
+      fetchClosedTestRuns();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchClosedTestRuns is stable
-  }, [projectId, fromDate, toDate]);
+  }, [projectId, fromDate, toDate, propsClosedTestRunsData]);
 
   if (loading) {
     return (

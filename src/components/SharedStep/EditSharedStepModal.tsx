@@ -19,12 +19,14 @@ import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import DraggableTestStepWithAutoUpload from '../TestCase/DraggableTestStepWithAutoUpload';
 import { SharedStep } from '../../services/sharedStepsApi';
-import { sharedStepsApiService } from '../../services/sharedStepsApi';
 
 interface TestStep {
   id: string;
   step: string;
   result: string;
+  originalId?: string;
+  originalStep?: string;
+  originalResult?: string;
 }
 
 interface EditSharedStepModalProps {
@@ -61,47 +63,29 @@ const EditSharedStepModal: React.FC<EditSharedStepModalProps> = ({
   // Populate form when sharedStep changes or modal opens
   useEffect(() => {
     if (isOpen && sharedStep) {
-      const fetchStepResults = async () => {
+      const processStepResults = () => {
         setIsLoadingStepResults(true);
         let existingSteps: TestStep[] = [];
-        
+
         if (sharedStep.stepResults && sharedStep.stepResults.length > 0) {
-          try {
-            console.log('🔄 Fetching step results for shared step:', sharedStep.id);
-            
-            // Fetch all step results in parallel
-            const stepResultPromises = sharedStep.stepResults.map(stepResultId => 
-              sharedStepsApiService.getStepResult(stepResultId)
-            );
-            
-            const stepResultResponses = await Promise.all(stepResultPromises);
-            
-            // Transform and sort by order
-            existingSteps = stepResultResponses
-              .map(response => ({
-                id: response.data.attributes.id.toString(),
-                step: response.data.attributes.step,
-                result: response.data.attributes.result,
-                order: response.data.attributes.order,
-                originalId: response.data.attributes.id.toString()
-              }))
-              .sort((a, b) => a.order - b.order) // Sort by order: 1, 2, 3, etc.
-              .map(step => ({
-                id: step.id,
-                step: step.step,
-                result: step.result,
-                originalId: step.originalId
-              }));
-            
-            console.log('✅ Fetched and sorted step results:', existingSteps);
-            
-          } catch (error) {
-            console.error('❌ Failed to fetch step results:', error);
-            // Fallback to empty steps if fetch fails
-            existingSteps = [];
-          }
+
+          // Step results are now already in the included data from the API
+          existingSteps = sharedStep.stepResults
+            .filter((stepResult): stepResult is { id: string; step: string; result: string; order: number } =>
+              typeof stepResult === 'object' && stepResult !== null
+            )
+            .sort((a, b) => a.order - b.order)
+            .map(stepResult => ({
+              id: stepResult.id,
+              step: stepResult.step,
+              result: stepResult.result,
+              originalId: stepResult.id,
+              originalStep: stepResult.step,
+              originalResult: stepResult.result
+            }));
+
         }
-        
+
         setTestSteps(existingSteps);
         setIsLoadingStepResults(false);
       };
@@ -111,7 +95,7 @@ const EditSharedStepModal: React.FC<EditSharedStepModalProps> = ({
         title: sharedStep.title
       });
 
-      fetchStepResults();
+      processStepResults();
     } else if (isOpen && !sharedStep) {
       // Reset form for new shared step
       setFormData({
@@ -206,6 +190,7 @@ const EditSharedStepModal: React.FC<EditSharedStepModalProps> = ({
                   required
                   disabled={isSubmitting}
                   placeholder="Enter shared step title"
+                  autoFocus
                 />
               </div>
 

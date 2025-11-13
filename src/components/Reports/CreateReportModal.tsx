@@ -198,8 +198,6 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
       const payload = buildScheduledReportPayload(formData, users, authState.user.id);
 
-      console.log('📊 Scheduled report payload:', payload);
-
       // Fetch report data using the new API endpoint
       // Add test run creation date to filters if using creation_time mode
       const filtersWithTestRunDate = {
@@ -209,32 +207,16 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
           : undefined
       };
 
-      console.log('📊 Fetching report data with filters:', filtersWithTestRunDate);
-
       const reportData = await fetchTestCasesForReport(
         formData.project,
         filtersWithTestRunDate
       );
 
-      console.log('📊 Report data fetched successfully:', {
-        testCasesCount: reportData.testCases.length,
-        testRunsCount: reportData.testRuns.length,
-        testExecutionsCount: reportData.testExecutions?.length || 0,
-        totalTestCases: reportData.totalTestCases
-      });
-
       // Log test runs extracted from included node
-      if (reportData.testRuns.length > 0) {
-        console.log('📊 Test runs from included node:', reportData.testRuns.map((tr: { attributes?: { id?: string; name?: string } }) => ({
-          id: tr.attributes?.id,
-          name: tr.attributes?.name
-        })));
-      }
 
       // Log test executions
       if (reportData.testExecutions && reportData.testExecutions.length > 0) {
-        console.log('📊 Test executions extracted:', reportData.testExecutions.length, 'executions');
-        console.log('📊 Sample execution:', reportData.testExecutions[0]);
+        // Test executions available
       }
 
       // Pass the form data, report data, AND scheduled report payload to parent component
@@ -662,6 +644,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                 required
                 disabled={isSubmitting}
                 placeholder="Enter report title"
+                autoFocus
               />
             </div>
 

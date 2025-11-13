@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Layers, User, Calendar, Loader } from 'lucide-react';
+import { Layers, User, Calendar } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
-import { SharedStep, sharedStepsApiService } from '../../services/sharedStepsApi';
+import { SharedStep } from '../../services/sharedStepsApi';
 import { format } from 'date-fns';
 
 interface SharedStepViewModalProps {
@@ -24,44 +24,19 @@ const SharedStepViewModal: React.FC<SharedStepViewModalProps> = ({
   sharedStep
 }) => {
   const [stepResults, setStepResults] = useState<StepResult[]>([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen && sharedStep && sharedStep.stepResults && sharedStep.stepResults.length > 0) {
-      const fetchStepResults = async () => {
-        setLoading(true);
-        try {
-          console.log('🔄 Fetching step results for shared step view:', sharedStep.id);
-          
-          // Fetch all step results in parallel
-          const stepResultPromises = sharedStep.stepResults!.map(stepResultId => 
-            sharedStepsApiService.getStepResult(stepResultId)
-          );
-          
-          const stepResultResponses = await Promise.all(stepResultPromises);
-          
-          // Transform and sort by order
-          const fetchedStepResults = stepResultResponses
-            .map(response => ({
-              id: response.data.attributes.id.toString(),
-              step: response.data.attributes.step,
-              result: response.data.attributes.result,
-              order: response.data.attributes.order
-            }))
-            .sort((a, b) => a.order - b.order);
-          
-          setStepResults(fetchedStepResults);
-          console.log('✅ Fetched step results for view:', fetchedStepResults);
-          
-        } catch (error) {
-          console.error('❌ Failed to fetch step results for view:', error);
-          setStepResults([]);
-        } finally {
-          setLoading(false);
-        }
-      };
 
-      fetchStepResults();
+      // Step results are now already in the included data from the API
+      const processedStepResults = sharedStep.stepResults
+        .filter((stepResult): stepResult is { id: string; step: string; result: string; order: number } =>
+          typeof stepResult === 'object' && stepResult !== null
+        )
+        .sort((a, b) => a.order - b.order);
+
+      setStepResults(processedStepResults);
+
     } else {
       setStepResults([]);
     }
@@ -111,14 +86,7 @@ const SharedStepViewModal: React.FC<SharedStepViewModalProps> = ({
         <div>
           <h4 className="text-lg font-medium text-gray-300 mb-4">Steps and Results</h4>
           
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <Loader className="w-6 h-6 text-cyan-400 animate-spin mx-auto mb-2" />
-                <p className="text-gray-400 text-sm">Loading step details...</p>
-              </div>
-            </div>
-          ) : stepResults.length > 0 ? (
+          {stepResults.length > 0 ? (
             <div className="space-y-4">
               {stepResults.map((stepResult, index) => (
                 <div key={stepResult.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">

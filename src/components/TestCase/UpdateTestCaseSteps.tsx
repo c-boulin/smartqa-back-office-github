@@ -183,7 +183,7 @@ const UpdateTestCaseSteps: React.FC<UpdateTestCaseStepsProps> = ({
                         const idParts = item.id.split('-');
                         if (idParts.length >= 3 && idParts[0] === 'shared') {
                           const pivotId = parseInt(idParts[2]);
-                          console.log('🗑️ Removing shared step instance with pivot_id:', pivotId);
+
                           onRemoveSharedStep(`pivot-${pivotId}`); // Pass pivot ID for deletion
                         } else {
                           onRemoveSharedStep(sharedStepId);

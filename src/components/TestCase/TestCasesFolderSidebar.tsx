@@ -51,11 +51,11 @@ const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
             onSelectFolder={(folderId) => {
               if (folderId === null) {
                 // Deselect folder - show all test cases
-                console.log('🚫 Deselecting folder, showing all test cases');
+
                 onSelectFolder(null);
               } else {
                 // Select folder - filter test cases
-                console.log('✅ Selecting folder:', folderId);
+
                 onSelectFolder(folderId);
               }
             }}

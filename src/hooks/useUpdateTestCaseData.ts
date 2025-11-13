@@ -10,6 +10,8 @@ interface TestStep {
   step: string;
   result: string;
   originalId?: string;
+  originalStep?: string;
+  originalResult?: string;
 }
 
 interface SharedStepInstance {
@@ -66,7 +68,7 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
   //   }
   //
   //   try {
-  //     console.log('🗑️ Deleting shared step instance with pivot_id:', pivotId);
+  //     
   //     await testCaseDataService.deleteSharedStepInstance(testCaseId, pivotId);
   //     
   //     // Remove from local state
@@ -75,7 +77,7 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
   //       !(item.type === 'shared' && item.id.includes(`-${pivotId}`))
   //     ));
   //     
-  //     console.log('✅ Successfully removed shared step instance from local state');
+  //     
   //   } catch (error) {
   //     console.error('❌ Failed to delete shared step instance:', error);
   //     throw error;
@@ -86,8 +88,7 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
     setIsLoadingData(true);
     
     try {
-      console.log('🔄 Using new API endpoints to fetch test case data:', testCase.id);
-      
+
       // Use the new service to fetch data from all three endpoints
       const result = await testCaseDataService.fetchTestCaseDataForUpdate(testCase.id);
       
@@ -96,12 +97,14 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
         
         // Use partial data if available
         if (result.partialData) {
-          console.log('⚠️ Using partial data due to some API failures');
+
           setTestSteps(result.partialData.stepResults?.map(sr => ({
             id: sr.id,
             originalId: sr.originalId,
             step: sr.step,
-            result: sr.result
+            result: sr.result,
+            originalStep: sr.originalStep,
+            originalResult: sr.originalResult
           })) || []);
           
           setSharedSteps(result.partialData.sharedSteps || []);
@@ -126,20 +129,15 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
       
       // Successfully fetched all data
       const { stepResults, sharedSteps: fetchedSharedSteps, attachments, stepOrder } = result.data!;
-      
-      console.log('✅ Successfully fetched test case data:', {
-        stepResults: stepResults.length,
-        sharedSteps: fetchedSharedSteps.length,
-        attachments: attachments.length,
-        stepOrder: stepOrder.length
-      });
-      
+
       // Transform step results to TestStep format
       const transformedTestSteps = stepResults.map(sr => ({
         id: sr.id,
         originalId: sr.originalId,
         step: sr.step,
-        result: sr.result
+        result: sr.result,
+        originalStep: sr.originalStep,
+        originalResult: sr.originalResult
       }));
       
       setTestSteps(transformedTestSteps);
@@ -193,8 +191,7 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
   const handleDeleteSharedStepInstance = useCallback(async (pivotId: number) => {
     // Find the test case ID from the current context
     // This would need to be passed from the parent component
-    console.log('🗑️ Attempting to delete shared step instance with pivot_id:', pivotId);
-    
+
     // For now, just remove from local state
     // The actual API call should be made from the parent component
     setSharedSteps(prev => prev.filter(step => step.pivotId !== pivotId));

@@ -37,10 +37,10 @@ const TestCases: React.FC = () => {
   const tags = appState.tags;
   const tagsLoading = appState.isLoadingTags;
   
-  const { 
-    folderTree, 
-    loading: foldersLoading, 
-    selectedFolderId, 
+  const {
+    folderTree,
+    loading: foldersLoading,
+    selectedFolderId,
     selectFolder,
     getSelectedFolder,
     updateFoldersFromTestCases
@@ -73,17 +73,17 @@ const TestCases: React.FC = () => {
   const [selectedTestCaseForDetails, setSelectedTestCaseForDetails] = useState<TestCase | null>(null);
   const [isDragDropInProgress, setIsDragDropInProgress] = useState(false);
   
-  const { 
+  const {
     testCases,
     allTestCases,
-    loading, 
-    error, 
-    pagination, 
+    loading,
+    error,
+    pagination,
     setCurrentFilterMode,
-    // isInitialLoadComplete,
+    isInitialLoadComplete,
     fetchAllTestCasesAndExtractFolders,
-    // filterTestCasesByFolder,
-    showFolderTestCases, 
+    filterTestCasesByFolder,
+    showFolderTestCases,
     searchTestCases,
     // filterTestCasesByAutomation,
     // filterTestCasesByPriority,
@@ -91,9 +91,9 @@ const TestCases: React.FC = () => {
     // filterTestCasesByState,
     // filterTestCasesByTags,
     filterTestCasesWithMultipleFilters,
-    createTestCase, 
-    updateTestCase, 
-    deleteTestCase 
+    createTestCase,
+    updateTestCase,
+    deleteTestCase
   } = useTestCases(selectedProject?.id, selectedFolderId, updateFoldersFromTestCases, false);
 
   const { hasPendingNavigationFilter, isApplyingNavigationFilter } = useTestCasesNavigation(
@@ -113,19 +113,19 @@ const TestCases: React.FC = () => {
         applyFilters();
       } else {
         setCurrentFilterMode('folder');
-        showFolderTestCases();
+        filterTestCasesByFolder(selectedFolderId);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- applyFilters would cause infinite loop
-  }, [searchTestCases, showFolderTestCases, setCurrentFilterMode, hasActiveFilters]);
+  }, [searchTestCases, filterTestCasesByFolder, selectedFolderId, setCurrentFilterMode, hasActiveFilters]);
 
   const applyFilters = useCallback(async () => {
     if (!hasActiveFilters()) {
       setCurrentFilterMode('folder');
-      showFolderTestCases();
+      filterTestCasesByFolder(selectedFolderId);
     } else {
       const multipleFilters = buildMultipleFilters();
-      console.log('🔍 Applying multiple filters:', multipleFilters);
+
       await filterTestCasesWithMultipleFilters(multipleFilters, 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- filters is intentionally omitted to control when this runs
@@ -137,8 +137,8 @@ const TestCases: React.FC = () => {
     setCurrentSearchTerm('');
     setCurrentFilterMode('folder');
     setFiltersCleared(true);
-    showFolderTestCases();
-  }, [clearFilters, setCurrentFilterMode, showFolderTestCases]);
+    filterTestCasesByFolder(selectedFolderId);
+  }, [clearFilters, setCurrentFilterMode, filterTestCasesByFolder, selectedFolderId]);
 
   const clearIndividualFilter = useCallback(async (filterType: keyof typeof filters, _value?: string) => {
     // Handle search clearing
@@ -150,7 +150,7 @@ const TestCases: React.FC = () => {
         applyFilters();
       } else {
         setCurrentFilterMode('folder');
-        showFolderTestCases();
+        filterTestCasesByFolder(selectedFolderId);
       }
       return;
     }
@@ -183,39 +183,49 @@ const TestCases: React.FC = () => {
       } else {
         // No more filters, show folder test cases
         setCurrentFilterMode('folder');
-        showFolderTestCases();
+        filterTestCasesByFolder(selectedFolderId);
       }
     }, 100); // Increase timeout to ensure state updates
     // eslint-disable-next-line react-hooks/exhaustive-deps -- applyFilters and hasActiveFilters would cause infinite loop
   }, [filters, updateFilter, buildMultipleFilters, filterTestCasesWithMultipleFilters, setCurrentFilterMode, showFolderTestCases]);
 
+  // Track if this is the first time we're seeing the folder after initial load
+  const isFirstFolderLoad = React.useRef(true);
+
   // Effect to handle folder changes while preserving filters
   React.useEffect(() => {
-    if (selectedProject && !hasPendingNavigationFilter) {
-      const hasActiveSearch = currentSearchTerm.trim() !== '';
-      
-      if (filtersCleared) {
-        console.log('🧹 Filters were explicitly cleared, not re-applying');
-        setFiltersCleared(false);
-        setCurrentFilterMode('folder');
-        showFolderTestCases();
+    if (selectedProject && !hasPendingNavigationFilter && isInitialLoadComplete) {
+      // Skip the first run after initial load - data is already loaded
+      if (isFirstFolderLoad.current) {
+
+        isFirstFolderLoad.current = false;
         return;
       }
-      
+
+      const hasActiveSearch = currentSearchTerm.trim() !== '';
+
+      if (filtersCleared) {
+
+        setFiltersCleared(false);
+        setCurrentFilterMode('folder');
+        filterTestCasesByFolder(selectedFolderId);
+        return;
+      }
+
       if (hasActiveSearch) {
-        console.log('🔍 Folder changed with active search, re-running search:', currentSearchTerm);
+
         searchTestCases(currentSearchTerm, 1);
       } else if (hasActiveFilters()) {
-        console.log('🔧 Folder changed with active filters, re-applying filters');
+
         applyFilters();
       } else {
-        console.log('📁 Folder changed with no filters, fetching test cases');
+
         setCurrentFilterMode('folder');
-        showFolderTestCases();
+        filterTestCasesByFolder(selectedFolderId);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Complex filter dependencies intentionally omitted
-  }, [selectedFolderId]);
+  }, [selectedFolderId, isInitialLoadComplete]);
 
   const handleCreateFolder = useCallback(() => {
     setIsCreateFolderModalOpen(true);
@@ -243,19 +253,10 @@ const TestCases: React.FC = () => {
         childrenIds: data.childrenIds,
         userId: authState.user.id
       });
-      
+
       setIsCreateFolderModalOpen(false);
       toast.success('Folder created successfully');
       await fetchAllTestCasesAndExtractFolders(selectedProject.id);
-      
-      // Re-apply folder filter to maintain the current view if a folder is selected
-      if (selectedFolderId) {
-        console.log('🔄 Re-applying folder filter after folder creation to maintain folder context for folder:', selectedFolderId);
-        // Small delay to ensure folder data refresh completes
-        setTimeout(() => {
-          showFolderTestCases(selectedFolderId);
-        }, 100);
-      }
       
     } catch {
       console.error('Failed to create folder:', error);
@@ -291,22 +292,13 @@ const TestCases: React.FC = () => {
         creatorId: authState.user.id,
         editorId: authState.user.id
       });
-      
+
       setIsEditFolderModalOpen(false);
       setFolderToManage(null);
       toast.success('Folder updated successfully');
-      
+
       // Refresh folder data
       await fetchAllTestCasesAndExtractFolders(selectedProject.id);
-      
-      // Re-apply folder filter to maintain the current view if a folder is selected
-      if (selectedFolderId) {
-        console.log('🔄 Re-applying folder filter after update to maintain context for folder:', selectedFolderId);
-        // Small delay to ensure folder data refresh completes
-        setTimeout(() => {
-          showFolderTestCases(selectedFolderId);
-        }, 100);
-      }
       
     } catch {
       console.error('Failed to update folder:', error);
@@ -328,28 +320,19 @@ const TestCases: React.FC = () => {
       setIsSubmitting(true);
       
       await foldersApiService.deleteFolder(folderToManage.id);
-      
+
       setIsDeleteFolderDialogOpen(false);
       setFolderToManage(null);
       toast.success('Folder deleted successfully');
-      
+
       // Clear folder selection if the deleted folder was selected
       if (selectedFolderId === folderToManage.id) {
         selectFolder(null);
       }
-      
+
       // Refresh folder data
       await fetchAllTestCasesAndExtractFolders(selectedProject.id);
-      
-       // Re-apply folder filter to maintain the current view if a folder is selected
-       if (selectedFolderId) {
-         console.log('🔄 Re-applying folder filter after folder deletion to maintain folder context for folder:', selectedFolderId);
-         // Small delay to ensure folder data refresh completes
-         setTimeout(() => {
-           showFolderTestCases(selectedFolderId);
-         }, 100);
-       }
-       
+
     } catch {
       console.error('Failed to delete folder:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete folder';
@@ -390,26 +373,17 @@ const TestCases: React.FC = () => {
       setIsSubmitting(true);
       
       await foldersApiService.deleteFolder(targetFolder.id);
-      
+
       toast.success('Folder deleted successfully');
-      
+
       // Clear folder selection if the deleted folder was selected
       if (selectedFolderId === targetFolder.id) {
         selectFolder(null);
       }
-      
+
       // Refresh folder data
       await fetchAllTestCasesAndExtractFolders(selectedProject.id);
-      
-      // Re-apply folder filter to maintain the current view if a folder is selected
-      if (selectedFolderId) {
-        console.log('🔄 Re-applying folder filter after folder deletion to maintain folder context for folder:', selectedFolderId);
-        // Small delay to ensure folder data refresh completes
-        setTimeout(() => {
-          showFolderTestCases(selectedFolderId);
-        }, 100);
-      }
-      
+
       // Clean up state
       setFolderToManage(null);
       
@@ -424,7 +398,7 @@ const TestCases: React.FC = () => {
   }, [folderToManage, selectedProject, selectedFolderId, selectFolder, fetchAllTestCasesAndExtractFolders, showFolderTestCases]);
 
   const handleTestCaseTitleClick = useCallback((testCase: TestCase) => {
-    console.log('📋 Test case title clicked:', testCase.title, 'ID:', testCase.id);
+
     setSelectedTestCaseForDetails(testCase);
     setIsDetailsSidebarOpen(true);
   }, []);
@@ -442,7 +416,6 @@ const TestCases: React.FC = () => {
 
     try {
       setIsDragDropInProgress(true);
-      console.log('🎯 Moving test case', testCaseId, 'to folder', targetFolderId);
 
       // Find the test case in our current data
       const testCaseToMove = testCases.find(tc => tc.id === testCaseId) || 
@@ -452,18 +425,14 @@ const TestCases: React.FC = () => {
         throw new Error('Test case not found');
       }
 
-      console.log('📋 Found test case to move:', testCaseToMove.title);
-      console.log('📋 Current folder ID:', testCaseToMove.folderId);
-      console.log('📋 Target folder ID:', targetFolderId);
 
       // Get the current test case data from API to ensure we have the latest version
       const currentTestCaseResponse = await testCasesApiService.getTestCase(testCaseId);
       // const currentTestCase = testCasesApiService.transformApiTestCase(currentTestCaseResponse.data);
 
       // Get the full test case data with all relationships
-      const fullTestCaseResponse = await testCasesApiService.getTestCaseWithIncludes(testCaseId);
-      console.log('📋 Full test case data:', fullTestCaseResponse);
-      
+      const _fullTestCaseResponse = await testCasesApiService.getTestCaseWithIncludes(testCaseId);
+
       // Build the complete PATCH payload preserving all existing relationships
       const updatePayload = {
         data: {
@@ -494,28 +463,26 @@ const TestCases: React.FC = () => {
       // Preserve existing tags relationship if it exists
       if (currentTestCaseResponse.data.relationships.tags) {
         updatePayload.data.relationships.tags = currentTestCaseResponse.data.relationships.tags;
-        console.log('📋 Preserved tags relationship:', currentTestCaseResponse.data.relationships.tags);
+
       }
       
       // Preserve existing attachments relationship if it exists
       if (currentTestCaseResponse.data.relationships.attachments) {
         updatePayload.data.relationships.attachments = currentTestCaseResponse.data.relationships.attachments;
-        console.log('📋 Preserved attachments relationship:', currentTestCaseResponse.data.relationships.attachments);
+
       }
       
       // Preserve existing step results relationship if it exists
       if (currentTestCaseResponse.data.relationships.stepResults) {
         updatePayload.data.relationships.step_results = currentTestCaseResponse.data.relationships.stepResults;
-        console.log('📋 Preserved step results relationship:', currentTestCaseResponse.data.relationships.stepResults);
+
       }
       
       // Preserve existing shared steps relationship if it exists
       if (currentTestCaseResponse.data.relationships.sharedSteps) {
         updatePayload.data.relationships.shared_steps = currentTestCaseResponse.data.relationships.sharedSteps;
-        console.log('📋 Preserved shared steps relationship:', currentTestCaseResponse.data.relationships.sharedSteps);
+
       }
-      
-      console.log('📋 Complete PATCH payload:', JSON.stringify(updatePayload, null, 2));
 
       // Send the PATCH request directly to preserve exact API format
       await apiService.authenticatedRequest(`/test_cases/${testCaseId}`, {
@@ -528,7 +495,7 @@ const TestCases: React.FC = () => {
       
       // Re-apply current view context
       if (selectedFolderId) {
-        console.log('🔄 Re-applying folder filter after move to maintain folder context');
+
         setTimeout(() => {
           showFolderTestCases(selectedFolderId);
         }, 100);
@@ -603,7 +570,7 @@ const TestCases: React.FC = () => {
       
       // Re-apply folder filter to show only test cases from the selected folder
       if (selectedFolderId) {
-        console.log('🔄 Re-applying folder filter after test case creation to maintain folder context for folder:', selectedFolderId);
+
         // Small delay to ensure test case creation and folder data refresh completes
         setTimeout(() => {
           showFolderTestCases(selectedFolderId);
@@ -696,7 +663,7 @@ const TestCases: React.FC = () => {
       
       // Re-apply folder filter to maintain folder context after update
       if (selectedFolderId) {
-        console.log('🔄 Re-applying folder filter after test case update to maintain folder context for folder:', selectedFolderId);
+
         // Small delay to ensure folder data refresh completes
         setTimeout(() => {
           showFolderTestCases(selectedFolderId);
@@ -726,7 +693,7 @@ const TestCases: React.FC = () => {
       
       // Re-apply folder filter to maintain folder context after deletion
       if (selectedFolderId) {
-        console.log('🔄 Re-applying folder filter after test case deletion to maintain folder context for folder:', selectedFolderId);
+
         // Small delay to ensure folder data refresh completes
         setTimeout(() => {
           showFolderTestCases(selectedFolderId);
@@ -754,31 +721,17 @@ const TestCases: React.FC = () => {
     }
 
     try {
-      console.log('🔄 Starting test case duplication for:', testCase.title);
-      console.log('🎯 Target project:', targetProjectId, 'Target folder:', targetFolderId);
-
       // Get complete test case data with all relationships including order metadata
       const fullTestCaseResponse = await testCasesApiService.getTestCaseWithIncludes(testCase.id);
-      console.log('📋 Full test case data:', fullTestCaseResponse);
 
       // Prepare the duplicate payload based on the original test case data
       const originalData = fullTestCaseResponse.data;
       const originalAttributes = originalData.attributes;
       const originalRelationships = originalData.relationships;
-      const _includedData = fullTestCaseResponse.included || [];
 
       // The order information MUST come from the relationship's meta field, not from included data
       // This is critical: if the same shared step appears multiple times (e.g., at positions 1 and 3),
       // each relationship instance must preserve its own unique order
-      console.log('📋 Original relationships data:');
-      console.log('  - stepResults:', originalRelationships.stepResults?.data?.map((sr: { id: string; meta?: { order: number } }) => ({
-        id: sr.id,
-        metaOrder: sr.meta?.order
-      })));
-      console.log('  - sharedSteps:', originalRelationships.sharedSteps?.data?.map((ss: { id: string; meta?: { order: number } }) => ({
-        id: ss.id,
-        metaOrder: ss.meta?.order
-      })));
 
       // Use the relationship data as-is, ensuring each instance retains its order
       const enrichedRelationships = {
@@ -804,17 +757,6 @@ const TestCases: React.FC = () => {
           })
         } : undefined
       };
-
-      console.log('📋 Enriched relationships with order:', {
-        stepResults: enrichedRelationships.stepResults?.data?.map((sr: { id: string; meta?: { order: number } }) => ({
-          id: sr.id,
-          order: sr.meta?.order
-        })),
-        sharedSteps: enrichedRelationships.sharedSteps?.data?.map((ss: { id: string; meta?: { order: number } }) => ({
-          id: ss.id,
-          order: ss.meta?.order
-        }))
-      });
 
       // Create the duplicate payload with all original data
       await createTestCase({
@@ -843,7 +785,7 @@ const TestCases: React.FC = () => {
 
         // Re-apply current view context
         if (selectedFolderId) {
-          console.log('🔄 Re-applying folder filter after duplication to maintain folder context');
+
           setTimeout(() => {
             showFolderTestCases(selectedFolderId);
           }, 100);
@@ -881,7 +823,7 @@ const TestCases: React.FC = () => {
       const multipleFilters = buildMultipleFilters();
       filterTestCasesWithMultipleFilters(multipleFilters, page);
     } else {
-      console.log('📄 Paginating folder view - client-side pagination, page:', page);
+
       showFolderTestCases(undefined, page);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- filters is intentionally omitted to control when this runs

@@ -178,8 +178,7 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
       }> = [];
       
       if (createTestSteps && createTestSteps.length > 0) {
-        console.log('🔄 Creating step results for new shared step...');
-        
+
         for (let i = 0; i < createTestSteps.length; i++) {
           const step = createTestSteps[i];
           
@@ -194,15 +193,13 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
               id: stepResultResponse.data.attributes.id.toString(),
               order: i + 1 // Order starts from 1
             });
-            
-            console.log(`✅ Created step result ${i + 1}:`, stepResultResponse.data.id);
+
           } catch (stepError) {
             console.error(`❌ Failed to create step result ${i + 1}:`, stepError);
             throw new Error(`Failed to create step result ${i + 1}: ${stepError instanceof Error ? stepError.message : 'Unknown error'}`);
           }
         }
-        
-        console.log('✅ All step results created:', stepResults);
+
       }
       
       // Create the shared step with step results

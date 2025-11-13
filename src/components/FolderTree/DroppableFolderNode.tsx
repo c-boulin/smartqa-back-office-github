@@ -41,17 +41,17 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
     e.preventDefault();
     e.stopPropagation();
     if (hasChildren) {
-      console.log('🔄 Toggling folder expansion:', folder.name);
+
       onToggleExpanded(folder.id);
     }
-  }, [hasChildren, folder.id, folder.name, onToggleExpanded]);
+  }, [hasChildren, folder.id, onToggleExpanded]);
 
   const handleSelect = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('👆 Folder clicked:', folder.name, 'ID:', folder.id, 'Test cases:', folder.testCasesCount);
+
     onSelectFolder(folder.id);
-  }, [folder.id, folder.name, folder.testCasesCount, onSelectFolder]);
+  }, [folder.id, onSelectFolder]);
 
   // Drag and drop handlers
   const handleDragOver = (e: React.DragEvent) => {
@@ -93,19 +93,11 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
       }
 
       const dragData = JSON.parse(dragDataString);
-      const { testCaseId, testCaseTitle, currentFolderId } = dragData;
-
-      console.log('📁 Test case dropped:', {
-        testCaseId,
-        testCaseTitle,
-        currentFolderId,
-        targetFolderId: folder.id,
-        targetFolderName: folder.name
-      });
+      const { testCaseId, testCaseTitle: _testCaseTitle, currentFolderId } = dragData;
 
       // Don't allow dropping into the same folder
       if (currentFolderId === folder.id) {
-        console.log('⚠️ Test case already in this folder, ignoring drop');
+
         return;
       }
 

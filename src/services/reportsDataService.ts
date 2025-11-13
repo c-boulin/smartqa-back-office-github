@@ -174,12 +174,6 @@ export async function fetchTestCasesForReport(
     const queryString = buildReportQueryParams(projectId, filters);
     const url = `/test_cases?${queryString}`;
 
-    console.log('📊 ========================================');
-    console.log('📊 REPORTS DATA SERVICE - fetchTestCasesForReport');
-    console.log('📊 Full URL:', url);
-    console.log('📊 Query params:', queryString);
-    console.log('📊 Filters received:', JSON.stringify(filters, null, 2));
-    console.log('📊 ========================================');
 
     const response = await apiService.authenticatedRequest(url);
 
@@ -221,8 +215,6 @@ export async function fetchTestCasesForReport(
         });
       }
     });
-
-    console.log(`📊 Fetched ${testCases.length} test cases, ${testRuns.length} test runs, and ${testExecutions.length} test executions`);
 
     return {
       testCases,

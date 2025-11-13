@@ -192,17 +192,9 @@ export const buildScheduledReportPayload = (formData: FormData, users: User[], c
   // Add day to send if weekly
   if (formData.frequency === 'weekly' && formData.dayOfWeek) {
     payload.data.attributes.dayToSend = DAY_OF_WEEK_MAP[formData.dayOfWeek] || 1;
-    console.log('📅 Adding dayToSend:', {
-      frequency: formData.frequency,
-      dayOfWeek: formData.dayOfWeek,
-      dayToSend: payload.data.attributes.dayToSend
-    });
+
   } else {
-    console.log('⚠️ Not adding dayToSend:', {
-      frequency: formData.frequency,
-      dayOfWeek: formData.dayOfWeek,
-      condition: formData.frequency === 'weekly' && formData.dayOfWeek
-    });
+    // Not weekly frequency
   }
 
   // Add test run selection

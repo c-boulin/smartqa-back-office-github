@@ -37,14 +37,14 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
 }) => {
   // const { state: authState } = useAuth();
   const { users, loading: usersLoading } = useUsers();
-  const { getSelectedProject, state: appState, createConfiguration, loadConfigurations } = useApp();
+  const { getSelectedProject, createConfiguration } = useApp();
   const selectedProject = getSelectedProject();
-  
+
   // Fetch all test cases for the project
-  const { 
-    allTestCases, 
+  const {
+    allTestCases,
     loading: testCasesLoading,
-    fetchAllTestCasesForProject 
+    fetchAllTestCasesForProject
   } = useTestCases(selectedProject?.id, null, undefined, true);
 
   const [formData, setFormData] = useState({
@@ -61,19 +61,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   const [showTestCaseSelector, setShowTestCaseSelector] = useState(false);
   const [existingConfigurations, setExistingConfigurations] = useState<Configuration[]>([]);
   const [isLoadingConfigurations, setIsLoadingConfigurations] = useState(false);
-  const [originalTestPlanId, setOriginalTestPlanId] = useState<string>('');
-  
-  // Use configurations from app context and load them if needed
-  const configurations = appState.configurations;
-  
-  // Load configurations when modal opens if not already loaded
-  useEffect(() => {
-    if (isOpen && configurations.length === 0 && !appState.isLoadingConfigurations) {
-      console.log('⚙️ Loading configurations for edit modal...');
-      loadConfigurations();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadConfigurations is stable
-  }, [isOpen, configurations.length, appState.isLoadingConfigurations]);
+  const [_originalTestPlanId, setOriginalTestPlanId] = useState<string>('');
   
 
   const stateOptions = [
@@ -94,10 +82,8 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   // Populate form when testRun changes
   useEffect(() => {
     if (isOpen && testRun) {
-      console.log('📝 Populating edit form with test run data:', testRun);
-      console.log('📋 Test run test case IDs:', testRun.testCaseIds);
-      console.log('📋 Available test cases count:', allTestCases.length);
-      
+
+
       setFormData({
         name: testRun.name,
         description: testRun.description || '',
@@ -107,17 +93,13 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
         assignedTo: testRun.assignedTo?.id || '', // Use assigned user ID from test run
         state: testRun.state // Use the actual state number from the test run
       });
-      
-      console.log('📋 Set formData.testCaseIds to:', testRun.testCaseIds);
-      console.log('📋 Set formData.testPlanId to: (will be loaded from API)');
-      console.log('📋 Set formData.assignedTo to:', testRun.assignedTo?.id || '');
+
 
       // Load existing configurations by calling the API
       loadExistingConfigurations(testRun.id);
       loadExistingTestPlan(testRun.id);
       loadExistingTestPlan(testRun.id);
-      
-      console.log('📋 Setting existing test case IDs:', testRun.testCaseIds);
+
     } else if (isOpen && !testRun) {
       // Reset form for new test run
       setExistingConfigurations([]);
@@ -140,78 +122,57 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
         state: 1
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- allTestCases.length, loadExistingConfigurations are stable
   }, [isOpen, testRun, users]);
 
   // Function to load existing configurations for the test run
   const loadExistingConfigurations = async (testRunId: string) => {
     try {
       setIsLoadingConfigurations(true);
-      console.log('⚙️ Calling GET /test_runs/' + testRunId + ' to load existing configurations');
-      
+
       // Call GET /test_runs/{id} with configurations included
       const response = await testRunsApiService.getTestRun(testRunId);
-      console.log('⚙️ GET /test_runs/' + testRunId + ' response:', response);
-      console.log('⚙️ Relationships:', response.data.relationships);
-      console.log('⚙️ Included data:', response.included);
-      
+
+
       // Extract configuration IDs from relationships
       const configurationRelationships = response.data.relationships?.configurations?.data || [];
-      console.log('⚙️ Found', configurationRelationships.length, 'configuration relationships:', configurationRelationships);
-      
+
       if (configurationRelationships.length > 0) {
         const existingConfigurationsData: Configuration[] = [];
         
         for (const configRef of configurationRelationships) {
           const configId = configRef.id.split('/').pop();
-          console.log('⚙️ Processing configuration ID:', configId);
-          
-          // Look for configuration in included data first
+
+          // Look for configuration in included data
           let foundConfig: Configuration | undefined;
-          
+
           if (response.included) {
-            const includedConfig = response.included.find(item => 
+            const includedConfig = response.included.find(item =>
               item.type === 'Configuration' && item.attributes.id.toString() === configId
             );
-            
+
             if (includedConfig) {
               foundConfig = {
                 id: includedConfig.attributes.id.toString(),
                 label: includedConfig.attributes.label || 'Unknown Configuration'
               };
-              console.log('⚙️ Found configuration in included data:', foundConfig);
-            } else {
-              console.log('⚙️ Configuration not found in included data for ID:', configId);
-            }
-          } else {
-            console.log('⚙️ No included data in response');
-          }
-          
-          // If not found in included data, try to find in available configurations
-          if (!foundConfig) {
-            foundConfig = configurations.find(config => config.id === configId);
-            if (foundConfig) {
-              console.log('⚙️ Found configuration in available configurations:', foundConfig);
             }
           }
-          
+
           if (foundConfig) {
             existingConfigurationsData.push(foundConfig);
-            console.log('⚙️ ✅ Added existing configuration:', foundConfig);
           } else {
-            console.warn('⚙️ ❌ Configuration not found anywhere for ID:', configId);
-            // Create a fallback configuration
+            console.warn('⚙️ Configuration not found in API response for ID:', configId);
             existingConfigurationsData.push({
               id: configId || '',
-              label: `Configuration ${configId} (not found)`
+              label: `Configuration ${configId}`
             });
           }
         }
         
         setExistingConfigurations(existingConfigurationsData);
-        console.log('⚙️ ✅ Final existing configurations set:', existingConfigurationsData);
+
       } else {
-        console.log('⚙️ No configuration relationships found in test run');
+
         setExistingConfigurations([]);
       }
       
@@ -226,19 +187,19 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   // Function to load assigned user for the test run
   // const loadAssignedUser = async (testRunId: string) => {
   //   try {
-  //     console.log('👤 Loading assigned user for test run:', testRunId);
+  //     
   //     
   //     // Get test run details to extract assigned user from relationships.user
   //     const response = await testRunsApiService.getTestRun(testRunId);
-  //     console.log('👤 Test run response for assigned user:', response);
+  //     
   //     
   //     // Extract user ID from relationships.user
   //     const userRelationship = response.data.relationships?.user?.data;
-  //     console.log('👤 User relationship found:', userRelationship);
+  //     
   //     
   //     if (userRelationship) {
   //       const assignedUserId = userRelationship.id.split('/').pop();
-  //       console.log('👤 Extracted assigned user ID:', assignedUserId);
+  //       
   //       
   //       // Set the assigned user in form data
   //       setFormData(prev => ({
@@ -246,9 +207,9 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   //         assignedTo: assignedUserId || ''
   //       }));
   //       
-  //       console.log('✅ Set assigned user ID in form:', assignedUserId);
+  //       
   //     } else {
-  //       console.log('👤 No user relationship found in test run');
+  //       
   //       setFormData(prev => ({
   //         ...prev,
   //         assignedTo: ''
@@ -267,20 +228,16 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   // Function to load existing test plan for the test run
   const loadExistingTestPlan = async (testRunId: string) => {
     try {
-      console.log('📅 Loading existing test plan for test run:', testRunId);
-      
+
       // Get test run details with test plan included
       const response = await testRunsApiService.getTestRun(testRunId);
-      console.log('📅 Test run response:', response);
-      
+
       // Extract test plan ID from relationships (try both camelCase and snake_case)
       const testPlanRelationship = response.data.relationships?.testPlan?.data || response.data.relationships?.test_plan?.data;
-      console.log('📅 Test plan relationship found:', testPlanRelationship);
-      
+
       if (testPlanRelationship) {
         const testPlanId = testPlanRelationship.id?.split('/').pop();
-        console.log('📅 Extracted test plan ID:', testPlanId);
-        
+
         if (testPlanId && testPlanId !== 'undefined' && testPlanId !== 'null') {
           // Set the test plan ID in form data
           setFormData(prev => ({
@@ -290,10 +247,9 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
           
           // Set original test plan ID for change tracking
           setOriginalTestPlanId(testPlanId);
-          
-          console.log('✅ Set test plan ID in form:', testPlanId);
+
         } else {
-          console.log('📅 Invalid test plan ID, clearing form field');
+
           setFormData(prev => ({
             ...prev,
             testPlanId: ''
@@ -301,7 +257,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
           setOriginalTestPlanId('');
         }
       } else {
-        console.log('📅 No test plan relationship found in test run');
+
         setFormData(prev => ({
           ...prev,
           testPlanId: ''
@@ -362,10 +318,8 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
   const selectedTestCases = allTestCases.filter(testCase => 
     formData.testCaseIds.includes(testCase.id)
   ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  
-  console.log('📋 Current formData.testCaseIds:', formData.testCaseIds);
-  console.log('📋 All test cases:', allTestCases.map(tc => ({ id: tc.id, title: tc.title })));
-  console.log('📋 Selected test cases:', selectedTestCases.map(tc => ({ id: tc.id, title: tc.title })));
+
+
   // const handleConfigurationToggle = (config: string) => {
   //   setFormData(prev => ({
   //     ...prev,
@@ -384,9 +338,9 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
 
   const handleCreateConfiguration = async (label: string): Promise<Configuration> => {
     try {
-      console.log('⚙️ Creating new configuration:', label);
+
       const newConfiguration = await createConfiguration(label);
-      console.log('⚙️ ✅ Created configuration:', newConfiguration);
+
       return newConfiguration;
     } catch (error) {
       console.error('⚙️ ❌ Failed to create configuration:', error);
@@ -420,19 +374,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
     // Determine the final test plan ID to send
     // Use the current form value (which may have changed from the original)
     const finalTestPlanId = formData.testPlanId;
-    
-    console.log('📅 SUBMIT DEBUG:', {
-      originalTestPlanId,
-      currentTestPlanId: formData.testPlanId,
-      finalTestPlanId,
-      hasChanged: originalTestPlanId !== formData.testPlanId,
-      formDataTestPlanId: formData.testPlanId,
-      formDataTestPlanIdType: typeof formData.testPlanId,
-      formDataTestPlanIdLength: formData.testPlanId?.length,
-      isEmptyString: formData.testPlanId === '',
-      isTruthy: !!formData.testPlanId
-    });
-    
+
     const submitData = {
       name: formData.name,
       description: formData.description,
@@ -442,9 +384,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
       assignedTo: formData.assignedTo,
       testPlanId: finalTestPlanId
     };
-    
-    console.log('📅 Final submitData.testPlanId:', submitData.testPlanId);
-    
+
     await onSubmit(submitData);
   };
 
@@ -469,6 +409,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
             required
             disabled={isSubmitting}
             placeholder="Enter test run name"
+            autoFocus
           />
         </div>
 
@@ -622,12 +563,14 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
               
               <ConfigurationSelector
                 selectedConfigurations={formData.configurations}
-                onConfigurationsChange={(selectedConfigurations) => 
+                onConfigurationsChange={(selectedConfigurations) =>
                   setFormData(prev => ({ ...prev, configurations: selectedConfigurations }))
                 }
                 onCreateConfiguration={handleCreateConfiguration}
                 disabled={isSubmitting}
                 placeholder="Add new configurations..."
+                preloadConfigurations={isOpen}
+                excludeConfigurations={existingConfigurations}
               />
             </div>
 
@@ -704,12 +647,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
               <TestPlanSelector
                 selectedTestPlanId={formData.testPlanId}
                onTestPlanChange={(testPlanId) => {
-                 console.log('📅 TEST PLAN DROPDOWN CHANGED:', {
-                   newTestPlanId: testPlanId,
-                   previousTestPlanId: formData.testPlanId,
-                   originalTestPlanId,
-                   hasChanged: originalTestPlanId !== testPlanId
-                 });
+
                  handleInputChange('testPlanId', testPlanId);
                }}
                 disabled={isSubmitting}

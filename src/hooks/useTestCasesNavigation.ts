@@ -14,10 +14,8 @@ export const useTestCasesNavigation = (
   useEffect(() => {
     const navigationState = location.state as { applyFilter?: { type: string; value: string; label: string } } | undefined;
     if (navigationState?.applyFilter && selectedProject) {
-      const { type: filterType, value, label } = navigationState.applyFilter;
-      
-      console.log('🎯 Applying filter from dashboard navigation:', filterType, value, label);
-      
+      const { type: filterType, value, label: _label } = navigationState.applyFilter;
+
       if (filterType === 'type') {
         // Mark that we have a pending navigation filter
         setHasPendingNavigationFilter(true);

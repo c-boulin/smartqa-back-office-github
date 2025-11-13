@@ -37,26 +37,18 @@ const AutoImageUploadButton: React.FC<AutoImageUploadButtonProps> = ({
       return;
     }
 
-    console.log('🖼️ AutoImageUploadButton: File selected:', file.name);
-    console.log('🖼️ AutoImageUploadButton: Field name:', fieldName);
-    console.log('🖼️ AutoImageUploadButton: Auto process enabled:', autoProcess);
 
     try {
       setIsUploading(true);
-      
-      console.log('🖼️ Starting automatic image processing...');
-      
+
       // Process the image
-      console.log('🖼️ Calling imageProcessingService.processImageOnUpload...');
+
       const result = await imageProcessingService.processImageOnUpload(file, fieldName);
-      console.log('🖼️ Image processing result:', result);
-      
+
       const imageHtml = imageProcessingService.generateImageHtml(result, file.name, false); // Don't wrap in paragraph
-      
-      console.log('🖼️ Generated image HTML:', imageHtml);
-      
+
       // Insert the HTML into the editor
-      console.log('🖼️ Calling onFileUploaded with HTML...');
+
       onFileUploaded(imageHtml);
       
       // Success feedback

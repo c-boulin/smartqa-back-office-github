@@ -22,7 +22,7 @@ export const useTestRuns = (projectId?: string | null) => {
     const useProjectId = targetProjectId || projectId;
     
     if (!useProjectId) {
-      console.log('🚫 No project ID for test runs');
+
       setTestRuns([]);
       setLoading(false);
       return;
@@ -31,9 +31,7 @@ export const useTestRuns = (projectId?: string | null) => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🏃 Fetching ALL test runs (active + closed) for project:', useProjectId, 'page:', page);
-      
+
       let response: TestRunsApiResponse = await testRunsApiService.getTestRuns(
         useProjectId,
         page,
@@ -55,15 +53,12 @@ export const useTestRuns = (projectId?: string | null) => {
       const transformedTestRuns = responseData.map(apiTestRun => 
         testRunsApiService.transformApiTestRun(apiTestRun, included)
       );
-      
-      console.log('✅ Fetched', transformedTestRuns.length, 'test runs');
-      console.log('🏃 Test run states:', transformedTestRuns.map(tr => ({ id: tr.id, name: tr.name, state: tr.state, status: tr.status })));
-      
+
+
       // Count active vs closed
-      const activeCount = transformedTestRuns.filter(tr => tr.state !== 6).length;
-      const closedCount = transformedTestRuns.filter(tr => tr.state === 6).length;
-      console.log('🏃 Active test runs:', activeCount, 'Closed test runs:', closedCount);
-      
+      const _activeCount = transformedTestRuns.filter(tr => tr.state !== 6).length;
+      const _closedCount = transformedTestRuns.filter(tr => tr.state === 6).length;
+
       setTestRuns(transformedTestRuns);
       setPagination({
         currentPage: responseMeta.currentPage,
@@ -91,9 +86,7 @@ export const useTestRuns = (projectId?: string | null) => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔍 Searching test runs:', searchTerm);
-      
+
       let response: TestRunsApiResponse = await testRunsApiService.searchTestRuns(
         searchTerm,
         projectId,
@@ -144,9 +137,7 @@ export const useTestRuns = (projectId?: string | null) => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔍 Filtering test runs by assignee:', assigneeId);
-      
+
       let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsByAssignee(
         assigneeId,
         projectId,
@@ -197,9 +188,7 @@ export const useTestRuns = (projectId?: string | null) => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔍 Filtering test runs by state:', state);
-      
+
       let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsByState(
         state,
         projectId,
@@ -253,9 +242,7 @@ export const useTestRuns = (projectId?: string | null) => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔍 Filtering test runs with multiple filters:', filters);
-      
+
       let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsWithMultipleFilters(
         filters,
         projectId,
@@ -419,26 +406,21 @@ export const useTestRuns = (projectId?: string | null) => {
   useEffect(() => {
     const projectChanged = previousProjectId.current !== projectId;
 
-    console.log('🔄 useTestRuns effect triggered:', {
-      projectId,
-      projectChanged
-    });
-
     // Update refs BEFORE doing anything
     previousProjectId.current = projectId;
 
     // Load test runs ONLY if we have a project AND the project changed
     if (projectId && projectChanged) {
-      console.log('📂 Project changed, loading test runs for project:', projectId);
+
       fetchTestRuns(1, projectId);
     } else if (!projectId) {
       // No project selected
-      console.log('🚫 No project selected, clearing test runs');
+
       setTestRuns([]);
       setLoading(false);
     } else {
       // Same project, do nothing
-      console.log('✅ Same project, keeping current test runs');
+
     }
   }, [projectId, fetchTestRuns]);
 

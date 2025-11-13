@@ -26,9 +26,8 @@ class ImageProcessingService {
    */
   async processImageOnUpload(file: File, fieldName: UploadFieldType): Promise<ImageProcessingResult> {
     try {
-      console.log('🖼️ Starting image processing for field:', fieldName);
-      console.log('🖼️ File details:', { name: file.name, size: file.size, type: file.type });
-      
+
+
       // Generate unique filename
       const timestamp = Date.now();
       const randomString = Math.random().toString(36).substring(2, 15);
@@ -36,10 +35,8 @@ class ImageProcessingService {
       const uniqueName = `${timestamp}_${randomString}.${fileExtension}`;
       const key = `${fieldName}/${uniqueName}`;
 
-      console.log('🖼️ Generated key:', key);
-
       // Get signed URL for upload
-      console.log('🖼️ Requesting signed URL from API...');
+
       const response = await apiService.authenticatedRequest<SignedUrlResponse>(
         `/s3/signed-url?key=${encodeURIComponent(key)}&content_type=${encodeURIComponent(file.type)}`,
         { method: 'GET' }
@@ -51,11 +48,10 @@ class ImageProcessingService {
       }
       
       const signedUrl = response.data.url;
-      console.log('🖼️ Got signed URL for upload');
-      console.log('🖼️ Signed URL:', signedUrl);
+
 
       // Upload to S3
-      console.log('🖼️ Uploading to S3...');
+
       const uploadResponse = await fetch(signedUrl, {
         method: 'PUT',
         body: file,
@@ -69,11 +65,8 @@ class ImageProcessingService {
         throw new Error(`Failed to upload to S3: ${uploadResponse.statusText}`);
       }
 
-      console.log('🖼️ Successfully uploaded to S3');
-
       // Generate CloudFront URL
       const processedUrl = `${this.cloudFrontBaseUrl}/${key}`;
-      console.log('🖼️ Generated CloudFront URL:', processedUrl);
 
       return {
         processedUrl,
@@ -95,12 +88,10 @@ class ImageProcessingService {
    * Generate HTML for displaying an image
    */
   generateImageHtml(result: ImageProcessingResult, alt: string = 'Uploaded image', wrapInParagraph: boolean = false): string {
-    console.log('🖼️ Generating image HTML for URL:', result.processedUrl);
-    
+
     const imageTag = `<img src="${result.processedUrl}" alt="${alt}" style="max-width: 300px; max-height: 200px; width: auto; height: auto; border-radius: 8px; margin: 8px; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3); object-fit: contain; display: inline-block; vertical-align: top;" />`;
     const imageHtml = wrapInParagraph ? `<p>${imageTag}</p>` : imageTag;
-    
-    console.log('🖼️ Generated image HTML:', imageHtml);
+
     return imageHtml;
   }
 

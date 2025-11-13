@@ -76,19 +76,17 @@ const TestPlanSelector: React.FC<TestPlanSelectorProps> = ({
 
     try {
       isLoadingRef.current = true;
-      console.log('📋 Loading test plans - making first request...');
-      
+
       // Make first request to get total count
       await fetchTestPlans(1);
       
       // Check if we got any data
       if (testPlans.length === 0) {
-        console.log('📋 No test plans found - stopping requests');
+
         hasLoadedRef.current = true;
         return;
       }
-      
-      console.log('📋 Found test plans, checking for additional pages...');
+
       // If there are more pages, load them
       // This will be handled by the useTestPlans hook pagination logic
       

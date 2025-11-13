@@ -36,17 +36,17 @@ const FolderNode: React.FC<FolderNodeProps> = React.memo(({
     e.preventDefault();
     e.stopPropagation();
     if (hasChildren) {
-      console.log('🔄 Toggling folder expansion:', folder.name);
+
       onToggleExpanded(folder.id);
     }
-  }, [hasChildren, folder.id, folder.name, onToggleExpanded]);
+  }, [hasChildren, folder.id, onToggleExpanded]);
 
   const handleSelect = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('👆 Folder clicked:', folder.name, 'ID:', folder.id, 'Test cases:', folder.testCasesCount);
+
     onSelectFolder(folder.id);
-  }, [folder.id, folder.name, folder.testCasesCount, onSelectFolder]);
+  }, [folder.id, onSelectFolder]);
 
   // Utiliser directement le compteur calculé du dossier
   const testCasesCount = folder.testCasesCount || 0;
@@ -281,13 +281,13 @@ const FolderTree: React.FC<FolderTreeProps> = React.memo(({
   }, []);
 
   const handleSelectFolder = React.useCallback((folderId: string) => {
-    console.log('🎯 FolderTree: selecting folder', folderId);
+
     // If clicking on the already selected folder, deselect it (pass null)
     if (selectedFolderId === folderId) {
-      console.log('🚫 FolderTree: deselecting folder', folderId);
+
       onSelectFolder(null);
     } else {
-      console.log('✅ FolderTree: selecting folder', folderId);
+
       onSelectFolder(folderId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedFolderId is derived from props

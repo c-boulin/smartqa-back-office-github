@@ -179,8 +179,9 @@ class TestRunsApiService {
 
   async getTestRuns(projectId: string, page: number = 1, itemsPerPage: number = 30): Promise<TestRunsApiResponse> {
     // Fetch ALL test runs (both active and closed) - don't filter by state
-    const response = await apiService.authenticatedRequest(`/test_runs?project=${projectId}&include=user,testCases&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`);
-    console.log('🌐 API: getTestRuns response for project', projectId, ':', response);
+    // Only include user data, not full testCases and configurations to improve performance
+    const response = await apiService.authenticatedRequest(`/test_runs?project=${projectId}&include=user&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`);
+
     return response || this.getDefaultTestRunsResponse();
   }
 
@@ -226,9 +227,9 @@ class TestRunsApiService {
   }
 
   async getTestRun(id: string): Promise<{ data: ApiTestRun; included?: Array<Record<string, unknown>> }> {
-    console.log('🌐 API: Calling GET /test_runs/' + id + '?include=user,configurations,testPlans');
-    const response = await apiService.authenticatedRequest(`/test_runs/${id}?include=user,configurations,testPlans`);
-    console.log('🌐 API: GET /test_runs/' + id + ' response:', response);
+
+    const response = await apiService.authenticatedRequest(`/test_runs/${id}?include=user,configurations,testPlans,testCases`);
+
     return response;
   }
 
@@ -274,14 +275,14 @@ class TestRunsApiService {
 
     // Add configurations relationship if provided
     if (testRunData.configurations && testRunData.configurations.length > 0) {
-      console.log('⚙️ Adding configurations to POST payload:', testRunData.configurations);
+
       requestBody.data.relationships.configurations = {
         data: testRunData.configurations.map(config => ({
           type: "Configuration",
           id: `/api/configurations/${config.id}`
         }))
       };
-      console.log('⚙️ Final configurations in payload:', requestBody.data.relationships.configurations);
+
     }
 
     // Add tags relationship if provided
@@ -300,9 +301,7 @@ class TestRunsApiService {
         }
       };
     }
-    
-    console.log('🌐 Final POST payload for test run creation:', JSON.stringify(requestBody, null, 2));
-    
+
     const response = await apiService.authenticatedRequest('/test_runs?include=user', {
       method: 'POST',
       body: JSON.stringify(requestBody),
@@ -325,13 +324,8 @@ class TestRunsApiService {
     tags?: Tag[];
     testPlanId?: string;
   }): Promise<{ data: ApiTestRun }> {
-    console.log('📅 UPDATE: Building payload for test run:', id);
-    console.log('📅 UPDATE: Received testPlanId:', testRunData.testPlanId);
-    console.log('📅 UPDATE: testPlanId type:', typeof testRunData.testPlanId);
-    console.log('📅 UPDATE: testPlanId length:', testRunData.testPlanId?.length);
-    console.log('📅 UPDATE: Is empty string:', testRunData.testPlanId === '');
-    console.log('📅 UPDATE: Is truthy:', !!testRunData.testPlanId);
-    
+
+
     const requestBody = {
       data: {
         type: "TestRun",
@@ -362,7 +356,7 @@ class TestRunsApiService {
 
     // CRITICAL: Only add test_plan relationship if a test plan is actually selected
     if (testRunData.testPlanId && testRunData.testPlanId.trim() !== '') {
-      console.log('📅 UPDATE: Adding test_plan relationship with ID:', testRunData.testPlanId);
+
       requestBody.data.relationships.test_plan = {
         data: {
           type: "TestPlan",
@@ -370,10 +364,8 @@ class TestRunsApiService {
         }
       };
     } else {
-      console.log('📅 UPDATE: No test plan selected - omitting test_plan node from payload');
+      // No test plan ID provided
     }
-    
-    console.log('📅 UPDATE: Final payload structure:', JSON.stringify(requestBody, null, 2));
 
     const response = await apiService.authenticatedRequest(`/test_runs/${id}?include=user`, {
       method: 'PATCH',
@@ -462,17 +454,18 @@ class TestRunsApiService {
 
     // Extract configurations from relationships and included data
     const configurations: Configuration[] = [];
-    if (apiTestRun.relationships.configurations?.data && included) {
+    if (apiTestRun.relationships.configurations?.data) {
       for (const configRef of apiTestRun.relationships.configurations.data) {
         const configId = configRef.id.split('/').pop();
-        const includedConfig = included.find(item =>
-          item.type === 'Configuration' && item.attributes.id.toString() === configId
-        );
 
-        if (includedConfig) {
+        if (configId) {
+          const includedConfig = included?.find(item =>
+            item.type === 'Configuration' && item.attributes.id.toString() === configId
+          );
+
           configurations.push({
-            id: includedConfig.attributes.id.toString(),
-            label: includedConfig.attributes.label || 'Unknown Configuration'
+            id: configId,
+            label: includedConfig?.attributes.label || 'Unknown Configuration'
           });
         }
       }
@@ -494,13 +487,6 @@ class TestRunsApiService {
     const configCount = actualConfigCount > 0 ? actualConfigCount : 1;
     const expectedTotalCombinations = testCaseIds.length * configCount;
 
-    console.log(`🏃 Expected combinations for "${apiTestRun.attributes.name}":`, {
-      testCases: testCaseIds.length,
-      configurationsFromRelationships: configurations.length,
-      actualConfigurationsFromExecutions: actualConfigCount,
-      configCount,
-      expectedTotal: expectedTotalCombinations
-    });
     // Process caseResults array to get real execution statistics
     // Process executions array to get real execution statistics
     let passedCount = 0;
@@ -516,8 +502,7 @@ class TestRunsApiService {
     let passRate = 0;
 
     if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
-      console.log(`🏃 Processing executions array for "${apiTestRun.attributes.name}"`);
-      console.log(`🏃 executions:`, apiTestRun.attributes.executions);
+
 
       // Group executions by test case ID + configuration ID and get the last execution per combination
       const lastExecutionPerTestCaseConfig = new Map<string, Record<string, unknown>>();
@@ -535,14 +520,10 @@ class TestRunsApiService {
         }
       });
 
-      console.log(`🏃 Found ${lastExecutionPerTestCaseConfig.size} unique test case + configuration combinations with executions`);
-
       // Count each result type from the last execution per test case + configuration
-      Array.from(lastExecutionPerTestCaseConfig.values()).forEach((execution: Record<string, unknown>, index: number) => {
-        console.log(`🏃   Test case ${index + 1}:`, execution);
-        console.log(`🏃     - test_case_id: ${execution.test_case_id}`);
-        console.log(`🏃     - result: ${execution.result}`);
-        
+      Array.from(lastExecutionPerTestCaseConfig.values()).forEach((execution: Record<string, unknown>, _index: number) => {
+
+
         // Handle both numeric and string result values
         const rawResult = execution.result;
         let resultLabel: string;
@@ -550,26 +531,24 @@ class TestRunsApiService {
         if (typeof rawResult === 'number') {
           // Convert numeric ID to string label
           resultLabel = TEST_RESULTS[rawResult as TestResultId]?.toLowerCase() || 'unknown';
-          console.log(`🏃     - converted numeric ${rawResult} to: ${resultLabel}`);
+
         } else if (typeof rawResult === 'string') {
           // Handle string results - could be numeric string or label string
           const numericResult = parseInt(rawResult);
           if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
             // String is a numeric ID
             resultLabel = TEST_RESULTS[numericResult as TestResultId]?.toLowerCase() || 'unknown';
-            console.log(`🏃     - converted string numeric "${rawResult}" to: ${resultLabel}`);
+
           } else {
             // String is already a label
             resultLabel = rawResult.toLowerCase();
-            console.log(`🏃     - using string label: ${resultLabel}`);
+
           }
         } else {
           resultLabel = 'unknown';
-          console.log(`🏃     - unknown result type, defaulting to: unknown`);
+
         }
-        
-        console.log(`🏃     - processed result: ${resultLabel}`);
-        
+
         switch (resultLabel) {
           case 'passed':
             passedCount++;
@@ -596,23 +575,9 @@ class TestRunsApiService {
             unknownCount++;
             break;
           default:
-            console.log(`🏃     - Unknown result type: ${resultLabel}`);
+
             unknownCount++;
         }
-      });
-      
-      console.log(`🏃 Found ${lastExecutionPerTestCaseConfig.size} unique combinations with executions`);
-
-      console.log(`🏃 Final counts for "${apiTestRun.attributes.name}":`, {
-        total: expectedTotalCombinations,
-        passed: passedCount,
-        failed: failedCount,
-        blocked: blockedCount,
-        retest: retestCount,
-        skipped: skippedCount,
-        untested: untestedCount,
-        inProgress: inProgressCount,
-        unknown: unknownCount
       });
 
       // FIXED CALCULATION: Match Test Run Details page logic
@@ -629,23 +594,8 @@ class TestRunsApiService {
       // Pass rate = passed / executed (not total)
       passRate = executedCount > 0 ? Math.round((passedCount / executedCount) * 100) : 0;
 
-      console.log(`🏃 Calculated metrics for "${apiTestRun.attributes.name}":`, {
-        expectedTotal: expectedTotalCombinations,
-        uniqueCombinationsWithExecutions: lastExecutionPerTestCaseConfig.size,
-        executedCount,
-        untestedCount,
-        passedCount,
-        failedCount,
-        blockedCount,
-        retestCount,
-        skippedCount,
-        inProgressCount,
-        unknownCount,
-        progress: `${progress}% (${executedCount}/${expectedTotalCombinations} executed)`,
-        passRate: `${passRate}% (${passedCount}/${executedCount} passed)`
-      });
     } else {
-      console.log(`🏃 No valid executions array found for "${apiTestRun.attributes.name}"`);
+
       // If no executions, all combinations are untested
       untestedCount = expectedTotalCombinations;
     }
@@ -687,6 +637,11 @@ class TestRunsApiService {
       passedCount: passedCount,
       failedCount: failedCount,
       blockedCount: blockedCount,
+      retestCount: retestCount,
+      skippedCount: skippedCount,
+      untestedCount: untestedCount,
+      inProgressCount: inProgressCount,
+      unknownCount: unknownCount,
       progress: progress,
       passRate: passRate,
       startDate: parseDate(apiTestRun.attributes.startDate),
@@ -705,14 +660,5 @@ class TestRunsApiService {
 }
 
 export const testRunsApiService = new TestRunsApiService();
-
-
-
-
-
-
-
-
-
 
 

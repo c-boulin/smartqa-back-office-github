@@ -33,20 +33,8 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
 }) => {
   const { state: authState } = useAuth();
   const { users, loading: usersLoading } = useUsers();
-  const { getSelectedProject, state: appState, createConfiguration, loadConfigurations } = useApp();
+  const { getSelectedProject, createConfiguration } = useApp();
   const selectedProject = getSelectedProject();
-  
-  // Use configurations from app context and load them if needed
-  const configurations = appState.configurations;
-  
-  // Load configurations when modal opens if not already loaded
-  useEffect(() => {
-    if (isOpen && configurations.length === 0 && !appState.isLoadingConfigurations) {
-      console.log('⚙️ Loading configurations for create modal...');
-      loadConfigurations();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadConfigurations is stable
-  }, [isOpen, configurations.length, appState.isLoadingConfigurations]);
   
   // Fetch all test cases for the project
   const { 
@@ -167,9 +155,9 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
 
   const handleCreateConfiguration = async (label: string): Promise<Configuration> => {
     try {
-      console.log('⚙️ Creating new configuration:', label);
+
       const newConfiguration = await createConfiguration(label);
-      console.log('⚙️ ✅ Created configuration:', newConfiguration);
+
       return newConfiguration;
     } catch (error) {
       console.error('⚙️ ❌ Failed to create configuration:', error);
@@ -206,9 +194,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
       assignedTo: formData.assignedTo,
       state: formData.state
     };
-    
-    console.log('📅 CREATE: Final submitData.testPlanId:', submitData.testPlanId);
-    
+
     await onSubmit(submitData);
   };
 
@@ -233,6 +219,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
             required
             disabled={isSubmitting}
             placeholder="Enter test run name"
+            autoFocus
           />
         </div>
 
@@ -348,12 +335,13 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
               </label>
               <ConfigurationSelector
                 selectedConfigurations={formData.configurations}
-                onConfigurationsChange={(selectedConfigurations) => 
+                onConfigurationsChange={(selectedConfigurations) =>
                   setFormData(prev => ({ ...prev, configurations: selectedConfigurations }))
                 }
                 onCreateConfiguration={handleCreateConfiguration}
                 disabled={isSubmitting}
                 placeholder="Search or select configurations..."
+                preloadConfigurations={isOpen}
               />
             </div>
 

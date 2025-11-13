@@ -77,8 +77,7 @@ const SharedSteps: React.FC = () => {
       }> = [];
       
       if (data.testSteps && data.testSteps.length > 0) {
-        console.log('🔄 Creating step results for new shared step...');
-        
+
         for (let i = 0; i < data.testSteps.length; i++) {
           const step = data.testSteps[i];
           
@@ -93,15 +92,13 @@ const SharedSteps: React.FC = () => {
               id: stepResultResponse.data.attributes.id.toString(),
               order: i + 1 // Order starts from 1
             });
-            
-            console.log(`Created step result ${i + 1}:`, stepResultResponse.data.id);
+
           } catch (stepError) {
             console.error(`Failed to create step result ${i + 1}:`, stepError);
             throw new Error(`Failed to create step result ${i + 1}: ${stepError instanceof Error ? stepError.message : 'Unknown error'}`);
           }
         }
-        
-        console.log('All step results created:', stepResults);
+
       }
       
       // Create the shared step with step results
@@ -144,40 +141,42 @@ const SharedSteps: React.FC = () => {
       }> = [];
       
       if (data.testSteps && data.testSteps.length > 0) {
-        console.log('🔄 Processing step results for shared step update...');
-        
+
         for (let i = 0; i < data.testSteps.length; i++) {
           const step = data.testSteps[i];
           const order = i + 1; // Order starts from 1
           
           if (step.originalId) {
-            // Existing step result - update it first, then include in relationships
-            console.log(`🔄 PATCH: Updating existing step result ${step.originalId} with order ${order}`);
-            
-            try {
-              await sharedStepsApiService.updateStepResult(step.originalId, {
-                step: step.step,
-                result: step.result,
-                userId: authState.user.id
-              });
-              
-              console.log(`✅ PATCH: Updated step result ${step.originalId}`);
-            } catch (stepError) {
-              console.error(`❌ PATCH: Failed to update step result ${step.originalId}:`, stepError);
-              throw new Error(`Failed to update step result ${order}: ${stepError instanceof Error ? stepError.message : 'Unknown error'}`);
+            // Existing step result - check if it was modified
+            const wasModified = step.step !== step.originalStep || step.result !== step.originalResult;
+
+            if (wasModified) {
+              // Only update if content changed
+
+              try {
+                await sharedStepsApiService.updateStepResult(step.originalId, {
+                  step: step.step,
+                  result: step.result,
+                  userId: authState.user.id
+                });
+
+              } catch (stepError) {
+                console.error(`❌ PATCH: Failed to update step result ${step.originalId}:`, stepError);
+                throw new Error(`Failed to update step result ${order}: ${stepError instanceof Error ? stepError.message : 'Unknown error'}`);
+              }
+            } else {
+              // Step result unchanged
             }
-            
-            // Include in relationships
+
+            // Include in relationships (whether modified or not)
             stepResults.push({
               id: step.originalId,
               order: order
             });
-            
-            console.log(`✅ Including updated step result ${step.originalId} with order ${order}`);
+
           } else {
             // New step result - use POST to create it
-            console.log(`🔄 POST: Creating new step result ${order}`);
-            
+
             try {
               const stepResultResponse = await sharedStepsApiService.createStepResult({
                 step: step.step,
@@ -189,16 +188,14 @@ const SharedSteps: React.FC = () => {
                 id: stepResultResponse.data.attributes.id.toString(),
                 order: order
               });
-              
-              console.log(`✅ POST: Created new step result ${order}:`, stepResultResponse.data.id);
+
             } catch (stepError) {
               console.error(`❌ POST: Failed to create step result ${order}:`, stepError);
               throw new Error(`Failed to create step result ${order}: ${stepError instanceof Error ? stepError.message : 'Unknown error'}`);
             }
           }
         }
-        
-        console.log('✅ All step results PATCH/POST processed:', stepResults);
+
       }
       
       // Update the shared step with step results relationships
@@ -234,9 +231,20 @@ const SharedSteps: React.FC = () => {
     }
   }, [deleteSharedStep, selectedSharedStep]);
 
-  const openEditModal = useCallback((sharedStep: SharedStep) => {
-    setSelectedSharedStep(sharedStep);
-    setIsEditModalOpen(true);
+  const openEditModal = useCallback(async (sharedStep: SharedStep) => {
+    try {
+
+      const response = await sharedStepsApiService.getSharedStep(sharedStep.id);
+      const included = response.included || [];
+
+      const fullSharedStep = sharedStepsApiService.transformApiSharedStep(response.data, included);
+
+      setSelectedSharedStep(fullSharedStep);
+      setIsEditModalOpen(true);
+    } catch (error) {
+      console.error('❌ Failed to fetch shared step details:', error);
+      toast.error('Failed to load shared step details');
+    }
   }, []);
 
   const openDeleteDialog = useCallback((sharedStep: SharedStep) => {

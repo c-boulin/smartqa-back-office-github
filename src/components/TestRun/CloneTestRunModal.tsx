@@ -75,7 +75,6 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
   const loadTestCaseResults = async (testRunId: string) => {
     try {
       setIsLoadingResults(true);
-      console.log('🔄 Loading real execution results for test run:', testRunId);
 
       // Get detailed test run data with executions
       const testRunResponse = await testRunsApiService.getTestRun(testRunId);
@@ -90,7 +89,6 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
 
       // Process executions to count results and map test case-config pairs
       if (testRunResponse.data.attributes.executions && Array.isArray(testRunResponse.data.attributes.executions)) {
-        console.log('🔄 Processing', testRunResponse.data.attributes.executions.length, 'executions');
 
         // Group executions by test case ID + configuration ID and get the latest execution per pair
         const lastExecutionPerPair = new Map<string, {
@@ -124,8 +122,6 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
             });
           }
         });
-
-        console.log('🔄 Found', lastExecutionPerPair.size, 'unique test case-configuration pairs with executions');
 
         // Count each result type and collect test case-config pairs
         Array.from(lastExecutionPerPair.values()).forEach((execution) => {
@@ -176,7 +172,6 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
       }).filter(result => result.count > 0); // Only show results that have test cases
 
       setTestCaseResults(displayResults);
-      console.log('✅ Loaded real execution results:', displayResults);
 
     } catch (error) {
       console.error('❌ Failed to load test case results:', error);

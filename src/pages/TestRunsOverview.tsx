@@ -10,6 +10,7 @@ import AddExecutionCommentModal from '../components/TestRun/AddExecutionCommentM
 import { testRunsApiService, TestRun } from '../services/testRunsApi';
 import { testCasesApiService } from '../services/testCasesApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
+import { configurationsApiService } from '../services/configurationsApi';
 import { useApp } from '../context/AppContext';
 import { TestCase, TEST_RESULTS, TestResultId } from '../types';
 import { getDeviceIcon, getDeviceColor } from '../utils/deviceIcons';
@@ -306,223 +307,169 @@ const TestRunsOverview: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 Fetching test runs overview for project:', selectedProject.name);
-
-      // STEP 1: Fetch all test runs for the project in one request
+      // STEP 1: Fetch all test runs
       const testRunsResponse = await testRunsApiService.getTestRuns(selectedProject.id, 1, 1000);
-      
-      // STEP 2: Filter for active test runs only (state 1, 2, or 3) and extract caseResults
-      const activeTestRuns = testRunsResponse.data
-        .map(apiTestRun => testRunsApiService.transformApiTestRun(apiTestRun, testRunsResponse.included))
-        .filter(testRun => testRun.state === 1 || testRun.state === 2 || testRun.state === 3);
+
+      // STEP 2: Filter for active test runs only (all states except closed state 6)
+      const activeApiTestRuns = testRunsResponse.data.filter(apiTestRun => {
+        const state = apiTestRun.attributes.state;
+        return state !== 6 && state !== "6";
+      });
+
+      // Transform active test runs
+      const activeTestRuns = activeApiTestRuns.map(apiTestRun =>
+        testRunsApiService.transformApiTestRun(apiTestRun, testRunsResponse.included)
+      );
 
       setTestRuns(activeTestRuns);
 
-      console.log('✅ Found', activeTestRuns.length, 'active test runs');
+      // STEP 3: Collect all unique test case IDs from executions
+      const testCaseIdsSet = new Set<string>();
+      for (const apiTestRun of activeApiTestRuns) {
+        if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
+          apiTestRun.attributes.executions.forEach((execution: { test_case_id?: number; [key: string]: unknown }) => {
+            if (execution.test_case_id) {
+              testCaseIdsSet.add(execution.test_case_id.toString());
+            }
+          });
+        }
+      }
 
-      // STEP 3: Collect all unique test case IDs from all active test runs
-      const allTestCaseIds = new Set<string>();
-      const testCaseToRunMapping = new Map<string, { runId: string; runName: string; result: string; configurationId?: string; configurationLabel?: string }>();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used for tracking test case instances
-      const testCaseRunInstances: TestCaseWithExecution[] = [];
+      // STEP 4: Fetch all test cases for this project
+      const testCasesMap = new Map<string, TestCase>();
+      if (testCaseIdsSet.size > 0) {
+        const itemsPerPage = 100;
+        const testCasesResponse = await testCasesApiService.getTestCases(1, itemsPerPage, selectedProject.id);
+        const totalPages = Math.ceil(testCasesResponse.meta.totalItems / itemsPerPage);
 
-      for (const testRun of activeTestRuns) {
-        console.log('🔄 Processing test run:', testRun.name);
+        let allTestCasesData = [...testCasesResponse.data];
 
-        // Get detailed test run data with executions (we need this for execution results)
-        const detailedTestRunResponse = await testRunsApiService.getTestRun(testRun.id);
-
-        // Extract configurations from included data
-        const configurations = new Map<string, string>();
-        let defaultConfigId: string | undefined = undefined;
-        if (detailedTestRunResponse.included) {
-          detailedTestRunResponse.included
-            .filter(item => item.type === 'Configuration')
-            .forEach(configItem => {
-              const configId = configItem.attributes.id.toString();
-              const configLabel = configItem.attributes.label || configItem.attributes.name || `Config ${configId}`;
-              configurations.set(configId, configLabel);
-              console.log(`🔧 Found configuration: ID=${configId}, Label=${configLabel}`);
-            });
-
-          // If there's only one configuration, use it as the default for executions without configuration_id
-          if (configurations.size === 1) {
-            defaultConfigId = Array.from(configurations.keys())[0];
-            console.log(`🔧 Using single configuration ${defaultConfigId} as default for test run ${testRun.name}`);
+        if (totalPages > 1) {
+          const pagePromises = [];
+          for (let page = 2; page <= totalPages; page++) {
+            pagePromises.push(testCasesApiService.getTestCases(page, itemsPerPage, selectedProject.id));
           }
+          const pageResponses = await Promise.all(pagePromises);
+          pageResponses.forEach(response => {
+            allTestCasesData = [...allTestCasesData, ...response.data];
+          });
         }
 
-        // Extract execution results from executions
-        if (detailedTestRunResponse.data.attributes.executions && Array.isArray(detailedTestRunResponse.data.attributes.executions)) {
+        allTestCasesData.forEach(apiTestCase => {
+          try {
+            const testCase = testCasesApiService.transformApiTestCase(apiTestCase, testCasesResponse.included);
+            testCasesMap.set(testCase.id, testCase);
+          } catch (error) {
+            console.error(`Failed to transform test case ${apiTestCase.attributes.id}:`, error);
+          }
+        });
+      }
+
+      // STEP 5: Fetch all configurations
+      const configurationsMap = new Map<string, string>();
+      try {
+        const configurationsResponse = await configurationsApiService.getConfigurations();
+        configurationsResponse.data.forEach(apiConfig => {
+          const config = configurationsApiService.transformApiConfiguration(apiConfig);
+          configurationsMap.set(config.id, config.label);
+        });
+      } catch (error) {
+        console.error('Failed to fetch configurations:', error);
+      }
+
+      // STEP 6: Process executions from all active test runs
+      const allTestCasesWithExecution: TestCaseWithExecution[] = [];
+
+      for (const apiTestRun of activeApiTestRuns) {
+        const testRunId = apiTestRun.attributes.id.toString();
+        const testRunName = apiTestRun.attributes.name;
+
+        // Get default config ID if there's only one configuration
+        const testRunConfigs = new Set<string>();
+        if (apiTestRun.relationships.configurations?.data) {
+          apiTestRun.relationships.configurations.data.forEach(configRef => {
+            const configId = configRef.id.split('/').pop();
+            if (configId) testRunConfigs.add(configId);
+          });
+        }
+        const defaultConfigId = testRunConfigs.size === 1 ? Array.from(testRunConfigs)[0] : undefined;
+
+        // Process executions for this test run
+        if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
           // Group by test case + configuration and keep only the latest execution per combination
           const latestExecutionPerCombo = new Map<string, { test_case_id?: number; result?: number; configuration_id?: number; created_at: string; [key: string]: unknown }>();
 
-          detailedTestRunResponse.data.attributes.executions.forEach((execution: { test_case_id?: number; result?: number; configuration_id?: number; created_at: string; [key: string]: unknown }) => {
+          apiTestRun.attributes.executions.forEach((execution: { test_case_id?: number; result?: number; configuration_id?: number; created_at: string; [key: string]: unknown }) => {
             const testCaseId = execution.test_case_id ? execution.test_case_id.toString() : null;
             const configId = execution.configuration_id ? execution.configuration_id.toString() : 'no-config';
             const comboKey = `${testCaseId}-${configId}`;
             const executionDate = new Date(execution.created_at);
 
-            // Keep only the latest execution for each test case + configuration combination
             const existing = latestExecutionPerCombo.get(comboKey);
             if (!existing || new Date(existing.created_at) < executionDate) {
               latestExecutionPerCombo.set(comboKey, execution);
             }
           });
 
-          console.log(`🔄 Found ${latestExecutionPerCombo.size} unique test case + configuration combinations in test run ${testRun.name}`);
-
-          // Now process only the latest execution per test case + configuration
+          // Create test case instances from latest executions
           Array.from(latestExecutionPerCombo.values()).forEach((execution: { test_case_id?: number; result?: number; configuration_id?: number; created_at: string; [key: string]: unknown }) => {
             const testCaseId = execution.test_case_id ? execution.test_case_id.toString() : null;
+            if (!testCaseId) return;
 
-            // If execution has no configuration_id, use the default if available (single configuration case)
-            let configId = execution.configuration_id ? execution.configuration_id.toString() : undefined;
+            // Resolve configuration ID - check both configuration_id and configurationId
+            let configId = execution.configuration_id ? execution.configuration_id.toString() :
+                          (execution as Record<string, unknown>).configurationId ? ((execution as Record<string, unknown>).configurationId as string | number).toString() : undefined;
             if (!configId && defaultConfigId) {
               configId = defaultConfigId;
-              console.log(`⚠️ Execution for test case ${testCaseId} has no configuration_id, using default: ${defaultConfigId}`);
-            } else if (!configId) {
-              console.warn(`⚠️ Execution for test case ${testCaseId} in test run ${testRun.name} has no configuration_id and no default available. This should not happen!`);
             }
 
-            const configLabel = configId && configId !== 'no-config' ? configurations.get(configId) : undefined;
+            const configLabel = configId && configId !== 'no-config' ? configurationsMap.get(configId) : undefined;
             const rawResult = execution.result;
 
-            console.log('🔄 Processing unique execution:', { testCaseId, configId, rawResult, type: typeof rawResult });
-
-            // Convert numeric result to TestResultId
+            // Convert result to TestResultId
             let resultId: TestResultId;
             if (typeof rawResult === 'number') {
               resultId = rawResult as TestResultId;
             } else if (typeof rawResult === 'string') {
-              // Try to parse as integer first
               const parsedInt = parseInt(rawResult);
               if (!isNaN(parsedInt) && TEST_RESULTS[parsedInt as TestResultId]) {
-                // String is a valid numeric ID
                 resultId = parsedInt as TestResultId;
-                console.log(`🔄 Converted string numeric result "${rawResult}" to: ${resultId} (${TEST_RESULTS[resultId]})`);
               } else {
-                // String is not numeric, try reverse lookup by label
                 const foundEntry = Object.entries(TEST_RESULTS).find(([_id, label]) =>
                   label.toLowerCase() === rawResult.toLowerCase()
                 );
-                resultId = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6; // Default to Untested
-                console.log(`🔄 Converted string label result "${rawResult}" to: ${resultId} (${TEST_RESULTS[resultId]})`);
+                resultId = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6;
               }
             } else {
-              resultId = 6; // Default to Untested
-              console.log(`🔄 Unknown result type for execution, defaulting to Untested`);
+              resultId = 6;
             }
 
-            console.log('🔄 Converted result:', { rawResult, resultId, label: TEST_RESULTS[resultId] });
+            // Get test case from map or create fallback
+            const testCase = testCasesMap.get(testCaseId);
 
-            if (testCaseId) {
-              allTestCaseIds.add(testCaseId);
-
-              // Create a unique key for each test case + test run + configuration combination
-              const uniqueKey = `${testCaseId}-${testRun.id}-${configId || 'no-config'}`;
-              testCaseToRunMapping.set(uniqueKey, {
-                runId: testRun.id,
-                runName: testRun.name,
-                result: resultId,
-                configurationId: configId,
-                configurationLabel: configLabel
-              });
-            }
+            allTestCasesWithExecution.push({
+              id: testCaseId,
+              title: testCase?.title || `Test Case ${testCaseId}`,
+              priority: testCase?.priority || 'medium',
+              type: testCase?.type || 'functional',
+              executionStatus: resultId,
+              executionResult: TEST_RESULTS[resultId],
+              testRunId: testRunId,
+              testRunName: testRunName,
+              fullTestCase: testCase || null,
+              configurationId: configId,
+              configurationLabel: configLabel
+            });
           });
         }
       }
 
-      console.log('📊 Collected', allTestCaseIds.size, 'unique test case IDs from all active test runs');
-      
-      // STEP 4: Fetch ALL unique test cases in parallel batches (much more efficient)
-      const testCaseIds = Array.from(allTestCaseIds);
-      const batchSize = 10; // Process 10 test cases at a time
-      const testCaseBatches = [];
-      
-      for (let i = 0; i < testCaseIds.length; i += batchSize) {
-        testCaseBatches.push(testCaseIds.slice(i, i + batchSize));
-      }
-      
-      console.log(`🚀 Fetching ${testCaseIds.length} test cases in ${testCaseBatches.length} parallel batches of ${batchSize}`);
-      
-      // Process all batches in parallel
-      const batchPromises = testCaseBatches.map(async (batch, batchIndex) => {
-        console.log(`📦 Processing batch ${batchIndex + 1}/${testCaseBatches.length} with ${batch.length} test cases`);
-        
-        const batchPromises = batch.map(async (testCaseId) => {
-          try {
-            const testCaseResponse = await testCasesApiService.getTestCase(testCaseId);
-            const testCase = testCasesApiService.transformApiTestCase(testCaseResponse.data, testCaseResponse.included);
-            
-            // Create instances for each test run + configuration this test case appears in
-            const instances: TestCaseWithExecution[] = [];
+      setAllTestCasesWithExecution(allTestCasesWithExecution);
+      setFilteredTestCases(allTestCasesWithExecution);
 
-            // Find all test run + configuration combinations that contain this test case
-            for (const [uniqueKey, runMapping] of testCaseToRunMapping.entries()) {
-              if (uniqueKey.startsWith(`${testCaseId}-`)) {
-                instances.push({
-                  id: testCase.id,
-                  title: testCase.title,
-                  priority: testCase.priority,
-                  type: testCase.type,
-                  executionStatus: runMapping.result as TestResultId,
-                  executionResult: TEST_RESULTS[runMapping.result as TestResultId],
-                  testRunId: runMapping.runId,
-                  testRunName: runMapping.runName,
-                  fullTestCase: testCase,
-                  configurationId: runMapping.configurationId,
-                  configurationLabel: runMapping.configurationLabel
-                });
-              }
-            }
-
-            return instances;
-          } catch (error) {
-            console.error(`Failed to fetch test case ${testCaseId}:`, error);
-            
-            // Create fallback instances for failed fetches
-            const fallbackInstances: TestCaseWithExecution[] = [];
-
-            for (const [uniqueKey, runMapping] of testCaseToRunMapping.entries()) {
-              if (uniqueKey.startsWith(`${testCaseId}-`)) {
-                fallbackInstances.push({
-                  id: testCaseId,
-                  title: `Test Case ${testCaseId}`,
-                  priority: 'medium',
-                  type: 'functional',
-                  executionStatus: runMapping.result as TestResultId,
-                  executionResult: TEST_RESULTS[runMapping.result as TestResultId],
-                  testRunId: runMapping.runId,
-                  testRunName: runMapping.runName,
-                  fullTestCase: null,
-                  configurationId: runMapping.configurationId,
-                  configurationLabel: runMapping.configurationLabel
-                });
-              }
-            }
-
-            return fallbackInstances;
-          }
-        });
-        
-        return Promise.all(batchPromises);
-      });
-      
-      // Wait for all batches to complete
-      const batchResults = await Promise.all(batchPromises);
-      
-      // Flatten results (each batch item now returns an array of instances)
-      const allResults = batchResults.flat().flat().filter(Boolean) as TestCaseWithExecution[];
-      
-      console.log(`✅ Successfully processed ${allResults.length} test cases from ${activeTestRuns.length} active test runs`);
-      
-      setAllTestCasesWithExecution(allResults);
-      setFilteredTestCases(allResults);
-      
       // Apply initial filter if provided in URL
       if (resultFilter && resultFilter !== 'all') {
-        applyResultFilter(resultFilter, allResults);
+        applyResultFilter(resultFilter, allTestCasesWithExecution);
       }
 
     } catch (err) {
@@ -655,8 +602,6 @@ const TestRunsOverview: React.FC = () => {
       // Add to updating set to show loading state
       setUpdatingResults(prev => new Set([...prev, updateKey]));
 
-      console.log(`🔄 Updating execution result for test case ${testCaseId} in test run ${testRunId} with config ${configurationId || 'none'} to: ${newResultId} (${newResultLabel})`);
-
       // Check if this is the first execution being created for this test run
       const testRunTestCases = allTestCasesWithExecution.filter(tc => tc.testRunId === testRunId);
       const isFirstExecution = testRunTestCases.every(tc =>
@@ -694,7 +639,7 @@ const TestRunsOverview: React.FC = () => {
       if (testRun) {
         if (isFirstExecution && testRun.state === 1) {
           // First execution created, move test run to "In Progress" (state 2)
-          console.log('🏃 First execution created, updating test run state to In Progress');
+
           try {
             await testRunsApiService.updateTestRunState(testRunId, 2);
             setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 2 } : tr));
@@ -710,7 +655,7 @@ const TestRunsOverview: React.FC = () => {
 
           if (allTestCasesHaveResults && testRun.state !== 5 && testRun.state !== 6) {
             // All test cases have results, move test run to "Done" (state 5)
-            console.log('🏃 All test cases have results, updating test run state to Done');
+
             try {
               await testRunsApiService.updateTestRunState(testRunId, 5);
               setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 5 } : tr));
@@ -795,18 +740,6 @@ const TestRunsOverview: React.FC = () => {
   const untestedCount = allTestCasesWithExecution.filter(tc => tc.executionStatus === 6).length; // Untested
   const inProgressCount = allTestCasesWithExecution.filter(tc => tc.executionStatus === 7).length; // In Progress
   const unknownCount = allTestCasesWithExecution.filter(tc => tc.executionStatus === 8).length; // Unknown
-  
-  console.log('📊 TestRunsOverview calculated counts:', {
-    total: totalTestCases,
-    passed: passedCount,
-    failed: failedCount,
-    blocked: blockedCount,
-    retest: retestCount,
-    skipped: skippedCount,
-    untested: untestedCount,
-    inProgress: inProgressCount,
-    unknown: unknownCount
-  });
 
   if (loading) {
     return (

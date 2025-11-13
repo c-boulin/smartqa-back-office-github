@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react';
-import { useCallback } from 'react';
-import { Project, TestCase, SharedStep, TEST_RESULTS } from '../types';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Project, TestCase, TEST_RESULTS } from '../types';
 import { testCasesApiService } from '../services/testCasesApi';
-import { sharedStepsApiService } from '../services/sharedStepsApi';
-import { foldersApiService } from '../services/foldersApi';
 import { testRunsApiService } from '../services/testRunsApi';
+
+const isDevelopment = import.meta.env.MODE === 'development';
+const devLog = (..._args: unknown[]) => {
+  if (isDevelopment) {
+    // Development logging disabled
+  }
+};
 
 interface DashboardData {
   // Real API Data
@@ -12,8 +16,6 @@ interface DashboardData {
   activeProjects: number;
   totalTestCases: number;
   totalTestCasesInActiveRuns: number;
-  totalFolders: number;
-  totalSharedSteps: number;
   totalTestRuns: number;
   
   // Real API Analysis
@@ -92,6 +94,7 @@ interface DashboardData {
     month: string;
     value: number;
   }>;
+  closedTestRunsRawData: Array<Record<string, unknown>>;
 }
 
 // State mapping for test runs
@@ -108,6 +111,7 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isFetchingRef = useRef(false);
 
   // Helper function to get test type number from string type
   // const getTestTypeNumber = (type: 'functional' | 'regression' | 'smoke' | 'integration' | 'performance'): number => {
@@ -116,24 +120,27 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
   // };
 
   const fetchDashboardData = useCallback(async () => {
+    if (isFetchingRef.current) {
+      devLog('⏭️ Skipping duplicate fetch (already in progress)');
+      return;
+    }
+
     try {
+      isFetchingRef.current = true;
       setLoading(true);
       setError(null);
-      setDashboardData(null); // Clear existing data to show loading
+      setDashboardData(null);
 
-      console.log('🔄 Dashboard data fetch triggered at:', new Date().toISOString());
-      console.log('📊 Selected project:', selectedProject?.name || 'All projects');
-      console.log('📊 Project ID:', selectedProject?.id || 'none');
-      console.log('📊 Project ID type:', typeof selectedProject?.id);
-      console.log('📊 Project ID value check:', selectedProject?.id ? 'HAS ID' : 'NO ID');
-      console.log('📊 Force fetching fresh data for project change');
+      devLog('🔄 Dashboard data fetch triggered at:', new Date().toISOString());
+      devLog('📊 Selected project:', selectedProject?.name || 'All projects');
+      devLog('📊 Project ID:', selectedProject?.id || 'none');
+      devLog('📊 Project ID type:', typeof selectedProject?.id);
+      devLog('📊 Project ID value check:', selectedProject?.id ? 'HAS ID' : 'NO ID');
+      devLog('📊 Force fetching fresh data for project change');
 
       // Real API Data
       let totalTestCases = 0;
-      let totalFolders = 0;
-      let totalSharedSteps = 0;
       let testCases: TestCase[] = [];
-      let sharedSteps: SharedStep[] = [];
       let actualPassed = 0;
       let actualFailed = 0;
       let actualBlocked = 0;
@@ -144,13 +151,14 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
       let actualUnknown = 0;
       let totalTestCasesInActiveRuns = 0;
       const closedTestRuns: Array<Record<string, unknown>> = [];
+      let closedTestRunsRawData: Array<Record<string, unknown>> = [];
       let closedTestRunsLineData: Array<{ month: string; value: number }> = [];
       let closedTestRunsData: Array<{ month: string; total: number }> = [];
       let trendsData: Array<Record<string, unknown>> = [];
 
       if (selectedProject) {
-        console.log(`📊 Fetching data for project: ${selectedProject.name}`);
-        console.log(`📊 Project ID for API calls: "${selectedProject.id}"`);
+        devLog(`📊 Fetching data for project: ${selectedProject.name}`);
+        devLog(`📊 Project ID for API calls: "${selectedProject.id}"`);
         
         // Validate project ID before making API calls
         if (!selectedProject.id || selectedProject.id === '' || selectedProject.id === 'undefined' || selectedProject.id === 'null') {
@@ -158,16 +166,12 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
           throw new Error(`Invalid project ID: ${selectedProject.id}`);
         }
         
-        // OPTIMIZATION: Make all API calls in parallel instead of sequentially
-        console.log(`🚀 Making parallel API calls for project: ${selectedProject.name}`);
+        // OPTIMIZATION: Only fetch test runs data needed for dashboard
+        devLog(`🚀 Fetching test runs for project: ${selectedProject.name}`);
+
+        const testRunsResponse = await testRunsApiService.getTestRuns(selectedProject.id, 1, 1000);
         
-        const [foldersResponse, sharedStepsResponse, testRunsResponse] = await Promise.all([
-          foldersApiService.getFolders(selectedProject.id, 1, 1000),
-          sharedStepsApiService.getSharedSteps(selectedProject.id, 1, 1000),
-          testRunsApiService.getTestRuns(selectedProject.id, 1, 1000)
-        ]);
-        
-        console.log(`🏃 Test runs data:`, testRunsResponse.data.map(tr => ({
+        devLog(`🏃 Test runs data:`, testRunsResponse.data.map(tr => ({
           id: tr.attributes.id,
           name: tr.attributes.name,
           state: tr.attributes.state,
@@ -176,25 +180,25 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
           hasValidCaseResults: !!(tr.attributes.caseResults && typeof tr.attributes.caseResults === 'object')
         })));
         
-        console.log('🔍 DETAILED TEST RUNS ANALYSIS:');
+        devLog('🔍 DETAILED TEST RUNS ANALYSIS:');
         testRunsResponse.data.forEach((tr, index) => {
-          console.log(`🏃 Test Run ${index + 1}:`);
-          console.log(`   - ID: ${tr.attributes.id}`);
-          console.log(`   - Name: ${tr.attributes.name}`);
-          console.log(`   - State: ${tr.attributes.state} (1=New, 2=In Progress, 3=Under Review)`);
-          console.log(`   - Status: ${tr.attributes.status}`);
-          console.log(`   - caseResults type: ${typeof tr.attributes.caseResults}`);
-          console.log(`   - caseResults value:`, tr.attributes.caseResults);
-          console.log(`   - Is active test run: ${tr.attributes.state === 1 || tr.attributes.state === 2 || tr.attributes.state === 3}`);
+          devLog(`🏃 Test Run ${index + 1}:`);
+          devLog(`   - ID: ${tr.attributes.id}`);
+          devLog(`   - Name: ${tr.attributes.name}`);
+          devLog(`   - State: ${tr.attributes.state} (1=New, 2=In Progress, 3=Under Review)`);
+          devLog(`   - Status: ${tr.attributes.status}`);
+          devLog(`   - caseResults type: ${typeof tr.attributes.caseResults}`);
+          devLog(`   - caseResults value:`, tr.attributes.caseResults);
+          devLog(`   - Is active test run: ${tr.attributes.state === 1 || tr.attributes.state === 2 || tr.attributes.state === 3}`);
           
           if (tr.attributes.caseResults && typeof tr.attributes.caseResults === 'object') {
-            console.log(`   - caseResults keys:`, Object.keys(tr.attributes.caseResults));
-            console.log(`   - caseResults values:`, Object.values(tr.attributes.caseResults));
-            console.log(`   - passed: ${tr.attributes.caseResults.passed || 0}`);
-            console.log(`   - failed: ${tr.attributes.caseResults.failed || 0}`);
-            console.log(`   - blocked: ${tr.attributes.caseResults.blocked || 0}`);
+            devLog(`   - caseResults keys:`, Object.keys(tr.attributes.caseResults));
+            devLog(`   - caseResults values:`, Object.values(tr.attributes.caseResults));
+            devLog(`   - passed: ${tr.attributes.caseResults.passed || 0}`);
+            devLog(`   - failed: ${tr.attributes.caseResults.failed || 0}`);
+            devLog(`   - blocked: ${tr.attributes.caseResults.blocked || 0}`);
           } else {
-            console.log(`   - ❌ NO VALID caseResults data`);
+            devLog(`   - ❌ NO VALID caseResults data`);
           }
         });
         
@@ -209,22 +213,22 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
           const isClosed = state === "6" || state === 6; // Closed
           const isActiveTestRun = !isClosed;
 
-          console.log(`🏃 Processing test run: ${apiTestRun.attributes.name}`);
-          console.log(`🏃 Test run state: ${state} (type: ${typeof state})`);
-          console.log(`🏃 Is closed: ${isClosed}`);
-          console.log(`🏃 Is active test run: ${isActiveTestRun}`);
+          devLog(`🏃 Processing test run: ${apiTestRun.attributes.name}`);
+          devLog(`🏃 Test run state: ${state} (type: ${typeof state})`);
+          devLog(`🏃 Is closed: ${isClosed}`);
+          devLog(`🏃 Is active test run: ${isActiveTestRun}`);
 
           if (!isActiveTestRun) {
-            console.log(`🏃 ⏭️ SKIPPING test run "${apiTestRun.attributes.name}" - it's closed (state: ${state})`);
+            devLog(`🏃 ⏭️ SKIPPING test run "${apiTestRun.attributes.name}" - it's closed (state: ${state})`);
             return;
           }
 
-          console.log(`🏃 ✅ ACTIVE test run "${apiTestRun.attributes.name}" - processing executions...`);
+          devLog(`🏃 ✅ ACTIVE test run "${apiTestRun.attributes.name}" - processing executions...`);
 
           // Check if this test run has executions data (it's an array of individual results)
           if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
-            console.log(`🏃 ✅ VALID executions array found for "${apiTestRun.attributes.name}"`);
-            console.log(`🏃 executions array length:`, apiTestRun.attributes.executions.length);
+            devLog(`🏃 ✅ VALID executions array found for "${apiTestRun.attributes.name}"`);
+            devLog(`🏃 executions array length:`, apiTestRun.attributes.executions.length);
 
             apiTestRun.attributes.executions.forEach((execution: Record<string, unknown>) => {
               const testCaseId = execution.test_case_id.toString();
@@ -240,27 +244,27 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
               }
             });
 
-            console.log(`🏃 Added executions from "${apiTestRun.attributes.name}" to global map`);
+            devLog(`🏃 Added executions from "${apiTestRun.attributes.name}" to global map`);
           } else {
-            console.log(`🏃 ❌ Test run "${apiTestRun.attributes.name}" has NO VALID executions array`);
-            console.log(`🏃    - executions value:`, apiTestRun.attributes.executions);
-            console.log(`🏃    - executions type:`, typeof apiTestRun.attributes.executions);
-            console.log(`🏃    - Is array:`, Array.isArray(apiTestRun.attributes.executions));
-            console.log(`🏃 Skipping this test run - no executions to count`);
+            devLog(`🏃 ❌ Test run "${apiTestRun.attributes.name}" has NO VALID executions array`);
+            devLog(`🏃    - executions value:`, apiTestRun.attributes.executions);
+            devLog(`🏃    - executions type:`, typeof apiTestRun.attributes.executions);
+            devLog(`🏃    - Is array:`, Array.isArray(apiTestRun.attributes.executions));
+            devLog(`🏃 Skipping this test run - no executions to count`);
           }
         });
 
-        console.log(`🏃 Found ${globalLastExecutionPerTestCaseConfigRun.size} unique test case + configuration + test run combinations globally`);
+        devLog(`🏃 Found ${globalLastExecutionPerTestCaseConfigRun.size} unique test case + configuration + test run combinations globally`);
         totalTestCasesInActiveRuns = globalLastExecutionPerTestCaseConfigRun.size;
 
         // Now count each result type from ALL unique combinations
         Array.from(globalLastExecutionPerTestCaseConfigRun.values()).forEach((execution: Record<string, unknown>, index: number) => {
-          console.log(`🏃   Global execution ${index + 1}:`, execution);
-          console.log(`🏃     - test_case_id: ${execution.test_case_id}`);
-          console.log(`🏃     - configuration_id: ${execution.configuration_id}`);
-          console.log(`🏃     - test_run_id: ${execution.test_run_id}`);
-          console.log(`🏃     - result: ${execution.result}`);
-          console.log(`🏃     - result type: ${typeof execution.result}`);
+          devLog(`🏃   Global execution ${index + 1}:`, execution);
+          devLog(`🏃     - test_case_id: ${execution.test_case_id}`);
+          devLog(`🏃     - configuration_id: ${execution.configuration_id}`);
+          devLog(`🏃     - test_run_id: ${execution.test_run_id}`);
+          devLog(`🏃     - result: ${execution.result}`);
+          devLog(`🏃     - result type: ${typeof execution.result}`);
 
           // Handle both numeric and string result values
           const rawResult = execution.result;
@@ -269,25 +273,25 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
           if (typeof rawResult === 'number') {
             // Convert numeric ID to string label
             resultLabel = TEST_RESULTS[rawResult as TestResultId]?.toLowerCase() || 'unknown';
-            console.log(`🏃     - converted numeric ${rawResult} to: ${resultLabel}`);
+            devLog(`🏃     - converted numeric ${rawResult} to: ${resultLabel}`);
           } else if (typeof rawResult === 'string') {
             // Handle string results - could be numeric string or label string
             const numericResult = parseInt(rawResult);
             if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
               // String is a numeric ID
               resultLabel = TEST_RESULTS[numericResult as TestResultId]?.toLowerCase() || 'unknown';
-              console.log(`🏃     - converted string numeric "${rawResult}" to: ${resultLabel}`);
+              devLog(`🏃     - converted string numeric "${rawResult}" to: ${resultLabel}`);
             } else {
               // String is already a label
               resultLabel = rawResult.toLowerCase();
-              console.log(`🏃     - using string label: ${resultLabel}`);
+              devLog(`🏃     - using string label: ${resultLabel}`);
             }
           } else {
             resultLabel = 'unknown';
-            console.log(`🏃     - unknown result type, defaulting to: unknown`);
+            devLog(`🏃     - unknown result type, defaulting to: unknown`);
           }
 
-          console.log(`🏃     - processed result: ${resultLabel}`);
+          devLog(`🏃     - processed result: ${resultLabel}`);
 
           switch (resultLabel) {
             case 'passed':
@@ -315,86 +319,37 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
               actualUnknown++;
               break;
             default:
-              console.log(`🏃     - Unknown result type: ${resultLabel}`);
+              devLog(`🏃     - Unknown result type: ${resultLabel}`);
               actualUnknown++;
           }
         });
         
-        console.log('🏃 📊 FINAL AGGREGATED RESULTS:');
-        console.log(`🏃 📊 Total test case instances in active runs: ${totalTestCasesInActiveRuns}`);
-        console.log(`🏃 📊 Total passed: ${actualPassed}`);
-        console.log(`🏃 📊 Total failed: ${actualFailed}`);
-        console.log(`🏃 📊 Total blocked: ${actualBlocked}`);
-        console.log(`🏃 📊 Total retest: ${actualRetest}`);
-        console.log(`🏃 📊 Total skipped: ${actualSkipped}`);
-        console.log(`🏃 📊 Total untested: ${actualUntested}`);
-        console.log(`🏃 📊 Total in progress: ${actualInProgress}`);
-        console.log(`🏃 📊 Total unknown: ${actualUnknown}`);
-        console.log(`🏃 📊 Sum check: ${actualPassed + actualFailed + actualBlocked} should equal ${totalTestCasesInActiveRuns}`);
+        devLog('🏃 📊 FINAL AGGREGATED RESULTS:');
+        devLog(`🏃 📊 Total test case instances in active runs: ${totalTestCasesInActiveRuns}`);
+        devLog(`🏃 📊 Total passed: ${actualPassed}`);
+        devLog(`🏃 📊 Total failed: ${actualFailed}`);
+        devLog(`🏃 📊 Total blocked: ${actualBlocked}`);
+        devLog(`🏃 📊 Total retest: ${actualRetest}`);
+        devLog(`🏃 📊 Total skipped: ${actualSkipped}`);
+        devLog(`🏃 📊 Total untested: ${actualUntested}`);
+        devLog(`🏃 📊 Total in progress: ${actualInProgress}`);
+        devLog(`🏃 📊 Total unknown: ${actualUnknown}`);
+        devLog(`🏃 📊 Sum check: ${actualPassed + actualFailed + actualBlocked} should equal ${totalTestCasesInActiveRuns}`);
         
         // Process closed test runs from the same test runs response
-        console.log(`📊 Processing closed test runs from test runs response...`);
-        console.log(`📊 Total test runs in response:`, testRunsResponse.data.length);
+        devLog(`📊 Processing closed test runs from test runs response...`);
+        devLog(`📊 Total test runs in response:`, testRunsResponse.data.length);
         
         // Filter for closed test runs (state 6 = Closed) from the same response
-        console.log('🔍 BAR_CHART_DEBUG: Starting to filter for closed test runs...');
-        const closedTestRunsFromResponse = testRunsResponse.data.filter((apiTestRun, index) => {
+        const closedTestRunsFromResponse = testRunsResponse.data.filter((apiTestRun) => {
           // Handle both string and number state values
           const state = apiTestRun.attributes.state;
-          const isClosed = state === "6" || state === 6;
-          console.log(`🔍 BAR_CHART_DEBUG: Test run ${index + 1}: "${apiTestRun.attributes.name}" - state: ${state} (type: ${typeof state}), is closed: ${isClosed}, closedAt: ${apiTestRun.attributes.closedAt}`);
-          return isClosed;
+          return state === "6" || state === 6;
         });
         
-        console.log('🔍 BAR_CHART_DEBUG: Found', closedTestRunsFromResponse.length, 'closed test runs');
-        console.log('🔍 BAR_CHART_DEBUG: Closed test runs details:', closedTestRunsFromResponse.map(tr => ({
-          id: tr.attributes.id,
-          name: tr.attributes.name,
-          state: tr.attributes.state,
-          closedAt: tr.attributes.closedAt,
-          caseResults: tr.attributes.caseResults,
-          caseResultsType: typeof tr.attributes.caseResults,
-          caseResultsIsArray: Array.isArray(tr.attributes.caseResults),
-          caseResultsLength: Array.isArray(tr.attributes.caseResults) ? tr.attributes.caseResults.length : 'not array',
-          caseResultsContent: Array.isArray(tr.attributes.caseResults) ? tr.attributes.caseResults : 'not array'
-        })));
+        closedTestRunsRawData = closedTestRunsFromResponse;
         
-        closedTestRunsFromResponse.forEach((apiTestRun, index) => {
-          console.log(`🔍 BAR_CHART_DEBUG: DETAILED ANALYSIS ${index + 1}:`);
-        
-          console.log(`🔍 BAR_CHART_DEBUG:   Test Run: "${apiTestRun.attributes.name}"`);
-          console.log(`🔍 BAR_CHART_DEBUG:   State: ${apiTestRun.attributes.state} (should be 6 for closed)`);
-          console.log(`🔍 BAR_CHART_DEBUG:   closedAt: ${apiTestRun.attributes.closedAt}`);
-          console.log(`🔍 BAR_CHART_DEBUG:   caseResults exists: ${!!apiTestRun.attributes.caseResults}`);
-          console.log(`🔍 BAR_CHART_DEBUG:   caseResults type: ${typeof apiTestRun.attributes.caseResults}`);
-          console.log(`🔍 BAR_CHART_DEBUG:   caseResults is array: ${Array.isArray(apiTestRun.attributes.caseResults)}`);
-          
-          if (apiTestRun.attributes.caseResults) {
-            console.log(`🔍 BAR_CHART_DEBUG:   caseResults raw value:`, apiTestRun.attributes.caseResults);
-            
-            if (Array.isArray(apiTestRun.attributes.caseResults)) {
-              console.log(`🔍 BAR_CHART_DEBUG:   caseResults array length: ${apiTestRun.attributes.caseResults.length}`);
-              
-              if (apiTestRun.attributes.caseResults.length > 0) {
-                console.log(`🔍 BAR_CHART_DEBUG:   First caseResult sample:`, apiTestRun.attributes.caseResults[0]);
-                console.log(`🔍 BAR_CHART_DEBUG:   All caseResults:`, apiTestRun.attributes.caseResults);
-              } else {
-                console.log(`🔍 BAR_CHART_DEBUG:   ❌ caseResults array is EMPTY`);
-              }
-            } else {
-              console.log(`🔍 BAR_CHART_DEBUG:   ❌ caseResults is NOT an array`);
-            }
-          } else {
-            console.log(`🔍 BAR_CHART_DEBUG:   ❌ caseResults is NULL/UNDEFINED`);
-          }
-        });
-        
-        // Generate bar chart data using the helper function
         closedTestRunsData = generateClosedTestRunsBarData(closedTestRunsFromResponse);
-        
-        console.log('🔍 BAR_CHART_DEBUG: Generated bar chart data:', closedTestRunsData);
-        console.log('🔍 BAR_CHART_DEBUG: Bar chart data length:', closedTestRunsData.length);
-        console.log('🔍 BAR_CHART_DEBUG: Sample bar chart data point:', closedTestRunsData[0]);
         
         // Generate line chart data using the helper function
         closedTestRunsLineData = generateClosedTestRunsLineData(closedTestRunsFromResponse.map(apiTestRun => ({
@@ -403,38 +358,23 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
           closedAt: apiTestRun.attributes.closedAt ? new Date(apiTestRun.attributes.closedAt) : null
         })));
         
-        // Fetch test cases - GET ALL PAGES to ensure complete data
-        console.log(`🧪 Fetching ALL test cases for project: ${selectedProject.name}`);
-        
-        // Fetch first page to get total count
-        const firstPageResponse = await testCasesApiService.getTestCases(1, 30, selectedProject.id);
+        const itemsPerPage = 100;
+        const firstPageResponse = await testCasesApiService.getTestCases(1, itemsPerPage, selectedProject.id);
         const totalTestCasesFromAPI = firstPageResponse.meta.totalItems;
-        const itemsPerPage = firstPageResponse.meta.itemsPerPage;
         const totalPages = Math.ceil(totalTestCasesFromAPI / itemsPerPage);
-        
-        console.log(`🧪 Total test cases: ${totalTestCasesFromAPI}, Total pages: ${totalPages}`);
-        
-        // Start with first page data
+
         let allTestCasesData = [...firstPageResponse.data];
-        
-        // Fetch remaining pages in parallel if there are more
+
         if (totalPages > 1) {
-          console.log(`🚀 Fetching remaining ${totalPages - 1} pages in parallel...`);
-          
           const pagePromises = [];
           for (let page = 2; page <= totalPages; page++) {
-            pagePromises.push(testCasesApiService.getTestCases(page, 30, selectedProject.id));
+            pagePromises.push(testCasesApiService.getTestCases(page, itemsPerPage, selectedProject.id));
           }
-          
+
           const pageResponses = await Promise.all(pagePromises);
-          
-          // Combine all page data
           pageResponses.forEach(response => {
             allTestCasesData = [...allTestCasesData, ...response.data];
           });
-          
-          console.log(`🧪 ✅ Fetched ALL ${allTestCasesData.length} test cases from ${totalPages} pages`);
-          console.log(`🧪 Expected: ${totalTestCasesFromAPI}, Got: ${allTestCasesData.length}`);
         }
         
         // Transform all test cases
@@ -444,28 +384,17 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
         
         // Use the actual count we fetched
         totalTestCases = allTestCasesData.length;
-        console.log(`🧪 Final test cases count: ${totalTestCases}`);
+        devLog(`🧪 Final test cases count: ${totalTestCases}`);
         
-        console.log(`✅ All API calls completed for project: ${selectedProject.name}`);
-        
-        // Process folders
-        totalFolders = foldersResponse.data.length;
-        console.log(`📁 Folders: ${totalFolders}`);
-        
-        // Process shared steps
-        sharedSteps = sharedStepsResponse.data.map(apiSharedStep => 
-          sharedStepsApiService.transformApiSharedStep(apiSharedStep, sharedStepsResponse.included)
-        );
-        totalSharedSteps = sharedSteps.length;
-        console.log(`🔗 Shared steps: ${totalSharedSteps}`);
-        
-        console.log(`📊 REAL execution data from caseResults:`, {
+        devLog(`✅ Test runs data fetched for project: ${selectedProject.name}`);
+
+        devLog(`📊 REAL execution data from caseResults:`, {
           totalTestCaseInstances: totalTestCasesInActiveRuns,
           passed: actualPassed,
           failed: actualFailed,
           blocked: actualBlocked
         });
-        console.log(`📊 FINAL VALUES being set in dashboard data:`, {
+        devLog(`📊 FINAL VALUES being set in dashboard data:`, {
           actualPassed,
         });
         const generatedClosedTestRunsData = generateClosedTestRunsData(closedTestRuns);
@@ -475,12 +404,10 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
           
         } else {
         // For all projects view, use aggregated data from projects array
-        console.log(`📊 All projects view - fetching data across all projects`);
+        devLog(`📊 All projects view - fetching data across all projects`);
         
         // Use aggregated data from projects array (much faster)
         totalTestCases = projects.reduce((sum, p) => sum + (p.testCasesCount || 0), 0);
-        totalFolders = projects.length * 2; // Estimate
-        totalSharedSteps = 0; // Not available for all projects view
         testCases = []; // No detailed analysis for all projects view
         
         // For all projects view, we'll use basic mock data for now since we'd need to fetch test runs for all projects
@@ -501,14 +428,14 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
         obsolete: testCases.filter(tc => tc.automationStatus === 5 || tc.automationStatus === "5").length,
       };
       
-      console.log(`🤖 Automation distribution:`, automationDistribution);
-      console.log(`🤖 Sample test cases automation status:`, testCases.slice(0, 5).map(tc => ({ id: tc.id, automationStatus: tc.automationStatus, type: typeof tc.automationStatus })));
-      console.log(`🤖 All test cases automation status:`, testCases.map(tc => ({ id: tc.id, title: tc.title, automationStatus: tc.automationStatus })));
+      devLog(`🤖 Automation distribution:`, automationDistribution);
+      devLog(`🤖 Sample test cases automation status:`, testCases.slice(0, 5).map(tc => ({ id: tc.id, automationStatus: tc.automationStatus, type: typeof tc.automationStatus })));
+      devLog(`🤖 All test cases automation status:`, testCases.map(tc => ({ id: tc.id, title: tc.title, automationStatus: tc.automationStatus })));
       
       // Debug: Check what automation status values we actually have
       const uniqueAutomationStatuses = [...new Set(testCases.map(tc => tc.automationStatus))];
-      console.log(`🤖 Unique automation status values found:`, uniqueAutomationStatuses);
-      console.log(`🤖 Automation status types:`, uniqueAutomationStatuses.map(status => ({ value: status, type: typeof status })));
+      devLog(`🤖 Unique automation status values found:`, uniqueAutomationStatuses);
+      devLog(`🤖 Automation status types:`, uniqueAutomationStatuses.map(status => ({ value: status, type: typeof status })));
 
       // Calculate automation metrics based on real data
       const automatedTestCases = automationDistribution.automated; // ID 2 = "Automated"
@@ -521,7 +448,7 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
       const automationCoverage = totalTestCasesWithAutomationStatus > 0 ? 
         Math.round((automatedTestCases / totalTestCasesWithAutomationStatus) * 100) : 0;
       
-      console.log(`🤖 Automation metrics calculation:`, {
+      devLog(`🤖 Automation metrics calculation:`, {
         totalTestCases: testCases.length,
         automatedTestCases,
         manualTestCases,
@@ -548,8 +475,8 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
         }
       });
       
-      console.log(`📊 Test type distribution:`, testTypeDistribution);
-      console.log(`📊 Sample test cases types:`, testCases.slice(0, 10).map(tc => ({ id: tc.id, type: tc.type })));
+      devLog(`📊 Test type distribution:`, testTypeDistribution);
+      devLog(`📊 Sample test cases types:`, testCases.slice(0, 10).map(tc => ({ id: tc.id, type: tc.type })));
 
       const statusDistribution = {
         draft: testCases.filter(tc => tc.status === 'draft').length,
@@ -583,9 +510,7 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
         totalTestCases,
         totalTestCasesInActiveRuns,
         totalTestRuns: selectedProject?.testRunsCount || projects.reduce((sum, p) => sum + (p.testRunsCount || 0), 0),
-        totalFolders,
-        totalSharedSteps,
-        
+
         // Real API Analysis
         automationDistribution,
         automatedTestCases,
@@ -594,7 +519,7 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
         statusDistribution,
         priorityDistribution,
         automationCoverage,
-        
+
         // Real execution data from active test runs (only passed/failed for pie chart)
         passRate,
         failRate,
@@ -607,20 +532,21 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
         actualUntested,
         actualInProgress,
         actualUnknown,
-        
+
         // Real historical data from closed test runs
         trendsData,
         recentExecutions: [], // Empty for now since we don't have execution history API
         closedTestRuns: [],
         closedTestRunsData,
-        closedTestRunsLineData
+        closedTestRunsLineData,
+        closedTestRunsRawData
       };
 
       setDashboardData(data);
 
     } catch (err) {
       console.error('❌ CRITICAL ERROR in dashboard data generation:', err);
-      console.log(`📊 REAL execution data from ACTIVE test runs caseResults:`, {
+      devLog(`📊 REAL execution data from ACTIVE test runs caseResults:`, {
         message: err instanceof Error ? err.message : 'Unknown error',
         selectedProject: selectedProject?.name,
         projectId: selectedProject?.id,
@@ -629,22 +555,23 @@ export const useDashboardData = (selectedProject: Project | null, projects: Proj
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedProject is a complex object
   }, [selectedProject?.id, projects]);
 
   useEffect(() => {
-    console.log('📊 Dashboard useEffect triggered for project:', selectedProject?.name || 'All projects', 'at:', new Date().toISOString());
-    console.log('📊 Project ID changed to:', selectedProject?.id);
-    console.log('📊 Project ID type:', typeof selectedProject?.id);
+    devLog('📊 Dashboard useEffect triggered for project:', selectedProject?.name || 'All projects', 'at:', new Date().toISOString());
+    devLog('📊 Project ID changed to:', selectedProject?.id);
+    devLog('📊 Project ID type:', typeof selectedProject?.id);
     
     if (selectedProject?.id) {
-      console.log('📊 ✅ SPECIFIC PROJECT SELECTED - Will fetch data for:', selectedProject.name);
+      devLog('📊 ✅ SPECIFIC PROJECT SELECTED - Will fetch data for:', selectedProject.name);
     } else {
-      console.log('📊 ⚠️ NO PROJECT SELECTED - Will fetch aggregated data');
+      devLog('📊 ⚠️ NO PROJECT SELECTED - Will fetch aggregated data');
     }
     
-    console.log('📊 Will trigger fetchDashboardData now...');
+    devLog('📊 Will trigger fetchDashboardData now...');
     fetchDashboardData();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedProject?.id and selectedProject.name are tracked separately
   }, [fetchDashboardData]);
@@ -673,11 +600,11 @@ function generateClosedTestRunsBarData(closedTestRuns: Array<Record<string, unkn
     untested: number; 
   } } = {};
   
-  console.log('🔍 BAR_CHART_DEBUG: generateClosedTestRunsBarData called with', closedTestRuns.length, 'closed test runs');
+  devLog('🔍 BAR_CHART_DEBUG: generateClosedTestRunsBarData called with', closedTestRuns.length, 'closed test runs');
   
   // Process each closed test run
   closedTestRuns.forEach((apiTestRun, index) => {
-    console.log(`🔍 BAR_CHART_DEBUG: Processing closed test run ${index + 1}:`, {
+    devLog(`🔍 BAR_CHART_DEBUG: Processing closed test run ${index + 1}:`, {
       id: apiTestRun.attributes.id,
       name: apiTestRun.attributes.name,
       state: apiTestRun.attributes.state,
@@ -690,16 +617,16 @@ function generateClosedTestRunsBarData(closedTestRuns: Array<Record<string, unkn
     const closedAt = apiTestRun.attributes.closedAt;
     
     if (!closedAt) {
-      console.log('🔍 BAR_CHART_DEBUG: ⚠️ Test run has no closedAt date:', apiTestRun.attributes.name);
+      devLog('🔍 BAR_CHART_DEBUG: ⚠️ Test run has no closedAt date:', apiTestRun.attributes.name);
       return;
     }
     
     const closedDate = new Date(closedAt);
-    console.log('🔍 BAR_CHART_DEBUG: Parsed closedDate:', closedDate);
+    devLog('🔍 BAR_CHART_DEBUG: Parsed closedDate:', closedDate);
     
     const monthKey = closedDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }); // "Dec 24"
     
-    console.log(`🔍 BAR_CHART_DEBUG: Generated month key: ${monthKey} from closedAt: ${closedAt}`);
+    devLog(`🔍 BAR_CHART_DEBUG: Generated month key: ${monthKey} from closedAt: ${closedAt}`);
     
     // Initialize month if not exists
     if (!monthlyData[monthKey]) {
@@ -712,12 +639,12 @@ function generateClosedTestRunsBarData(closedTestRuns: Array<Record<string, unkn
         skipped: 0,
         untested: 0
       };
-      console.log(`🔍 BAR_CHART_DEBUG: Initialized month data for: ${monthKey}`);
+      devLog(`🔍 BAR_CHART_DEBUG: Initialized month data for: ${monthKey}`);
     }
     
     // Process executions to count each result type
     if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
-      console.log(`🔍 BAR_CHART_DEBUG: ✅ VALID executions array found with ${apiTestRun.attributes.executions.length} results`);
+      devLog(`🔍 BAR_CHART_DEBUG: ✅ VALID executions array found with ${apiTestRun.attributes.executions.length} results`);
 
       // Group by test case ID + configuration ID to get the latest execution per combination
       const lastExecutionPerTestCaseConfig = new Map<string, Record<string, unknown>>();
@@ -734,80 +661,80 @@ function generateClosedTestRunsBarData(closedTestRuns: Array<Record<string, unkn
         }
       });
 
-      console.log(`🔍 BAR_CHART_DEBUG: Found ${lastExecutionPerTestCaseConfig.size} unique test case + configuration combinations`);
+      devLog(`🔍 BAR_CHART_DEBUG: Found ${lastExecutionPerTestCaseConfig.size} unique test case + configuration combinations`);
 
       // Now process only the latest execution per test case + configuration
       Array.from(lastExecutionPerTestCaseConfig.values()).forEach((execution: Record<string, unknown>, executionIndex: number) => {
-        console.log(`🔍 BAR_CHART_DEBUG:   Execution ${executionIndex + 1}:`, execution);
+        devLog(`🔍 BAR_CHART_DEBUG:   Execution ${executionIndex + 1}:`, execution);
 
         const rawResult = execution.result;
-        console.log(`🔍 BAR_CHART_DEBUG:   Raw result value: ${rawResult} (type: ${typeof rawResult})`);
+        devLog(`🔍 BAR_CHART_DEBUG:   Raw result value: ${rawResult} (type: ${typeof rawResult})`);
 
         let resultLabel: string;
 
         if (typeof rawResult === 'number') {
           // Use the TEST_RESULTS mapping and convert to lowercase
           resultLabel = (TEST_RESULTS[rawResult as TestResultId] || 'Unknown').toLowerCase();
-          console.log(`🔍 BAR_CHART_DEBUG:   Converted numeric ${rawResult} to: ${resultLabel}`);
+          devLog(`🔍 BAR_CHART_DEBUG:   Converted numeric ${rawResult} to: ${resultLabel}`);
         } else if (typeof rawResult === 'string') {
           resultLabel = rawResult.toLowerCase();
-          console.log(`🔍 BAR_CHART_DEBUG:   Using string result: ${resultLabel}`);
+          devLog(`🔍 BAR_CHART_DEBUG:   Using string result: ${resultLabel}`);
         } else {
           resultLabel = 'untested';
-          console.log(`🔍 BAR_CHART_DEBUG:   Unknown result type, defaulting to: untested`);
+          devLog(`🔍 BAR_CHART_DEBUG:   Unknown result type, defaulting to: untested`);
         }
 
-        console.log(`🔍 BAR_CHART_DEBUG:   BEFORE increment - ${monthKey} ${resultLabel}:`, monthlyData[monthKey][resultLabel as keyof typeof monthlyData[string]]);
+        devLog(`🔍 BAR_CHART_DEBUG:   BEFORE increment - ${monthKey} ${resultLabel}:`, monthlyData[monthKey][resultLabel as keyof typeof monthlyData[string]]);
 
         // Count each result type
         switch (resultLabel) {
           case 'passed':
             monthlyData[monthKey].passed++;
-            console.log(`🔍 BAR_CHART_DEBUG:   ✅ Incremented passed for ${monthKey}: ${monthlyData[monthKey].passed}`);
+            devLog(`🔍 BAR_CHART_DEBUG:   ✅ Incremented passed for ${monthKey}: ${monthlyData[monthKey].passed}`);
             break;
           case 'failed':
             monthlyData[monthKey].failed++;
-            console.log(`🔍 BAR_CHART_DEBUG:   ❌ Incremented failed for ${monthKey}: ${monthlyData[monthKey].failed}`);
+            devLog(`🔍 BAR_CHART_DEBUG:   ❌ Incremented failed for ${monthKey}: ${monthlyData[monthKey].failed}`);
             break;
           case 'blocked':
             monthlyData[monthKey].blocked++;
-            console.log(`🔍 BAR_CHART_DEBUG:   🚫 Incremented blocked for ${monthKey}: ${monthlyData[monthKey].blocked}`);
+            devLog(`🔍 BAR_CHART_DEBUG:   🚫 Incremented blocked for ${monthKey}: ${monthlyData[monthKey].blocked}`);
             break;
           case 'retest':
             monthlyData[monthKey].retest++;
-            console.log(`🔍 BAR_CHART_DEBUG:   🔄 Incremented retest for ${monthKey}: ${monthlyData[monthKey].retest}`);
+            devLog(`🔍 BAR_CHART_DEBUG:   🔄 Incremented retest for ${monthKey}: ${monthlyData[monthKey].retest}`);
             break;
           case 'skipped':
             monthlyData[monthKey].skipped++;
-            console.log(`🔍 BAR_CHART_DEBUG:   ⏭️ Incremented skipped for ${monthKey}: ${monthlyData[monthKey].skipped}`);
+            devLog(`🔍 BAR_CHART_DEBUG:   ⏭️ Incremented skipped for ${monthKey}: ${monthlyData[monthKey].skipped}`);
             break;
           case 'untested':
           case 'in progress':
           case 'unknown':
             monthlyData[monthKey].untested++;
-            console.log(`🔍 BAR_CHART_DEBUG:   ⚪ Incremented untested (${resultLabel}) for ${monthKey}: ${monthlyData[monthKey].untested}`);
+            devLog(`🔍 BAR_CHART_DEBUG:   ⚪ Incremented untested (${resultLabel}) for ${monthKey}: ${monthlyData[monthKey].untested}`);
             break;
           default:
-            console.log(`🔍 BAR_CHART_DEBUG:   ❓ Unknown result type: ${resultLabel}, adding to untested`);
+            devLog(`🔍 BAR_CHART_DEBUG:   ❓ Unknown result type: ${resultLabel}, adding to untested`);
             monthlyData[monthKey].untested++;
         }
 
-        console.log(`🔍 BAR_CHART_DEBUG:   AFTER increment - ${monthKey} ${resultLabel}:`, monthlyData[monthKey][resultLabel as keyof typeof monthlyData[string]]);
+        devLog(`🔍 BAR_CHART_DEBUG:   AFTER increment - ${monthKey} ${resultLabel}:`, monthlyData[monthKey][resultLabel as keyof typeof monthlyData[string]]);
       });
       
-      console.log(`🔍 BAR_CHART_DEBUG: Month data AFTER processing all caseResults for ${monthKey}:`, monthlyData[monthKey]);
-      console.log(`🔍 BAR_CHART_DEBUG: Month data AFTER processing all executions for ${monthKey}:`, monthlyData[monthKey]);
+      devLog(`🔍 BAR_CHART_DEBUG: Month data AFTER processing all caseResults for ${monthKey}:`, monthlyData[monthKey]);
+      devLog(`🔍 BAR_CHART_DEBUG: Month data AFTER processing all executions for ${monthKey}:`, monthlyData[monthKey]);
     } else {
-      console.log(`🔍 BAR_CHART_DEBUG: ❌ NO VALID executions for test run: ${apiTestRun.attributes.name}`);
-      console.log('🔍 BAR_CHART_DEBUG:   executions value:', apiTestRun.attributes.executions);
-      console.log('🔍 BAR_CHART_DEBUG:   executions type:', typeof apiTestRun.attributes.executions);
-      console.log('🔍 BAR_CHART_DEBUG:   Is array:', Array.isArray(apiTestRun.attributes.executions));
+      devLog(`🔍 BAR_CHART_DEBUG: ❌ NO VALID executions for test run: ${apiTestRun.attributes.name}`);
+      devLog('🔍 BAR_CHART_DEBUG:   executions value:', apiTestRun.attributes.executions);
+      devLog('🔍 BAR_CHART_DEBUG:   executions type:', typeof apiTestRun.attributes.executions);
+      devLog('🔍 BAR_CHART_DEBUG:   Is array:', Array.isArray(apiTestRun.attributes.executions));
     }
   });
   
-  console.log('🔍 BAR_CHART_DEBUG: FINAL monthly data object before converting to array:', monthlyData);
-  console.log('🔍 BAR_CHART_DEBUG: Monthly data keys:', Object.keys(monthlyData));
-  console.log('🔍 BAR_CHART_DEBUG: Monthly data values:', Object.values(monthlyData));
+  devLog('🔍 BAR_CHART_DEBUG: FINAL monthly data object before converting to array:', monthlyData);
+  devLog('🔍 BAR_CHART_DEBUG: Monthly data keys:', Object.keys(monthlyData));
+  devLog('🔍 BAR_CHART_DEBUG: Monthly data values:', Object.values(monthlyData));
   
   // Convert to array and sort by date
   const sortedData = Object.values(monthlyData).sort((a, b) => {
@@ -817,9 +744,9 @@ function generateClosedTestRunsBarData(closedTestRuns: Array<Record<string, unkn
     return dateA.getTime() - dateB.getTime();
   });
   
-  console.log('🔍 BAR_CHART_DEBUG: FINAL SORTED bar chart data:', sortedData);
-  console.log('🔍 BAR_CHART_DEBUG: Data length:', sortedData.length);
-  console.log('🔍 BAR_CHART_DEBUG: Sample data point:', sortedData[0]);
+  devLog('🔍 BAR_CHART_DEBUG: FINAL SORTED bar chart data:', sortedData);
+  devLog('🔍 BAR_CHART_DEBUG: Data length:', sortedData.length);
+  devLog('🔍 BAR_CHART_DEBUG: Sample data point:', sortedData[0]);
   
   return sortedData;
 }
@@ -851,13 +778,13 @@ function generateClosedTestRunsData(closedTestRuns: Array<Record<string, unknown
     };
   });
   
-  console.log('📊 Processing', closedTestRuns.length, 'closed test runs for bar chart...');
+  devLog('📊 Processing', closedTestRuns.length, 'closed test runs for bar chart...');
   
-  console.log('📊 Processing', closedTestRuns.length, 'closed test runs for monthly data');
+  devLog('📊 Processing', closedTestRuns.length, 'closed test runs for monthly data');
   
   // Process real closed test runs data
   closedTestRuns.forEach(testRun => {
-    console.log('📊 Processing closed test run for bar chart:', {
+    devLog('📊 Processing closed test run for bar chart:', {
       name: testRun.name,
       closedAt: testRun.closedAt,
       passedCount: testRun.passedCount,
@@ -877,14 +804,14 @@ function generateClosedTestRunsData(closedTestRuns: Array<Record<string, unknown
         monthlyData[monthKey].blocked += testRun.blockedCount || 0;
         monthlyData[monthKey].total += testRun.testCasesCount || 0;
         
-        console.log(`📊 Updated ${monthKey} with:`, {
+        devLog(`📊 Updated ${monthKey} with:`, {
           passed: testRun.passedCount || 0,
           failed: testRun.failedCount || 0,
           blocked: testRun.blockedCount || 0,
           total: testRun.testCasesCount || 0
         });
         
-        console.log(`📊 Added data for ${monthKey}:`, {
+        devLog(`📊 Added data for ${monthKey}:`, {
           passed: testRun.passedCount,
           failed: testRun.failedCount,
           blocked: testRun.blockedCount,
@@ -894,7 +821,7 @@ function generateClosedTestRunsData(closedTestRuns: Array<Record<string, unknown
     }
   });
   
-  console.log('📊 Final monthly data for bar chart:', monthlyData);
+  devLog('📊 Final monthly data for bar chart:', monthlyData);
   
   // Return in the correct month order
   return months.map(month => ({
@@ -908,14 +835,14 @@ export function generateClosedTestRunsLineData(closedTestRuns: Array<Record<stri
   month: string;
   value: number;
 }> {
-  console.log('📊 generateClosedTestRunsLineData called with:', closedTestRuns.length, 'closed test runs');
+  devLog('📊 generateClosedTestRunsLineData called with:', closedTestRuns.length, 'closed test runs');
 
   // Create a map to count test runs by specific date
   const dateCounts = new Map<string, number>();
 
   // Process each closed test run
   closedTestRuns.forEach(testRun => {
-    console.log('📊 Processing closed test run:', {
+    devLog('📊 Processing closed test run:', {
       name: testRun.name,
       id: testRun.id,
       closedAt: testRun.closedAt,
@@ -931,14 +858,14 @@ export function generateClosedTestRunsLineData(closedTestRuns: Array<Record<stri
       const day = String(closedDate.getDate()).padStart(2, '0');
       const dateKey = `${month}-${day}`;
 
-      console.log(`📊 Test run "${testRun.name}" closed at:`, closedDate);
-      console.log(`📊 Formatted date key: ${dateKey}`);
+      devLog(`📊 Test run "${testRun.name}" closed at:`, closedDate);
+      devLog(`📊 Formatted date key: ${dateKey}`);
 
       // Increment count for this date
       const currentCount = dateCounts.get(dateKey) || 0;
       dateCounts.set(dateKey, currentCount + 1);
 
-      console.log(`📊 Updated count for ${dateKey}: ${currentCount + 1}`);
+      devLog(`📊 Updated count for ${dateKey}: ${currentCount + 1}`);
     } else {
       console.warn('📊 Test run has no closedAt or closedDate:', testRun.name);
     }
@@ -961,7 +888,7 @@ export function generateClosedTestRunsLineData(closedTestRuns: Array<Record<stri
       value: count
     }));
 
-  console.log('📊 Final sorted line chart data (by date):', sortedDates);
+  devLog('📊 Final sorted line chart data (by date):', sortedDates);
 
   return sortedDates;
 }
@@ -1007,12 +934,12 @@ function generateTrendData(testCases: TestCase[]) {
   // Initialize last 12 months with zero values
   const trendData = [];
   
-  console.log('📈 Generating trend data from', testCases.length, 'test cases');
-  console.log('📈 Test case types found:', testCases.map(tc => tc.type));
+  devLog('📈 Generating trend data from', testCases.length, 'test cases');
+  devLog('📈 Test case types found:', testCases.map(tc => tc.type));
   
   // Get all unique test case types from the actual data
   const uniqueTypes = [...new Set(testCases.map(tc => tc.type))];
-  console.log('📈 Unique test case types found:', uniqueTypes);
+  devLog('📈 Unique test case types found:', uniqueTypes);
   
   // Map test case types to TEST_CASE_TYPES labels
   const getTypeLabel = (type: string): string => {
@@ -1062,11 +989,11 @@ function generateTrendData(testCases: TestCase[]) {
     // Always include total
     monthData.Total = testCasesInThisMonth.length;
     
-    console.log(`📈 Month ${monthKey} (${monthStart.toDateString()} to ${monthEnd.toDateString()}):`, monthData);
+    devLog(`📈 Month ${monthKey} (${monthStart.toDateString()} to ${monthEnd.toDateString()}):`, monthData);
     
     trendData.push(monthData);
   }
   
-  console.log('📈 Generated monthly trend data (test cases created per month):', trendData);
+  devLog('📈 Generated monthly trend data (test cases created per month):', trendData);
   return trendData;
 }

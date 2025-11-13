@@ -51,14 +51,8 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
   const handleFileUploaded = (fileHtml: string) => {
     if (quillRef.current) {
       const quill = quillRef.current.getEditor();
-      
-      console.log('🖼️ Inserting image HTML:', fileHtml);
-      console.log('🖼️ Current editor state before insertion:', {
-        length: quill.getLength(),
-        text: quill.getText(),
-        html: quill.root.innerHTML
-      });
-      
+
+
       // Extract image src from HTML
       const srcMatch = fileHtml.match(/src="([^"]+)"/);
       const imageSrc = srcMatch ? srcMatch[1] : '';
@@ -67,23 +61,15 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
         console.error('🖼️ No image src found in HTML');
         return;
       }
-      
-      console.log('🖼️ Extracted image src:', imageSrc);
-      
+
       const currentHTML = quill.root.innerHTML;
       const currentText = quill.getText().trim();
       const isEmptyEditor = currentText === '' || currentText === '\n';
-      
-      console.log('🖼️ Current editor state:', {
-        isEmptyEditor,
-        currentText,
-        currentHTML
-      });
-      
+
       try {
         if (isEmptyEditor) {
           // Rule: Empty editor - insert image at the beginning
-          console.log('🖼️ Empty editor: inserting image at start');
+
           quill.insertEmbed(0, 'image', imageSrc, 'user');
           quill.setSelection(1); // Position cursor after image
         } else {
@@ -92,31 +78,25 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
           
           if (hasImages) {
             // Rule: Already has images - add new image right after the last image (side by side)
-            console.log('🖼️ Has images: adding new image side by side');
+
             const endIndex = quill.getLength() - 1;
             quill.insertEmbed(endIndex, 'image', imageSrc, 'user');
             quill.setSelection(endIndex + 1);
           } else {
             // Rule: Has text but no images - insert image below text (new paragraph)
-            console.log('🖼️ Has text, no images: inserting image below text');
+
             const endIndex = quill.getLength() - 1;
             quill.insertText(endIndex, '\n', 'user'); // Create new line
             quill.insertEmbed(endIndex + 1, 'image', imageSrc, 'user');
             quill.setSelection(endIndex + 2);
           }
         }
-        
-        console.log('🖼️ Image insertion completed');
-        console.log('🖼️ Editor state after insertion:', {
-          length: quill.getLength(),
-          text: quill.getText(),
-          html: quill.root.innerHTML
-        });
-        
+
+
         // Force update the content
         setTimeout(() => {
           const updatedContent = quill.root.innerHTML;
-          console.log('🖼️ Final content after image insertion:', updatedContent);
+
           onChange(updatedContent);
         }, 100);
         
@@ -147,7 +127,7 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
 
   // Handle paste events for automatic image processing
   const handlePaste = async (event: ClipboardEvent) => {
-    console.log('🖼️ Paste event detected');
+
     const items = event.clipboardData?.items;
     if (!items || disabled) return;
 
@@ -155,15 +135,14 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
       const item = items[i];
       
       if (item.type.indexOf('image') !== -1) {
-        console.log('🖼️ Image found in paste event:', item.type);
+
         event.preventDefault();
         
         const file = item.getAsFile();
         if (file && autoProcessImages) {
-          console.log('🖼️ Processing pasted image file:', file.name);
+
           try {
-            console.log('🖼️ Pasted image detected, starting automatic processing...');
-            
+
             // Process the pasted image
             const result = await imageProcessingService.processImageOnUpload(file, fieldName);
             const imageHtml = imageProcessingService.generateImageHtml(result, 'Pasted image');
@@ -192,8 +171,7 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
       const toolbar = quillEditor.getModule('toolbar');
       if (toolbar) {
         toolbar.addHandler('image', () => {
-          console.log('🖼️ Quill image button clicked');
-          
+
           // Create a file input element
           const input = document.createElement('input');
           input.setAttribute('type', 'file');
@@ -203,9 +181,9 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
           input.onchange = async () => {
             const file = input.files?.[0];
             if (file) {
-              console.log('🖼️ File selected from Quill toolbar:', file.name);
+
               try {
-                console.log('🖼️ Processing image from Quill toolbar...');
+
                 const result = await imageProcessingService.processImageOnUpload(file, fieldName);
                 const imageHtml = imageProcessingService.generateImageHtml(result, file.name);
                 handleFileUploaded(imageHtml);

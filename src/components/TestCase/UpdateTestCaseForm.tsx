@@ -34,6 +34,7 @@ const UpdateTestCaseForm: React.FC<UpdateTestCaseFormProps> = ({
             required
             disabled={isSubmitting}
             placeholder="Enter test case title"
+            autoFocus
           />
         </div>
 

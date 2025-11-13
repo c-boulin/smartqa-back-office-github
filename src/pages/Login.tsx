@@ -90,8 +90,6 @@ const Login: React.FC = () => {
             throw new Error('Missing authentication token');
           }
 
-          console.log('🔐 Starting SSO login process with token...');
-          
           // Perform the SSO login API call
           const performLogin = async () => {
             // Call the SSO login endpoint with explicit timeout
@@ -114,8 +112,7 @@ const Login: React.FC = () => {
             }
             
             const data = await response.json();
-            console.log('✅ SSO login API response received successfully');
-            
+
             return data;
           };
           
@@ -131,8 +128,6 @@ const Login: React.FC = () => {
             token: response.data.token
           };
 
-          console.log('💾 Storing authentication data...');
-
           // Store authentication data synchronously
           login(userData);
           
@@ -143,9 +138,7 @@ const Login: React.FC = () => {
           if (!storedToken || !storedUserData) {
             throw new Error('Failed to store authentication data');
           }
-          
-          console.log('✅ Authentication data stored and verified');
-          
+
           toast.success(`Welcome back, ${userData.name}!`);
           
           // Close popup
@@ -153,9 +146,7 @@ const Login: React.FC = () => {
           
           // Clear the popup check interval since we're successful
           clearInterval(checkClosed);
-          
-          console.log('🚀 Redirecting to projects...');
-          
+
           // Use a longer delay to ensure everything is settled
           setTimeout(() => {
             navigate('/projects');
