@@ -229,28 +229,26 @@ const Projects: React.FC = () => {
   }, [updateProject, projectToManage, newProject]);
 
   const handleCloneProject = useCallback(async () => {
-    if (!projectToManage || !authState.user?.id) return;
+    if (!projectToManage) return;
 
     try {
       setIsSubmitting(true);
 
-      await cloneProject(
-        projectToManage.id,
-        newProject.name,
-        newProject.description,
-        authState.user.id.toString()
-      );
+      await cloneProject(projectToManage.id, {
+        title: newProject.name,
+        description: newProject.description
+      });
 
       await loadProjects(true);
-      setIsCloneModalOpen(false);
-      setProjectToManage(null);
-      setNewProject({ name: '', description: '' });
     } catch (error) {
       console.error('Error cloning project:', error);
     } finally {
       setIsSubmitting(false);
+      setIsCloneModalOpen(false);
+      setProjectToManage(null);
+      setNewProject({ name: '', description: '' });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects, authState.user are stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
   }, [cloneProject, projectToManage, newProject]);
 
   const handleDeleteProject = useCallback(async () => {

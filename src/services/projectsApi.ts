@@ -279,6 +279,48 @@ class ProjectsApiService {
       method: 'DELETE',
     });
   }
+
+  async cloneProject(id: string, projectData: { title: string; description: string }): Promise<{ data: ApiProject }> {
+    const requestBody = {
+      title: projectData.title,
+      description: projectData.description
+    };
+
+    const response = await apiService.authenticatedRequest(`/projects/${id}/clone`, {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+
+    if (response.success && response.data) {
+      return {
+        data: {
+          id: `/api/projects/${response.data.id}`,
+          type: 'Project',
+          attributes: {
+            id: response.data.id,
+            title: response.data.title,
+            description: response.data.description,
+            createdAt: response.data.created_at,
+            updatedAt: response.data.updated_at
+          },
+          relationships: {
+            testCases: { data: [] },
+            testRuns: { data: [] },
+            sharedSteps: { data: [] },
+            creator: { data: { type: 'User', id: '' } },
+            editor: { data: { type: 'User', id: '' } },
+            destroyer: { data: [] }
+          }
+        }
+      };
+    }
+
+    return response;
+  }
 }
 
 export const projectsApiService = new ProjectsApiService();

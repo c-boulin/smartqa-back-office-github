@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { projectsApiService, ProjectsApiResponse } from '../services/projectsApi';
-import { projectCloneService } from '../services/projectCloneService';
 import { Project } from '../types';
 import toast from 'react-hot-toast';
 import { useLoading } from '../context/LoadingContext';
@@ -344,37 +343,36 @@ export const useProjects = () => {
     );
   };
 
-  const cloneProject = async (
-    sourceProjectId: string,
-    newProjectName: string,
-    newProjectDescription: string,
-    userId: string
-  ) => {
-    return withLoading(
-      (async () => {
-        const newProjectId = await projectCloneService.cloneProject(
-          sourceProjectId,
-          newProjectName,
-          newProjectDescription,
-          userId
-        );
+  const cloneProject = async (sourceProjectId: string, projectData: { title: string; description: string }) => {
+    try {
+      return await withLoading(
+        (async () => {
+          const response = await projectsApiService.cloneProject(sourceProjectId, projectData);
 
-        const projectResponse = await projectsApiService.getProject(newProjectId);
-        const clonedProject = projectsApiService.transformApiProject(projectResponse.data);
+          if (!response || !response.data) {
+            throw new Error('Invalid response from clone API');
+          }
 
-        setProjects(prevProjects => [clonedProject, ...prevProjects]);
+          const clonedProject = projectsApiService.transformApiProject(response.data);
 
-        setPagination(prev => ({
-          ...prev,
-          totalItems: prev.totalItems + 1,
-          totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage)
-        }));
+          setProjects(prevProjects => [clonedProject, ...prevProjects]);
 
-        toast.success('Project cloned successfully');
-        return newProjectId;
-      })(),
-      'Cloning project...'
-    );
+          setPagination(prev => ({
+            ...prev,
+            totalItems: prev.totalItems + 1,
+            totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage)
+          }));
+
+          toast.success('Project cloned successfully');
+          return clonedProject.id;
+        })(),
+        'Cloning project...'
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to clone project';
+      toast.error(errorMessage);
+      throw error;
+    }
   };
 
   useEffect(() => {
