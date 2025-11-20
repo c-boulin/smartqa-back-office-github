@@ -192,11 +192,13 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
   const [stepOrder, setStepOrder] = useState<Array<{ type: 'step' | 'shared'; id: string }>>([]);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachmentNames, setAttachmentNames] = useState<Map<string, string>>(new Map());
   const [uploadedAttachments, setUploadedAttachments] = useState<Array<{
     file: File;
     key: string;
     cloudFrontUrl: string;
     attachmentId?: string;
+    fileId: string;
   }>>([]);
 
   // Modal states for shared step selection
@@ -242,6 +244,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
       setStepOrder([]);
       setSelectedTags([]);
       setAttachments([]);
+      setAttachmentNames(new Map());
       setUploadedAttachments([]);
       
       // Set current user as default owner when modal opens
@@ -347,13 +350,26 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
 
   const handleAttachmentUploaded = (uploadData: { id: string; filename: string; url: string }) => {
     console.log('📎 Attachment uploaded successfully:', uploadData);
-    
+
     setUploadedAttachments(prev => [...prev, {
       file: uploadData.file,
       key: uploadData.key,
       cloudFrontUrl: uploadData.cloudFrontUrl,
-      attachmentId: undefined // Will be set when attachment is created via API
+      attachmentId: undefined,
+      fileId: `${uploadData.file.name}-${uploadData.file.size}-${uploadData.file.lastModified}`
     }]);
+  };
+
+  const handleAttachmentNameChange = (fileId: string, name: string) => {
+    setAttachmentNames(prev => {
+      const newMap = new Map(prev);
+      if (name) {
+        newMap.set(fileId, name);
+      } else {
+        newMap.delete(fileId);
+      }
+      return newMap;
+    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -385,10 +401,14 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
       for (const uploadedAttachment of uploadedAttachments) {
         try {
           console.log('📎 Creating attachment for:', uploadedAttachment.file.name);
-          
+
+          const customName = attachmentNames.get(uploadedAttachment.fileId);
+          console.log('📎 Custom name for attachment:', customName);
+
           const attachmentResponse = await attachmentsApiService.createAttachment({
             url: uploadedAttachment.cloudFrontUrl,
-            userId: authState.user.id
+            userId: authState.user.id,
+            name: customName
           });
           
           createdAttachments.push({
@@ -675,6 +695,8 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
                   accept="*/*"
                   multiple={true}
                   maxSize={10}
+                  fileNames={attachmentNames}
+                  onFileNameChange={handleAttachmentNameChange}
                 />
               </div>
             </div>

@@ -9,6 +9,10 @@ interface FileUploadResult {
   [key: string]: unknown; // Allow additional properties
 }
 
+interface _FileWithName extends File {
+  customName?: string;
+}
+
 interface FileUploadProps {
   files: File[];
   onFilesChange: (files: File[]) => void;
@@ -18,6 +22,8 @@ interface FileUploadProps {
   multiple?: boolean;
   maxSize?: number; // in MB
   className?: string;
+  fileNames?: Map<string, string>;
+  onFileNameChange?: (fileId: string, name: string) => void;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({
@@ -28,7 +34,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
   accept = '*/*',
   multiple = true,
   maxSize = 10, // 10MB default
-  className = ''
+  className = '',
+  fileNames,
+  onFileNameChange
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -146,10 +154,22 @@ const FileUpload: React.FC<FileUploadProps> = ({
     onFilesChange(newFiles);
   };
 
+  const getFileId = (file: File): string => {
+    return `${file.name}-${file.size}-${file.lastModified}`;
+  };
+
   const isFileUploading = (file: File): boolean => {
-    const fileId = `${file.name}-${file.size}-${file.lastModified}`;
+    const fileId = getFileId(file);
     return uploadingFiles.has(fileId);
   };
+
+  const handleNameChange = (file: File, newName: string) => {
+    if (onFileNameChange) {
+      const fileId = getFileId(file);
+      onFileNameChange(fileId, newName);
+    }
+  };
+
   const getFileIcon = (file: File) => {
     if (file.type.startsWith('image/')) {
       return <Image className="w-4 h-4" />;
@@ -211,40 +231,60 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <h4 className="text-sm font-medium text-gray-300">
             Attached Files ({files.length})
           </h4>
-          {files.map((file, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between p-3 bg-slate-800 border border-slate-700 rounded-lg"
-            >
-              <div className="flex items-center space-x-3 flex-1 min-w-0">
-                <div className="text-gray-400">
-                  {getFileIcon(file)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white truncate">{file.name}</p>
-                  <div className="flex items-center space-x-2">
-                    <p className="text-xs text-gray-400">{formatFileSize(file.size)}</p>
-                    {isFileUploading(file) && (
-                      <div className="flex items-center text-xs text-cyan-400">
-                        <Loader className="w-3 h-3 mr-1 animate-spin" />
-                        Uploading...
+          {files.map((file, index) => {
+            const fileId = getFileId(file);
+            const customName = fileNames?.get(fileId);
+
+            return (
+              <div
+                key={index}
+                className="p-3 bg-slate-800 border border-slate-700 rounded-lg space-y-2"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    <div className="text-gray-400">
+                      {getFileIcon(file)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white truncate">{file.name}</p>
+                      <div className="flex items-center space-x-2">
+                        <p className="text-xs text-gray-400">{formatFileSize(file.size)}</p>
+                        {isFileUploading(file) && (
+                          <div className="flex items-center text-xs text-cyan-400">
+                            <Loader className="w-3 h-3 mr-1 animate-spin" />
+                            Uploading...
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
+                  {!disabled && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFile(index)}
+                      className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                      disabled={isFileUploading(file)}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
+
+                {onFileNameChange && (
+                  <div>
+                    <input
+                      type="text"
+                      value={customName || ''}
+                      onChange={(e) => handleNameChange(file, e.target.value)}
+                      placeholder="Enter attachment name (optional)"
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                      disabled={disabled || isFileUploading(file)}
+                    />
+                  </div>
+                )}
               </div>
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveFile(index)}
-                  className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                  disabled={isFileUploading(file)}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

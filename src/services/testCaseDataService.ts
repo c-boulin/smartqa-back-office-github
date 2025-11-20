@@ -89,6 +89,7 @@ export interface ProcessedAttachment {
   id: string;
   url: string;
   fileName: string;
+  name?: string;
   order?: number;
 }
 
@@ -145,11 +146,13 @@ class TestCaseDataService {
           if (attachmentResponse?.data?.attributes) {
             const url = attachmentResponse.data.attributes.url;
             const fileName = url.split('/').pop() || 'Unknown file';
-            
+            const name = attachmentResponse.data.attributes.name;
+
             return {
               id: attachmentId,
               url: url,
               fileName: fileName,
+              name: name,
               order: attachmentRef.meta?.order || index + 1
             };
           }

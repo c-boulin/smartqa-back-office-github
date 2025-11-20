@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader, Calendar, Tag as TagIcon, Clock, CheckCircle, SquarePen, Eye, XCircle, AlertTriangle, Target, Shield, Flame, MessageSquare, Trash2 } from 'lucide-react';
+import { X, Loader, Calendar, Tag as TagIcon, Clock, CheckCircle, SquarePen, Eye, XCircle, AlertTriangle, Target, Shield, Flame, MessageSquare, Trash2, Save, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { sharedStepsApiService } from '../../services/sharedStepsApi';
 import { testCaseExecutionsApiService, TestCaseExecution } from '../../services/testCaseExecutionsApi';
 import { testRunsApiService } from '../../services/testRunsApi';
 import { testCaseDataService } from '../../services/testCaseDataService';
 import { testCasesApiService } from '../../services/testCasesApi';
+import { attachmentsApiService } from '../../services/attachmentsApi';
 import { TestCase } from '../../types';
 import { TEST_RESULTS, TestResultId } from '../../types';
 import { getDeviceIcon, getDeviceColor } from '../../utils/deviceIcons';
@@ -58,6 +59,7 @@ interface TestCaseDetails {
     id: string;
     url: string;
     fileName: string;
+    name?: string;
   }>;
   executions: TestCaseExecution[];
   createdAt: Date;
@@ -413,6 +415,10 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
     alt: ''
   });
 
+  const [editingAttachmentId, setEditingAttachmentId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string>('');
+  const [savingAttachmentId, setSavingAttachmentId] = useState<string | null>(null);
+
   const handleImageClick = (src: string, alt: string) => {
     setImageModal({
       isOpen: true,
@@ -570,7 +576,8 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
       const transformedAttachments = attachments.map(att => ({
         id: att.id,
         url: att.url,
-        fileName: att.fileName
+        fileName: att.fileName,
+        name: att.name
       }));
       
       // The testCase already has properly formatted string values
@@ -629,6 +636,41 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
       return fileName.split('?')[0] || 'Unknown file';
     } catch {
       return 'Unknown file';
+    }
+  };
+
+  const handleEditAttachmentClick = (attachment: { id: string; name?: string; fileName: string }) => {
+    setEditingAttachmentId(attachment.id);
+    setEditingName(attachment.name || '');
+  };
+
+  const handleCancelAttachmentEdit = () => {
+    setEditingAttachmentId(null);
+    setEditingName('');
+  };
+
+  const handleSaveAttachmentEdit = async (attachmentId: string) => {
+    if (!editingName.trim()) {
+      toast.error('Attachment name cannot be empty');
+      return;
+    }
+
+    setSavingAttachmentId(attachmentId);
+    try {
+      await attachmentsApiService.updateAttachment(attachmentId, editingName.trim());
+      toast.success('Attachment name updated successfully');
+
+      setEditingAttachmentId(null);
+      setEditingName('');
+
+      if (testCase) {
+        await fetchTestCaseDetails(testCase.id);
+      }
+    } catch (error) {
+      console.error('Failed to update attachment name:', error);
+      toast.error('Failed to update attachment name');
+    } finally {
+      setSavingAttachmentId(null);
     }
   };
 
@@ -1086,15 +1128,18 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                       <h4 className="text-sm font-medium text-gray-300 mb-2">Attachments ({testCaseDetails.attachments.length})</h4>
                       <div className="space-y-2">
                         {testCaseDetails.attachments.map((attachment) => (
-                          <div key={attachment.id} className="bg-slate-700/50 border border-slate-600 rounded-lg p-3">
+                          <div key={attachment.id} className="bg-slate-700/50 border border-slate-600 rounded-lg p-3 space-y-2">
                             {isImageUrl(attachment.url) ? (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <div className="text-xs text-gray-400">{getFileNameFromUrl(attachment.url)}</div>
+                                  <div className="text-xs text-gray-400 truncate flex-1 min-w-0">
+                                    {attachment.name || getFileNameFromUrl(attachment.url)}
+                                  </div>
                                   {context === 'test-cases' && (
                                     <button
                                       onClick={() => handleRemoveAttachment(attachment.id)}
-                                      className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                                      disabled={savingAttachmentId === attachment.id}
+                                      className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
                                       title="Remove attachment"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
@@ -1112,7 +1157,9 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                             ) : (
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                  <div className="text-sm text-gray-300 truncate">{getFileNameFromUrl(attachment.url)}</div>
+                                  <div className="text-sm text-gray-300 truncate">
+                                    {attachment.name || getFileNameFromUrl(attachment.url)}
+                                  </div>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   <a
@@ -1126,7 +1173,8 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                   {context === 'test-cases' && (
                                     <button
                                       onClick={() => handleRemoveAttachment(attachment.id)}
-                                      className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                                      disabled={savingAttachmentId === attachment.id}
+                                      className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
                                       title="Remove attachment"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
@@ -1134,6 +1182,52 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                   )}
                                 </div>
                               </div>
+                            )}
+
+                            {context === 'test-cases' && (
+                              editingAttachmentId === attachment.id ? (
+                                <div className="flex items-center space-x-2 pt-2 border-t border-slate-600">
+                                  <input
+                                    type="text"
+                                    value={editingName}
+                                    onChange={(e) => setEditingName(e.target.value)}
+                                    placeholder="Enter attachment name"
+                                    className="flex-1 px-2 py-1.5 bg-slate-600 border border-slate-500 rounded text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                                    disabled={savingAttachmentId === attachment.id}
+                                    autoFocus
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveAttachmentEdit(attachment.id)}
+                                    disabled={savingAttachmentId === attachment.id}
+                                    className="px-2 py-1.5 bg-cyan-500 text-white rounded text-xs hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                                  >
+                                    {savingAttachmentId === attachment.id ? (
+                                      <Loader className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <Save className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleCancelAttachmentEdit}
+                                    disabled={savingAttachmentId === attachment.id}
+                                    className="px-2 py-1.5 bg-slate-600 text-white rounded text-xs hover:bg-slate-500 transition-colors disabled:opacity-50"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditAttachmentClick(attachment)}
+                                  disabled={savingAttachmentId !== null}
+                                  className="flex items-center space-x-1 text-xs text-cyan-400 hover:text-cyan-300 underline disabled:opacity-50 pt-2 border-t border-slate-600"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                  <span>Edit name</span>
+                                </button>
+                              )
                             )}
                           </div>
                         ))}

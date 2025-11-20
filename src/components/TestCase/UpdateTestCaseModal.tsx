@@ -64,11 +64,13 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
   });
 
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachmentNames, setAttachmentNames] = useState<Map<string, string>>(new Map());
   const [uploadedAttachments, setUploadedAttachments] = useState<Array<{
     file: File;
     key: string;
     cloudFrontUrl: string;
     attachmentId?: string;
+    fileId: string;
   }>>([]);
 
   // Modal states for shared step selection
@@ -112,6 +114,8 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
       });
 
       setAttachments([]);
+      setAttachmentNames(new Map());
+      setUploadedAttachments([]);
       loadTestCaseData(testCase, availableTags);
     } else if (isOpen && !testCase) {
       // Reset form for new test case - set current user as default
@@ -128,6 +132,8 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
         automationStatus: 1
       });
       setAttachments([]);
+      setAttachmentNames(new Map());
+      setUploadedAttachments([]);
       resetData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadTestCaseData and resetData are stable
@@ -195,8 +201,21 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
       file: uploadData.file,
       key: uploadData.key,
       cloudFrontUrl: uploadData.cloudFrontUrl,
-      attachmentId: undefined
+      attachmentId: undefined,
+      fileId: `${uploadData.file.name}-${uploadData.file.size}-${uploadData.file.lastModified}`
     }]);
+  };
+
+  const handleAttachmentNameChange = (fileId: string, name: string) => {
+    setAttachmentNames(prev => {
+      const newMap = new Map(prev);
+      if (name) {
+        newMap.set(fileId, name);
+      } else {
+        newMap.delete(fileId);
+      }
+      return newMap;
+    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -215,28 +234,32 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Create NEW attachments via API
     const newlyCreatedAttachments: Array<{
       type: "Attachment";
       id: string;
     }> = [];
-    
+
     const attachmentsToCreate = uploadedAttachments.filter(uploaded => {
-      const alreadyExists = existingAttachments.some(existing => 
+      const alreadyExists = existingAttachments.some(existing =>
         existing.url === uploaded.cloudFrontUrl
       );
       return !alreadyExists;
     });
-    
+
     if (attachmentsToCreate.length > 0 && authState.user?.id) {
       for (const uploadedAttachment of attachmentsToCreate) {
         try {
+          const customName = attachmentNames.get(uploadedAttachment.fileId);
+          console.log('📎 Custom name for attachment:', customName);
+
           const attachmentResponse = await attachmentsApiService.createAttachment({
             url: uploadedAttachment.cloudFrontUrl,
-            userId: authState.user.id
+            userId: authState.user.id,
+            name: customName
           });
-          
+
           newlyCreatedAttachments.push({
             type: "Attachment",
             id: `/api/attachments/${attachmentResponse.data.attributes.id}`
@@ -295,6 +318,12 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
     setExistingAttachments(prev => prev.filter(att => att.id !== attachmentId));
   };
 
+  const handleAttachmentNameUpdated = (attachmentId: string, newName: string) => {
+    setExistingAttachments(prev => prev.map(att =>
+      att.id === attachmentId ? { ...att, name: newName } : att
+    ));
+  };
+
   return (
     <Modal 
       isOpen={isOpen} 
@@ -337,6 +366,9 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
                 onRemoveExistingAttachment={handleRemoveExistingAttachment}
                 loadingAttachments={loadingAttachments}
                 isSubmitting={isSubmitting}
+                fileNames={attachmentNames}
+                onFileNameChange={handleAttachmentNameChange}
+                onAttachmentNameUpdated={handleAttachmentNameUpdated}
               />
             </div>
           </div>
