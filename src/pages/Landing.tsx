@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Hexagon,
   TestTube,
@@ -19,7 +19,13 @@ import { useAuth } from '../context/AuthContext';
 
 const Landing: React.FC = () => {
   const { state, logout } = useAuth();
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (state.isAuthenticated) {
+      navigate('/projects');
+    }
+  }, [state.isAuthenticated, navigate]);
 
   const handleLogout = () => {
     logout();
