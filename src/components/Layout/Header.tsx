@@ -20,7 +20,7 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
   };
 
   return (
-    <header className="bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 bg-white border-b border-purple-500/20 dark:border-purple-500/20 border-gray-200 shadow-2xl">
+    <header className="bg-white dark:bg-gradient-to-r dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 border-b border-gray-200 dark:border-purple-500/20 shadow-2xl">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -37,17 +37,17 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
                 SMARTQA
               </span>
             </Link>
-            <div className="h-8 w-px bg-gradient-to-b from-transparent via-purple-500 to-transparent dark:via-purple-500 via-gray-300"></div>
-            <h1 className="text-xl font-semibold text-white dark:text-white text-gray-900">{title}</h1>
+            <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent dark:via-purple-500"></div>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h1>
           </div>
 
           <div className="flex items-center space-x-6">
             <button
               onClick={toggleTheme}
-              className="relative w-14 h-7 bg-slate-700 dark:bg-slate-800 rounded-full p-1 transition-colors duration-300 hover:bg-slate-600 dark:hover:bg-slate-700"
+              className="relative w-14 h-7 bg-gray-300 dark:bg-slate-800 rounded-full p-1 transition-colors duration-300 hover:bg-gray-400 dark:hover:bg-slate-700"
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
-              <div className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white dark:bg-slate-900 shadow-lg transform transition-transform duration-300 flex items-center justify-center ${
+              <div className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-slate-900 dark:bg-white shadow-lg transform transition-transform duration-300 flex items-center justify-center ${
                 theme === 'dark' ? 'translate-x-7' : 'translate-x-0'
               }`}>
                 {theme === 'dark' ? (
@@ -63,16 +63,16 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
                 <User className="w-4 h-4 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-white dark:text-white text-gray-900">
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
                   {state.user?.name || 'User'}
                 </span>
-                <span className="text-xs text-gray-400 dark:text-gray-400 text-gray-600">
+                <span className="text-xs text-gray-600 dark:text-gray-400">
                   {state.user?.email}
                 </span>
               </div>
               <button
                 onClick={handleLogout}
-                className="p-2 text-gray-300 dark:text-gray-300 text-gray-600 hover:text-red-400 transition-colors"
+                className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-400 transition-colors"
                 title="Logout"
               >
                 <LogOut className="w-4 h-4" />
