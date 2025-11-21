@@ -42,6 +42,9 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
           </div>
 
           <div className="flex items-center space-x-6">
+            <div className="px-3 py-1 rounded bg-yellow-400 dark:bg-blue-600 text-black dark:text-white text-xs font-bold">
+              TEST: {theme}
+            </div>
             <button
               onClick={toggleTheme}
               className="relative w-14 h-7 bg-gray-300 dark:bg-slate-800 rounded-full p-1 transition-colors duration-300 hover:bg-gray-400 dark:hover:bg-slate-700"

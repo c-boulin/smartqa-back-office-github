@@ -18,6 +18,14 @@
   html:not(.dark) body {
     background-color: #f9fafb !important;
   }
+
+  html.dark * {
+    color-scheme: dark;
+  }
+
+  html:not(.dark) * {
+    color-scheme: light;
+  }
 }
 
 @layer components {
