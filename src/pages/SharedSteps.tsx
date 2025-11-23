@@ -5,6 +5,7 @@ import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import CreateSharedStepModal from '../components/SharedStep/CreateSharedStepModal';
 import EditSharedStepModal from '../components/SharedStep/EditSharedStepModal';
+import UsedInTestCasesTooltip from '../components/SharedStep/UsedInTestCasesTooltip';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useSharedSteps } from '../hooks/useSharedSteps';
@@ -410,9 +411,10 @@ const SharedSteps: React.FC = () => {
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/50">
-                          {sharedStep.usedInCount} test case{sharedStep.usedInCount !== 1 ? 's' : ''}
-                        </span>
+                        <UsedInTestCasesTooltip
+                          sharedStepId={sharedStep.id}
+                          usedInCount={sharedStep.usedInCount}
+                        />
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center">

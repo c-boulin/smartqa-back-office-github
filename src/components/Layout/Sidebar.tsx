@@ -286,11 +286,11 @@ const Sidebar: React.FC = () => {
   }, [isDropdownOpen, searchTerm, allProjects.length]);
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 border-r border-purple-500/20 shadow-2xl">
+    <aside className="w-64 sidebar-light border-r shadow-2xl">
       <nav className="p-4 space-y-2">
         {/* Projects Dropdown */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-400 mb-2 px-4">
+          <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 px-4">
             Projects
           </label>
           <div className="relative">
@@ -306,10 +306,10 @@ const Sidebar: React.FC = () => {
                 {getSelectedProject() || location.pathname === '/projects' ? (
                   <>
                     <span className="text-cyan-400">📁 </span>
-                    <span className="text-white">{getSelectedProjectName()}</span>
+                    <span className="text-gray-900 dark:text-white">{getSelectedProjectName()}</span>
                   </>
                 ) : (
-                  <span className="text-gray-400">{getSelectedProjectName()}</span>
+                  <span className="text-gray-600 dark:text-gray-400">{getSelectedProjectName()}</span>
                 )}
               </span>
               {state.isLoadingProjects ? (
@@ -326,7 +326,7 @@ const Sidebar: React.FC = () => {
                 onScroll={handleScroll}
                 className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
                 {/* Search Bar */}
-                <div className="p-3 border-b border-slate-700">
+                <div className="p-3 border-b border-gray-200 dark:border-slate-700">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     {isSearching && (
@@ -337,7 +337,7 @@ const Sidebar: React.FC = () => {
                       placeholder="Search all projects..."
                       value={searchTerm}
                       onChange={handleSearchChange}
-                      className="w-full pl-10 pr-8 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent"
+                      className="w-full pl-10 pr-8 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent"
                       autoFocus
                     />
                     {searchTerm && (
@@ -369,10 +369,10 @@ const Sidebar: React.FC = () => {
                             // Set the selected project and navigate to dashboard
                             handleProjectSelect(project.id);
                           }}
-                          className={`w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors truncate ${
-                            state.selectedProjectId === project.id 
-                              ? 'bg-slate-700 text-cyan-400' 
-                              : 'text-white'
+                          className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors truncate ${
+                            state.selectedProjectId === project.id
+                              ? 'bg-gray-200 dark:bg-slate-700 text-cyan-400'
+                              : 'text-gray-900 dark:text-white'
                           }`}
                           title={project.name} // Tooltip for long names
                         >
@@ -389,7 +389,7 @@ const Sidebar: React.FC = () => {
                   )}
                   
                   {filteredProjects.length === 0 && searchTerm && !isSearching && (
-                    <div className="px-4 py-3 text-gray-400 text-sm">
+                    <div className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm">
                       No projects found matching "{searchTerm}"
                     </div>
                   )}
@@ -454,7 +454,7 @@ const Sidebar: React.FC = () => {
               `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
                 isActive
                   ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/30 shadow-lg'
-                  : 'text-gray-300 hover:text-cyan-400 hover:bg-slate-800/50'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-cyan-400 hover:bg-gray-100 dark:hover:bg-slate-800/50'
               }`
             }
           >

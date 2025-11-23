@@ -10,7 +10,6 @@ import { useLoading } from './context/LoadingContext';
 import Layout from './components/Layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
-import Features from './pages/Features';
 import Login from './pages/Login';
 import Callback from './pages/Callback';
 import Dashboard from './pages/Dashboard';
@@ -33,7 +32,6 @@ const AppContent: React.FC = () => {
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/features" element={<Features />} />
             <Route path="/login" element={<Login />} />
             <Route path="/callback" element={<Callback />} />
             <Route path="/" element={
