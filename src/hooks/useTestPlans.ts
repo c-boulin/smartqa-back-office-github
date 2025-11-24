@@ -25,7 +25,7 @@ export const useTestPlans = (projectId?: string | null) => {
     
     // Prevent multiple simultaneous requests
     if (isLoadingRef.current) {
-      console.log('📋 Already loading test plans, skipping request');
+
       return;
     }
 
@@ -33,9 +33,7 @@ export const useTestPlans = (projectId?: string | null) => {
       isLoadingRef.current = true;
       setLoading(true);
       setError(null);
-      
-      console.log('📋 Fetching test plans for project:', useProjectId || 'all projects', 'page:', page);
-      
+
       let response: TestPlansApiResponse = await testPlansApiService.getTestPlans(
         useProjectId, // Filter by project ID
         page,
@@ -56,16 +54,14 @@ export const useTestPlans = (projectId?: string | null) => {
       
       // If no data found on first page, mark as loaded to prevent further requests
       if (page === 1 && responseData.length === 0) {
-        console.log('📋 No test plans found on first page - marking as loaded');
+
         hasLoadedRef.current = true;
       }
       
       const transformedTestPlans = responseData.map(apiTestPlan => 
         testPlansApiService.transformApiTestPlan(apiTestPlan, response?.included)
       );
-      
-      console.log('✅ Fetched', transformedTestPlans.length, 'test plans');
-      
+
       setTestPlans(transformedTestPlans);
       setPagination({
         currentPage: responseMeta.currentPage,
@@ -99,9 +95,7 @@ export const useTestPlans = (projectId?: string | null) => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔍 Searching test plans:', searchTerm);
-      
+
       let response: TestPlansApiResponse = await testPlansApiService.searchTestPlans(
         searchTerm,
         projectId, // Filter by project ID
@@ -256,21 +250,16 @@ export const useTestPlans = (projectId?: string | null) => {
   useEffect(() => {
     const projectChanged = previousProjectId.current !== projectId;
 
-    console.log('🔄 useTestPlans effect triggered:', {
-      projectId,
-      projectChanged
-    });
-
     // Update refs BEFORE doing anything
     previousProjectId.current = projectId;
 
     // Load test plans ONLY if the project changed
     if (projectChanged) {
-      console.log('📂 Project changed, loading test plans for project:', projectId || 'all projects');
+
       fetchTestPlans(1, projectId || undefined);
     } else {
       // Same project, do nothing
-      console.log('✅ Same project, keeping current test plans');
+
     }
   }, [projectId, fetchTestPlans]);
 

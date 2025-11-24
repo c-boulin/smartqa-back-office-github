@@ -84,22 +84,11 @@ class ReportEmailService {
         payload.message = message;
       }
 
-      console.log('📧 Sending email with payload:', {
-        recipients,
-        subject: payload.subject,
-        reportType,
-        projectName,
-        format,
-        attachmentName: fileName,
-        messageLength: message.length
-      });
-
       await apiService.authenticatedRequest('/reports/email', {
         method: 'POST',
         body: JSON.stringify(payload)
       });
 
-      console.log('📧 Email sent successfully');
     } catch (error) {
       console.error('❌ Failed to send report email:', error);
       throw error;

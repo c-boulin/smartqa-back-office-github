@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Plus, Search, Filter, SquarePen, Trash2, Copy, ChevronLeft, ChevronRight, Loader } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import Modal from '../components/UI/Modal';
@@ -41,6 +41,7 @@ const ProjectModal: React.FC<{
             required
             disabled={isSubmitting}
             placeholder="Enter project name"
+            autoFocus
           />
         </div>
         <div>
@@ -78,11 +79,13 @@ const ProjectModal: React.FC<{
 
 const Projects: React.FC = () => {
   const navigate = useNavigate();
-  const { getSelectedProject } = useApp();
+  const location = useLocation();
+  const { getSelectedProject, state: appState } = useApp();
   const { state: authState } = useAuth();
   const { dispatch, loadProjects } = useApp();
   const _selectedProject = getSelectedProject();
-  
+  const hasFetchedRef = useRef(false);
+
   const {
     projects,
     loading,
@@ -114,7 +117,7 @@ const Projects: React.FC = () => {
     description: ''
   });
 
-  const SORT_OPTIONS = [
+  const SORT_OPTIONS = useMemo(() => [
     { value: 'createdAt-desc', label: 'Creation Date (New → Old)', param: 'order[createdAt]=desc' },
     { value: 'createdAt-asc', label: 'Creation Date (Old → New)', param: 'order[createdAt]=asc' },
     { value: 'id-asc', label: 'ID (Ascending)', param: 'order[id]=asc' },
@@ -122,7 +125,7 @@ const Projects: React.FC = () => {
     { value: 'updatedAt-desc', label: 'Last Modified', param: 'order[updatedAt]=desc' },
     { value: 'title-asc', label: 'Title (A-Z)', param: 'order[title]=asc' },
     { value: 'title-desc', label: 'Title (Z-A)', param: 'order[title]=desc' }
-  ];
+  ], []);
 
   const handleSearch = useCallback(async (term: string) => {
     setCurrentSearchTerm(term);
@@ -152,7 +155,7 @@ const Projects: React.FC = () => {
     
     if (mode === 'my-projects') {
       const userId = authState.user?.id?.toString() || '';
-      console.log('🔍 Filtering by user ID:', userId, 'from user:', authState?.user);
+
       await fetchProjectsCreatedByUser(userId || '', 1, sortOption?.param);
     } else {
       await fetchProjectsWithSort(1, sortOption?.param);
@@ -168,7 +171,7 @@ const Projects: React.FC = () => {
       // Si on a une recherche active, refaire la recherche avec le nouveau tri
       if (filterMode === 'my-projects') {
         const userId = authState.user?.id?.toString() || '';
-        console.log('🔍 Searching with user ID:', userId);
+
         await searchProjectsCreatedByUser(currentSearchTerm, userId, 1, sortOption?.param);
       } else {
         await searchProjects(currentSearchTerm, 1, sortOption?.param);
@@ -177,7 +180,7 @@ const Projects: React.FC = () => {
       // Sinon, refaire la liste avec le nouveau tri
       if (filterMode === 'my-projects') {
         const userId = authState.user?.id?.toString() || '';
-        console.log('🔍 Sorting with user ID:', userId);
+
         await fetchProjectsCreatedByUser(userId, 1, sortOption?.param);
       } else {
         await fetchProjectsWithSort(1, sortOption?.param);
@@ -297,7 +300,7 @@ const Projects: React.FC = () => {
     if (currentSearchTerm.trim()) {
       if (filterMode === 'my-projects') {
         const userId = authState.user?.id?.toString() || '';
-        console.log('🔍 Paginating with user ID:', userId);
+
         searchProjectsCreatedByUser(currentSearchTerm, userId, page, sortOption?.param);
       } else {
         searchProjects(currentSearchTerm, page, sortOption?.param);
@@ -305,7 +308,7 @@ const Projects: React.FC = () => {
     } else {
       if (filterMode === 'my-projects') {
         const userId = authState.user?.id?.toString() || '';
-        console.log('🔍 Paginating with user ID:', userId);
+
         fetchProjectsCreatedByUser(userId, page, sortOption?.param);
       } else {
         fetchProjectsWithSort(page, sortOption?.param);
@@ -325,25 +328,51 @@ const Projects: React.FC = () => {
   }, [fetchProjectsWithSort]);
 
   const handleProjectClick = useCallback((project: Project) => {
-    console.log('🎯 Project clicked:', project.name, 'ID:', project.id);
-    
+    dispatch({ type: 'SET_NAVIGATING_TO_PROJECT', payload: true });
+
     // CRITICAL: Ensure the project exists in App context state
     // If it doesn't exist, add it to the context
     const contextProject = getSelectedProject();
     if (!contextProject || contextProject.id !== project.id) {
-      console.log('📝 Adding/updating project in App context:', project.name);
+
       dispatch({ type: 'UPDATE_PROJECT', payload: project });
     }
-    
+
     // Set the selected project ID
     dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: project.id });
-    
+
     // Use a small delay to ensure state is updated before navigation
     setTimeout(() => {
       toast.success(`Selected project: ${project.name}`);
       navigate('/dashboard');
     }, 50);
   }, [dispatch, navigate, getSelectedProject]);
+
+  useEffect(() => {
+    if (location.pathname !== '/projects') {
+      hasFetchedRef.current = false;
+      if (appState.isNavigatingToProject) {
+        dispatch({ type: 'SET_NAVIGATING_TO_PROJECT', payload: false });
+      }
+      return;
+    }
+
+    if (appState.isNavigatingToProject) {
+      dispatch({ type: 'SET_NAVIGATING_TO_PROJECT', payload: false });
+      hasFetchedRef.current = false;
+      return;
+    }
+
+    if (hasFetchedRef.current) {
+      return;
+    }
+
+    const sortOption = SORT_OPTIONS.find(option => option.value === sortBy);
+    fetchProjectsWithSort(1, sortOption?.param);
+    hasFetchedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, sortBy, appState.isNavigatingToProject]);
+
   if (loading && projects.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -504,8 +533,7 @@ const Projects: React.FC = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          console.log('🎯 Test Cases link clicked for project:', project.name, 'ID:', project.id);
-                          
+
                           // Set the selected project
                           dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: project.id });
                           

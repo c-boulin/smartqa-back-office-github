@@ -38,12 +38,12 @@ const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
   }, []);
 
   const handleSelectFolder = React.useCallback((folderId: string) => {
-    console.log('🎯 DroppableFolderTree: selecting folder', folderId);
+
     if (selectedFolderId === folderId) {
-      console.log('🚫 DroppableFolderTree: deselecting folder', folderId);
+
       onSelectFolder(null);
     } else {
-      console.log('✅ DroppableFolderTree: selecting folder', folderId);
+
       onSelectFolder(folderId);
     }
   }, [selectedFolderId, onSelectFolder]);
@@ -83,13 +83,13 @@ const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
       // Check if it's a test case being dragged
       if (e.dataTransfer?.types.includes('application/json')) {
         setIsDragInProgress(true);
-        console.log('🎯 Drag started - enabling drop zones');
+
       }
     };
 
     const handleDragEnd = () => {
       setIsDragInProgress(false);
-      console.log('🎯 Drag ended - disabling drop zones');
+
     };
 
     document.addEventListener('dragstart', handleDragStart);

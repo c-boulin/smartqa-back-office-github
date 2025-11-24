@@ -378,15 +378,12 @@ class TestPlansApiService {
     let closedTestRuns = 0;
     
     if (apiTestPlan.relationships?.testRuns?.data && included) {
-      console.log('📋 Processing test runs for test plan:', apiTestPlan.attributes?.title);
-      
+
       // Get test run IDs from relationships
       const testRunIds = apiTestPlan.relationships.testRuns.data.map(tr => 
         tr.id.split('/').pop()
       );
-      
-      console.log('📋 Found test run IDs:', testRunIds);
-      
+
       testRunIds.forEach(testRunId => {
         const testRunData = included.find(item => 
           item.type === 'TestRun' && (
@@ -401,23 +398,16 @@ class TestPlansApiService {
           
             const state = testRunData.attributes?.state;
           const isClosed = state === 6 || state === "6" || parseInt(state?.toString() || '0') === 6;
-          
-          console.log(`📋 Test run ${testRunData.attributes?.name || testRunData.id}: state=${state} (type: ${typeof state}), isClosed=${isClosed}`);
-          
+
           if (isClosed) {
             closedTestRuns++;
           }
          } else {
            console.warn('📋 Test run not found in included data for ID:', testRunId);
-           console.log('📋 Available included items:', included.map(item => ({
-             type: item.type,
-             id: item.id,
-             attributesId: item.attributes?.id
-           })));
+
         }
       });
-      
-      console.log(`📋 Final counts for test plan "${apiTestPlan.attributes?.title}": ${closedTestRuns}/${totalTestRuns} closed`);
+
     }
     
     // Extract test run IDs

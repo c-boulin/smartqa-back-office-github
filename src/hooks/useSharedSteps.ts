@@ -22,7 +22,7 @@ export const useSharedSteps = (projectId?: string | null) => {
     const useProjectId = targetProjectId || projectId;
     
     if (!useProjectId) {
-      console.log('🚫 Missing projectId, clearing shared steps');
+
       setSharedSteps([]);
       setLoading(false);
       return;
@@ -31,9 +31,7 @@ export const useSharedSteps = (projectId?: string | null) => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('📋 Fetching shared steps for project:', useProjectId, 'page:', page);
-      
+
       let response: SharedStepsApiResponse = await sharedStepsApiService.getSharedSteps(
         useProjectId,
         page,
@@ -55,9 +53,7 @@ export const useSharedSteps = (projectId?: string | null) => {
       const transformedSharedSteps = responseData.map(apiSharedStep => 
         sharedStepsApiService.transformApiSharedStep(apiSharedStep, included)
       );
-      
-      console.log('✅ Fetched', transformedSharedSteps.length, 'shared steps');
-      
+
       setSharedSteps(transformedSharedSteps);
       setPagination({
         currentPage: responseMeta.currentPage,
@@ -86,9 +82,7 @@ export const useSharedSteps = (projectId?: string | null) => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔍 Searching shared steps:', searchTerm);
-      
+
       let response: SharedStepsApiResponse = await sharedStepsApiService.searchSharedSteps(
         searchTerm,
         projectId,
@@ -218,26 +212,21 @@ export const useSharedSteps = (projectId?: string | null) => {
   useEffect(() => {
     const projectChanged = previousProjectId.current !== projectId;
 
-    console.log('🔄 useSharedSteps effect triggered:', {
-      projectId,
-      projectChanged
-    });
-
     // Update refs BEFORE doing anything
     previousProjectId.current = projectId;
 
     // Load shared steps ONLY if we have a project AND the project changed
     if (projectId && projectChanged) {
-      console.log('📂 Project changed, loading shared steps for project:', projectId);
+
       fetchSharedSteps(1, projectId);
     } else if (!projectId) {
       // No project selected
-      console.log('🚫 No project selected, clearing shared steps');
+
       setSharedSteps([]);
       setLoading(false);
     } else {
       // Same project, do nothing
-      console.log('✅ Same project, keeping current shared steps');
+
     }
   }, [projectId, fetchSharedSteps]);
 

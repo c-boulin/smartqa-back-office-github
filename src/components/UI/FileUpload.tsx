@@ -74,26 +74,22 @@ const FileUpload: React.FC<FileUploadProps> = ({
     
     // Prevent duplicate uploads and callbacks for the same file
     if (uploadingFiles.has(fileId) || uploadedFiles.has(fileId)) {
-      console.log('📎 File already uploaded or being uploaded, skipping:', file.name);
+
       return;
     }
     
     try {
       setUploadingFiles(prev => new Set([...prev, fileId]));
-      
-      console.log('📎 Starting S3 upload for:', file.name);
-      
+
       // Upload to S3 only (no database record yet)
       const result = await attachmentUploadService.uploadAttachment(file);
-      
-      console.log('📎 S3 upload completed:', result);
-      
+
       // Mark as uploaded to prevent duplicates
       setUploadedFiles(prev => new Set([...prev, fileId]));
       
       // Notify parent component of successful S3 upload (no database record yet)
       if (onFileUploaded) {
-        console.log('📎 Notifying parent of S3 upload completion for:', file.name);
+
         onFileUploaded({
           file,
           key: result.key,
@@ -103,7 +99,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           contentType: file.type
         });
       } else {
-        console.log('📎 No onFileUploaded callback provided');
+        // Upload successful but no URL returned
       }
       
       toast.success(`${file.name} uploaded to storage`);

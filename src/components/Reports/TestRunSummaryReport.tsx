@@ -115,7 +115,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
 
   // Log description for debugging
   React.useEffect(() => {
-    console.log('📊 TestRunSummaryReport received description:', description);
+
   }, [description]);
 
   // Helper function to calculate date threshold from creation date filter
@@ -155,32 +155,18 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
       setLoading(true);
       setError(null);
 
-      console.log('📊 Fetching test runs for project:', projectId);
-      console.log('📊 Report filters received:', JSON.stringify(filters, null, 2));
-      console.log('📊 Test run IDs filter:', testRunIds);
-      console.log('📊 Creation date filter:', creationDateFilter);
-      console.log('📊 Passed report data:', passedReportData ? `${passedReportData.testCases.length} test cases, ${passedReportData.testRuns.length} test runs` : 'none');
 
       // If we have pre-fetched report data from GET /test_cases?include=testRuns,
       // use it directly - no need to fetch anything!
       // Check if passedReportData exists (not null/undefined), even if empty
       if (passedReportData !== null && passedReportData !== undefined) {
-        console.log('📊 ✅ Using pre-fetched report data from modal - NO API CALLS NEEDED!');
-        console.log('📊 Data includes:', passedReportData.testCases?.length || 0, 'test cases and', passedReportData.testRuns?.length || 0, 'test runs');
+
 
         if (passedReportData.testCases && passedReportData.testCases.length > 0) {
-          console.log('📊 Test runs:', passedReportData.testRuns.map((tr) => ({
-            id: tr.attributes?.id,
-            name: tr.attributes?.name
-          })));
-          console.log('📊 Test cases:', passedReportData.testCases.map((tc) => ({
-            id: tc.attributes?.id,
-            title: tc.attributes?.title,
-            type: tc.attributes?.type,
-            executionsCount: tc.attributes?.executions?.length || 0
-          })));
+
+
           if (passedReportData.testExecutions) {
-            console.log('📊 Test executions:', passedReportData.testExecutions.length);
+            // Test executions available
           }
         }
 
@@ -208,37 +194,33 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
             };
           });
         } else {
-          console.log('📊 ⚠️ No test runs in included data - this may happen if test cases have no executions');
+          // No test runs in included data
         }
-
-        console.log('📊 Total test runs before filtering:', testRuns.length);
 
         // Apply filters to test runs if needed
         if (testRunIds && testRunIds.length > 0) {
           testRuns = testRuns.filter(tr => testRunIds.includes(tr.id));
-          console.log('📊 Filtered to', testRuns.length, 'specific test runs by ID');
+
         }
 
         // Filter by creation date if provided
         const dateThreshold = calculateDateThreshold(creationDateFilter);
         if (dateThreshold) {
-          const beforeCount = testRuns.length;
-          console.log(`📊 Applying date filter: ${creationDateFilter}`);
-          console.log(`📊 Date threshold: ${dateThreshold.toISOString()}`);
-          console.log(`📊 Current time: ${new Date().toISOString()}`);
+          const _beforeCount = testRuns.length;
+
 
           testRuns.forEach(tr => {
-            const trCreatedAt = new Date(tr.createdAt);
-            console.log(`📊 Test Run ${tr.id} (${tr.name}): created ${trCreatedAt.toISOString()}, createdAt raw:`, tr.createdAt);
+            const _trCreatedAt = new Date(tr.createdAt);
+
           });
 
           testRuns = testRuns.filter(tr => {
-            const trCreatedAt = new Date(tr.createdAt);
+            const _trCreatedAt = new Date(tr.createdAt);
             const isWithinPeriod = trCreatedAt >= dateThreshold;
-            console.log(`📊 Test Run ${tr.id} (${tr.name}): created ${trCreatedAt.toISOString()}, isWithinPeriod=${isWithinPeriod}`);
+
             return isWithinPeriod;
           });
-          console.log(`📊 Filtered test runs by creation date (${creationDateFilter}): ${beforeCount} -> ${testRuns.length}`);
+
         }
 
         // Calculate metrics directly from the pre-fetched data
@@ -251,7 +233,6 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         // only those filtered test cases, not all test cases in the test runs!
 
         let totalTestCases = passedReportData.testCases.length;
-        console.log('📊 Total filtered test cases:', totalTestCases);
 
         // Calculate execution statistics from test executions data
         let totalPassed = 0;
@@ -271,21 +252,18 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           : null;
 
         if (statusFilters) {
-          console.log('📊 Applying status filters:', Array.from(statusFilters));
+          // Status filters applied
         }
 
         if (passedReportData.testExecutions && passedReportData.testExecutions.length > 0) {
-          console.log('📊 Using test executions data:', passedReportData.testExecutions.length, 'executions');
 
           // Create a set of filtered test case IDs for quick lookup
           const filteredTestCaseIds = new Set(
             passedReportData.testCases.map((tc) => tc.attributes.id.toString())
           );
-          console.log('📊 Filtered test case IDs:', Array.from(filteredTestCaseIds));
 
           // Get the IDs of test runs we're interested in
           const relevantTestRunIds = new Set(testRuns.map(tr => tr.id));
-          console.log('📊 Relevant test run IDs:', Array.from(relevantTestRunIds));
 
           passedReportData.testExecutions.forEach((execution) => {
             const testCaseId = execution.attributes.test_case_id?.toString();
@@ -310,18 +288,16 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
             }
           });
 
-          console.log('📊 Latest executions (one per test case per test run):', latestExecutionPerTestCasePerRun.size);
-
           // Count executions for the donut chart and totals
           // Each entry in latestExecutionPerTestCasePerRun represents one (test case, test run) pair
           let filteredExecutionCount = 0;
-          latestExecutionPerTestCasePerRun.forEach((execution, compositeKey: string) => {
+          latestExecutionPerTestCasePerRun.forEach((execution, _compositeKey: string) => {
             const result = execution.attributes.result;
             const resultNum = typeof result === 'string' ? parseInt(result, 10) : result;
 
             // If status filters are applied, only count executions matching those filters
             if (statusFilters && !statusFilters.has(resultNum)) {
-              console.log(`📊 Skipping execution ${compositeKey}: result=${resultNum} (not in filter)`);
+
               return;
             }
 
@@ -330,7 +306,6 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
 
             // Count all executions for the donut chart and totals
             // (Each represents one test case in one test run)
-            console.log(`📊 Counting execution ${compositeKey}: result=${resultNum}`);
 
             if (resultNum === 1) totalPassed++;
             else if (resultNum === 2) totalFailed++;
@@ -344,19 +319,9 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           // This represents the actual number of test case executions across all test runs
           totalTestCases = filteredExecutionCount;
 
-          console.log('📊 Total (test case, test run) pairs:', totalTestCases);
-
-          console.log('📊 Final execution counts (based on latest execution per test case):', {
-            totalTestCases,
-            passed: totalPassed,
-            failed: totalFailed,
-            blocked: totalBlocked,
-            untested: totalUntested,
-            total: totalPassed + totalFailed + totalBlocked + totalUntested
-          });
         } else {
           // Fallback: use test run totals (may be inaccurate with filters)
-          console.log('📊 No test executions data, using test run totals');
+
           totalPassed = testRuns.reduce((sum, tr) => sum + tr.passedCount, 0);
           totalFailed = testRuns.reduce((sum, tr) => sum + tr.failedCount, 0);
           totalBlocked = testRuns.reduce((sum, tr) => sum + tr.blockedCount, 0);
@@ -396,7 +361,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         // Each execution counted in latestExecutionPerTestCasePerRun represents one (test case, test run) pair
         if (passedReportData.testExecutions && passedReportData.testExecutions.length > 0) {
           // For each (test case, test run) pair that matched our filters, count by assignee
-          latestExecutionPerTestCasePerRun.forEach((execution, compositeKey: string) => {
+          latestExecutionPerTestCasePerRun.forEach((execution, _compositeKey: string) => {
             const result = execution.attributes.result;
             const resultNum = typeof result === 'string' ? parseInt(result, 10) : result;
 
@@ -429,7 +394,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
 
         // If we have no assignee data, fall back to counting by test runs
         if (assigneeMap.size === 0) {
-          console.log('📊 No test case assignee data found, falling back to test run assignees');
+
           testRuns.forEach(tr => {
             const assigneeName = tr.assignedTo?.name || 'Unassigned';
             // Count each test case in the test run
@@ -467,21 +432,18 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           requirementsLinkedWithTestRuns: 0
         };
 
-        console.log('📊 Report generated from pre-fetched data:', reportData);
         setReportData(reportData);
         setLoading(false);
         return;
       }
 
       // Otherwise, fetch using the new test_cases endpoint with include=testRuns,user
-      console.log('📊 Fetching report data using /test_cases endpoint');
+
       const fetchedReportData = await fetchTestCasesForReport(projectId, filters);
 
       if (!fetchedReportData || !fetchedReportData.testCases) {
         throw new Error('No data received from API');
       }
-
-      console.log('📊 Received', fetchedReportData.testCases.length, 'test cases,', fetchedReportData.testRuns.length, 'test runs');
 
       // Now process this fetched data using the same logic as pre-fetched data
       // Transform test runs from the included data
@@ -509,35 +471,31 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         });
       }
 
-      console.log('📊 Total test runs before filtering:', testRuns.length);
-
       // Apply test run ID filter if provided
       if (testRunIds && testRunIds.length > 0) {
-        console.log('📊 Filtering for specific test runs:', testRunIds);
+
         testRuns = testRuns.filter(tr => testRunIds.includes(tr.id));
-        console.log('📊 Filtered to', testRuns.length, 'specific test runs by ID');
+
       }
 
       // Filter by creation date if provided
       const dateThreshold = calculateDateThreshold(creationDateFilter);
       if (dateThreshold) {
-        const beforeCount = testRuns.length;
-        console.log(`📊 Applying date filter: ${creationDateFilter}`);
-        console.log(`📊 Date threshold: ${dateThreshold.toISOString()}`);
-        console.log(`📊 Current time: ${new Date().toISOString()}`);
+        const _beforeCount = testRuns.length;
+
 
         testRuns.forEach(tr => {
-          const trCreatedAt = new Date(tr.createdAt);
-          console.log(`📊 Test Run ${tr.id} (${tr.name}): created ${trCreatedAt.toISOString()}, createdAt raw:`, tr.createdAt);
+          const _trCreatedAt = new Date(tr.createdAt);
+
         });
 
         testRuns = testRuns.filter(tr => {
-          const trCreatedAt = new Date(tr.createdAt);
+          const _trCreatedAt = new Date(tr.createdAt);
           const isWithinPeriod = trCreatedAt >= dateThreshold;
-          console.log(`📊 Test Run ${tr.id} (${tr.name}): created ${trCreatedAt.toISOString()}, isWithinPeriod=${isWithinPeriod}`);
+
           return isWithinPeriod;
         });
-        console.log(`📊 Filtered test runs by creation date (${creationDateFilter}): ${beforeCount} -> ${testRuns.length}`);
+
       }
 
       // Calculate report metrics from execution data (same as pre-fetched path)
@@ -642,7 +600,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
 
       // Count test case/test run pairs per assignee
       if (fetchedReportData.testExecutions && fetchedReportData.testExecutions.length > 0) {
-        latestExecutionPerTestCasePerRun.forEach((execution, compositeKey: string) => {
+        latestExecutionPerTestCasePerRun.forEach((_execution, compositeKey: string) => {
           const [, testCaseId] = compositeKey.split('-');
 
           const testCase = fetchedReportData.testCases.find((tc) =>
@@ -702,7 +660,6 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
       };
 
       setReportData(reportData);
-      console.log('📊 Report data calculated:', reportData);
 
     } catch (err) {
       console.error('❌ Failed to fetch test runs data:', err);
@@ -713,7 +670,6 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
   };
 
   const handleDownloadPDF = async () => {
-    console.log('📄 Downloading report as PDF...');
 
     if (!reportData) {
       toast.error('No report data available');
@@ -734,7 +690,6 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
   };
 
   const handleDownloadCSV = () => {
-    console.log('📊 Downloading report as CSV...');
 
     if (!reportData) {
       toast.error('No report data available');
@@ -755,9 +710,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
   };
 
   const handleSendEmail = async (emails: string[], message: string, format: ReportFormat) => {
-    console.log('📧 Sending report via email to:', emails);
-    console.log('📧 Message:', message);
-    console.log('📧 Format:', format);
+
 
     if (!reportData) {
       toast.error('No report data available');

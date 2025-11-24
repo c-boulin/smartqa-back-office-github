@@ -268,11 +268,8 @@ class FoldersApiService {
     }
     
     const parentId = apiFolder.relationships.parent?.data?.id?.split('/').pop();
-    
-    console.log(`🔄 Transforming folder "${apiFolder.attributes.name}" (ID: ${apiFolder.attributes.id})`);
-    console.log(`   - Parent ID: ${parentId || 'none (root folder)'}`);
-    console.log(`   - Project ID: ${folderProjectId} (expected: ${projectId})`);
-    
+
+
     return {
       id: apiFolder.attributes.id.toString(),
       name: apiFolder.attributes.name,
@@ -289,14 +286,13 @@ class FoldersApiService {
 
   // Build folder tree from flat list and calculate test cases count including children
   buildFolderTree(folders: Folder[]): Folder[] {
-    console.log('🌳 Building folder tree from', folders.length, 'folders');
-    console.log('📊 Folders to process:', folders.map(f => ({ id: f.id, name: f.name, parentId: f.parentId, directTestCasesCount: f.directTestCasesCount })));
-    
+
+
     // Create a map of all folders with fresh children arrays
     const folderMap = new Map<string, Folder>();
     folders.forEach(folder => {
       folderMap.set(folder.id, { ...folder, children: [] });
-      console.log(`   📁 Mapped folder: ${folder.name} (ID: ${folder.id})`);
+
     });
 
     const rootFolders: Folder[] = [];
@@ -309,37 +305,33 @@ class FoldersApiService {
         const parent = folderMap.get(folder.parentId);
         if (parent) {
           parent.children.push(folderNode);
-          console.log(`   🔗 Added ${folderNode.name} as child of ${parent.name}`);
+
         } else {
           // Parent not found, treat as root
           rootFolders.push(folderNode);
-          console.log(`   ⚠️ ${folderNode.name} treated as root (parent ${folder.parentId} not found)`);
+
         }
       } else {
         // No parent, this is a root folder
         rootFolders.push(folderNode);
-        console.log(`   🌱 ${folderNode.name} is a root folder`);
+
       }
     });
-
-    console.log('🧮 Calculating test cases counts recursively...');
 
     // Calculate total test cases count for each folder (including children) - RECURSIVE
     const calculateTotalTestCases = (folder: Folder): number => {
       let total = folder.directTestCasesCount || 0;
-      console.log(`   📊 Calculating for "${folder.name}": starting with ${total} direct test cases`);
-      
+
       // Add recursively the test cases from children
       folder.children.forEach(child => {
         const childTotal = calculateTotalTestCases(child);
         total += childTotal;
-        console.log(`   ➕ Adding ${childTotal} from child "${child.name}" to "${folder.name}"`);
+
       });
       
       // IMPORTANT: Update the folder counter
       folder.testCasesCount = total;
-      console.log(`   ✅ Final count for "${folder.name}": ${total} test cases (${folder.directTestCasesCount || 0} direct + ${total - (folder.directTestCasesCount || 0)} from children)`);
-      
+
       return total;
     };
 
@@ -348,19 +340,16 @@ class FoldersApiService {
       calculateTotalTestCases(rootFolder);
     });
 
-    console.log('🎯 Folder tree built with', rootFolders.length, 'root folders');
-    
     // Log final results for debugging
     const logFolderCounts = (folderList: Folder[], indent = '') => {
       folderList.forEach(folder => {
-        console.log(`${indent}📁 ${folder.name}: ${folder.testCasesCount} total (${folder.directTestCasesCount || 0} direct)`);
+
         if (folder.children.length > 0) {
           logFolderCounts(folder.children, indent + '  ');
         }
       });
     };
-    
-    console.log('📋 Final folder structure:');
+
     logFolderCounts(rootFolders);
     
     return rootFolders;
@@ -369,8 +358,7 @@ class FoldersApiService {
   // Get first folder in tree - should be the first root folder
   getFirstFolder(folders: Folder[]): Folder | null {
     if (folders.length === 0) return null;
-    
-    console.log('🎯 First folder selected:', folders[0].name, 'ID:', folders[0].id);
+
     return folders[0];
   }
 

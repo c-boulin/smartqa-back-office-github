@@ -304,8 +304,6 @@ class ScheduledReportsApiService {
       const reports = Array.isArray(response.data) ? response.data : [response.data];
       const included = response.included || [];
 
-      console.log('Scheduled reports response:', { reports, included });
-
       return reports.map(report => this.transformApiScheduledReport(report, included));
     } catch (error) {
       console.error('Failed to fetch scheduled reports:', error);
@@ -425,8 +423,6 @@ class ScheduledReportsApiService {
           attributes,
         },
       };
-
-      console.log('Update scheduled report payload:', JSON.stringify(requestBody, null, 2));
 
       const response = await apiService.authenticatedRequest(`/scheduled_reports/${id}?include=creator,project`, {
         method: 'PATCH',

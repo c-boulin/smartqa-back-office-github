@@ -137,6 +137,7 @@ const CreateSharedStepModal: React.FC<CreateSharedStepModalProps> = ({
                   required
                   disabled={isSubmitting}
                   placeholder="Enter shared step title"
+                  autoFocus
                 />
               </div>
 

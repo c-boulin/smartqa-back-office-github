@@ -98,14 +98,7 @@ class ProjectsApiService {
   transformApiProject(apiProject: ApiProject) {
     // Extract the project ID from the API URL format
     const projectId = apiProject.attributes.id.toString();
-    
-    console.log('🔄 Transforming API project:', {
-      apiId: apiProject.id,
-      attributesId: apiProject.attributes.id,
-      finalProjectId: projectId,
-      title: apiProject.attributes.title
-    });
-    
+
     if (!projectId || projectId === 'undefined' || projectId === '') {
       console.error('❌ Invalid project ID during transformation:', apiProject);
     }
@@ -137,39 +130,45 @@ class ProjectsApiService {
     const response = await apiService.authenticatedRequest(url);
     return response || this.getDefaultProjectsResponse();
   }
-  // Method for sidebar dropdown - fetches ALL projects with optional search
-  async getProjectsForSidebar(searchTerm?: string) {
+  async getProjectsForSidebar(searchTerm?: string): Promise<{ projects: Project[]; meta: { totalItems: number; currentPage: number; itemsPerPage: number } }> {
     try {
-      // Fetch first page of projects
-      let url = '/projects?itemsPerPage=1000&page=1';
-      
-      // Add search if provided
+      let url = '/projects?itemsPerPage=30&page=1';
+
       if (searchTerm && searchTerm.trim()) {
         url += `&title=${encodeURIComponent(searchTerm.trim())}`;
       }
-      
-      const response = await apiService.authenticatedRequest(url);
-      
+
+      const response: ProjectsApiResponse = await apiService.authenticatedRequest(url);
+
       if (!response || !response.data) {
-        return [];
+        return {
+          projects: [],
+          meta: { totalItems: 0, currentPage: 1, itemsPerPage: 30 }
+        };
       }
 
-      return response.data.map((project: ApiProject) => this.transformApiProject(project));
+      return {
+        projects: response.data.map((project: ApiProject) => this.transformApiProject(project)),
+        meta: response.meta
+      };
     } catch (error) {
       console.error('Error fetching projects for sidebar:', error);
-      return [];
+      return {
+        projects: [],
+        meta: { totalItems: 0, currentPage: 1, itemsPerPage: 30 }
+      };
     }
   }
 
   async getProjectsForSidebarPage(page: number, searchTerm?: string): Promise<ProjectsApiResponse> {
     try {
       let url = `/projects?itemsPerPage=30&page=${page}`;
-      
+
       // Add search if provided
       if (searchTerm && searchTerm.trim()) {
         url += `&title=${encodeURIComponent(searchTerm.trim())}`;
       }
-      
+
       const response = await apiService.authenticatedRequest(url);
       return response || this.getDefaultProjectsResponse();
     } catch (error) {

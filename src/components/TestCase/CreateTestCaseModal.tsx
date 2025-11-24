@@ -349,7 +349,6 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
   }).filter(Boolean) as TestStepOrSharedStep[];
 
   const handleAttachmentUploaded = (uploadData: { id: string; filename: string; url: string }) => {
-    console.log('📎 Attachment uploaded successfully:', uploadData);
 
     setUploadedAttachments(prev => [...prev, {
       file: uploadData.file,
@@ -396,14 +395,11 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
     }> = [];
     
     if (uploadedAttachments.length > 0 && authState.user?.id) {
-      console.log('📎 Step 1: Creating', uploadedAttachments.length, 'attachments via API...');
-      
+
       for (const uploadedAttachment of uploadedAttachments) {
         try {
-          console.log('📎 Creating attachment for:', uploadedAttachment.file.name);
 
           const customName = attachmentNames.get(uploadedAttachment.fileId);
-          console.log('📎 Custom name for attachment:', customName);
 
           const attachmentResponse = await attachmentsApiService.createAttachment({
             url: uploadedAttachment.cloudFrontUrl,
@@ -415,15 +411,13 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
             type: "Attachment",
             id: `/api/attachments/${attachmentResponse.data.attributes.id}`
           });
-          
-          console.log('✅ Created attachment with ID:', attachmentResponse.data.attributes.id);
+
         } catch (error) {
           console.error('❌ Failed to create attachment:', error);
           throw new Error(`Failed to create attachment for ${uploadedAttachment.file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
-      
-      console.log('📎 Step 1 & 2 Complete: All attachments created and transformed:', createdAttachments);
+
     }
     
     // Process stepOrder array - order is simply position in list (1, 2, 3, etc.)
@@ -490,8 +484,6 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
       createdAttachments
     };
 
-    console.log('📎 MODAL: Passing createdAttachments to hook:', createdAttachments);
-
     await onSubmit(submitData);
   };
 
@@ -525,6 +517,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
                     required
                     disabled={isSubmitting}
                     placeholder="Enter test case title"
+                    autoFocus
                   />
                 </div>
 

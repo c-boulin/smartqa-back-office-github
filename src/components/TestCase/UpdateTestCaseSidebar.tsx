@@ -79,7 +79,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
             <IconSelect
               value={formData.state}
               onChange={(value) => {
-                console.log('State IconSelect onChange called with value:', value);
+
                 onInputChange('state', value);
               }}
               options={STATES}

@@ -21,7 +21,7 @@ import { TestRun } from '../services/testRunsApi';
 import toast from 'react-hot-toast';
 
 const TestRuns: React.FC = () => {
-  const { getSelectedProject } = useApp();
+  const { getSelectedProject, state: appState, loadConfigurations } = useApp();
   // const { state: authState } = useAuth();
   const { users } = useUsers();
   const navigate = useNavigate();
@@ -100,8 +100,7 @@ const TestRuns: React.FC = () => {
       if (hasStateFilter) {
         multipleFilters.state = filters.state;
       }
-      
-      console.log('🔍 Applying multiple filters:', multipleFilters);
+
       await filterTestRunsWithMultipleFilters(multipleFilters, 1);
     } else {
       // No filters, fetch all
@@ -118,16 +117,15 @@ const TestRuns: React.FC = () => {
 
   // Filter test runs based on active tab
   const getFilteredTestRuns = () => {
-    console.log('🔍 Filtering test runs for tab:', activeTab);
-    console.log('🔍 All test runs:', testRuns.map(tr => ({ id: tr.id, name: tr.name, state: tr.state, status: tr.status })));
-    
+
+
     if (activeTab === 'active') {
       const activeRuns = testRuns.filter(testRun => testRun.state !== 6); // Not closed
-      console.log('🔍 Active test runs:', activeRuns.map(tr => ({ id: tr.id, name: tr.name, state: tr.state })));
+
       return activeRuns;
     } else {
       const closedRuns = testRuns.filter(testRun => testRun.state === 6); // Closed
-      console.log('🔍 Closed test runs:', closedRuns.map(tr => ({ id: tr.id, name: tr.name, state: tr.state })));
+
       return closedRuns;
     }
   };
@@ -246,9 +244,12 @@ const TestRuns: React.FC = () => {
   }, [deleteTestRun, selectedTestRun]);
 
   const openEditModal = useCallback((testRun: TestRun) => {
+    if (appState.configurations.length === 0 && !appState.isLoadingConfigurations) {
+      loadConfigurations();
+    }
     setSelectedTestRun(testRun);
     setIsEditModalOpen(true);
-  }, []);
+  }, [appState.configurations.length, appState.isLoadingConfigurations, loadConfigurations]);
 
   const openDeleteDialog = useCallback((testRun: TestRun) => {
     setSelectedTestRun(testRun);
@@ -336,14 +337,6 @@ const TestRuns: React.FC = () => {
         }
       }
 
-      console.log('🔄 Cloning test run with data:', {
-        name: cloneData.name,
-        testCaseIds: testCaseIds.length,
-        configurations: configurations.length,
-        includeAllTestCases: cloneData.includeAllTestCases,
-        selectedPairs: cloneData.selectedTestCaseConfigPairs.length
-      });
-
       // Create the cloned test run
       await createTestRun({
         name: cloneData.name,
@@ -395,7 +388,7 @@ const TestRuns: React.FC = () => {
   }, []);
 
   const handleTestRunNameClick = useCallback((testRun: TestRun) => {
-    console.log('🏃 Test run name clicked:', testRun.name, 'ID:', testRun.id);
+
     navigate(`/test-runs/${testRun.id}`);
   }, [navigate]);
 
@@ -490,9 +483,14 @@ const TestRuns: React.FC = () => {
             </div>
           )}
         </div>
-        <Button 
-          icon={Plus} 
-          onClick={() => setIsCreateModalOpen(true)}
+        <Button
+          icon={Plus}
+          onClick={() => {
+            if (appState.configurations.length === 0 && !appState.isLoadingConfigurations) {
+              loadConfigurations();
+            }
+            setIsCreateModalOpen(true);
+          }}
           disabled={!selectedProject}
           title={!selectedProject ? 'Please select a project first' : 'Create new test run'}
         >

@@ -9,6 +9,8 @@ interface ConfigurationSelectorProps {
   onCreateConfiguration?: (label: string) => Promise<Configuration>;
   disabled?: boolean;
   placeholder?: string;
+  preloadConfigurations?: boolean;
+  excludeConfigurations?: Configuration[];
 }
 
 const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
@@ -16,12 +18,15 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
   onConfigurationsChange,
   onCreateConfiguration,
   disabled = false,
-  placeholder = 'Select configurations...'
+  placeholder = 'Select configurations...',
+  preloadConfigurations = false,
+  excludeConfigurations = []
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [configurations, setConfigurations] = useState<Configuration[]>([]);
+  const [allConfigurations, setAllConfigurations] = useState<Configuration[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,11 +57,11 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
       if (debouncedSearchTerm.trim()) {
         searchConfigurations(debouncedSearchTerm);
       } else {
-        loadAllConfigurations();
+        setConfigurations(allConfigurations);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- searchConfigurations is stable
-  }, [debouncedSearchTerm, isOpen]);
+  }, [debouncedSearchTerm, isOpen, allConfigurations]);
 
   // Load all configurations efficiently when dropdown opens
   const loadAllConfigurations = async () => {
@@ -67,21 +72,18 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
     try {
       setLoading(true);
       setError(null);
-      console.log('⚙️ Loading configurations - making first request...');
-      
+
       // Make first request to get total count
       const firstPageResponse = await configurationsApiService.getConfigurations();
       
       // Check if we got any data
       if (!firstPageResponse.data || firstPageResponse.data.length === 0) {
-        console.log('⚙️ No configurations found - stopping requests');
+
         setConfigurations([]);
         hasLoadedRef.current = true;
         return;
       }
-      
-      console.log('⚙️ Found configurations, checking for additional pages...');
-      
+
       // Start with first page data
       let allConfigurations = firstPageResponse.data.map(apiConfig => 
         configurationsApiService.transformApiConfiguration(apiConfig)
@@ -93,8 +95,7 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
       const totalPages = Math.ceil(totalItems / itemsPerPage);
       
       if (totalPages > 1) {
-        console.log(`⚙️ Fetching remaining ${totalPages - 1} pages...`);
-        
+
         // Fetch remaining pages in parallel
         const pagePromises = [];
         for (let page = 2; page <= totalPages; page++) {
@@ -115,14 +116,15 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
       }
       
       setConfigurations(allConfigurations);
+      setAllConfigurations(allConfigurations);
       hasLoadedRef.current = true;
-      console.log('⚙️ Successfully loaded all configurations:', allConfigurations.length);
-      
+
     } catch (err) {
       console.error('⚙️ Failed to load configurations:', err);
       setError(err instanceof Error ? err.message : 'Failed to load configurations');
       setConfigurations([]);
-      hasLoadedRef.current = true; // Mark as loaded to prevent infinite retries
+      setAllConfigurations([]);
+      hasLoadedRef.current = true;
     } finally {
       setLoading(false);
     }
@@ -132,17 +134,13 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔍 Searching configurations:', searchTerm);
-      
-      // For now, filter from loaded configurations
-      // In the future, this could be replaced with a search API endpoint
-      const filtered = configurations.filter(config =>
+
+      const filtered = allConfigurations.filter(config =>
         config.label.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      
+
       setConfigurations(filtered);
-      
+
     } catch (err) {
       console.error('⚙️ Failed to search configurations:', err);
       setError(err instanceof Error ? err.message : 'Failed to search configurations');
@@ -152,21 +150,23 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
   };
 
   useEffect(() => {
-    if (isOpen && !hasLoadedRef.current) {
+    if ((isOpen || preloadConfigurations) && !hasLoadedRef.current) {
       loadAllConfigurations();
     }
-  }, [isOpen]);
+  }, [isOpen, preloadConfigurations]);
 
-  // Filter configurations based on search term and exclude already selected
+  // Filter configurations based on search term and exclude already selected or excluded
   const filteredConfigurations = (configurations || []).filter(config =>
-    config && config.label && 
-    !selectedConfigurations.some(selected => selected && selected.id === config.id)
+    config && config.label &&
+    !selectedConfigurations.some(selected => selected && selected.id === config.id) &&
+    !excludeConfigurations.some(excluded => excluded && excluded.id === config.id)
   );
 
   // Check if search term would create a new configuration
-  const canCreateNew = searchTerm.trim() && 
-    !(configurations || []).some(config => config.label.toLowerCase() === searchTerm.toLowerCase()) &&
+  const canCreateNew = searchTerm.trim() &&
+    !(allConfigurations || []).some(config => config.label.toLowerCase() === searchTerm.toLowerCase()) &&
     !selectedConfigurations.some(config => config.label.toLowerCase() === searchTerm.toLowerCase()) &&
+    !excludeConfigurations.some(config => config.label.toLowerCase() === searchTerm.toLowerCase()) &&
     onCreateConfiguration;
 
   const handleConfigurationSelect = (config: Configuration) => {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, ReactNode, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect, useRef, useCallback } from 'react';
 import { Project, TestCase, TestExecution, TestPlan, SharedStep } from '../types';
 import { mockTestCases, mockTestExecutions, mockSharedSteps } from '../data/mockData';
 import { projectsApiService } from '../services/projectsApi';
@@ -19,6 +19,7 @@ interface AppState {
   isLoadingProjects: boolean;
   isLoadingTags: boolean;
   isLoadingConfigurations: boolean;
+  isNavigatingToProject: boolean;
 }
 
 type AppAction =
@@ -33,6 +34,7 @@ type AppAction =
   | { type: 'DELETE_PROJECT'; payload: string }
   | { type: 'SET_CURRENT_PROJECT'; payload: Project | null }
   | { type: 'SET_SELECTED_PROJECT_ID'; payload: string | null }
+  | { type: 'SET_NAVIGATING_TO_PROJECT'; payload: boolean }
   | { type: 'ADD_TAG'; payload: Tag }
   | { type: 'ADD_CONFIGURATION'; payload: Configuration }
   | { type: 'ADD_TEST_CASE'; payload: TestCase }
@@ -78,6 +80,7 @@ const initialState: AppState = {
   sharedSteps: mockSharedSteps,
   currentProject: null,
   selectedProjectId: getStoredSelectedProjectId(),
+  isNavigatingToProject: false,
   isLoadingProjects: false,
   isLoadingTags: false,
   isLoadingConfigurations: false
@@ -142,6 +145,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'SET_SELECTED_PROJECT_ID':
       setStoredSelectedProjectId(action.payload);
       return { ...state, selectedProjectId: action.payload };
+    case 'SET_NAVIGATING_TO_PROJECT':
+      return { ...state, isNavigatingToProject: action.payload };
     case 'ADD_TEST_CASE':
       return { ...state, testCases: [...state.testCases, action.payload] };
     case 'UPDATE_TEST_CASE':
@@ -213,6 +218,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const loadingRef = useRef(false);
   const hasLoadedRef = useRef(false);
   const isInitializing = useRef(false);
+  const stateRef = useRef(state);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // Load tags from API
   const loadTags = async () => {
@@ -277,32 +287,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Load projects from API
-  const loadProjects = async (force: boolean = false) => {
+  const loadProjects = useCallback(async (force: boolean = false) => {
+
     // Only load projects if user is authenticated
     if (!authState.isAuthenticated) {
-      console.log('User not authenticated, skipping project loading');
       return;
     }
 
     // Prevent multiple simultaneous requests and check if already loaded
     if (loadingRef.current || (hasLoadedRef.current && !force)) {
-      console.log('Projects already loading, skipping duplicate request');
       return;
     }
-
 
     try {
       loadingRef.current = true;
       dispatch({ type: 'SET_LOADING_PROJECTS', payload: true });
-      
+
       // Load projects for sidebar using dedicated method (no filters)
-      const allProjects = await projectsApiService.getProjectsForSidebar();
-      
+      const { projects: allProjects } = await projectsApiService.getProjectsForSidebar();
+
       dispatch({ type: 'SET_PROJECTS', payload: allProjects });
       hasLoadedRef.current = true;
-      
+
       // Only auto-select if no project is currently selected AND projects exist
-      if (!state.selectedProjectId && allProjects.length > 0) {
+      const currentSelectedProjectId = stateRef.current.selectedProjectId;
+      if (!currentSelectedProjectId && allProjects.length > 0) {
         const storedProjectId = getStoredSelectedProjectId();
         if (storedProjectId && allProjects.some(p => p.id === storedProjectId)) {
           dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: storedProjectId });
@@ -314,7 +323,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         // No projects exist, clear any selected project
         dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: null });
       }
-      
+
     } catch (error) {
       console.error('Failed to load projects:', error);
       // On error, mark as loaded to prevent infinite retries
@@ -325,28 +334,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       loadingRef.current = false;
       dispatch({ type: 'SET_LOADING_PROJECTS', payload: false });
     }
-  };
+  }, [authState.isAuthenticated]);
 
   // Helper functions for filtered data
-  const getFilteredTestCases = () => {
+  const getFilteredTestCases = useCallback(() => {
     if (!state.selectedProjectId) return state.testCases;
     return state.testCases.filter(tc => tc.projectId === state.selectedProjectId);
-  };
+  }, [state.selectedProjectId, state.testCases]);
 
-  const getFilteredTestExecutions = () => {
+  const getFilteredTestExecutions = useCallback(() => {
     if (!state.selectedProjectId) return state.testExecutions;
     return state.testExecutions.filter(te => te.projectId === state.selectedProjectId);
-  };
+  }, [state.selectedProjectId, state.testExecutions]);
 
-  const getFilteredTestPlans = () => {
+  const getFilteredTestPlans = useCallback(() => {
     if (!state.selectedProjectId) return state.testPlans;
     return state.testPlans.filter(tp => tp.projectId === state.selectedProjectId);
-  };
+  }, [state.selectedProjectId, state.testPlans]);
 
-  const getSelectedProject = () => {
+  const getSelectedProject = useCallback(() => {
     if (!state.selectedProjectId) return null;
     return state.projects.find(p => p.id === state.selectedProjectId) || null;
-  };
+  }, [state.selectedProjectId, state.projects]);
 
   // Effect to handle authentication state changes
   useEffect(() => {

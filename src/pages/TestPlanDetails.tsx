@@ -40,12 +40,8 @@ const TestPlanDetails: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      console.log('📋 Fetching test plan details with test runs for ID:', testPlanId);
-
       // Fetch test plan with included test runs
       const response = await testPlansApiService.getTestPlanWithTestRuns(testPlanId);
-      
-      console.log('📋 Test plan API response:', response);
 
       // Transform the main test plan data
       const transformedTestPlan = testPlansApiService.transformApiTestPlan(response.data);
@@ -54,9 +50,8 @@ const TestPlanDetails: React.FC = () => {
       const testRuns: TestRun[] = [];
       
       if (response.data.relationships?.testRuns?.data && response.included) {
-        console.log('📋 Found test runs relationships:', response.data.relationships.testRuns.data);
-        console.log('📋 Included data:', response.included);
-        
+
+
         for (const testRunRef of response.data.relationships.testRuns.data) {
           const testRunId = testRunRef.id.split('/').pop();
           
@@ -66,8 +61,7 @@ const TestPlanDetails: React.FC = () => {
           );
           
           if (includedTestRun) {
-            console.log('📋 Found included test run:', includedTestRun);
-            
+
             // Find the assigned user for this test run in included data
             let assignedUser = null;
             if (includedTestRun.relationships?.user?.data) {
@@ -85,7 +79,7 @@ const TestPlanDetails: React.FC = () => {
             );
             
             testRuns.push(transformedTestRun);
-            console.log('📋 Transformed test run:', transformedTestRun.name);
+
           } else {
             console.warn('📋 Test run not found in included data for ID:', testRunId);
           }
@@ -101,7 +95,6 @@ const TestPlanDetails: React.FC = () => {
       };
 
       setTestPlan(testPlanWithTestRuns);
-      console.log('✅ Successfully loaded test plan with', testRuns.length, 'test runs');
 
     } catch (err) {
       console.error('❌ Failed to fetch test plan details:', err);

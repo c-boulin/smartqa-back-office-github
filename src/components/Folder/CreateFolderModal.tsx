@@ -48,24 +48,12 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
   };
 
   const handleChildrenChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const clickedValue = e.target.value;
-    
-    setFormData(prev => {
-      const currentChildren = prev.childrenIds || [];
-      
-      // Toggle behavior: if already selected, remove it; if not selected, add it
-      if (currentChildren.includes(clickedValue)) {
-        return { 
-          ...prev, 
-          childrenIds: currentChildren.filter(id => id !== clickedValue) 
-        };
-      } else {
-        return { 
-          ...prev, 
-          childrenIds: [...currentChildren, clickedValue] 
-        };
-      }
-    });
+    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+
+    setFormData(prev => ({
+      ...prev,
+      childrenIds: selectedOptions
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -235,7 +223,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
             Children Folders
           </label>
           <select
-            value=""
+            value={formData.childrenIds}
             onChange={handleChildrenChange}
             disabled={isSubmitting}
             multiple

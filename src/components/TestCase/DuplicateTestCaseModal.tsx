@@ -61,28 +61,67 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
 
       try {
         setFoldersLoading(true);
-        const [foldersResponse, testCasesResponse] = await Promise.all([
-          foldersApiService.getFolders(selectedProjectId),
-          testCasesApiService.getTestCases(1, 10000, selectedProjectId)
-        ]);
+        const testCasesResponse = await testCasesApiService.getTestCases(1, 10000, selectedProjectId);
 
-        const transformedFolders: Folder[] = foldersResponse.data.map(apiFolder => {
-          const transformed = foldersApiService.transformApiFolder(apiFolder, selectedProjectId);
+        // Transform test cases to get folder data
+        const transformedTestCases = testCasesResponse.data.map(apiTestCase =>
+          testCasesApiService.transformApiTestCase(apiTestCase, testCasesResponse.included)
+        );
 
-          const folderTestCases = testCasesResponse.data.filter(tc => {
-            const tcFolderId = tc.relationships?.folder?.data?.id?.split('/').pop();
-            return tcFolderId === transformed.id;
+        // Extract folders from included data
+        const extractedFolders: Folder[] = [];
+        if (testCasesResponse.included && Array.isArray(testCasesResponse.included)) {
+          const folderCountMap = new Map<string, number>();
+
+          // Count test cases per folder
+          transformedTestCases.forEach(testCase => {
+            if (testCase.folderId) {
+              folderCountMap.set(testCase.folderId, (folderCountMap.get(testCase.folderId) || 0) + 1);
+            }
           });
 
-          transformed.directTestCasesCount = folderTestCases.length;
-          transformed.testCasesCount = folderTestCases.length;
+          // Filter and transform folder data from included array
+          testCasesResponse.included
+            .filter((item: unknown) => {
+              const itemData = item as Record<string, unknown>;
+              return itemData.type === 'Folder';
+            })
+            .forEach((folder: unknown) => {
+              const folderData = folder as Record<string, unknown>;
+              const folderIdPath = String(folderData.id || '');
+              const folderId = folderIdPath.split('/').pop() || '';
+              const folderAttributes = folderData.attributes as Record<string, unknown> || {};
+              const folderRelationships = folderData.relationships as Record<string, unknown> || {};
 
-          return transformed;
-        });
+              // Extract parent folder ID from relationships
+              let parentFolderId: string | null = null;
+              if (folderRelationships.parent) {
+                const parentData = folderRelationships.parent as Record<string, unknown>;
+                const parentDataArray = parentData.data as Record<string, unknown> | Array<unknown>;
+                if (parentDataArray && !Array.isArray(parentDataArray)) {
+                  const parentId = String(parentDataArray.id || '');
+                  parentFolderId = parentId.split('/').pop() || null;
+                }
+              }
 
-        const tree = foldersApiService.buildFolderTree(transformedFolders);
+              extractedFolders.push({
+                id: folderId,
+                name: String(folderAttributes.name || `Folder ${folderId}`),
+                description: String(folderAttributes.description || ''),
+                parentId: parentFolderId || undefined,
+                projectId: selectedProjectId,
+                children: [],
+                testCasesCount: 0,
+                directTestCasesCount: folderCountMap.get(folderId) || 0,
+                createdAt: new Date(String(folderAttributes.createdAt || '')),
+                updatedAt: new Date(String(folderAttributes.updatedAt || ''))
+              });
+            });
+        }
 
-        setFolders(transformedFolders);
+        const tree = foldersApiService.buildFolderTree(extractedFolders);
+
+        setFolders(extractedFolders);
         setFolderTree(tree);
       } catch (error) {
         console.error('Failed to load folders:', error);
@@ -105,6 +144,71 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
 
   const handleFolderSelect = (folderId: string | null) => {
     setSelectedFolderId(folderId || '');
+  };
+
+  const refreshFolders = async () => {
+    try {
+      setFoldersLoading(true);
+      const testCasesResponse = await testCasesApiService.getTestCases(1, 10000, selectedProjectId);
+
+      // Transform test cases
+      const transformedTestCases = testCasesResponse.data.map(apiTestCase =>
+        testCasesApiService.transformApiTestCase(apiTestCase, testCasesResponse.included)
+      );
+
+      // Count test cases per folder
+      const folderCountMap = new Map<string, number>();
+      transformedTestCases.forEach(testCase => {
+        if (testCase.folderId) {
+          folderCountMap.set(testCase.folderId, (folderCountMap.get(testCase.folderId) || 0) + 1);
+        }
+      });
+
+      // Extract folders from test cases included data
+      const extractedFolders: Folder[] = [];
+      if (testCasesResponse.included && Array.isArray(testCasesResponse.included)) {
+        testCasesResponse.included
+          .filter((item: unknown) => {
+            const itemData = item as Record<string, unknown>;
+            return itemData.type === 'Folder';
+          })
+          .forEach((folder: unknown) => {
+            const folderData = folder as Record<string, unknown>;
+            const folderIdPath = String(folderData.id || '');
+            const folderId = folderIdPath.split('/').pop() || '';
+            const folderAttributes = folderData.attributes as Record<string, unknown> || {};
+            const folderRelationships = folderData.relationships as Record<string, unknown> || {};
+
+            let parentFolderId: string | null = null;
+            if (folderRelationships.parent) {
+              const parentData = folderRelationships.parent as Record<string, unknown>;
+              const parentDataArray = parentData.data as Record<string, unknown> | Array<unknown>;
+              if (parentDataArray && !Array.isArray(parentDataArray)) {
+                const parentId = String(parentDataArray.id || '');
+                parentFolderId = parentId.split('/').pop() || null;
+              }
+            }
+
+            extractedFolders.push({
+              id: folderId,
+              name: String(folderAttributes.name || `Folder ${folderId}`),
+              parentFolderId: parentFolderId,
+              projectId: selectedProjectId,
+              testCasesCount: 0,
+              directTestCasesCount: folderCountMap.get(folderId) || 0,
+              children: []
+            });
+          });
+      }
+
+      const tree = foldersApiService.buildFolderTree(extractedFolders);
+      setFolders(extractedFolders);
+      setFolderTree(tree);
+    } catch (error) {
+      console.error('Failed to refresh folders:', error);
+    } finally {
+      setFoldersLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,34 +239,14 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
         name: folderData.name,
         description: folderData.description,
         parentId: folderData.parentId || null,
-        projectId: selectedProjectId
+        projectId: selectedProjectId,
+        childrenIds: folderData.childrenIds,
+        userId: '1'
       });
 
       toast.success('Folder created successfully');
       setIsCreateFolderModalOpen(false);
-
-      const [foldersResponse, testCasesResponse] = await Promise.all([
-        foldersApiService.getFolders(selectedProjectId),
-        testCasesApiService.getTestCases(1, 10000, selectedProjectId)
-      ]);
-
-      const transformedFolders: Folder[] = foldersResponse.data.map(apiFolder => {
-        const transformed = foldersApiService.transformApiFolder(apiFolder, selectedProjectId);
-
-        const folderTestCases = testCasesResponse.data.filter(tc => {
-          const tcFolderId = tc.relationships?.folder?.data?.id?.split('/').pop();
-          return tcFolderId === transformed.id;
-        });
-
-        transformed.directTestCasesCount = folderTestCases.length;
-        transformed.testCasesCount = folderTestCases.length;
-
-        return transformed;
-      });
-
-      const tree = foldersApiService.buildFolderTree(transformedFolders);
-      setFolders(transformedFolders);
-      setFolderTree(tree);
+      await refreshFolders();
     } catch (error) {
       console.error('Failed to create folder:', error);
       toast.error('Failed to create folder');
@@ -184,35 +268,18 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
       await foldersApiService.updateFolder(folderToEdit.id, {
         name: folderData.name,
         description: folderData.description,
-        parentId: folderData.parentId || null
+        projectId: selectedProjectId,
+        parentId: folderData.parentId || null,
+        childrenIds: folderData.childrenIds,
+        testCaseIds: [],
+        creatorId: '1',
+        editorId: '1'
       });
 
       toast.success('Folder updated successfully');
       setIsEditFolderModalOpen(false);
       setFolderToEdit(null);
-
-      const [foldersResponse, testCasesResponse] = await Promise.all([
-        foldersApiService.getFolders(selectedProjectId),
-        testCasesApiService.getTestCases(1, 10000, selectedProjectId)
-      ]);
-
-      const transformedFolders: Folder[] = foldersResponse.data.map(apiFolder => {
-        const transformed = foldersApiService.transformApiFolder(apiFolder, selectedProjectId);
-
-        const folderTestCases = testCasesResponse.data.filter(tc => {
-          const tcFolderId = tc.relationships?.folder?.data?.id?.split('/').pop();
-          return tcFolderId === transformed.id;
-        });
-
-        transformed.directTestCasesCount = folderTestCases.length;
-        transformed.testCasesCount = folderTestCases.length;
-
-        return transformed;
-      });
-
-      const tree = foldersApiService.buildFolderTree(transformedFolders);
-      setFolders(transformedFolders);
-      setFolderTree(tree);
+      await refreshFolders();
     } catch (error) {
       console.error('Failed to update folder:', error);
       toast.error('Failed to update folder');
@@ -240,28 +307,7 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
         setSelectedFolderId('');
       }
 
-      const [foldersResponse, testCasesResponse] = await Promise.all([
-        foldersApiService.getFolders(selectedProjectId),
-        testCasesApiService.getTestCases(1, 10000, selectedProjectId)
-      ]);
-
-      const transformedFolders: Folder[] = foldersResponse.data.map(apiFolder => {
-        const transformed = foldersApiService.transformApiFolder(apiFolder, selectedProjectId);
-
-        const folderTestCases = testCasesResponse.data.filter(tc => {
-          const tcFolderId = tc.relationships?.folder?.data?.id?.split('/').pop();
-          return tcFolderId === transformed.id;
-        });
-
-        transformed.directTestCasesCount = folderTestCases.length;
-        transformed.testCasesCount = folderTestCases.length;
-
-        return transformed;
-      });
-
-      const tree = foldersApiService.buildFolderTree(transformedFolders);
-      setFolders(transformedFolders);
-      setFolderTree(tree);
+      await refreshFolders();
     } catch (error) {
       console.error('Failed to delete folder:', error);
       toast.error('Failed to delete folder');

@@ -63,12 +63,10 @@ const Reports: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      console.log('Creating report with data:', data);
-
       // Create the scheduled report via API (always happens now)
       if (data.scheduledReportPayload) {
         await createScheduledReport(data.scheduledReportPayload);
-        console.log('✅ Scheduled report created successfully');
+
       } else {
         console.warn('⚠️ No scheduled report payload found');
       }
@@ -79,23 +77,20 @@ const Reports: React.FC = () => {
       // Store the fetched report data
       if (data.reportData) {
         setReportData(data.reportData);
-        console.log('📊 Storing report data from modal:', {
-          testCases: data.reportData.testCases?.length || 0,
-          testRuns: data.reportData.testRuns?.length || 0
-        });
+
       }
 
       // Store the report description and title
       if (data.description) {
         setReportDescription(data.description);
-        console.log('📊 Storing report description:', data.description);
+
       } else {
         setReportDescription('');
       }
 
       if (data.title) {
         setReportTitle(data.title);
-        console.log('📊 Storing report title:', data.title);
+
       } else {
         setReportTitle('');
       }

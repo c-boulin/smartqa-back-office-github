@@ -177,8 +177,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
     // Handle both regular shared step removal and pivot-based removal
     if (sharedStepId.startsWith('pivot-')) {
       const pivotId = parseInt(sharedStepId.replace('pivot-', ''));
-      console.log('🗑️ Removing shared step instance with pivot_id:', pivotId);
-      
+
       // Call the deletion function with pivot ID
       deleteSharedStepInstance(pivotId).catch(error => {
         console.error('❌ Failed to delete shared step instance:', error);
@@ -252,7 +251,6 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
       for (const uploadedAttachment of attachmentsToCreate) {
         try {
           const customName = attachmentNames.get(uploadedAttachment.fileId);
-          console.log('📎 Custom name for attachment:', customName);
 
           const attachmentResponse = await attachmentsApiService.createAttachment({
             url: uploadedAttachment.cloudFrontUrl,

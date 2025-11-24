@@ -143,6 +143,7 @@ const EditTestPlanModal: React.FC<EditTestPlanModalProps> = ({
                 required
                 disabled={isSubmitting}
                 placeholder="Enter test plan title..."
+                autoFocus
               />
             </div>
           </div>

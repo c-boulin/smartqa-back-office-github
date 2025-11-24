@@ -27,10 +27,12 @@ const Sidebar: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const [isLoadingDropdown, setIsLoadingDropdown] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalProjects, setTotalProjects] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreProjects, setHasMoreProjects] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hasLoadedAllProjects = useRef(false);
-  const isLoadingAllProjects = useRef(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -42,142 +44,51 @@ const Sidebar: React.FC = () => {
     { path: '/settings', icon: Settings, label: 'Settings' }
   ];
 
-  // Use allProjects for search, fallback to state.projects for display
+  // Use allProjects for search results, fallback to state.projects for display
   const projectsToShow = allProjects.length > 0 ? allProjects : state.projects;
-  
-  // Filter projects based on search term
+
+  // Filter projects based on search term (client-side filtering)
   const filteredProjects = projectsToShow
     .filter(project =>
       project.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // Sort by creation date (newest first)
 
-  // Load ALL projects by fetching all pages in parallel
-  const loadAllProjects = useCallback(async () => {
-    if (hasLoadedAllProjects.current || isLoadingAllProjects.current) {
-      console.log('✅ All projects already loaded, count:', allProjects.length);
-      return; // Already loaded and not searching
-    }
-    
-    try {
-      isLoadingAllProjects.current = true;
-      setIsLoadingDropdown(true);
-      console.log('🔍 Loading ALL projects for sidebar...');
-      
-      // First, get the first page to know total count
-      const firstPageResponse = await projectsApiService.getProjectsForSidebarPage(1, searchTerm);
-      const totalItems = firstPageResponse.meta.totalItems;
-      const itemsPerPage = firstPageResponse.meta.itemsPerPage;
-      const totalPages = Math.ceil(totalItems / itemsPerPage);
-      
-      console.log(`📊 Total projects: ${totalItems}, Pages: ${totalPages}`);
-      
-      // If no projects exist, set empty state and mark as loaded
-      if (totalItems === 0) {
-        console.log('📊 No projects found, setting empty state');
-        setAllProjects([]);
-        hasLoadedAllProjects.current = true;
-        isLoadingAllProjects.current = false;
-        return;
-      }
-      
-      // Start with first page data
-      let allFetchedProjects = firstPageResponse.data.map(project => 
-        projectsApiService.transformApiProject(project)
-      );
-      
-      // If there are more pages, fetch them all in parallel
-      if (totalPages > 1) {
-        console.log(`🚀 Fetching remaining ${totalPages - 1} pages in parallel...`);
-        
-        const pagePromises = [];
-        for (let page = 2; page <= Math.min(totalPages, 50); page++) { // Safety limit of 50 pages
-          pagePromises.push(
-            projectsApiService.getProjectsForSidebarPage(page, searchTerm)
-              .then(response => response.data.map(project => 
-                projectsApiService.transformApiProject(project)
-              ))
-          );
-        }
-        
-        // Wait for all pages to complete
-        const allPageResults = await Promise.all(pagePromises);
-        
-        // Combine all results
-        for (const pageProjects of allPageResults) {
-          allFetchedProjects = [...allFetchedProjects, ...pageProjects];
-        }
-      }
-      
-      setAllProjects(allFetchedProjects);
-      hasLoadedAllProjects.current = true;
-      isLoadingAllProjects.current = false;
-      console.log('🎉 Successfully loaded ALL projects for sidebar:', allFetchedProjects.length, 'total');
-      
-    } catch (error) {
-      console.error('❌ Failed to load all projects:', error);
-      // On error, also mark as loaded to prevent infinite retries
-      hasLoadedAllProjects.current = true;
-      isLoadingAllProjects.current = false;
-      setAllProjects([]);
-    } finally {
-      setIsLoadingDropdown(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- allProjects.length is not stable
-  }, [searchTerm]);
-
-  // Search projects with API call
+  // Search projects - use client-side filtering for already-loaded projects
+  // Only make API call if needed for more comprehensive search
   const searchProjects = useCallback(async (term: string) => {
     if (!term.trim()) {
       // If search is cleared, reset to show state.projects
-      console.log('🔄 Search cleared, resetting project list');
       setAllProjects([]);
-      hasLoadedAllProjects.current = false;
+      return;
+    }
+
+    // For short searches or if we already have enough projects loaded,
+    // just use client-side filtering (much faster)
+    if (term.length < 3 || state.projects.length < 100) {
+      // Client-side filtering is handled by filteredProjects
       return;
     }
 
     try {
       setIsSearching(true);
-      console.log('🔍 Searching projects:', term);
-      
-      // First, get the first page to know total count
+
+      // For longer searches with many projects, do API search
       const firstPageResponse = await projectsApiService.getProjectsForSidebarPage(1, term);
       const totalItems = firstPageResponse.meta.totalItems;
-      const itemsPerPage = firstPageResponse.meta.itemsPerPage;
-      const totalPages = Math.ceil(totalItems / itemsPerPage);
-      
+
       // If no search results, set empty state
       if (totalItems === 0) {
-        console.log('🔍 No search results found for:', term);
         setAllProjects([]);
         return;
       }
-      
-      // Start with first page data
-      let allSearchResults = firstPageResponse.data.map(project => 
+
+      // Just use the first page of results (30 items) - enough for search results
+      const searchResults = firstPageResponse.data.map(project =>
         projectsApiService.transformApiProject(project)
       );
-      
-      // If there are more pages, fetch them all in parallel
-      if (totalPages > 1) {
-        const pagePromises = [];
-        for (let page = 2; page <= Math.min(totalPages, 20); page++) { // Limit search to 20 pages max
-          pagePromises.push(
-            projectsApiService.getProjectsForSidebarPage(page, term)
-              .then(response => response.data.map(project => 
-                projectsApiService.transformApiProject(project)
-              ))
-          );
-        }
-        
-        const allPageResults = await Promise.all(pagePromises);
-        for (const pageProjects of allPageResults) {
-          allSearchResults = [...allSearchResults, ...pageProjects];
-        }
-      }
-      
-      setAllProjects(allSearchResults);
-      console.log('✅ Found', allSearchResults.length, 'projects matching:', term);
+
+      setAllProjects(searchResults);
       
     } catch (error) {
       console.error('❌ Failed to search projects:', error);
@@ -186,20 +97,50 @@ const Sidebar: React.FC = () => {
     } finally {
       setIsSearching(false);
     }
-  }, []);
+  }, [state.projects.length]);
+
+  const loadMoreProjects = useCallback(async () => {
+    if (isLoadingMore || !hasMoreProjects || searchTerm) {
+      return;
+    }
+
+    try {
+      setIsLoadingMore(true);
+      const nextPage = currentPage + 1;
+
+      const response = await projectsApiService.getProjectsForSidebarPage(nextPage);
+      const newProjects = response.data.map(project =>
+        projectsApiService.transformApiProject(project)
+      );
+
+      setAllProjects(prev => [...prev, ...newProjects]);
+      setCurrentPage(nextPage);
+      setHasMoreProjects(newProjects.length === response.meta.itemsPerPage);
+    } catch (error) {
+      console.error('Failed to load more projects:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMoreProjects, currentPage, searchTerm]);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const bottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 50;
+
+    if (bottom && hasMoreProjects && !isLoadingMore && !searchTerm) {
+      loadMoreProjects();
+    }
+  }, [hasMoreProjects, isLoadingMore, searchTerm, loadMoreProjects]);
 
   const handleProjectSelect = (value: string) => {
-    console.log('Project selected:', value);
 
     setIsDropdownOpen(false);
     setSearchTerm('');
 
     if (value === 'all') {
-      console.log('Navigating to /projects');
       dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: null });
       navigate('/projects');
     } else {
-      console.log('Setting selected project ID:', value);
       dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: value });
 
       const selectedProject = allProjects.find(p => p.id === value);
@@ -207,7 +148,6 @@ const Sidebar: React.FC = () => {
         dispatch({ type: 'UPDATE_PROJECT', payload: selectedProject });
       }
 
-      console.log('Navigating to dashboard with project:', value);
       navigate('/dashboard');
     }
   };
@@ -235,19 +175,20 @@ const Sidebar: React.FC = () => {
     }
     // Reset allProjects to show state.projects
     setAllProjects([]);
-    hasLoadedAllProjects.current = false;
   };
 
   const handleDropdownClose = () => {
     setIsDropdownOpen(false);
-    setSearchTerm(''); // Clear search when closing dropdown
+    setSearchTerm('');
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
       searchTimeoutRef.current = null;
     }
-    // Reset allProjects when closing dropdown
+    // Reset dropdown state
     setAllProjects([]);
-    hasLoadedAllProjects.current = false;
+    setCurrentPage(1);
+    setHasMoreProjects(false);
+    setIsLoadingMore(false);
   };
   
   const getSelectedProjectName = () => {
@@ -271,6 +212,11 @@ const Sidebar: React.FC = () => {
     return '🔍 Select Project';
   };
 
+  const handleClearProject = () => {
+    dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: null });
+    navigate('/projects');
+  };
+
   const getProjectFilterInfo = () => {
     if (location.pathname === '/projects') {
       return null;
@@ -280,8 +226,19 @@ const Sidebar: React.FC = () => {
     if (selectedProject) {
       return (
         <div className="px-4 py-2 mb-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-          <div className="text-xs text-cyan-400 font-medium">Filtered by:</div>
-          <div className="text-sm text-white truncate">{selectedProject.name}</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-cyan-400 font-medium">Filtered by:</div>
+              <div className="text-sm text-white truncate">{selectedProject.name}</div>
+            </div>
+            <button
+              onClick={handleClearProject}
+              className="flex-shrink-0 p-1 hover:bg-cyan-500/20 rounded transition-colors group"
+              title="Clear filter"
+            >
+              <X className="w-4 h-4 text-cyan-400 group-hover:text-white" />
+            </button>
+          </div>
         </div>
       );
     }
@@ -291,21 +248,42 @@ const Sidebar: React.FC = () => {
   // Refresh projects when component mounts or when needed
   useEffect(() => {
     // Only load projects if we don't have any AND we're not currently loading
-    if (state.projects.length === 0 && !state.isLoadingProjects && authState.isAuthenticated) {
+    // Skip if we're on the projects page (it loads its own data)
+    if (state.projects.length === 0 && !state.isLoadingProjects && authState.isAuthenticated && location.pathname !== '/projects') {
       loadProjects();
     }
-  }, [state.projects.length, state.isLoadingProjects, authState.isAuthenticated, loadProjects]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.projects.length, state.isLoadingProjects, authState.isAuthenticated, location.pathname]);
 
-  // Reset local allProjects cache when AppContext projects change
+  // Reset local search results when AppContext projects count changes significantly
   useEffect(() => {
-    // If we have loaded all projects and the AppContext projects change,
-    // reset the cache so it will be reloaded next time the dropdown opens
-    if (hasLoadedAllProjects.current && state.projects.length > 0) {
-      console.log('📊 AppContext projects changed, resetting sidebar cache');
+    // When projects count changes (added/deleted), clear search results
+    // Don't clear just because a project was updated
+    if (state.projects.length > 0 && allProjects.length > 0 && state.projects.length !== allProjects.length) {
       setAllProjects([]);
-      hasLoadedAllProjects.current = false;
     }
-  }, [state.projects]);
+  }, [state.projects.length, allProjects.length]);
+
+  // Initialize dropdown with metadata when opened
+  useEffect(() => {
+    const initializeDropdown = async () => {
+      if (!isDropdownOpen || searchTerm || allProjects.length > 0) {
+        return;
+      }
+
+      try {
+        const { projects, meta } = await projectsApiService.getProjectsForSidebar();
+        setAllProjects(projects);
+        setTotalProjects(meta.totalItems);
+        setCurrentPage(meta.currentPage);
+        setHasMoreProjects(projects.length < meta.totalItems);
+      } catch (error) {
+        console.error('Failed to initialize dropdown:', error);
+      }
+    };
+
+    initializeDropdown();
+  }, [isDropdownOpen, searchTerm, allProjects.length]);
 
   return (
     <aside className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 border-r border-purple-500/20 shadow-2xl">
@@ -318,13 +296,7 @@ const Sidebar: React.FC = () => {
           <div className="relative">
             {/* Custom Dropdown Button */}
             <button
-              onClick={() => {
-                console.log('Dropdown button clicked'); // Debug log
-                if (!isDropdownOpen) {
-                  loadAllProjects(); // Load all projects when opening
-                }
-                setIsDropdownOpen(!isDropdownOpen);
-              }}
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className={`w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent hover:bg-slate-700/50 transition-colors text-left flex items-center justify-between ${
                 getSelectedProject() || location.pathname === '/projects' ? 'border-cyan-500/50 bg-slate-700/50' : ''
               }`}
@@ -340,7 +312,7 @@ const Sidebar: React.FC = () => {
                   <span className="text-gray-400">{getSelectedProjectName()}</span>
                 )}
               </span>
-              {state.isLoadingProjects || isLoadingDropdown ? (
+              {state.isLoadingProjects ? (
                 <Loader className="w-4 h-4 text-gray-400 animate-spin" />
               ) : (
                 <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
@@ -349,7 +321,10 @@ const Sidebar: React.FC = () => {
 
             {/* Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+              <div
+                ref={dropdownRef}
+                onScroll={handleScroll}
+                className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
                 {/* Search Bar */}
                 <div className="p-3 border-b border-slate-700">
                   <div className="relative">
@@ -377,30 +352,10 @@ const Sidebar: React.FC = () => {
                 </div>
 
                 {/* Dropdown Items */}
-                {isLoadingDropdown && (
-                  <div className="px-4 py-3 text-gray-400 text-sm flex items-center justify-center">
-                    <Loader className="w-4 h-4 mr-2 animate-spin" />
-                    Loading all projects...
-                  </div>
-                )}
-                
+
                 <div>
-                  <button
-                    onClick={() => {
-                      console.log('View All Projects clicked'); // Debug log
-                      handleProjectSelect('all');
-                    }}
-                    className={`w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors ${
-                      location.pathname === '/projects' ? 'bg-slate-700 text-cyan-400' : 'text-white'
-                    }`}
-                  >
-                    📋 View All Projects
-                  </button>
-                  
-                  {!isLoadingDropdown && filteredProjects.length > 0 && (
+                  {filteredProjects.length > 0 && (
                     <>
-                      <div className="border-t border-slate-700 my-1"></div>
-                      
                       {searchTerm && (
                         <div className="px-4 py-2 text-xs text-cyan-400 bg-slate-700/50">
                           {isSearching ? 'Searching...' : `Found ${filteredProjects.length} project${filteredProjects.length !== 1 ? 's' : ''} (from ${allProjects.length} total)`}
@@ -411,7 +366,6 @@ const Sidebar: React.FC = () => {
                         <button
                           key={project.id}
                           onClick={() => {
-                            console.log('Project clicked:', project.name, 'Current page:', location.pathname);
                             // Set the selected project and navigate to dashboard
                             handleProjectSelect(project.id);
                           }}
@@ -428,7 +382,7 @@ const Sidebar: React.FC = () => {
                     </>
                   )}
                   
-                  {!isLoadingDropdown && allProjects.length === 0 && !searchTerm && !isSearching && (
+                  {allProjects.length === 0 && !searchTerm && !isSearching && (
                     <div className="px-4 py-3 text-gray-400 text-sm">
                       No projects available
                     </div>
@@ -447,10 +401,22 @@ const Sidebar: React.FC = () => {
                     </div>
                   )}
                   
-                  {/* Show total count when all projects are loaded */}
-                  {!isLoadingDropdown && allProjects.length > 0 && !searchTerm && !isSearching && (
+                  {/* Show loading more indicator */}
+                  {isLoadingMore && !searchTerm && (
+                    <div className="px-4 py-3 text-gray-400 text-sm flex items-center justify-center border-t border-slate-700">
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />
+                      Loading more projects...
+                    </div>
+                  )}
+
+                  {/* Show project count and status */}
+                  {!searchTerm && !isSearching && !isLoadingMore && allProjects.length > 0 && (
                     <div className="px-4 py-2 text-xs text-gray-500 text-center border-t border-slate-700">
-                      All {allProjects.length} projects loaded
+                      {hasMoreProjects ? (
+                        <>Showing {allProjects.length} of {totalProjects} projects • Scroll for more</>
+                      ) : (
+                        <>All {allProjects.length} projects loaded</>
+                      )}
                     </div>
                   )}
                 </div>
@@ -459,10 +425,9 @@ const Sidebar: React.FC = () => {
 
             {/* Click outside to close dropdown */}
             {isDropdownOpen && (
-              <div 
-                className="fixed inset-0 z-40" 
+              <div
+                className="fixed inset-0 z-40"
                 onClick={() => {
-                  console.log('Clicking outside dropdown'); // Debug log
                   handleDropdownClose();
                 }}
               />

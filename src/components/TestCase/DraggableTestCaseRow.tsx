@@ -38,8 +38,7 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
     
     // Add visual feedback
     e.currentTarget.style.opacity = '0.5';
-    
-    console.log('🎯 Drag started for test case:', testCase.title, 'ID:', testCase.id);
+
   };
 
   const handleDragEnd = (e: React.DragEvent) => {
@@ -47,8 +46,7 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
     
     // Reset visual feedback
     e.currentTarget.style.opacity = '1';
-    
-    console.log('🎯 Drag ended for test case:', testCase.title);
+
   };
 
   return (

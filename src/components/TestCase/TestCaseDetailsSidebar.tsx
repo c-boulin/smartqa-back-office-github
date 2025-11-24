@@ -449,9 +449,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔄 Using new API endpoints to fetch test case details for sidebar:', testCaseId);
-      
+
       // Use the new service to fetch data from all three endpoints
       const result = await testCaseDataService.fetchTestCaseDataForDetails(testCaseId);
       
@@ -460,14 +458,8 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
         throw new Error(result.error || 'Failed to fetch test case details');
       }
       
-      const { stepResults, sharedSteps: fetchedSharedSteps, attachments } = result.data!;
-      
-      console.log('✅ Successfully fetched test case details:', {
-        stepResults: stepResults.length,
-        sharedSteps: fetchedSharedSteps.length,
-        attachments: attachments.length
-      });
-      
+      const { stepResults, sharedSteps: fetchedSharedSteps, attachments, tags } = result.data!;
+
       // Transform step results to StepResult format for sidebar
       const transformedStepResults: StepResult[] = stepResults.map(sr => ({
         id: sr.id,
@@ -478,46 +470,51 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
       
       // Transform shared steps to SharedStepWithDetails format for sidebar
       const transformedSharedSteps: SharedStepWithDetails[] = [];
-      
+
       for (const sharedStep of fetchedSharedSteps) {
         try {
-          // Fetch the internal step results for this shared step
-          console.log('🔄 Fetching internal step results for shared step:', sharedStep.id);
-          
-          if (sharedStep.stepResults && sharedStep.stepResults.length > 0) {
-            const stepResultPromises = sharedStep.stepResults.map(stepResultId => 
-              sharedStepsApiService.getStepResult(stepResultId)
-            );
-            
-            const stepResultResponses = await Promise.all(stepResultPromises);
-            
-            const internalStepResults = stepResultResponses
-              .map(response => ({
-                id: response.data.attributes.id.toString(),
-                step: response.data.attributes.step,
-                result: response.data.attributes.result,
-                order: response.data.attributes.order
-              }))
-              .sort((a, b) => a.order - b.order);
-            
-            transformedSharedSteps.push({
-              id: sharedStep.id,
-              title: sharedStep.title,
-              description: sharedStep.description,
-              order: sharedStep.order,
-              stepResults: internalStepResults
-            });
-          } else {
-            transformedSharedSteps.push({
-              id: sharedStep.id,
-              title: sharedStep.title,
-              description: sharedStep.description,
-              order: sharedStep.order,
-              stepResults: []
-            });
+          // Check if stepResults are already full objects (from included data) or just IDs
+          const stepResults = sharedStep.stepResults || [];
+          const internalStepResults: StepResult[] = [];
+
+          for (const stepResult of stepResults) {
+            // Check if it's already a full object with step details
+            if (typeof stepResult === 'object' && 'step' in stepResult) {
+              internalStepResults.push({
+                id: stepResult.id,
+                step: stepResult.step,
+                result: stepResult.result,
+                order: stepResult.order
+              });
+            } else if (typeof stepResult === 'string') {
+              // It's just an ID - need to fetch details
+
+              try {
+                const response = await sharedStepsApiService.getStepResult(stepResult);
+                internalStepResults.push({
+                  id: response.data.attributes.id.toString(),
+                  step: response.data.attributes.step,
+                  result: response.data.attributes.result,
+                  order: response.data.attributes.order
+                });
+              } catch (error) {
+                console.error('❌ Failed to fetch step result:', stepResult, error);
+              }
+            }
           }
+
+          // Sort by order
+          internalStepResults.sort((a, b) => a.order - b.order);
+
+          transformedSharedSteps.push({
+            id: sharedStep.id,
+            title: sharedStep.title,
+            description: sharedStep.description,
+            order: sharedStep.order,
+            stepResults: internalStepResults
+          });
         } catch (error) {
-          console.error('❌ Failed to fetch internal step results for shared step:', sharedStep.id, error);
+          console.error('❌ Failed to process shared step:', sharedStep.id, error);
           // Add shared step without internal details
           transformedSharedSteps.push({
             id: sharedStep.id,
@@ -533,8 +530,8 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
       let executions: TestCaseExecution[] = [];
       if (testRunId) {
         try {
-          console.log('🔄 Fetching executions for test case in test run context...');
-          console.log('🔍 Filtering by configurationId:', configurationId || 'none');
+
+
           const testRunResponse = await testRunsApiService.getTestRun(testRunId);
 
           if (testRunResponse.data.attributes.executions && Array.isArray(testRunResponse.data.attributes.executions)) {
@@ -548,8 +545,6 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                 return matchesTestCase && matchesConfig;
               }
             );
-
-            console.log('🔍 Found', testCaseExecutions.length, 'executions matching test case', testCase.id, 'and config', configurationId || 'none');
 
             executions = testCaseExecutions.map((execution: { id: number; test_case_id: number; result: number; user_id?: number; created_at: string; updated_at: string; [key: string]: unknown }) => ({
               id: execution.id.toString(),
@@ -565,7 +560,6 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
             // Sort by creation date (newest first)
             executions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-            console.log('✅ Loaded', executions.length, 'executions for test case with matching configuration');
           }
         } catch (error) {
           console.error('❌ Failed to load executions:', error);
@@ -593,7 +587,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
         type: capitalizeFirst(testCase.type), // Already a string: 'functional', 'regression', 'smoke', etc.
         status: capitalizeFirst(testCase.status), // Already a string: 'draft', 'active', 'deprecated'
         automationStatus: testCase.automationStatus, // Already a number: 1-5
-        tags: testCase.tags || [],
+        tags: tags || [],
         stepResults: transformedStepResults,
         sharedSteps: transformedSharedSteps,
         attachments: transformedAttachments,
@@ -731,8 +725,6 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
 
     try {
       setIsUpdatingResult(true);
-
-      console.log(`🔄 Updating execution result for test case ${testCase.id} in test run ${testRunId} with config ${configurationId || 'none'} to: ${newResultId} (${newResultLabel})`);
 
       // Create the new execution via API
       const response = await testCaseExecutionsApiService.createTestCaseExecution({

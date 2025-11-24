@@ -619,6 +619,7 @@ const UpdateScheduledReportModal: React.FC<UpdateScheduledReportModalProps> = ({
                 required
                 disabled={isSubmitting}
                 placeholder="Enter report title"
+                autoFocus
               />
             </div>
 

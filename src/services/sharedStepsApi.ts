@@ -113,6 +113,13 @@ export interface UpdateSharedStepResponse {
   included?: ApiCreator[];
 }
 
+export interface StepResultDetail {
+  id: string;
+  step: string;
+  result: string;
+  order: number;
+}
+
 export interface SharedStep {
   id: string;
   title: string;
@@ -120,7 +127,7 @@ export interface SharedStep {
   projectId: string;
   stepsCount: number;
   usedInCount: number;
-  stepResults?: string[];
+  stepResults?: (string | StepResultDetail)[];
   createdBy: {
     id: string;
     name: string;
@@ -149,20 +156,20 @@ class SharedStepsApiService {
   }
 
   async getSharedSteps(projectId: string, page: number = 1, itemsPerPage: number = 30): Promise<SharedStepsApiResponse> {
-    const response = await apiService.authenticatedRequest(`/shared_steps?project=${projectId}&page=${page}&itemsPerPage=${itemsPerPage}&include=creator&order[createdAt]=desc`);
+    const response = await apiService.authenticatedRequest(`/shared_steps?project=${projectId}&page=${page}&itemsPerPage=${itemsPerPage}&include=creator,stepResults&order[createdAt]=desc`);
     return response || this.getDefaultSharedStepsResponse();
   }
 
   async searchSharedSteps(searchTerm: string, projectId: string, page: number = 1, itemsPerPage: number = 30): Promise<SharedStepsApiResponse> {
     const isNumeric = /^\d+$/.test(searchTerm.trim());
     const searchParam = isNumeric ? `id=${encodeURIComponent(searchTerm)}` : `title=${encodeURIComponent(searchTerm)}`;
-    
-    const response = await apiService.authenticatedRequest(`/shared_steps?project=${projectId}&${searchParam}&page=${page}&itemsPerPage=${itemsPerPage}&include=creator&order[createdAt]=desc`);
+
+    const response = await apiService.authenticatedRequest(`/shared_steps?project=${projectId}&${searchParam}&page=${page}&itemsPerPage=${itemsPerPage}&include=creator,stepResults&order[createdAt]=desc`);
     return response || this.getDefaultSharedStepsResponse();
   }
 
-  async getSharedStep(id: string): Promise<{ data: ApiSharedStep }> {
-    return apiService.authenticatedRequest(`/shared_steps/${id}?include=creator`);
+  async getSharedStep(id: string): Promise<{ data: ApiSharedStep; included?: (ApiCreator | { type: string; id: string; attributes: { step: string; result: string; order: number; [key: string]: unknown } })[] }> {
+    return apiService.authenticatedRequest(`/shared_steps/${id}?include=creator,stepResults`);
   }
 
 
@@ -365,26 +372,45 @@ class SharedStepsApiService {
   }
 
   // Helper method to transform API shared step to our internal format
-  transformApiSharedStep(apiSharedStep: ApiSharedStep, included: ApiCreator[] = []): SharedStep {
+  transformApiSharedStep(apiSharedStep: ApiSharedStep, included: (ApiCreator | { type: string; id: string; attributes: { step: string; result: string; order: number; [key: string]: unknown } })[] = []): SharedStep {
     // Extract project ID from the relationship URL
     const projectId = apiSharedStep.relationships.project.data.id.split('/').pop() || '';
-    
+
     // Extract creator ID from the relationship URL
     const creatorId = apiSharedStep.relationships.creator.data.id.split('/').pop() || '';
-    
+
     // Find creator details in included data
-    const creator = this.findCreatorInIncluded(creatorId, included);
-    
+    const creator = this.findCreatorInIncluded(creatorId, included as ApiCreator[]);
+
     // Count steps and results
     const stepsCount = apiSharedStep.relationships.stepResults?.data?.length || 0;
-    
+
     // Count test cases using this shared step
     const usedInCount = apiSharedStep.relationships.testCases?.data?.length || 0;
 
-    // Extract step result IDs from relationships
-    const stepResults = apiSharedStep.relationships.stepResults?.data?.map(stepResult => 
-      stepResult.id.split('/').pop() || stepResult.id
-    ) || [];
+    // Extract step result IDs OR full details from included data
+    const stepResultRefs = apiSharedStep.relationships.stepResults?.data || [];
+    const stepResults = stepResultRefs.map(stepResult => {
+      const stepResultId = stepResult.id.split('/').pop() || stepResult.id;
+
+      // Check if full step result details are in included data
+      const includedStepResult = included.find((item: { type: string; id: string }) =>
+        item.type === 'StepResult' && item.id.includes(stepResultId)
+      );
+
+      // If we have full details, return an object with details
+      if (includedStepResult && 'attributes' in includedStepResult && includedStepResult.attributes.step) {
+        return {
+          id: stepResultId,
+          step: includedStepResult.attributes.step,
+          result: includedStepResult.attributes.result,
+          order: includedStepResult.attributes.order
+        };
+      }
+
+      // Otherwise, just return the ID (old behavior)
+      return stepResultId;
+    });
 
     return {
       id: apiSharedStep.attributes.id.toString(),

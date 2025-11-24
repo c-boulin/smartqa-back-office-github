@@ -76,7 +76,7 @@ const TestPlans: React.FC = () => {
   };
 
   const handleTestPlanClick = useCallback((testPlan: TestPlan) => {
-    console.log('📋 Test plan clicked:', testPlan.title, 'ID:', testPlan.id);
+
     navigate(`/test-plans/${testPlan.id}`);
   }, [navigate]);
 
