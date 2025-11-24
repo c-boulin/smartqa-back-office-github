@@ -5,12 +5,10 @@ import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import { LoadingProvider } from './context/LoadingContext';
 import { UsersProvider } from './context/UsersContext';
-import { ThemeProvider } from './context/ThemeContext';
 import GlobalLoader from './components/UI/GlobalLoader';
 import { useLoading } from './context/LoadingContext';
 import Layout from './components/Layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
-import ThemeDebug from './components/ThemeDebug';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Callback from './pages/Callback';
@@ -31,7 +29,7 @@ const AppContent: React.FC = () => {
   return (
     <>
       <Router>
-        <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
@@ -68,24 +66,21 @@ const AppContent: React.FC = () => {
         </div>
       </Router>
       <GlobalLoader isVisible={loading.isLoading} message={loading.message} />
-      <ThemeDebug />
     </>
   );
 };
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <UsersProvider>
-          <AppProvider>
-            <LoadingProvider>
-              <AppContent />
-            </LoadingProvider>
-          </AppProvider>
-        </UsersProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <UsersProvider>
+        <AppProvider>
+          <LoadingProvider>
+            <AppContent />
+          </LoadingProvider>
+        </AppProvider>
+      </UsersProvider>
+    </AuthProvider>
   );
 }
 
