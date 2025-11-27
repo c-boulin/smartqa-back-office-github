@@ -14,6 +14,7 @@ export interface Project {
 export interface TestCase {
   id: string;
   projectId: string;
+  projectRelativeId?: number;
   folderId?: string; // Ajout du folderId
   ownerId?: string; // Owner/user ID
   title: string;

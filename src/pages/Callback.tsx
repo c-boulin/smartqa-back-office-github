@@ -89,7 +89,7 @@ const Callback: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center px-6">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-cyan-400/10 to-purple-500/10 rounded-full blur-3xl"></div>
@@ -103,7 +103,7 @@ const Callback: React.FC = () => {
             <div className="flex justify-center mb-4">
               <div className="relative">
                 <div className="w-16 h-16 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center">
-                  <Hexagon className="w-8 h-8 text-white fill-white/20" />
+                  <Hexagon className="w-8 h-8 text-slate-900 dark:text-white fill-slate-900/20 dark:fill-white/20" />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-purple-500 opacity-30 rounded-full blur-lg"></div>
               </div>
@@ -120,18 +120,18 @@ const Callback: React.FC = () => {
             <div className="flex justify-center">
               {getStatusIcon()}
             </div>
-            
+
             <div>
               <h2 className={`text-xl font-semibold mb-2 ${getStatusColor()}`}>
                 {status === 'loading' && 'Authenticating...'}
                 {status === 'success' && 'Success!'}
                 {status === 'error' && 'Authentication Failed'}
               </h2>
-              <p className="text-gray-400">{message}</p>
+              <p className="text-slate-600 dark:text-gray-400">{message}</p>
             </div>
 
             {status === 'loading' && (
-              <div className="w-full bg-slate-700 rounded-full h-2">
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                 <div className="bg-gradient-to-r from-cyan-400 to-purple-500 h-2 rounded-full animate-pulse"></div>
               </div>
             )}

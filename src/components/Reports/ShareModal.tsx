@@ -90,8 +90,8 @@ const ShareModal: React.FC<ShareModalProps> = ({
           <div className="w-16 h-16 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <Share className="w-8 h-8 text-cyan-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white mb-2">Share Report via Email</h3>
-          <p className="text-sm text-gray-400">Send "{reportTitle}" to a colleague</p>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Share Report via Email</h3>
+          <p className="text-sm text-slate-500 dark:text-gray-400">Send "{reportTitle}" to a colleague</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -118,7 +118,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
           {/* Format Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               Report Format *
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -129,7 +129,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
                 className={`flex items-center justify-center px-4 py-3 rounded-lg border-2 transition-all ${
                   selectedFormat === 'pdf'
                     ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
-                    : 'border-slate-600 bg-slate-700 text-gray-300 hover:border-slate-500'
+                    : 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-gray-300 hover:border-slate-500'
                 } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <FileText className="w-5 h-5 mr-2" />
@@ -142,7 +142,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
                 className={`flex items-center justify-center px-4 py-3 rounded-lg border-2 transition-all ${
                   selectedFormat === 'csv'
                     ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
-                    : 'border-slate-600 bg-slate-700 text-gray-300 hover:border-slate-500'
+                    : 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-gray-300 hover:border-slate-500'
                 } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <Download className="w-5 h-5 mr-2" />
@@ -153,21 +153,21 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
           {/* Optional Message */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               Message (Optional)
             </label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder-gray-400 resize-none"
+              className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder-slate-400 dark:placeholder-gray-400 resize-none"
               placeholder="Add a personal message (optional)"
               disabled={isSubmitting}
             />
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end space-x-3 pt-4 border-t border-slate-700">
+          <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-700">
             <Button 
               variant="secondary" 
               onClick={handleClose} 

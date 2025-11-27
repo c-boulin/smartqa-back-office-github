@@ -44,7 +44,7 @@ const DraggableSharedStep: React.FC<DraggableSharedStepProps> = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`p-4 bg-gradient-to-r from-purple-800/50 to-purple-900/50 border-2 border-purple-500/50 rounded-lg transition-all ${
+      className={`p-4 bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-800/50 dark:to-purple-900/50 border-2 border-purple-300 dark:border-purple-500/50 rounded-lg transition-all ${
         isDragging ? 'opacity-50 shadow-2xl z-50' : ''
       }`}
     >
@@ -53,15 +53,15 @@ const DraggableSharedStep: React.FC<DraggableSharedStepProps> = ({
           <div
             {...attributes}
             {...listeners}
-            className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-purple-400 transition-colors"
+            className="cursor-grab active:cursor-grabbing p-1 text-slate-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
             title="Drag to reorder"
           >
             <GripVertical className="w-4 h-4" />
           </div>
           <div className="flex items-center space-x-2">
-            <Layers className="w-4 h-4 text-purple-400" />
-            <h4 className="text-sm font-medium text-white">Step {index + 1}</h4>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/30 text-purple-300 border border-purple-400/50">
+            <Layers className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <h4 className="text-sm font-medium text-slate-900 dark:text-white">Step {index + 1}</h4>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-200 dark:bg-purple-500/30 text-purple-800 dark:text-purple-300 border border-purple-400 dark:border-purple-400/50">
               Shared Step
             </span>
           </div>
@@ -92,17 +92,17 @@ const DraggableSharedStep: React.FC<DraggableSharedStepProps> = ({
         </div>
       </div>
       
-      <div className="bg-purple-900/30 border border-purple-500/30 rounded-lg p-3">
+      <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-500/30 rounded-lg p-3">
         <div className="mb-2">
-          <h5 className="font-medium text-purple-200 mb-1">
+          <h5 className="font-medium text-purple-900 dark:text-purple-200 mb-1">
             {sharedStep.title}
           </h5>
           {sharedStep.description && (
-            <p className="text-sm text-purple-300/80">{sharedStep.description}</p>
+            <p className="text-sm text-purple-700 dark:text-purple-300/80">{sharedStep.description}</p>
           )}
         </div>
         
-        <div className="flex items-center justify-between text-xs text-purple-300/60">
+        <div className="flex items-center justify-between text-xs text-purple-700 dark:text-purple-300/60">
           <span>{sharedStep.stepsCount} step{sharedStep.stepsCount !== 1 ? 's' : ''} and result{sharedStep.stepsCount !== 1 ? 's' : ''}</span>
           <span>Used in {sharedStep.usedInCount} test case{sharedStep.usedInCount !== 1 ? 's' : ''}</span>
         </div>

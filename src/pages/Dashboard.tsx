@@ -14,12 +14,15 @@ import ClosedRunsCaseResultsStackedChart from '../components/Charts/ClosedRunsCa
 import { useApp } from '../context/AppContext';
 import { useDashboardSummary } from '../hooks/useDashboardSummary';
 import { useTestRunsData } from '../hooks/useTestRunsData';
+import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { TEST_CASE_TYPES } from '../types';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { getSelectedProject, state } = useApp();
   const selectedProject = getSelectedProject();
+
+  useRestoreLastProject();
 
   const { summaryData, loading: summaryLoading } = useDashboardSummary(selectedProject, state.projects);
   const { data: testRunsData, loading: testRunsLoading } = useTestRunsData(selectedProject?.id);
@@ -133,21 +136,21 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
       </div>
 
       {selectedProject && (
         <div className="bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-white flex items-center">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center">
                 <Database className="w-5 h-5 mr-2 text-green-400" />
                 📁 {selectedProject.name}
               </h3>
-              <p className="text-sm text-gray-400">{selectedProject.description}</p>
+              <p className="text-sm text-slate-600 dark:text-gray-400">{selectedProject.description}</p>
             </div>
             <div className="text-right">
-              <div className="text-sm text-gray-400">Total Test Cases</div>
+              <div className="text-sm text-slate-600 dark:text-gray-400">Total Test Cases</div>
               <div className="text-2xl font-bold text-cyan-400">
                 {summaryLoading ? <Loader className="w-6 h-6 animate-spin inline" /> : summaryData?.totalTestCases || 0}
               </div>
@@ -162,7 +165,7 @@ export default function Dashboard() {
         ) : (
           <Card gradient className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Test Cases in Active Test Runs</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Test Cases in Active Test Runs</h3>
             </div>
 
             <div className="h-64 flex items-center justify-center relative">
@@ -191,20 +194,19 @@ export default function Dashboard() {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: '#1F2937',
-                        border: '1px solid #374151',
+                        backgroundColor: 'rgb(241 245 249)', border: '1px solid rgb(203 213 225)',
                         borderRadius: '8px',
-                        color: '#06B6D4'
+                        color: 'rgb(15 23 42)'
                       }}
-                      labelStyle={{ color: '#06B6D4' }}
-                      itemStyle={{ color: '#06B6D4' }}
+                      labelStyle={{ color: 'rgb(15 23 42)' }}
+                      itemStyle={{ color: 'rgb(15 23 42)' }}
                     />
                     <text
                       x="50%"
                       y="45%"
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      className="fill-white text-2xl font-bold"
+                      className="fill-slate-900 dark:fill-white text-2xl font-bold"
                     >
                       {totalActiveTestCases}
                     </text>
@@ -213,7 +215,7 @@ export default function Dashboard() {
                       y="55%"
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      className="fill-gray-400 text-sm"
+                      className="fill-slate-600 dark:fill-gray-400 text-sm"
                     >
                       Total Test Cases
                     </text>
@@ -225,9 +227,9 @@ export default function Dashboard() {
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center">
                         <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: entry.color }}></div>
-                        <span className="text-sm text-gray-300">{entry.name}</span>
+                        <span className="text-sm text-slate-700 dark:text-gray-300">{entry.name}</span>
                       </div>
-                      <span className="text-sm text-gray-300">
+                      <span className="text-sm text-slate-700 dark:text-gray-300">
                         {entry.value} ({activeTestRunsPercentages[activeTestRunsData.indexOf(entry)]}%)
                       </span>
                     </div>
@@ -235,7 +237,7 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              <div className="text-center text-gray-400">
+              <div className="text-center text-slate-500 dark:text-gray-400">
                 <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium">No active test runs</p>
                 <p className="text-sm">Start executing tests to see the distribution</p>
@@ -250,31 +252,30 @@ export default function Dashboard() {
         ) : (
           <Card gradient className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Closed Test Runs</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Closed Test Runs</h3>
             </div>
 
             <div className="h-64 flex items-center justify-center relative">
               {closedTestRunsChartData && closedTestRunsChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={closedTestRunsChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-700" />
                   <XAxis
                     dataKey="month"
-                    stroke="#6B7280"
+                    className="stroke-slate-600 dark:stroke-slate-400" tick={{ fill: 'currentColor' }} style={{ color: 'inherit' }}
                     fontSize={12}
                   />
                   <YAxis
-                    stroke="#6B7280"
+                    className="stroke-slate-600 dark:stroke-slate-400" tick={{ fill: 'currentColor' }} style={{ color: 'inherit' }}
                     fontSize={12}
                    allowDecimals={false}
                     domain={[0, 'dataMax']}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#1F2937',
-                      border: '1px solid #374151',
+                      backgroundColor: 'rgb(241 245 249)', border: '1px solid rgb(203 213 225)',
                       borderRadius: '8px',
-                      color: '#06B6D4'
+                      color: 'rgb(15 23 42)'
                     }}
                     formatter={(value) => [`${value} test run${value !== 1 ? 's' : ''}`, 'Closed']}
                   />
@@ -290,7 +291,7 @@ export default function Dashboard() {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-center text-gray-400">
+              <div className="text-center text-slate-500 dark:text-gray-400">
                 <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium">No closed test runs</p>
                 <p className="text-sm">Complete test runs to see historical data</p>
@@ -306,7 +307,7 @@ export default function Dashboard() {
       ) : (
         <Card gradient className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Results from Closed Test Runs</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Results from Closed Test Runs</h3>
           </div>
 
           <div className="h-80 flex items-center justify-center relative">
@@ -323,33 +324,33 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card gradient className="p-6 text-center">
-          <h3 className="text-sm font-medium text-gray-400 mb-2">Automation Coverage</h3>
-          <div className="text-3xl font-bold text-white mb-1">
+          <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Automation Coverage</h3>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
             {summaryLoading ? <Loader className="w-6 h-6 animate-spin inline" /> : `${summaryData?.automationCoverage || 0}%`}
           </div>
         </Card>
 
         <Card gradient className="p-6 text-center">
           <div className="flex items-center justify-center mb-2">
-            <h3 className="text-sm font-medium text-gray-400 mr-1">Automated Test Cases</h3>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mr-1">Automated Test Cases</h3>
           </div>
-          <div className="text-3xl font-bold text-white mb-1">
+          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
             {summaryLoading ? <Loader className="w-6 h-6 animate-spin inline" /> : summaryData?.automatedTestCases || 0}
           </div>
         </Card>
 
         <Card gradient className="p-6 text-center">
           <div className="flex items-center justify-center mb-2">
-            <h3 className="text-sm font-medium text-gray-400 mr-1">Manual Test Cases</h3>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mr-1">Manual Test Cases</h3>
           </div>
-          <div className="text-3xl font-bold text-white mb-1">
+          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
             {summaryLoading ? <Loader className="w-6 h-6 animate-spin inline" /> : summaryData?.manualTestCases || 0}
           </div>
         </Card>
 
         <Card gradient className="p-6 text-center">
-          <h3 className="text-sm font-medium text-gray-400 mb-2">Total Test Cases</h3>
-          <div className="text-3xl font-bold text-white mb-1">
+          <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Total Test Cases</h3>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
             {summaryLoading ? <Loader className="w-6 h-6 animate-spin inline" /> : summaryData?.totalTestCases || 0}
           </div>
         </Card>
@@ -361,7 +362,7 @@ export default function Dashboard() {
         ) : (
           <Card gradient className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Type of Test Cases</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Type of Test Cases</h3>
             </div>
 
             <div className="h-64 flex items-center justify-center relative">
@@ -390,20 +391,19 @@ export default function Dashboard() {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: '#1F2937',
-                        border: '1px solid #374151',
+                        backgroundColor: 'rgb(241 245 249)', border: '1px solid rgb(203 213 225)',
                         borderRadius: '8px',
-                        color: '#06B6D4'
+                        color: 'rgb(15 23 42)'
                       }}
-                      labelStyle={{ color: '#06B6D4' }}
-                      itemStyle={{ color: '#06B6D4' }}
+                      labelStyle={{ color: 'rgb(15 23 42)' }}
+                      itemStyle={{ color: 'rgb(15 23 42)' }}
                     />
                     <text
                       x="50%"
                       y="45%"
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      className="fill-white text-2xl font-bold"
+                      className="fill-slate-900 dark:fill-white text-2xl font-bold"
                     >
                       {summaryData.totalTestCases}
                     </text>
@@ -412,7 +412,7 @@ export default function Dashboard() {
                       y="55%"
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      className="fill-gray-400 text-sm"
+                      className="fill-slate-600 dark:fill-gray-400 text-sm"
                     >
                       Total Test Cases
                     </text>
@@ -424,9 +424,9 @@ export default function Dashboard() {
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center">
                         <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: entry.color }}></div>
-                        <span className="text-sm text-gray-300">{entry.name}</span>
+                        <span className="text-sm text-slate-700 dark:text-gray-300">{entry.name}</span>
                       </div>
-                      <span className="text-sm text-gray-300">
+                      <span className="text-sm text-slate-700 dark:text-gray-300">
                         {entry.value} ({typeOfTestCasesPercentages[index]}%)
                       </span>
                     </div>
@@ -434,7 +434,7 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              <div className="text-center text-gray-400">
+              <div className="text-center text-slate-500 dark:text-gray-400">
                 <TestTube className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium">No test cases found</p>
                 <p className="text-sm">Create test cases to see type distribution</p>
@@ -449,29 +449,28 @@ export default function Dashboard() {
         ) : (
           <Card gradient className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Trend of Test Cases</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Trend of Test Cases</h3>
             </div>
 
             <div className="h-64 flex items-center justify-center relative">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendOfTestCasesData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-700" />
                   <XAxis
                     dataKey="month"
-                    stroke="#6B7280"
+                    className="stroke-slate-600 dark:stroke-slate-400" tick={{ fill: 'currentColor' }} style={{ color: 'inherit' }}
                     fontSize={12}
                   />
                   <YAxis
-                    stroke="#6B7280"
+                    className="stroke-slate-600 dark:stroke-slate-400" tick={{ fill: 'currentColor' }} style={{ color: 'inherit' }}
                     fontSize={12}
                     domain={[0, 'dataMax + 1']}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#1F2937',
-                      border: '1px solid #374151',
+                      backgroundColor: 'rgb(241 245 249)', border: '1px solid rgb(203 213 225)',
                       borderRadius: '8px',
-                      color: '#06B6D4'
+                      color: 'rgb(15 23 42)'
                     }}
                   />
                   {trendOfTestCasesData.length > 0 && Object.keys(trendOfTestCasesData[0])
@@ -500,9 +499,9 @@ export default function Dashboard() {
                   <Line
                     type="monotone"
                     dataKey="Total"
-                    stroke="#FFFFFF"
+                    stroke="rgb(15 23 42)" className="dark:[&>path]:!stroke-white"
                     strokeWidth={3}
-                    dot={{ fill: '#FFFFFF', strokeWidth: 2, r: 4 }}
+                    dot={{ fill: 'rgb(15 23 42)', className: 'dark:!fill-white', strokeWidth: 2, r: 4 }}
                     name="Total"
                   />
                 </LineChart>

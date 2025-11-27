@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Play, CheckCircle, XCircle, Clock, AlertTriangle, Loader, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
+import TagsWithTooltip from '../components/UI/TagsWithTooltip';
 import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSidebar';
 import TestRunDetailsFilters from '../components/TestRun/TestRunDetailsFilters';
 import TestRunDetailsFiltersSidebar from '../components/TestRun/TestRunDetailsFiltersSidebar';
@@ -98,21 +99,21 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
   const getStatusColor = (resultLabel: string) => {
     switch (resultLabel) {
       case 'Passed':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       case 'Failed':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       case 'Blocked':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       case 'Retest':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       case 'Skipped':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       case 'Untested':
       case 'In Progress':
       case 'Unknown':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       default:
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
     }
   };
 
@@ -171,9 +172,9 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
           <span>{currentResultLabel}</span>
         </div>
         {isUpdating ? (
-          <Loader className="w-3 h-3 animate-spin text-gray-400" />
+          <Loader className="w-3 h-3 animate-spin text-slate-600 dark:text-gray-400" />
         ) : (
-          <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3 h-3 text-slate-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         )}
@@ -187,28 +188,28 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
           />
           <div
             ref={dropdownRef}
-            className={`absolute bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96 ${
+            className={`absolute bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96 ${
               dropdownPosition.vertical === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
             } ${
               dropdownPosition.horizontal === 'left' ? 'left-0' : 'right-0'
             }`}
           >
-            <div className="p-3 border-b border-slate-600">
-              <h4 className="text-sm font-medium text-white mb-3">Select Result</h4>
+            <div className="p-3 border-b border-slate-300 dark:border-slate-600">
+              <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-3">Select Result</h4>
               <div className="space-y-2 max-h-48 overflow-y-auto">
               {Object.entries(TEST_RESULTS).map(([resultId, label]) => (
                 <button
                   key={resultId}
                   type="button"
                   onClick={() => handleResultChange(parseInt(resultId) as TestResultId)}
-                  className={`w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors flex items-center text-sm ${
+                  className={`w-full px-4 py-2 text-left hover:bg-slate-100 dark:bg-slate-700 transition-colors flex items-center text-sm ${
                     selectedResult === parseInt(resultId) 
                       ? 'bg-cyan-600/30 border-l-4 border-cyan-400' 
                       : ''
                   }`}
                 >
                   <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${getResultColor(parseInt(resultId) as TestResultId)}`}></div>
-                  <span className={`${selectedResult === parseInt(resultId) ? 'text-cyan-300 font-medium' : 'text-white'}`}>
+                  <span className={`${selectedResult === parseInt(resultId) ? 'text-cyan-300 font-medium' : 'text-slate-900 dark:text-white'}`}>
                     {label}
                   </span>
                   {selectedResult === parseInt(resultId) && (
@@ -220,12 +221,12 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="border-t border-slate-600 p-3">
+            <div className="border-t border-slate-300 dark:border-slate-600 p-3">
               <div className="flex flex-col space-y-2">
                 <button
                   type="button"
                   onClick={handleOpenCommentModal}
-                  className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-sm rounded transition-colors flex items-center justify-center"
+                  className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-600 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white text-sm rounded transition-colors flex items-center justify-center"
                 >
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Add Comment
@@ -234,14 +235,14 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                    className="px-3 py-1.5 text-xs text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleQuickUpdate}
-                    className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors"
+                    className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-slate-900 dark:text-white rounded transition-colors"
                   >
                     Update
                   </button>
@@ -270,6 +271,8 @@ interface TestCaseWithExecution {
 const TestRunDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const testPlanIdFromUrl = searchParams.get('testPlanId') || undefined;
   const { state: appState, createTag } = useApp();
   const [testRun, setTestRun] = useState<TestRun | null>(null);
   const [testCases, setTestCases] = useState<TestCaseWithExecution[]>([]);
@@ -486,9 +489,9 @@ const TestRunDetails: React.FC = () => {
       case 'Untested':
       case 'In Progress':
       case 'Unknown':
-        return <Clock className="w-4 h-4 text-gray-400" />;
+        return <Clock className="w-4 h-4 text-slate-600 dark:text-gray-400" />;
       default:
-        return <Clock className="w-4 h-4 text-gray-400" />;
+        return <Clock className="w-4 h-4 text-slate-600 dark:text-gray-400" />;
     }
   };
 
@@ -496,7 +499,7 @@ const TestRunDetails: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Passed':
-        return 'text-green-400 bg-green-500/20 border-green-500/50';
+        return 'text-green-700 dark:text-green-400 bg-green-500/20 border-green-500/50';
       case 'Failed':
         return 'text-red-400 bg-red-500/20 border-red-500/50';
       case 'Blocked':
@@ -508,9 +511,9 @@ const TestRunDetails: React.FC = () => {
       case 'Untested':
       case 'In Progress':
       case 'Unknown':
-        return 'text-gray-400 bg-gray-500/20 border-gray-500/50';
+        return 'text-slate-600 dark:text-gray-400 bg-gray-500/20 border-gray-500/50';
       default:
-        return 'text-gray-400 bg-gray-500/20 border-gray-500/50';
+        return 'text-slate-600 dark:text-gray-400 bg-gray-500/20 border-gray-500/50';
     }
   };
 
@@ -544,9 +547,9 @@ const TestRunDetails: React.FC = () => {
       setUpdatingResults(prev => new Set([...prev, updateKey]));
 
       // Check if this is the first execution being created for this test run
-      const isFirstExecution = testCases.every(tc =>
-        tc.id !== testCaseId || tc.configurationId !== configurationId || tc.executionStatus === 6
-      );
+      // Count how many test cases currently have executions (not Untested - status 6)
+      const testCasesWithExecutionsBefore = testCases.filter(tc => tc.executionStatus !== 6).length;
+      const isFirstExecution = testCasesWithExecutionsBefore === 0;
 
       // Use new POST endpoint for test case executions
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- API response needed for error handling
@@ -576,35 +579,46 @@ const TestRunDetails: React.FC = () => {
       );
 
       // Check if we need to update test run state
-      if (isFirstExecution && testRun.state === 1) {
-        // First execution created, move test run to "In Progress" (state 2)
+      // First, check if all test cases are now passed (result 1)
+      const allTestCasesPassed = updatedTestCases.every(tc => tc.executionStatus === 1);
+      const totalTestCases = updatedTestCases.length;
 
+      if (allTestCasesPassed && testRun.state !== 5 && testRun.state !== 6) {
+        // All test cases passed (including single test case), move test run to "Done" (state 5)
+        // This will also update the test plan to "Done" via updateTestRunState
         try {
-          await testRunsApiService.updateTestRunState(id, 2);
+          await testRunsApiService.updateTestRunState(id, 5, testRun.testPlanId || testPlanIdFromUrl);
+          setTestRun({ ...testRun, state: 5 });
+
+          toast.success(`Execution result updated to ${newResultLabel}`);
+        } catch (error) {
+          console.error('❌ Failed to update test run state:', error);
+          toast.success(`Execution result updated to ${newResultLabel}`);
+        }
+      } else if (!allTestCasesPassed && testRun.state === 5) {
+        // Test run was "Done" but now not all test cases are passed - move back to "In Progress" (state 2)
+        // This will also update the test plan to "In Progress" via updateTestRunState
+        try {
+          await testRunsApiService.updateTestRunState(id, 2, testRun.testPlanId || testPlanIdFromUrl);
           setTestRun({ ...testRun, state: 2 });
-          toast.success(`Execution result updated to ${newResultLabel}. Test run is now In Progress.`);
+          toast.success(`Execution result updated to ${newResultLabel}`);
+        } catch (error) {
+          console.error('❌ Failed to update test run state:', error);
+          toast.success(`Execution result updated to ${newResultLabel}`);
+        }
+      } else if (isFirstExecution && testRun.state === 1) {
+        // First execution created but not all passed - move to "In Progress" (state 2)
+        // This will also update the test plan to "In Progress" via updateTestRunState
+        try {
+          await testRunsApiService.updateTestRunState(id, 2, testRun.testPlanId || testPlanIdFromUrl);
+          setTestRun({ ...testRun, state: 2 });
+          toast.success(`Execution result updated to ${newResultLabel}`);
         } catch (error) {
           console.error('❌ Failed to update test run state:', error);
           toast.success(`Execution result updated to ${newResultLabel}`);
         }
       } else {
-        // Check if all test cases now have results (not Untested - state 6)
-        const allTestCasesHaveResults = updatedTestCases.every(tc => tc.executionStatus !== 6);
-
-        if (allTestCasesHaveResults && testRun.state !== 5 && testRun.state !== 6) {
-          // All test cases have results, move test run to "Done" (state 5)
-
-          try {
-            await testRunsApiService.updateTestRunState(id, 5);
-            setTestRun({ ...testRun, state: 5 });
-            toast.success(`Execution result updated to ${newResultLabel}. Test run is now Done.`);
-          } catch (error) {
-            console.error('❌ Failed to update test run state:', error);
-            toast.success(`Execution result updated to ${newResultLabel}`);
-          }
-        } else {
-          toast.success(`Execution result updated to ${newResultLabel}`);
-        }
+        toast.success(`Execution result updated to ${newResultLabel}`);
       }
 
     } catch (error) {
@@ -749,7 +763,7 @@ const TestRunDetails: React.FC = () => {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <Loader className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading test run details...</p>
+          <p className="text-slate-600 dark:text-gray-400">Loading test run details...</p>
         </div>
       </div>
     );
@@ -761,7 +775,7 @@ const TestRunDetails: React.FC = () => {
         <Card className="p-8 text-center">
           <div className="text-red-400 mb-4">
             <p className="text-lg font-medium">Failed to load test run details</p>
-            <p className="text-sm text-gray-400 mt-2">{error}</p>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">{error}</p>
           </div>
           <Button onClick={() => navigate('/test-runs')}>
             Back to Test Runs
@@ -784,8 +798,8 @@ const TestRunDetails: React.FC = () => {
             Back to Test Runs
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-white">{testRun.name}</h1>
-            <p className="text-gray-400">Test Run TR{testRun.id}</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{testRun.name}</h1>
+            <p className="text-slate-600 dark:text-gray-400">Test Run TR{testRun.id}</p>
           </div>
         </div>
       </div>
@@ -794,10 +808,10 @@ const TestRunDetails: React.FC = () => {
       <Card gradient className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div>
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Status</h3>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Status</h3>
             <div className="flex items-center">
               <Play className="w-4 h-4 text-blue-400 mr-2" />
-              <span className="text-white font-medium">
+              <span className="text-slate-900 dark:text-white font-medium">
                 {testRun.state === 1 ? 'New' :
                  testRun.state === 2 ? 'In Progress' :
                  testRun.state === 3 ? 'Under Review' :
@@ -809,21 +823,21 @@ const TestRunDetails: React.FC = () => {
           </div>
           
           <div>
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Progress</h3>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Progress</h3>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-white font-medium">{progressMetrics.progress}%</span>
-                <span className="text-sm text-gray-400">
+                <span className="text-slate-900 dark:text-white font-medium">{progressMetrics.progress}%</span>
+                <span className="text-sm text-slate-600 dark:text-gray-400">
                   {progressMetrics.executedTests}/{progressMetrics.totalTests} executed
                 </span>
               </div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
+              <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
                 <div 
                   className="bg-gradient-to-r from-cyan-400 to-purple-500 h-2 rounded-full"
                   style={{ width: `${progressMetrics.progress}%` }}
                 ></div>
               </div>
-              <div className="flex items-center justify-between text-xs text-gray-400">
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-gray-400">
                 <span>Pass Rate: {progressMetrics.passRate}%</span>
                 <span>{progressMetrics.passedTests} passed</span>
               </div>
@@ -831,27 +845,27 @@ const TestRunDetails: React.FC = () => {
           </div>
           
           <div>
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Assigned To</h3>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Assigned To</h3>
             <div className="flex items-center">
               <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center mr-3">
-                <User className="w-4 h-4 text-white" />
+                <User className="w-4 h-4 text-slate-900 dark:text-white" />
               </div>
               <div>
-                <p className="text-sm font-medium text-white">{testRun.assignedTo.name}</p>
-                <p className="text-xs text-gray-400">{testRun.assignedTo.email}</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-white">{testRun.assignedTo.name}</p>
+                <p className="text-xs text-slate-600 dark:text-gray-400">{testRun.assignedTo.email}</p>
               </div>
             </div>
           </div>
           
           <div>
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Timeline</h3>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Timeline</h3>
             <div className="space-y-1 text-sm">
-              <div className="flex items-center text-gray-300">
+              <div className="flex items-center text-slate-700 dark:text-gray-300">
                 <Calendar className="w-3 h-3 mr-2" />
                 <span>Started: {format(testRun.startDate, 'MMM dd, yyyy')}</span>
               </div>
               {testRun.endDate && (
-                <div className="flex items-center text-gray-300">
+                <div className="flex items-center text-slate-700 dark:text-gray-300">
                   <Clock className="w-3 h-3 mr-2" />
                   <span>Ended: {format(testRun.endDate, 'MMM dd, yyyy')}</span>
                 </div>
@@ -883,10 +897,10 @@ const TestRunDetails: React.FC = () => {
               case 3: return 'text-yellow-400';
               case 4: return 'text-orange-400';
               case 5: return 'text-purple-400';
-              case 6: return 'text-gray-400';
+              case 6: return 'text-slate-600 dark:text-gray-400';
               case 7: return 'text-blue-400';
-              case 8: return 'text-gray-500';
-              default: return 'text-gray-400';
+              case 8: return 'text-slate-500 dark:text-gray-500';
+              default: return 'text-slate-600 dark:text-gray-400';
             }
           };
 
@@ -898,7 +912,7 @@ const TestRunDetails: React.FC = () => {
             return (
               <Card key={resultId} className="p-4 text-center">
                 <div className={`text-2xl font-bold mb-1 ${color}`}>{count}</div>
-                <div className="text-sm text-gray-400">{label}</div>
+                <div className="text-sm text-slate-600 dark:text-gray-400">{label}</div>
               </Card>
             );
           });
@@ -924,31 +938,32 @@ const TestRunDetails: React.FC = () => {
         onClearIndividualFilter={clearIndividualFilter}
       />
 
-      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl shadow-lg backdrop-blur-sm transition-all duration-300 overflow-visible">
-        <div className="p-6 border-b border-slate-700">
-          <h3 className="text-lg font-semibold text-white">
+      <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-lg backdrop-blur-sm transition-all duration-300 overflow-visible">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             Test Cases ({filteredTestCases.length}{filteredTestCases.length !== testCases.length ? ` of ${testCases.length}` : ''})
           </h3>
         </div>
         
         <div className="overflow-x-auto" style={{ overflow: 'visible' }}>
           <table className="w-full">
-            <thead className="bg-slate-800/50 border-b border-slate-700">
+            <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">ID</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Title</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Priority</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Type</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">ID</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Title</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Priority</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Type</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Tags</th>
                 {testRun && testRun.configurations && testRun.configurations.length > 0 && (
-                  <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Configuration</th>
+                  <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Configuration</th>
                 )}
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Execution Result</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Execution Result</th>
               </tr>
             </thead>
             <tbody style={{ position: 'relative', overflow: 'visible' }}>
               {filteredTestCases.map((testCase, index) => (
-                <tr key={`${testCase.id}-${testCase.configurationId || 'default'}-${index}`} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors" style={{ position: 'relative', overflow: 'visible' }}>
-                  <td className="py-4 px-6 text-sm text-gray-300 font-mono">
+                <tr key={`${testCase.id}-${testCase.configurationId || 'default'}-${index}`} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors" style={{ position: 'relative', overflow: 'visible' }}>
+                  <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
                     TC{testCase.id}
                   </td>
                   <td className="py-4 px-6">
@@ -957,7 +972,7 @@ const TestRunDetails: React.FC = () => {
                       className="text-left w-full group"
                       disabled={!testCase.fullTestCase}
                     >
-                      <h3 className="font-semibold text-white group-hover:text-cyan-400 transition-colors cursor-pointer">
+                      <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors cursor-pointer">
                         {testCase.title}
                       </h3>
                     </button>
@@ -970,9 +985,15 @@ const TestRunDetails: React.FC = () => {
                       {testCase.type}
                     </span>
                   </td>
+                  <td className="py-4 px-6">
+                    <TagsWithTooltip
+                      tags={Array.isArray(testCase.fullTestCase?.tags) ? testCase.fullTestCase.tags : []}
+                      maxVisible={2}
+                    />
+                  </td>
                   {testRun && testRun.configurations && testRun.configurations.length > 0 && (
                     <td className="py-4 px-6">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700/50 text-gray-200 border border-slate-600">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-gray-200 border border-slate-300 dark:border-slate-600">
                         <span className={getDeviceColor(testCase.configurationLabel || '')}>
                           {getDeviceIcon(testCase.configurationLabel || '')}
                         </span>

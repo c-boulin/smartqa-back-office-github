@@ -1,3 +1,171 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg-primary: 248 250 252;
+    --color-bg-secondary: 241 245 249;
+    --color-bg-tertiary: 226 232 240;
+    --color-bg-elevated: 255 255 255;
+
+    --color-surface-primary: 255 255 255;
+    --color-surface-secondary: 248 250 252;
+    --color-surface-tertiary: 241 245 249;
+    --color-surface-hover: 241 245 249;
+    --color-surface-active: 226 232 240;
+
+    --color-border-primary: 226 232 240;
+    --color-border-secondary: 203 213 225;
+    --color-border-accent: 148 163 184;
+
+    --color-text-primary: 15 23 42;
+    --color-text-secondary: 51 65 85;
+    --color-text-tertiary: 100 116 139;
+    --color-text-inverse: 248 250 252;
+
+    --color-brand-primary: 6 182 212;
+    --color-brand-secondary: 168 85 247;
+    --color-brand-gradient-from: 6 182 212;
+    --color-brand-gradient-to: 168 85 247;
+
+    --color-accent-cyan: 6 182 212;
+    --color-accent-purple: 168 85 247;
+    --color-accent-pink: 236 72 153;
+    --color-accent-green: 34 197 94;
+    --color-accent-yellow: 234 179 8;
+    --color-accent-red: 239 68 68;
+  }
+
+  .dark {
+    --color-bg-primary: 15 23 42;
+    --color-bg-secondary: 30 41 59;
+    --color-bg-tertiary: 51 65 85;
+    --color-bg-elevated: 30 41 59;
+
+    --color-surface-primary: 30 41 59;
+    --color-surface-secondary: 51 65 85;
+    --color-surface-tertiary: 71 85 105;
+    --color-surface-hover: 51 65 85;
+    --color-surface-active: 71 85 105;
+
+    --color-border-primary: 71 85 105;
+    --color-border-secondary: 100 116 139;
+    --color-border-accent: 148 163 184;
+
+    --color-text-primary: 248 250 252;
+    --color-text-secondary: 226 232 240;
+    --color-text-tertiary: 203 213 225;
+    --color-text-inverse: 15 23 42;
+
+    --color-brand-primary: 34 211 238;
+    --color-brand-secondary: 192 132 252;
+    --color-brand-gradient-from: 34 211 238;
+    --color-brand-gradient-to: 192 132 252;
+
+    --color-accent-cyan: 34 211 238;
+    --color-accent-purple: 192 132 252;
+    --color-accent-pink: 244 114 182;
+    --color-accent-green: 74 222 128;
+    --color-accent-yellow: 250 204 21;
+    --color-accent-red: 248 113 113;
+  }
+
+  .ql-editor ol,
+  .ql-editor ul {
+    padding-left: 1.5rem;
+  }
+
+  .ql-editor ol {
+    list-style-type: decimal;
+  }
+
+  .ql-editor ul {
+    list-style-type: disc;
+  }
+
+  .ql-editor li {
+    display: list-item;
+  }
+
+  .ql-editor ol > li,
+  .ql-editor ul > li {
+    margin-bottom: 0.25rem;
+  }
+
+  .html-content ol,
+  .html-content ul {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+  }
+
+  .html-content ol {
+    list-style-type: decimal;
+    list-style-position: inside;
+  }
+
+  .html-content ul {
+    list-style-type: disc;
+    list-style-position: inside;
+  }
+
+  .html-content li {
+    display: list-item;
+    margin-bottom: 0.25rem;
+  }
+
+  .html-content p {
+    margin-bottom: 0.5rem;
+  }
+
+  .html-content strong {
+    font-weight: 600;
+  }
+
+  .html-content em {
+    font-style: italic;
+  }
+
+  .html-content u {
+    text-decoration: underline;
+  }
+
+  .html-content s {
+    text-decoration: line-through;
+  }
+
+  .html-content a {
+    color: rgb(6 182 212);
+    text-decoration: underline;
+  }
+
+  .dark .html-content a {
+    color: rgb(34 211 238);
+  }
+
+  .html-content a:hover {
+    color: rgb(8 145 178);
+  }
+
+  .dark .html-content a:hover {
+    color: rgb(103 232 249);
+  }
+
+  .html-content h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+  }
+
+  .html-content h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .html-content h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+}

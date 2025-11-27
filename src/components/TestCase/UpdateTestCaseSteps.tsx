@@ -116,7 +116,7 @@ const UpdateTestCaseSteps: React.FC<UpdateTestCaseStepsProps> = ({
     <div>
       {/* Header - only show buttons here when list is empty */}
       <div className="flex items-center justify-between mb-4">
-        <label className="block text-sm font-medium text-gray-300">
+        <label className="block text-sm font-medium text-slate-600 dark:text-gray-300">
           Steps and Results
         </label>
         {allSteps.length === 0 && (
@@ -222,7 +222,7 @@ const UpdateTestCaseSteps: React.FC<UpdateTestCaseStepsProps> = ({
             </div>
           </>
         ) : (
-          <div className="text-center py-8 text-gray-400 border-2 border-dashed border-slate-600 rounded-lg">
+          <div className="text-center py-8 text-slate-500 dark:text-gray-400 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg">
             <p>No steps added yet.</p>
             <p className="text-sm">Add test steps or shared steps to define the test case workflow.</p>
           </div>

@@ -72,7 +72,7 @@ const Tooltip: React.FC<TooltipProps> = ({ content, children, delay = 300 }) => 
       </div>
       {isVisible && content && createPortal(
         <div
-          className="fixed z-[9999] px-3 py-2 text-sm text-white bg-slate-800 border border-slate-700 rounded-lg shadow-xl pointer-events-none max-w-xs break-words animate-in fade-in duration-200"
+          className="fixed z-[9999] px-3 py-2 text-sm text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-xl pointer-events-none max-w-xs break-words animate-in fade-in duration-200"
           style={{
             top: `${position.top}px`,
             left: `${position.left}px`,

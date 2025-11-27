@@ -37,6 +37,7 @@ export interface ApiTestCase {
   type: string;
   attributes: {
     id: number;
+    projectRelativeId?: number;
     title: string;
     description: string;
     priority: number; // L'API utilise des nombres pour priority
@@ -73,6 +74,12 @@ export interface ApiTestCase {
       data: { type: string; id: string };
     };
     stepResults?: {
+      data: Array<{ type: string; id: string; meta?: { order: number } }>;
+    };
+    sharedSteps?: {
+      data: Array<{ type: string; id: string; meta?: { order: number; pivot_id?: number } }>;
+    };
+    attachments?: {
       data: Array<{ type: string; id: string }>;
     };
   };
@@ -767,6 +774,33 @@ class TestCasesApiService {
     });
   }
 
+  async cloneTestCase(id: string, targetProjectId: string, targetFolderId: string): Promise<CreateTestCaseResponse> {
+    const requestBody = {
+      data: {
+        type: "TestCase",
+        relationships: {
+          project: {
+            data: { type: "Project", id: `/api/projects/${targetProjectId}` }
+          },
+          folder: {
+            data: { type: "Folder", id: `/api/folders/${targetFolderId}` }
+          }
+        }
+      }
+    };
+
+    const response = await apiService.authenticatedRequest(`/test_cases/${id}/clone`, {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+
+    return response;
+  }
+
   async updateStepResult(id: string, stepData: {
     step: string;
     result: string;
@@ -882,6 +916,7 @@ class TestCasesApiService {
     const transformed = {
       id: apiTestCase.attributes.id.toString(),
       projectId: projectId,
+      projectRelativeId: apiTestCase.attributes.projectRelativeId,
       folderId: folderId,
       ownerId: ownerId,
       title: apiTestCase.attributes.title,

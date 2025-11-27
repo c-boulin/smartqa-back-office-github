@@ -31,8 +31,8 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
           <div className="w-16 h-16 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <Download className="w-8 h-8 text-cyan-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white mb-2">Choose Download Format</h3>
-          <p className="text-sm text-gray-400">Select the format for downloading "{reportTitle}"</p>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Choose Download Format</h3>
+          <p className="text-sm text-slate-600 dark:text-gray-400">Select the format for downloading "{reportTitle}"</p>
         </div>
 
         {/* Download Options */}
@@ -49,8 +49,8 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
                 <FileText className="w-6 h-6 text-red-400" />
               </div>
               <div className="text-left">
-                <h4 className="text-white font-medium">Download as PDF</h4>
-                <p className="text-sm text-gray-400">Formatted document with charts and tables</p>
+                <h4 className="text-slate-900 dark:text-white font-medium">Download as PDF</h4>
+                <p className="text-sm text-slate-600 dark:text-gray-400">Formatted document with charts and tables</p>
               </div>
             </div>
           </button>
@@ -67,15 +67,15 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
                 <Table className="w-6 h-6 text-green-400" />
               </div>
               <div className="text-left">
-                <h4 className="text-white font-medium">Download as CSV</h4>
-                <p className="text-sm text-gray-400">Raw data for spreadsheet analysis</p>
+                <h4 className="text-slate-900 dark:text-white font-medium">Download as CSV</h4>
+                <p className="text-sm text-slate-600 dark:text-gray-400">Raw data for spreadsheet analysis</p>
               </div>
             </div>
           </button>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end pt-4 border-t border-slate-700">
+        <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>

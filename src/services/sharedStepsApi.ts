@@ -394,9 +394,10 @@ class SharedStepsApiService {
       const stepResultId = stepResult.id.split('/').pop() || stepResult.id;
 
       // Check if full step result details are in included data
-      const includedStepResult = included.find((item: { type: string; id: string }) =>
-        item.type === 'StepResult' && item.id.includes(stepResultId)
-      );
+      const includedStepResult = included.find((item: { type: string; id: string }) => {
+        const itemId = item.id.split('/').pop() || item.id;
+        return item.type === 'StepResult' && itemId === stepResultId;
+      });
 
       // If we have full details, return an object with details
       if (includedStepResult && 'attributes' in includedStepResult && includedStepResult.attributes.step) {

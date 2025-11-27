@@ -201,11 +201,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         `}
       >
-        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-        <p className="text-gray-300 mb-1">
+        <Upload className="w-8 h-8 text-slate-400 dark:text-gray-400 mx-auto mb-2" />
+        <p className="text-slate-700 dark:text-gray-300 mb-1">
           {dragOver ? 'Drop files here' : 'Click to upload or drag and drop'}
         </p>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-slate-500 dark:text-gray-500">
           Max file size: {maxSize}MB
         </p>
       </div>
@@ -224,7 +224,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       {/* File List */}
       {files.length > 0 && (
         <div className="mt-4 space-y-2">
-          <h4 className="text-sm font-medium text-gray-300">
+          <h4 className="text-sm font-medium text-slate-700 dark:text-gray-300">
             Attached Files ({files.length})
           </h4>
           {files.map((file, index) => {
@@ -234,17 +234,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
             return (
               <div
                 key={index}
-                className="p-3 bg-slate-800 border border-slate-700 rounded-lg space-y-2"
+                className="p-3 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg space-y-2"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3 flex-1 min-w-0">
-                    <div className="text-gray-400">
+                    <div className="text-slate-500 dark:text-gray-400">
                       {getFileIcon(file)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">{file.name}</p>
+                      <p className="text-sm text-slate-900 dark:text-white truncate">{file.name}</p>
                       <div className="flex items-center space-x-2">
-                        <p className="text-xs text-gray-400">{formatFileSize(file.size)}</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400">{formatFileSize(file.size)}</p>
                         {isFileUploading(file) && (
                           <div className="flex items-center text-xs text-cyan-400">
                             <Loader className="w-3 h-3 mr-1 animate-spin" />
@@ -258,7 +258,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                     <button
                       type="button"
                       onClick={() => handleRemoveFile(index)}
-                      className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                      className="p-1 text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                       disabled={isFileUploading(file)}
                     >
                       <X className="w-4 h-4" />
@@ -273,7 +273,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                       value={customName || ''}
                       onChange={(e) => handleNameChange(file, e.target.value)}
                       placeholder="Enter attachment name (optional)"
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                      className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
                       disabled={disabled || isFileUploading(file)}
                     />
                   </div>

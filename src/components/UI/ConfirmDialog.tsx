@@ -36,7 +36,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   };
 
   const getIcon = () => {
-    return <AlertTriangle className="w-6 h-6 text-yellow-400" />;
+    return <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />;
   };
 
   return (
@@ -46,20 +46,20 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           {getIcon()}
         </div>
         <div className="flex-1">
-          <p className="text-gray-300 mb-6">{message}</p>
+          <p className="text-slate-700 dark:text-gray-300 mb-6">{message}</p>
           
           {/* Warning count display */}
           {warningCount !== undefined && warningType && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
               <div className="flex items-center mb-2">
                 <AlertTriangle className="w-4 h-4 text-red-400 mr-2" />
-                <span className="text-sm font-medium text-red-400">Warning</span>
+                <span className="text-sm font-medium text-red-600 dark:text-red-400">Warning</span>
               </div>
-              <p className="text-sm text-red-300">
-                This folder contains <strong className="text-red-200">{warningCount} {warningType}{warningCount !== 1 ? 's' : ''}</strong> that will also be deleted.
+              <p className="text-sm text-red-700 dark:text-red-300">
+                This folder contains <strong className="text-red-800 dark:text-red-200">{warningCount} {warningType}{warningCount !== 1 ? 's' : ''}</strong> that will also be deleted.
               </p>
               {details && (
-                <p className="text-xs text-red-300/80 mt-2">
+                <p className="text-xs text-red-600 dark:text-red-300/80 mt-2">
                   {details}
                 </p>
               )}

@@ -23,13 +23,15 @@ interface CreateTestRunModalProps {
     state: string;
   }) => Promise<void>;
   isSubmitting: boolean;
+  preselectedTestCaseId?: string | null;
 }
 
 const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  preselectedTestCaseId = null
 }) => {
   const { state: authState } = useAuth();
   const { users, loading: usersLoading } = useUsers();
@@ -92,11 +94,11 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
         month: '2-digit',
         year: 'numeric'
       });
-      
+
       setFormData({
         name: `Test Run-${dateStr}`,
         description: '',
-        testCaseIds: [],
+        testCaseIds: preselectedTestCaseId ? [preselectedTestCaseId] : [],
         configurations: [] as Configuration[],
         testPlanId: '',
         assignedTo: '',
@@ -105,7 +107,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
       setTestCaseSearch('');
       setShowTestCaseSelector(false);
     }
-  }, [isOpen]);
+  }, [isOpen, preselectedTestCaseId]);
 
   const handleInputChange = (field: string, value: string | number | Date | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -208,14 +210,14 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Test Run Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
             Test Run Name *
           </label>
           <input
             type="text"
             value={formData.name}
             onChange={(e) => handleInputChange('name', e.target.value)}
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
             required
             disabled={isSubmitting}
             placeholder="Enter test run name"
@@ -225,27 +227,27 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
 
         {/* Test Cases Section */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
             Test Cases
           </label>
           <div className="space-y-4">
             {/* Selected Test Cases */}
             {selectedTestCases.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium text-gray-400 mb-2">
+                <h4 className="text-sm font-medium text-slate-500 dark:text-gray-400 mb-2">
                   Selected Test Cases ({selectedTestCases.length})
                 </h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto" style={{ overflowAnchor: 'none' }}>
                   {selectedTestCases.map((testCase) => (
-                    <div key={`selected-${testCase.id}`} className="flex items-center justify-between bg-slate-700 border border-slate-600 rounded-lg p-3 min-w-0">
+                    <div key={`selected-${testCase.id}`} className="flex items-center justify-between bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg p-3 min-w-0">
                       <div className="flex-1 min-w-0 pr-3">
-                        <span className="text-white text-sm font-medium">{testCase.title}</span>
-                        <p className="text-xs text-gray-400">TC{testCase.id}</p>
+                        <span className="text-slate-900 dark:text-white text-sm font-medium">{testCase.title}</span>
+                        <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.id}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => removeTestCase(testCase.id)}
-                        className="text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
+                        className="text-slate-500 dark:text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -258,7 +260,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
             {/* Test Case Selector */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-medium text-gray-400">
+                <h4 className="text-sm font-medium text-slate-500 dark:text-gray-400">
                   Add Test Cases
                 </h4>
                 <button
@@ -271,16 +273,16 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
               </div>
               
               {showTestCaseSelector && (
-                <div className="bg-slate-800 border border-slate-600 rounded-lg p-4">
+                <div className="bg-white dark:bg-slate-800 border border-slate-600 rounded-lg p-4">
                   {/* Search */}
                   <div className="relative mb-3">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-gray-400 w-4 h-4" />
                     <input
                       type="text"
                       placeholder="Search test cases..."
                       value={testCaseSearch}
                       onChange={(e) => setTestCaseSearch(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm"
+                      className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm"
                     />
                   </div>
                   
@@ -288,7 +290,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
                   {testCasesLoading ? (
                     <div className="flex items-center justify-center py-4">
                       <Loader className="w-4 h-4 mr-2 animate-spin text-cyan-400" />
-                      <span className="text-gray-400 text-sm">Loading test cases...</span>
+                      <span className="text-slate-500 dark:text-gray-400 text-sm">Loading test cases...</span>
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-60 overflow-y-auto" style={{ overflowAnchor: 'none' }}>
@@ -299,12 +301,12 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
                             key={`available-${testCase.id}`}
                             type="button"
                             onClick={() => handleTestCaseToggle(testCase.id)}
-                            className="w-full text-left bg-slate-700 border border-slate-600 rounded-lg p-3 text-white hover:bg-slate-600 transition-colors min-w-0"
+                            className="w-full text-left bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg p-3 text-slate-900 dark:text-white hover:bg-slate-600 transition-colors min-w-0"
                           >
                             <div className="flex items-center justify-between min-w-0">
                               <div className="flex-1 min-w-0 pr-3">
                                 <span className="text-sm font-medium block truncate">{testCase.title}</span>
-                                <p className="text-xs text-gray-400">TC{testCase.id}</p>
+                                <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.id}</p>
                               </div>
                               <Plus className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                             </div>
@@ -312,7 +314,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
                         ))}
                       
                       {filteredTestCases.filter(testCase => !formData.testCaseIds.includes(testCase.id)).length === 0 && (
-                        <div className="text-center py-4 text-gray-400 text-sm">
+                        <div className="text-center py-4 text-slate-500 dark:text-gray-400 text-sm">
                           {testCaseSearch ? 'No test cases found matching your search' : 'All available test cases are already selected'}
                         </div>
                       )}
@@ -330,7 +332,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
           <div className="space-y-6">
             {/* Configurations */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                 Configurations
               </label>
               <ConfigurationSelector
@@ -347,14 +349,14 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                 Description
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
                 rows={4}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 resize-none"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 resize-none"
                 disabled={isSubmitting}
                 placeholder="Write in brief about the test run"
               />
@@ -362,11 +364,11 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
 
             {/* Assign Run */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                 Assign Run
               </label>
               {usersLoading ? (
-                <div className="flex items-center text-gray-400 text-sm">
+                <div className="flex items-center text-slate-500 dark:text-gray-400 text-sm">
                   <Loader className="w-4 h-4 mr-2 animate-spin" />
                   Loading users...
                 </div>
@@ -374,7 +376,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
                 <select
                   value={formData.assignedTo}
                   onChange={(e) => handleInputChange('assignedTo', e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                  className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   disabled={isSubmitting}
                   required
                 >
@@ -390,13 +392,13 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
 
             {/* State */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                 State
               </label>
               <select
                 value={formData.state}
                 onChange={(e) => handleInputChange('state', parseInt(e.target.value))}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
                 disabled={isSubmitting}
               >
                 {stateOptions.map((option) => (
@@ -412,7 +414,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
           <div className="space-y-6">
             {/* Test Plan */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                 Test Plan
               </label>
               <TestPlanSelector
@@ -426,13 +428,13 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
 
             {/* Setup your requirement management tool */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                 Setup your requirement management tool
               </label>
               <div className="flex space-x-3">
                 <button
                   type="button"
-                  className="flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                  className="flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-slate-900 dark:text-white rounded-lg transition-colors text-sm font-medium"
                   disabled={isSubmitting}
                 >
                   <div className="w-4 h-4 mr-2 bg-white rounded-sm flex items-center justify-center">
@@ -442,7 +444,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  className="flex items-center px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors text-sm font-medium"
+                  className="flex items-center px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-slate-900 dark:text-white rounded-lg transition-colors text-sm font-medium"
                   disabled={isSubmitting}
                 >
                   <div className="w-4 h-4 mr-2 bg-white rounded-sm flex items-center justify-center">
@@ -452,7 +454,7 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  className="flex items-center px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-medium"
+                  className="flex items-center px-3 py-2 bg-red-500 hover:bg-red-600 text-slate-900 dark:text-white rounded-lg transition-colors text-sm font-medium"
                   disabled={isSubmitting}
                 >
                   <div className="w-4 h-4 mr-2 bg-white rounded-sm flex items-center justify-center">

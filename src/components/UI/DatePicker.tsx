@@ -28,7 +28,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
 }) => {
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-gray-300 mb-3">
+      <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
         {label} {required && <span className="text-red-400">*</span>}
       </label>
       <div className="relative">
@@ -41,17 +41,17 @@ const DatePicker: React.FC<DatePickerProps> = ({
           disabled={disabled}
           required={required}
           placeholder={placeholder}
-          className={`w-full px-3 py-2 pl-10 bg-slate-700 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all ${
+          className={`w-full px-3 py-2 pl-10 bg-slate-100 dark:bg-slate-700 border rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 focus:border-transparent transition-all ${
             error 
-              ? 'border-red-500 focus:ring-red-400' 
-              : 'border-slate-600'
+              ? 'border-red-500 focus:ring-red-400'
+              : 'border-slate-300 dark:border-slate-600'
           } ${
             disabled 
               ? 'opacity-50 cursor-not-allowed' 
               : ''
           }`}
         />
-        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-400 pointer-events-none" />
       </div>
       {error && (
         <div className="mt-1 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">

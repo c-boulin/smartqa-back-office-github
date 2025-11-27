@@ -17,7 +17,7 @@ const TestRunSummaryCards: React.FC<TestRunSummaryCardsProps> = ({
     <div className="grid grid-cols-2 gap-6">
       {/* Active Test Runs */}
       <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-purple-500/30 rounded-lg p-6 backdrop-blur-sm">
-        <h3 className="text-lg font-semibold text-white mb-2">Active Test Runs</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Active Test Runs</h3>
         <div className="text-4xl font-bold text-cyan-400">
           {activeTestRuns.current} / {activeTestRuns.total}
         </div>
@@ -25,7 +25,7 @@ const TestRunSummaryCards: React.FC<TestRunSummaryCardsProps> = ({
 
       {/* Closed Test Runs */}
       <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-purple-500/30 rounded-lg p-6 backdrop-blur-sm">
-        <h3 className="text-lg font-semibold text-white mb-2">Closed Test Runs</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Closed Test Runs</h3>
         <div className="text-4xl font-bold text-purple-400">
           {closedTestRuns.current} / {closedTestRuns.total}
         </div>
@@ -33,16 +33,16 @@ const TestRunSummaryCards: React.FC<TestRunSummaryCardsProps> = ({
 
       {/* Total Test Cases */}
       <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-purple-500/30 rounded-lg p-6 backdrop-blur-sm">
-        <h3 className="text-lg font-semibold text-white mb-2">Total Test Cases</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Total Test Cases</h3>
         <div className="text-4xl font-bold text-green-400">{totalTestCases}</div>
       </div>
 
       {/* Total Linked Issues */}
       <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-purple-500/30 rounded-lg p-6 backdrop-blur-sm">
         <div className="flex items-center space-x-2 mb-2">
-          <h3 className="text-lg font-semibold text-white">Total Linked Issues</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Total Linked Issues</h3>
           <div className="w-4 h-4 bg-gray-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs">i</span>
+            <span className="text-slate-900 dark:text-white text-xs">i</span>
           </div>
         </div>
         <div className="text-4xl font-bold text-orange-400">{totalLinkedIssues}</div>

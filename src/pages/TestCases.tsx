@@ -14,24 +14,32 @@ import DuplicateTestCaseModal from '../components/TestCase/DuplicateTestCaseModa
 import CreateFolderModal from '../components/Folder/CreateFolderModal';
 import EditFolderModal from '../components/Folder/EditFolderModal';
 import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSidebar';
+import CreateTestRunModal from '../components/TestRun/CreateTestRunModal';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useTestCases } from '../hooks/useTestCases';
 import { useFolders } from '../hooks/useFolders';
 import { useTestCasesFilters } from '../hooks/useTestCasesFilters';
 import { useTestCasesNavigation } from '../hooks/useTestCasesNavigation';
+import { useDragAutoScroll } from '../hooks/useDragAutoScroll';
+import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { foldersApiService } from '../services/foldersApi';
 import { testCasesApiService } from '../services/testCasesApi';
+import { testRunsApiService } from '../services/testRunsApi';
 import { apiService } from '../services/api';
 import { TestCase } from '../types';
 import { Tag } from '../services/tagsApi';
 import { getTestTypeString } from '../utils/testCaseHelpers';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const TestCases: React.FC = () => {
   const { getSelectedProject, state: appState, createTag } = useApp();
   const { state: authState } = useAuth();
+  const navigate = useNavigate();
   const selectedProject = getSelectedProject();
+
+  useRestoreLastProject();
   
   // Use tags from app context
   const tags = appState.tags;
@@ -72,6 +80,8 @@ const TestCases: React.FC = () => {
   const [isDetailsSidebarOpen, setIsDetailsSidebarOpen] = useState(false);
   const [selectedTestCaseForDetails, setSelectedTestCaseForDetails] = useState<TestCase | null>(null);
   const [isDragDropInProgress, setIsDragDropInProgress] = useState(false);
+  const [isCreateTestRunModalOpen, setIsCreateTestRunModalOpen] = useState(false);
+  const [preselectedTestCaseId, setPreselectedTestCaseId] = useState<string | null>(null);
   
   const {
     testCases,
@@ -101,6 +111,12 @@ const TestCases: React.FC = () => {
     fetchAllTestCasesAndExtractFolders,
     updateFilter
   );
+
+  useDragAutoScroll({
+    enabled: true,
+    scrollSpeed: 15,
+    edgeSize: 150
+  });
 
   const selectedFolder = getSelectedFolder();
 
@@ -417,85 +433,94 @@ const TestCases: React.FC = () => {
     try {
       setIsDragDropInProgress(true);
 
-      // Find the test case in our current data
-      const testCaseToMove = testCases.find(tc => tc.id === testCaseId) || 
+      const testCaseToMove = testCases.find(tc => tc.id === testCaseId) ||
                             allTestCases.find(tc => tc.id === testCaseId);
-      
+
       if (!testCaseToMove) {
         throw new Error('Test case not found');
       }
 
+      const fullTestCaseResponse = await testCasesApiService.getTestCaseWithIncludes(testCaseId);
+      const currentTestCaseData = fullTestCaseResponse.data;
+      const included = fullTestCaseResponse.included || [];
 
-      // Get the current test case data from API to ensure we have the latest version
-      const currentTestCaseResponse = await testCasesApiService.getTestCase(testCaseId);
-      // const currentTestCase = testCasesApiService.transformApiTestCase(currentTestCaseResponse.data);
-
-      // Get the full test case data with all relationships
-      const _fullTestCaseResponse = await testCasesApiService.getTestCaseWithIncludes(testCaseId);
-
-      // Build the complete PATCH payload preserving all existing relationships
       const updatePayload = {
         data: {
           type: "TestCase",
           attributes: {
-            title: currentTestCaseResponse.data.attributes.title,
-            description: currentTestCaseResponse.data.attributes.description,
-            priority: currentTestCaseResponse.data.attributes.priority,
-            type: currentTestCaseResponse.data.attributes.type,
-            state: currentTestCaseResponse.data.attributes.state,
-            automation: currentTestCaseResponse.data.attributes.automation,
-            template: currentTestCaseResponse.data.attributes.template || 1,
-            preconditions: currentTestCaseResponse.data.attributes.preconditions || ''
+            title: currentTestCaseData.attributes.title,
+            description: currentTestCaseData.attributes.description,
+            priority: currentTestCaseData.attributes.priority,
+            type: currentTestCaseData.attributes.type,
+            state: currentTestCaseData.attributes.state,
+            automation: currentTestCaseData.attributes.automation,
+            template: currentTestCaseData.attributes.template || 1,
+            preconditions: currentTestCaseData.attributes.preconditions || ''
           },
           relationships: {
-            // Update the folder relationship to the new target folder
             folder: {
               data: { type: "Folder", id: `/api/folders/${targetFolderId}` }
             },
-            // Preserve existing project relationship
-            project: currentTestCaseResponse.data.relationships.project,
-            // Preserve existing user relationship
-            user: currentTestCaseResponse.data.relationships.user
+            project: currentTestCaseData.relationships.project,
+            user: currentTestCaseData.relationships.user
           }
         }
       };
-      
-      // Preserve existing tags relationship if it exists
-      if (currentTestCaseResponse.data.relationships.tags) {
-        updatePayload.data.relationships.tags = currentTestCaseResponse.data.relationships.tags;
 
-      }
-      
-      // Preserve existing attachments relationship if it exists
-      if (currentTestCaseResponse.data.relationships.attachments) {
-        updatePayload.data.relationships.attachments = currentTestCaseResponse.data.relationships.attachments;
-
-      }
-      
-      // Preserve existing step results relationship if it exists
-      if (currentTestCaseResponse.data.relationships.stepResults) {
-        updatePayload.data.relationships.step_results = currentTestCaseResponse.data.relationships.stepResults;
-
-      }
-      
-      // Preserve existing shared steps relationship if it exists
-      if (currentTestCaseResponse.data.relationships.sharedSteps) {
-        updatePayload.data.relationships.shared_steps = currentTestCaseResponse.data.relationships.sharedSteps;
-
+      if (currentTestCaseData.relationships.tags) {
+        updatePayload.data.relationships.tags = currentTestCaseData.relationships.tags;
       }
 
-      // Send the PATCH request directly to preserve exact API format
+      if (currentTestCaseData.relationships.attachments) {
+        updatePayload.data.relationships.attachments = currentTestCaseData.relationships.attachments;
+      }
+
+      if (currentTestCaseData.relationships.stepResults?.data) {
+        updatePayload.data.relationships.step_results = {
+          data: currentTestCaseData.relationships.stepResults.data.map(step => {
+            const stepResultId = step.id.split('/').pop() || step.id;
+            const includedStepResult = included.find((item: { type: string; id: string; attributes?: { order?: number } }) => {
+              const itemId = item.id.split('/').pop() || item.id;
+              return item.type === 'StepResult' && itemId === stepResultId;
+            });
+            const order = includedStepResult?.attributes?.order || step.meta?.order || 0;
+
+            return {
+              type: step.type,
+              id: step.id,
+              meta: { order }
+            };
+          })
+        };
+      }
+
+      if (currentTestCaseData.relationships.sharedSteps?.data) {
+        updatePayload.data.relationships.shared_steps = {
+          data: currentTestCaseData.relationships.sharedSteps.data.map(step => {
+            const sharedStepId = step.id.split('/').pop() || step.id;
+            const includedSharedStep = included.find((item: { type: string; id: string; attributes?: { order?: number } }) => {
+              const itemId = item.id.split('/').pop() || item.id;
+              return item.type === 'SharedStep' && itemId === sharedStepId;
+            });
+            const order = includedSharedStep?.attributes?.order || step.meta?.order || 0;
+
+            return {
+              type: step.type,
+              id: step.id,
+              meta: { order }
+            };
+          })
+        };
+      }
+
       await apiService.authenticatedRequest(`/test_cases/${testCaseId}`, {
         method: 'PATCH',
         body: JSON.stringify(updatePayload)
       });
 
-      // Refresh the test cases and folder data
       await fetchAllTestCasesAndExtractFolders(selectedProject.id);
-      
-      // Re-apply current view context
-      if (selectedFolderId) {
 
+      if (selectedFolderId) {
         setTimeout(() => {
           showFolderTestCases(selectedFolderId);
         }, 100);
@@ -503,14 +528,13 @@ const TestCases: React.FC = () => {
 
       toast.success(`Test case moved to folder successfully`);
 
-    } catch {
+    } catch (error) {
       console.error('❌ Failed to move test case:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to move test case';
       toast.error(errorMessage);
     } finally {
       setIsDragDropInProgress(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- error is stable
   }, [testCases, allTestCases, selectedProject, fetchAllTestCasesAndExtractFolders, selectedFolderId, showFolderTestCases]);
   const handleSearchKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -715,97 +739,31 @@ const TestCases: React.FC = () => {
   }, []);
 
   const handleDuplicateSubmit = useCallback(async (testCase: TestCase, targetProjectId: string, targetFolderId: string) => {
-    if (!authState.user?.id) {
-      toast.error('Missing required data for duplication');
-      return;
-    }
-
     try {
-      // Get complete test case data with all relationships including order metadata
-      const fullTestCaseResponse = await testCasesApiService.getTestCaseWithIncludes(testCase.id);
+      await testCasesApiService.cloneTestCase(testCase.id, targetProjectId, targetFolderId);
 
-      // Prepare the duplicate payload based on the original test case data
-      const originalData = fullTestCaseResponse.data;
-      const originalAttributes = originalData.attributes;
-      const originalRelationships = originalData.relationships;
-
-      // The order information MUST come from the relationship's meta field, not from included data
-      // This is critical: if the same shared step appears multiple times (e.g., at positions 1 and 3),
-      // each relationship instance must preserve its own unique order
-
-      // Use the relationship data as-is, ensuring each instance retains its order
-      const enrichedRelationships = {
-        ...originalRelationships,
-        stepResults: originalRelationships.stepResults?.data ? {
-          data: originalRelationships.stepResults.data.map((sr: { id: string; meta?: { order: number } }, index: number) => {
-            // Prefer meta.order if available, otherwise use index + 1 as fallback
-            const order = sr.meta?.order !== undefined ? sr.meta.order : (index + 1);
-            return {
-              ...sr,
-              meta: { ...sr.meta, order }
-            };
-          })
-        } : undefined,
-        sharedSteps: originalRelationships.sharedSteps?.data ? {
-          data: originalRelationships.sharedSteps.data.map((ss: { id: string; meta?: { order: number } }, index: number) => {
-            // Prefer meta.order if available, otherwise use index + 1 as fallback
-            const order = ss.meta?.order !== undefined ? ss.meta.order : (index + 1);
-            return {
-              ...ss,
-              meta: { ...ss.meta, order }
-            };
-          })
-        } : undefined
-      };
-
-      // Create the duplicate payload with all original data
-      await createTestCase({
-        title: `${originalAttributes.title} (Copy)`,
-        description: originalAttributes.description || '',
-        priority: originalAttributes.priority,
-        testCaseType: originalAttributes.type,
-        state: originalAttributes.state,
-        automationStatus: originalAttributes.automation,
-        template: 1,
-        preconditions: originalAttributes.preconditions || '',
-        tags: testCase.tags?.map(tagLabel => {
-          const foundTag = tags.find(t => t.label === tagLabel);
-          return foundTag || { id: tagLabel, label: tagLabel };
-        }) || [],
-        projectId: targetProjectId,
-        folderId: targetFolderId,
-        creatorId: authState.user.id,
-        // Pass the enriched relationships with order information
-        originalRelationships: enrichedRelationships
-      });
-
-      // If duplicating within the current project, refresh the list
       if (targetProjectId === selectedProject?.id) {
         await fetchAllTestCasesAndExtractFolders(selectedProject.id);
 
-        // Re-apply current view context
         if (selectedFolderId) {
-
           setTimeout(() => {
             showFolderTestCases(selectedFolderId);
           }, 100);
         }
-        toast.success(`Test case duplicated successfully as "${originalAttributes.title} (Copy)"`);
+        toast.success(`Test case cloned successfully`);
       } else {
-        // Duplicated to a different project
         const targetProject = appState.projects.find(p => p.id === targetProjectId);
         const projectName = targetProject?.name || 'another project';
-        toast.success(`Test case duplicated successfully to ${projectName} as "${originalAttributes.title} (Copy)"`);
+        toast.success(`Test case cloned successfully to ${projectName}`);
       }
 
     } catch (error) {
-      console.error('Failed to duplicate test case:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to duplicate test case';
-      toast.error(`Failed to duplicate test case: ${errorMessage}`);
+      console.error('Failed to clone test case:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to clone test case';
+      toast.error(`Failed to clone test case: ${errorMessage}`);
       throw error;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- error is stable
-  }, [createTestCase, selectedProject, authState.user?.id, fetchAllTestCasesAndExtractFolders, selectedFolderId, showFolderTestCases, tags]);
+  }, [selectedProject, fetchAllTestCasesAndExtractFolders, selectedFolderId, showFolderTestCases, appState.projects]);
   const openEditModal = useCallback((testCase: TestCase) => {
     setSelectedTestCase(testCase);
     setIsEditModalOpen(true);
@@ -833,12 +791,64 @@ const TestCases: React.FC = () => {
     return await createTag(label);
   }, [createTag]);
 
+  const handleRunTest = useCallback((testCase: TestCase) => {
+    setPreselectedTestCaseId(testCase.id);
+    setIsCreateTestRunModalOpen(true);
+  }, []);
+
+  const handleCreateTestRun = useCallback(async (data: {
+    name: string;
+    description: string;
+    testCaseIds: string[];
+    configurations: string[];
+    testPlanId: string;
+    assignedTo: string;
+    state: string;
+  }) => {
+    if (!selectedProject || !authState.user?.id) {
+      toast.error('Missing required data');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const testRunData = {
+        name: data.name,
+        description: data.description,
+        projectId: selectedProject.id,
+        testCaseIds: preselectedTestCaseId ? [preselectedTestCaseId, ...data.testCaseIds] : data.testCaseIds,
+        configurations: data.configurations,
+        testPlanId: data.testPlanId || undefined,
+        assignedTo: data.assignedTo,
+        state: data.state,
+        creatorId: authState.user.id
+      };
+
+      const response = await testRunsApiService.createTestRun(testRunData);
+
+      const testRunId = response.data.attributes.id.toString();
+
+      setIsCreateTestRunModalOpen(false);
+      setPreselectedTestCaseId(null);
+      toast.success('Test run created successfully');
+
+      navigate(`/test-runs/${testRunId}`);
+    } catch (error) {
+      console.error('Failed to create test run:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create test run';
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [selectedProject, authState.user?.id, preselectedTestCaseId, navigate]);
+
   if (loading && testCases.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <Loader className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading test cases...</p>
+          <p className="text-slate-600 dark:text-gray-400">Loading test cases...</p>
         </div>
       </div>
     );
@@ -850,7 +860,7 @@ const TestCases: React.FC = () => {
         <Card className="p-8 text-center">
           <div className="text-red-400 mb-4">
             <p className="text-lg font-medium">Failed to load test cases</p>
-            <p className="text-sm text-gray-400 mt-2">{error}</p>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">{error}</p>
           </div>
           <Button onClick={() => fetchAllTestCasesAndExtractFolders(selectedProject?.id || '')}>
             Try Again
@@ -873,7 +883,7 @@ const TestCases: React.FC = () => {
       {/* Show message if no project selected */}
       {!selectedProject && (
         <Card className="p-8 text-center">
-          <div className="text-gray-400 mb-4">
+          <div className="text-slate-600 dark:text-gray-400 mb-4">
             <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">No project selected</p>
             <p className="text-sm">Please select a project from the sidebar to view and manage test cases.</p>
@@ -883,7 +893,7 @@ const TestCases: React.FC = () => {
 
       {/* Only show content if project is selected */}
       {selectedProject && (
-        <div className="flex gap-6">
+        <div className="flex gap-4">
           <TestCasesFolderSidebar
             folderTree={folderTree}
             selectedFolderId={selectedFolderId}
@@ -897,7 +907,7 @@ const TestCases: React.FC = () => {
           />
 
           {/* Main Content */}
-          <div className="flex-1 space-y-6">
+          <div className="flex-1 space-y-4">
             <TestCasesFilters
               searchTerm={searchTerm}
               onSearchTermChange={setSearchTerm}
@@ -924,6 +934,7 @@ const TestCases: React.FC = () => {
               onEditTestCase={openEditModal}
               onDeleteTestCase={openDeleteDialog}
               onDuplicateTestCase={handleDuplicateTestCase}
+              onRunTest={handleRunTest}
               onPageChange={handlePageChange}
               isSubmitting={isSubmitting || isDragDropInProgress}
             />
@@ -1029,6 +1040,18 @@ const TestCases: React.FC = () => {
         testCase={selectedTestCaseForDetails}
         context="test-cases"
         availableTags={tags}
+        onRunTest={handleRunTest}
+      />
+
+      <CreateTestRunModal
+        isOpen={isCreateTestRunModalOpen}
+        onClose={() => {
+          setIsCreateTestRunModalOpen(false);
+          setPreselectedTestCaseId(null);
+        }}
+        onSubmit={handleCreateTestRun}
+        isSubmitting={isSubmitting}
+        preselectedTestCaseId={preselectedTestCaseId}
       />
     </div>
   );

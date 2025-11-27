@@ -229,14 +229,14 @@ const Sidebar: React.FC = () => {
           <div className="flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="text-xs text-cyan-400 font-medium">Filtered by:</div>
-              <div className="text-sm text-white truncate">{selectedProject.name}</div>
+              <div className="text-sm text-slate-900 dark:text-white truncate">{selectedProject.name}</div>
             </div>
             <button
               onClick={handleClearProject}
               className="flex-shrink-0 p-1 hover:bg-cyan-500/20 rounded transition-colors group"
               title="Clear filter"
             >
-              <X className="w-4 h-4 text-cyan-400 group-hover:text-white" />
+              <X className="w-4 h-4 text-cyan-400 group-hover:text-slate-900 dark:hover:text-white" />
             </button>
           </div>
         </div>
@@ -286,36 +286,36 @@ const Sidebar: React.FC = () => {
   }, [isDropdownOpen, searchTerm, allProjects.length]);
 
   return (
-    <aside className="w-64 sidebar-light border-r shadow-2xl">
+    <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl">
       <nav className="p-4 space-y-2">
         {/* Projects Dropdown */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 px-4">
+          <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-2 px-4">
             Projects
           </label>
           <div className="relative">
             {/* Custom Dropdown Button */}
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className={`w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent hover:bg-slate-700/50 transition-colors text-left flex items-center justify-between ${
-                getSelectedProject() || location.pathname === '/projects' ? 'border-cyan-500/50 bg-slate-700/50' : ''
+              className={`w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 focus:border-transparent hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors text-left flex items-center justify-between ${
+                getSelectedProject() || location.pathname === '/projects' ? 'border-cyan-500 bg-slate-200 dark:border-cyan-500/50 dark:bg-slate-700/50' : ''
               }`}
               disabled={state.isLoadingProjects}
             >
               <span className="truncate">
                 {getSelectedProject() || location.pathname === '/projects' ? (
                   <>
-                    <span className="text-cyan-400">📁 </span>
-                    <span className="text-gray-900 dark:text-white">{getSelectedProjectName()}</span>
+                    <span className="text-cyan-600 dark:text-cyan-400">📁 </span>
+                    <span className="text-slate-900 dark:text-white">{getSelectedProjectName()}</span>
                   </>
                 ) : (
-                  <span className="text-gray-600 dark:text-gray-400">{getSelectedProjectName()}</span>
+                  <span className="text-slate-500 dark:text-gray-400">{getSelectedProjectName()}</span>
                 )}
               </span>
               {state.isLoadingProjects ? (
-                <Loader className="w-4 h-4 text-gray-400 animate-spin" />
+                <Loader className="w-4 h-4 text-slate-400 dark:text-gray-400 animate-spin" />
               ) : (
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-slate-400 dark:text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
               )}
             </button>
 
@@ -324,26 +324,26 @@ const Sidebar: React.FC = () => {
               <div
                 ref={dropdownRef}
                 onScroll={handleScroll}
-                className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
                 {/* Search Bar */}
-                <div className="p-3 border-b border-gray-200 dark:border-slate-700">
+                <div className="p-3 border-b border-slate-200 dark:border-slate-700">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-400 w-4 h-4" />
                     {isSearching && (
-                      <Loader className="absolute right-8 top-1/2 transform -translate-y-1/2 text-cyan-400 w-4 h-4 animate-spin" />
+                      <Loader className="absolute right-8 top-1/2 transform -translate-y-1/2 text-cyan-600 dark:text-cyan-400 w-4 h-4 animate-spin" />
                     )}
                     <input
                       type="text"
                       placeholder="Search all projects..."
                       value={searchTerm}
                       onChange={handleSearchChange}
-                      className="w-full pl-10 pr-8 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent"
+                      className="w-full pl-10 pr-8 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 focus:border-transparent"
                       autoFocus
                     />
                     {searchTerm && (
                       <button
                         onClick={clearSearch}
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -357,7 +357,7 @@ const Sidebar: React.FC = () => {
                   {filteredProjects.length > 0 && (
                     <>
                       {searchTerm && (
-                        <div className="px-4 py-2 text-xs text-cyan-400 bg-slate-700/50">
+                        <div className="px-4 py-2 text-xs text-cyan-600 dark:text-cyan-400 bg-slate-100 dark:bg-slate-700/50">
                           {isSearching ? 'Searching...' : `Found ${filteredProjects.length} project${filteredProjects.length !== 1 ? 's' : ''} (from ${allProjects.length} total)`}
                         </div>
                       )}
@@ -369,10 +369,10 @@ const Sidebar: React.FC = () => {
                             // Set the selected project and navigate to dashboard
                             handleProjectSelect(project.id);
                           }}
-                          className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors truncate ${
+                          className={`w-full px-4 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors truncate ${
                             state.selectedProjectId === project.id
-                              ? 'bg-gray-200 dark:bg-slate-700 text-cyan-400'
-                              : 'text-gray-900 dark:text-white'
+                              ? 'bg-slate-200 dark:bg-slate-700 text-cyan-600 dark:text-cyan-400'
+                              : 'text-slate-900 dark:text-white'
                           }`}
                           title={project.name} // Tooltip for long names
                         >
@@ -383,19 +383,19 @@ const Sidebar: React.FC = () => {
                   )}
                   
                   {allProjects.length === 0 && !searchTerm && !isSearching && (
-                    <div className="px-4 py-3 text-gray-400 text-sm">
+                    <div className="px-4 py-3 text-slate-500 dark:text-gray-400 text-sm">
                       No projects available
                     </div>
                   )}
                   
                   {filteredProjects.length === 0 && searchTerm && !isSearching && (
-                    <div className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm">
+                    <div className="px-4 py-3 text-slate-500 dark:text-gray-400 text-sm">
                       No projects found matching "{searchTerm}"
                     </div>
                   )}
                   
                   {isSearching && (
-                    <div className="px-4 py-3 text-gray-400 text-sm flex items-center">
+                    <div className="px-4 py-3 text-slate-500 dark:text-gray-400 text-sm flex items-center">
                       <Loader className="w-4 h-4 mr-2 animate-spin" />
                       Searching projects...
                     </div>
@@ -403,7 +403,7 @@ const Sidebar: React.FC = () => {
                   
                   {/* Show loading more indicator */}
                   {isLoadingMore && !searchTerm && (
-                    <div className="px-4 py-3 text-gray-400 text-sm flex items-center justify-center border-t border-slate-700">
+                    <div className="px-4 py-3 text-slate-500 dark:text-gray-400 text-sm flex items-center justify-center border-t border-slate-200 dark:border-slate-700">
                       <Loader className="w-4 h-4 mr-2 animate-spin" />
                       Loading more projects...
                     </div>
@@ -411,7 +411,7 @@ const Sidebar: React.FC = () => {
 
                   {/* Show project count and status */}
                   {!searchTerm && !isSearching && !isLoadingMore && allProjects.length > 0 && (
-                    <div className="px-4 py-2 text-xs text-gray-500 text-center border-t border-slate-700">
+                    <div className="px-4 py-2 text-xs text-slate-400 dark:text-gray-500 text-center border-t border-slate-200 dark:border-slate-700">
                       {hasMoreProjects ? (
                         <>Showing {allProjects.length} of {totalProjects} projects • Scroll for more</>
                       ) : (
@@ -453,8 +453,8 @@ const Sidebar: React.FC = () => {
             className={({ isActive }) =>
               `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
                 isActive
-                  ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/30 shadow-lg'
-                  : 'text-gray-700 dark:text-gray-300 hover:text-cyan-400 hover:bg-gray-100 dark:hover:bg-slate-800/50'
+                  ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 shadow-lg'
+                  : 'text-slate-600 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
               }`
             }
           >

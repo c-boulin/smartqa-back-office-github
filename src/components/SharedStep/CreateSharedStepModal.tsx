@@ -126,14 +126,14 @@ const CreateSharedStepModal: React.FC<CreateSharedStepModalProps> = ({
             <div className="space-y-8">
               {/* Title - Full width */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                   Title *
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-lg"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-lg"
                   required
                   disabled={isSubmitting}
                   placeholder="Enter shared step title"
@@ -144,10 +144,10 @@ const CreateSharedStepModal: React.FC<CreateSharedStepModalProps> = ({
               {/* Steps and Results with Drag & Drop - Full width */}
               <div>
                 <div className="mb-6">
-                  <label className="block text-lg font-medium text-gray-300 mb-1">
+                  <label className="block text-lg font-medium text-slate-600 dark:text-gray-300 mb-1">
                     Steps and Results
                   </label>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-slate-500 dark:text-gray-400">
                     Define the reusable steps that can be shared across multiple test cases
                   </p>
                 </div>
@@ -193,13 +193,13 @@ const CreateSharedStepModal: React.FC<CreateSharedStepModalProps> = ({
                       </div>
                     </>
                   ) : (
-                    <div className="text-center py-16 text-gray-400 border-2 border-dashed border-slate-600 rounded-xl">
+                    <div className="text-center py-16 text-slate-500 dark:text-gray-400 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl">
                       <div className="max-w-md mx-auto">
-                        <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Plus className="w-8 h-8 text-gray-400" />
+                        <div className="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Plus className="w-8 h-8 text-slate-500 dark:text-gray-400" />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-300 mb-2">No steps added yet</h3>
-                        <p className="text-sm text-gray-400 mb-4">
+                        <h3 className="text-lg font-medium text-slate-600 dark:text-gray-300 mb-2">No steps added yet</h3>
+                        <p className="text-sm text-slate-500 dark:text-gray-400 mb-4">
                           Create reusable test steps that can be shared across multiple test cases.
                         </p>
                         <Button
@@ -221,9 +221,9 @@ const CreateSharedStepModal: React.FC<CreateSharedStepModalProps> = ({
           </div>
 
           {/* Footer - Fixed at bottom with better spacing */}
-          <div className="border-t border-slate-700 pt-6 mt-8 flex-shrink-0">
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-6 mt-8 flex-shrink-0">
             <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-400">
+              <div className="text-sm text-slate-500 dark:text-gray-400">
                 {testSteps.length > 0 && (
                   <span>
                     {testSteps.length} step{testSteps.length !== 1 ? 's' : ''} defined

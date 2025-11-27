@@ -218,8 +218,8 @@ const CustomTooltip: React.FC<{ active?: boolean; payload?: Array<{ name?: strin
     const total = payload.reduce((sum: number, entry: { value?: number }) => sum + (entry.value || 0), 0);
     
     return (
-      <div className="bg-slate-800 border border-slate-600 rounded-lg p-3 shadow-lg">
-        <p className="text-cyan-400 font-medium mb-2">{label}</p>
+      <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg p-3 shadow-lg">
+        <p className="text-cyan-600 dark:text-cyan-400 font-medium mb-2">{label}</p>
         <div className="space-y-1">
           {payload
             .filter((entry: { value?: number }) => entry.value && entry.value > 0)
@@ -231,15 +231,15 @@ const CustomTooltip: React.FC<{ active?: boolean; payload?: Array<{ name?: strin
                     className="w-3 h-3 rounded mr-2" 
                     style={{ backgroundColor: entry.color }}
                   />
-                  <span className="text-gray-300 text-sm">{entry.dataKey}:</span>
+                  <span className="text-slate-700 dark:text-gray-300 text-sm">{entry.dataKey}:</span>
                 </div>
-                <span className="text-white font-medium ml-2">{entry.value}</span>
+                <span className="text-slate-900 dark:text-white font-medium ml-2">{entry.value}</span>
               </div>
             ))}
-          <div className="border-t border-slate-600 pt-1 mt-2">
+          <div className="border-t border-slate-200 dark:border-slate-600 pt-1 mt-2">
             <div className="flex items-center justify-between">
-              <span className="text-gray-300 text-sm font-medium">Total:</span>
-              <span className="text-cyan-400 font-bold">{total}</span>
+              <span className="text-slate-700 dark:text-gray-300 text-sm font-medium">Total:</span>
+              <span className="text-cyan-600 dark:text-cyan-400 font-bold">{total}</span>
             </div>
           </div>
         </div>
@@ -374,7 +374,7 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
       <div className={`flex items-center justify-center h-80 ${className}`}>
         <div className="text-center">
           <Loader className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading closed test runs data...</p>
+          <p className="text-slate-600 dark:text-gray-400">Loading closed test runs data...</p>
         </div>
       </div>
     );
@@ -386,10 +386,10 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
         <div className="text-center text-red-400">
           <BarChartIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="text-lg font-medium">Failed to load data</p>
-          <p className="text-sm text-gray-400 mt-2">{error}</p>
+          <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">{error}</p>
           <button
             onClick={fetchClosedTestRuns}
-            className="mt-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+            className="mt-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-900 dark:text-white rounded-lg transition-colors"
           >
             Try Again
           </button>
@@ -401,7 +401,7 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
   if (data.length === 0) {
     return (
       <div className={`flex items-center justify-center h-80 ${className}`}>
-        <div className="text-center text-gray-400">
+        <div className="text-center text-slate-600 dark:text-gray-400">
           <BarChartIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="text-lg font-medium">No closed test runs yet</p>
           <p className="text-sm">Complete and close test runs to see results breakdown</p>
@@ -417,7 +417,7 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
         <div>
           <button
             onClick={() => setShowPercentage(!showPercentage)}
-            className="text-sm text-gray-400 hover:text-cyan-400 transition-colors"
+            className="text-sm text-slate-600 dark:text-gray-400 hover:text-cyan-400 transition-colors"
           >
             {showPercentage ? 'Show Counts' : 'Show Percentages'}
           </button>
@@ -435,10 +435,10 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
             margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
             maxBarSize={60}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-700" />
             <XAxis 
               dataKey="date" 
-              stroke="#6B7280" 
+              className="stroke-slate-600 dark:stroke-slate-400" tick={{ fill: 'currentColor' }} style={{ color: 'inherit' }} 
               fontSize={12}
               angle={-45}
               textAnchor="end"
@@ -446,14 +446,14 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
               interval={0}
             />
             <YAxis 
-              stroke="#6B7280" 
+              className="stroke-slate-600 dark:stroke-slate-400" tick={{ fill: 'currentColor' }} style={{ color: 'inherit' }} 
               fontSize={12}
               allowDecimals={false}
               label={{ 
                 value: showPercentage ? 'Percentage (%)' : 'Count', 
                 angle: -90, 
                 position: 'insideLeft',
-                style: { textAnchor: 'middle', fill: '#6B7280' }
+                style: { textAnchor: 'middle' }, className: 'fill-slate-600 dark:fill-gray-400'
               }}
               domain={showPercentage ? [0, 100] : [0, 'dataMax']}
             />
@@ -484,7 +484,7 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
       </div>
 
       {/* Chart Summary */}
-      <div className="mt-4 text-sm text-gray-400">
+      <div className="mt-4 text-sm text-slate-600 dark:text-gray-400">
         <div className="flex items-center justify-between">
           <span></span>
           <span>

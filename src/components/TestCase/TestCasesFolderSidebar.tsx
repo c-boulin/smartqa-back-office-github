@@ -27,11 +27,11 @@ const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
   onTestCaseDropped
 }) => {
   return (
-    <div className="w-80 flex-shrink-0">
+    <div className="w-64 flex-shrink-0">
       <Card className="h-fit">
-        <div className="p-4 border-b border-slate-700">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-white">Folders</h3>
+        <div className="p-3 border-b border-slate-700">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Folders</h3>
             <Button
               size="sm"
               variant="secondary"
@@ -42,9 +42,9 @@ const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
             >
             </Button>
           </div>
-          <p className="text-sm text-gray-400">Select a folder to view test cases</p>
+          <p className="text-xs text-slate-600 dark:text-gray-400">Select a folder to view test cases</p>
         </div>
-        <div className="p-4 overflow-auto max-h-[calc(100vh-200px)]">
+        <div className="p-3 overflow-y-auto overflow-x-hidden max-h-[calc(100vh-200px)]">
           <DroppableFolderTree
             folders={folderTree}
             selectedFolderId={selectedFolderId}

@@ -31,11 +31,6 @@ import { SharedStep } from '../../services/sharedStepsApi';
 import { attachmentsApiService } from '../../services/attachmentsApi';
 
 // Mappings constants
-const TEMPLATES = {
-  1: 'Test Case Steps',
-  2: 'Test Case Bdd'
-} as const;
-
 const STATES = {
   1: { label: 'Active', icon: CheckCircle, color: 'text-green-400' },
   2: { label: 'Draft', icon: SquarePen, color: 'text-orange-400' },
@@ -115,7 +110,7 @@ const IconSelect: React.FC<{
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm text-left flex items-center justify-between"
+        className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm text-left flex items-center justify-between"
       >
         <div className="flex items-center">
           {selectedOption && (
@@ -125,10 +120,10 @@ const IconSelect: React.FC<{
             </>
           )}
           {!selectedOption && placeholder && (
-            <span className="text-gray-400">{placeholder}</span>
+            <span className="text-slate-600 dark:text-gray-400">{placeholder}</span>
           )}
         </div>
-        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-slate-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
@@ -139,7 +134,7 @@ const IconSelect: React.FC<{
             className="fixed inset-0 z-10" 
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
             {Object.entries(options).map(([optionValue, { label, icon: Icon, color }]) => (
               <button
                 key={optionValue}
@@ -148,10 +143,10 @@ const IconSelect: React.FC<{
                   onChange(parseInt(optionValue));
                   setIsOpen(false);
                 }}
-                className="w-full px-3 py-2 text-left hover:bg-slate-700 transition-colors flex items-center text-sm"
+                className="w-full px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center text-sm"
               >
                 <Icon className={`w-4 h-4 mr-2 ${color}`} />
-                <span className="text-white">{label}</span>
+                <span className="text-slate-900 dark:text-white">{label}</span>
               </button>
             ))}
           </div>
@@ -177,7 +172,6 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
   // Form state
   const [formData, setFormData] = useState({
     title: '',
-    template: 1,
     description: '',
     preconditions: '',
     owner: '',
@@ -230,7 +224,6 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
       // Reset form
       setFormData({
         title: '',
-        template: 1,
         description: '',
         preconditions: '',
         owner: '', // Will be set by the user effect above
@@ -469,7 +462,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
     
     const submitData = {
       title: formData.title,
-      template: formData.template,
+      template: 1,
       description: formData.description,
       preconditions: formData.preconditions,
       priority: formData.priority, // Send the numeric value directly
@@ -503,44 +496,26 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
           {/* Main Content - 3/4 width */}
           <div className="flex-1 pr-6 overflow-y-auto">
             <div className="space-y-6">
-              {/* Title and Template on same line */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-1">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => handleInputChange('title', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 min-w-0"
-                    required
-                    disabled={isSubmitting}
-                    placeholder="Enter test case title"
-                    autoFocus
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Template
-                  </label>
-                  <select
-                    value={formData.template}
-                    onChange={(e) => handleInputChange('template', parseInt(e.target.value))}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                    disabled={isSubmitting}
-                  >
-                    {Object.entries(TEMPLATES).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* Title */}
+              <div className="px-1">
+                <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0"
+                  required
+                  disabled={isSubmitting}
+                  placeholder="Enter test case title"
+                  autoFocus
+                />
               </div>
 
               {/* Description */}
               <div className="px-1">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                   Description
                 </label>
                 <WysiwygEditorWithAutoUpload
@@ -555,7 +530,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
 
               {/* Preconditions */}
               <div className="px-1">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                   Preconditions
                 </label>
                 <WysiwygEditorWithAutoUpload
@@ -572,7 +547,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
               <div>
                 {/* Header - only show buttons here when list is empty */}
                 <div className="flex items-center justify-between mb-4">
-                  <label className="block text-sm font-medium text-gray-300">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300">
                     Steps and Results
                   </label>
                   {allSteps.length === 0 && (
@@ -667,7 +642,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
                       </div>
                     </>
                   ) : (
-                    <div className="text-center py-8 text-gray-400 border-2 border-dashed border-slate-600 rounded-lg">
+                    <div className="text-center py-8 text-slate-500 dark:text-gray-400 border-2 border-dashed border-slate-600 rounded-lg">
                       <p>No steps added yet.</p>
                       <p className="text-sm">Add test steps or shared steps to define the test case workflow.</p>
                     </div>
@@ -677,7 +652,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
 
               {/* Attachments */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                   Attachments
                 </label>
                 <FileUpload
@@ -701,11 +676,11 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
               <div className="space-y-4 pl-2 pr-2">
                 {/* Owner */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                     Owner
                   </label>
                   {usersLoading ? (
-                    <div className="flex items-center text-gray-400 text-sm">
+                    <div className="flex items-center text-slate-500 dark:text-gray-400 text-sm">
                       <Loader className="w-4 h-4 mr-2 animate-spin" />
                       Loading users...
                     </div>
@@ -713,7 +688,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
                     <select
                       value={formData.owner}
                       onChange={(e) => handleInputChange('owner', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm max-w-full"
+                      className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm max-w-full"
                       disabled={isSubmitting}
                       required
                     >
@@ -729,7 +704,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
 
                 {/* State */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                     State
                   </label>
                   <IconSelect
@@ -743,7 +718,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
 
                 {/* Priority */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                     Priority
                   </label>
                   <IconSelect
@@ -757,13 +732,13 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
 
                 {/* Type of Test Case */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                     Type of Test Case
                   </label>
                   <select
                     value={formData.testCaseType}
                     onChange={(e) => handleInputChange('testCaseType', parseInt(e.target.value))}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm max-w-full"
+                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm max-w-full"
                     disabled={isSubmitting}
                   >
                     {Object.entries(TEST_CASE_TYPES).map(([value, label]) => (
@@ -774,13 +749,13 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
 
                 {/* Automation Status */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                     Automation Status
                   </label>
                   <select
                     value={formData.automationStatus}
                     onChange={(e) => handleInputChange('automationStatus', parseInt(e.target.value))}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm max-w-full"
+                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm max-w-full"
                     disabled={isSubmitting}
                   >
                     {Object.entries(AUTOMATION_STATUS).map(([value, label]) => (
@@ -791,7 +766,7 @@ const CreateTestCaseModal: React.FC<CreateTestCaseModalProps> = ({
 
                 {/* Tags */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                     Tags
                   </label>
                   <div className="max-w-full">

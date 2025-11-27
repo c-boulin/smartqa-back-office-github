@@ -12,6 +12,7 @@ import { testCasesApiService } from '../services/testCasesApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
 import { configurationsApiService } from '../services/configurationsApi';
 import { useApp } from '../context/AppContext';
+import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { TestCase, TEST_RESULTS, TestResultId } from '../types';
 import { getDeviceIcon, getDeviceColor } from '../utils/deviceIcons';
 import toast from 'react-hot-toast';
@@ -96,21 +97,21 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
   const getStatusColor = (resultLabel: string) => {
     switch (resultLabel) {
       case 'Passed':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       case 'Failed':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       case 'Blocked':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       case 'Retest':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       case 'Skipped':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       case 'Untested':
       case 'In Progress':
       case 'Unknown':
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       default:
-        return 'text-white bg-slate-700 border-slate-600';
+        return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
     }
   };
 
@@ -169,9 +170,9 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
           <span>{currentResultLabel}</span>
         </div>
         {isUpdating ? (
-          <Loader className="w-3 h-3 animate-spin text-gray-400" />
+          <Loader className="w-3 h-3 animate-spin text-slate-600 dark:text-gray-400" />
         ) : (
-          <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3 h-3 text-slate-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         )}
@@ -185,28 +186,28 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
           />
           <div
             ref={dropdownRef}
-            className={`absolute bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96 ${
+            className={`absolute bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-2xl z-[101] w-80 max-h-96 ${
               dropdownPosition.vertical === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
             } ${
               dropdownPosition.horizontal === 'left' ? 'left-0' : 'right-0'
             }`}
           >
-            <div className="p-3 border-b border-slate-600">
-              <h4 className="text-sm font-medium text-white mb-3">Select Result</h4>
+            <div className="p-3 border-b border-slate-300 dark:border-slate-600">
+              <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-3">Select Result</h4>
               <div className="space-y-2 max-h-48 overflow-y-auto">
               {Object.entries(TEST_RESULTS).map(([resultId, label]) => (
                 <button
                   key={resultId}
                   type="button"
                   onClick={() => handleResultChange(parseInt(resultId) as TestResultId)}
-                  className={`w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors flex items-center text-sm ${
+                  className={`w-full px-4 py-2 text-left hover:bg-slate-100 dark:bg-slate-700 transition-colors flex items-center text-sm ${
                     selectedResult === parseInt(resultId) 
                       ? 'bg-cyan-600/30 border-l-4 border-cyan-400' 
                       : ''
                   }`}
                 >
                   <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${getResultColor(parseInt(resultId) as TestResultId)}`}></div>
-                  <span className={`${selectedResult === parseInt(resultId) ? 'text-cyan-300 font-medium' : 'text-white'}`}>
+                  <span className={`${selectedResult === parseInt(resultId) ? 'text-cyan-300 font-medium' : 'text-slate-900 dark:text-white'}`}>
                     {label}
                   </span>
                   {selectedResult === parseInt(resultId) && (
@@ -218,12 +219,12 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="border-t border-slate-600 p-3">
+            <div className="border-t border-slate-300 dark:border-slate-600 p-3">
               <div className="flex flex-col space-y-2">
                 <button
                   type="button"
                   onClick={handleOpenCommentModal}
-                  className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-sm rounded transition-colors flex items-center justify-center"
+                  className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-600 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white text-sm rounded transition-colors flex items-center justify-center"
                 >
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Add Comment
@@ -232,14 +233,14 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                    className="px-3 py-1.5 text-xs text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleQuickUpdate}
-                    className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors"
+                    className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-slate-900 dark:text-white rounded transition-colors"
                   >
                     Update
                   </button>
@@ -272,7 +273,9 @@ const TestRunsOverview: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { getSelectedProject } = useApp();
   const selectedProject = getSelectedProject();
-  
+
+  useRestoreLastProject();
+
   // Get filter from URL params
   const resultFilter = searchParams.get('result'); // 'passed', 'failed', 'blocked', or null for all
   
@@ -641,9 +644,9 @@ const TestRunsOverview: React.FC = () => {
           // First execution created, move test run to "In Progress" (state 2)
 
           try {
-            await testRunsApiService.updateTestRunState(testRunId, 2);
+            await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId);
             setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 2 } : tr));
-            toast.success(`Execution result updated to ${newResultLabel}. Test run is now In Progress.`);
+            toast.success(`Execution result updated to ${newResultLabel}`);
           } catch (error) {
             console.error('❌ Failed to update test run state:', error);
             toast.success(`Execution result updated to ${newResultLabel}`);
@@ -657,9 +660,9 @@ const TestRunsOverview: React.FC = () => {
             // All test cases have results, move test run to "Done" (state 5)
 
             try {
-              await testRunsApiService.updateTestRunState(testRunId, 5);
+              await testRunsApiService.updateTestRunState(testRunId, 5, testRun.testPlanId);
               setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 5 } : tr));
-              toast.success(`Execution result updated to ${newResultLabel}. Test run is now Done.`);
+              toast.success(`Execution result updated to ${newResultLabel}`);
             } catch (error) {
               console.error('❌ Failed to update test run state:', error);
               toast.success(`Execution result updated to ${newResultLabel}`);
@@ -702,9 +705,9 @@ const TestRunsOverview: React.FC = () => {
       case 'Untested':
       case 'In Progress':
       case 'Unknown':
-        return <Clock className="w-4 h-4 text-gray-400" />;
+        return <Clock className="w-4 h-4 text-slate-600 dark:text-gray-400" />;
       default:
-        return <Clock className="w-4 h-4 text-gray-400" />;
+        return <Clock className="w-4 h-4 text-slate-600 dark:text-gray-400" />;
     }
   };
 
@@ -712,7 +715,7 @@ const TestRunsOverview: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Passed':
-        return 'text-green-400 bg-green-500/20 border-green-500/50';
+        return 'text-green-700 dark:text-green-400 bg-green-500/20 border-green-500/50';
       case 'Failed':
         return 'text-red-400 bg-red-500/20 border-red-500/50';
       case 'Blocked':
@@ -724,9 +727,9 @@ const TestRunsOverview: React.FC = () => {
       case 'Untested':
       case 'In Progress':
       case 'Unknown':
-        return 'text-gray-400 bg-gray-500/20 border-gray-500/50';
+        return 'text-slate-600 dark:text-gray-400 bg-gray-500/20 border-gray-500/50';
       default:
-        return 'text-gray-400 bg-gray-500/20 border-gray-500/50';
+        return 'text-slate-600 dark:text-gray-400 bg-gray-500/20 border-gray-500/50';
     }
   };
 
@@ -746,7 +749,7 @@ const TestRunsOverview: React.FC = () => {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <Loader className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading test runs overview...</p>
+          <p className="text-slate-600 dark:text-gray-400">Loading test runs overview...</p>
         </div>
       </div>
     );
@@ -758,7 +761,7 @@ const TestRunsOverview: React.FC = () => {
         <Card className="p-8 text-center">
           <div className="text-red-400 mb-4">
             <p className="text-lg font-medium">Failed to load test runs overview</p>
-            <p className="text-sm text-gray-400 mt-2">{error}</p>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">{error}</p>
           </div>
           <Button onClick={() => navigate('/dashboard')}>
             Back to Dashboard
@@ -781,8 +784,8 @@ const TestRunsOverview: React.FC = () => {
             Back to Dashboard
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-white">Test Cases in Active Test Runs</h1>
-            <p className="text-gray-400">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Test Cases in Active Test Runs</h1>
+            <p className="text-slate-600 dark:text-gray-400">
               {selectedProject?.name} - {totalTestCases} test cases across {testRuns.length} active test runs
             </p>
           </div>
@@ -793,35 +796,35 @@ const TestRunsOverview: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-8 gap-4">
         <Card className="p-4 text-center">
           <div className="text-2xl font-bold text-green-400 mb-1">{passedCount}</div>
-          <div className="text-sm text-gray-400">Passed</div>
+          <div className="text-sm text-slate-600 dark:text-gray-400">Passed</div>
         </Card>
         <Card className="p-4 text-center">
           <div className="text-2xl font-bold text-red-400 mb-1">{failedCount}</div>
-          <div className="text-sm text-gray-400">Failed</div>
+          <div className="text-sm text-slate-600 dark:text-gray-400">Failed</div>
         </Card>
         <Card className="p-4 text-center">
           <div className="text-2xl font-bold text-orange-400 mb-1">{blockedCount}</div>
-          <div className="text-sm text-gray-400">Blocked</div>
+          <div className="text-sm text-slate-600 dark:text-gray-400">Blocked</div>
         </Card>
         <Card className="p-4 text-center">
           <div className="text-2xl font-bold text-yellow-400 mb-1">{retestCount}</div>
-          <div className="text-sm text-gray-400">Retest</div>
+          <div className="text-sm text-slate-600 dark:text-gray-400">Retest</div>
         </Card>
         <Card className="p-4 text-center">
           <div className="text-2xl font-bold text-purple-400 mb-1">{skippedCount}</div>
-          <div className="text-sm text-gray-400">Skipped</div>
+          <div className="text-sm text-slate-600 dark:text-gray-400">Skipped</div>
         </Card>
         <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-gray-400 mb-1">{untestedCount}</div>
-          <div className="text-sm text-gray-400">Untested</div>
+          <div className="text-2xl font-bold text-slate-600 dark:text-gray-400 mb-1">{untestedCount}</div>
+          <div className="text-sm text-slate-600 dark:text-gray-400">Untested</div>
         </Card>
         <Card className="p-4 text-center">
           <div className="text-2xl font-bold text-blue-400 mb-1">{inProgressCount}</div>
-          <div className="text-sm text-gray-400">In Progress</div>
+          <div className="text-sm text-slate-600 dark:text-gray-400">In Progress</div>
         </Card>
         <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-gray-500 mb-1">{unknownCount}</div>
-          <div className="text-sm text-gray-400">Unknown</div>
+          <div className="text-2xl font-bold text-slate-500 dark:text-gray-500 mb-1">{unknownCount}</div>
+          <div className="text-sm text-slate-600 dark:text-gray-400">Unknown</div>
         </Card>
       </div>
 
@@ -830,24 +833,24 @@ const TestRunsOverview: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-600 dark:text-gray-400 w-4 h-4 z-10" />
               <input
                 type="text"
                 placeholder="Search test cases or test runs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={handleSearchKeyPress}
-                className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
               />
             </div>
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-400" />
+              <Filter className="w-4 h-4 text-slate-600 dark:text-gray-400" />
               <select
                 value={selectedResultFilter}
                 onChange={(e) => handleResultFilterChange(e.target.value)}
-                className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
               >
                 <option value="all">All Results</option>
                 <option value="Passed">Passed</option>
@@ -866,9 +869,9 @@ const TestRunsOverview: React.FC = () => {
         {/* Active filters display */}
         {(currentSearchTerm || selectedResultFilter !== 'all') && (
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-gray-400">Active filters:</span>
+            <span className="text-sm text-slate-600 dark:text-gray-400">Active filters:</span>
             {currentSearchTerm && (
-              <span className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400 group">
+              <span className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-700 dark:text-cyan-400 group">
                 Search: "{currentSearchTerm}"
                 <button
                   onClick={clearSearchFilter}
@@ -893,7 +896,7 @@ const TestRunsOverview: React.FC = () => {
             )}
             <button
               onClick={clearAllFilters}
-              className="text-sm text-gray-400 hover:text-white underline"
+              className="text-sm text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white underline"
             >
               Clear all filters
             </button>
@@ -903,32 +906,32 @@ const TestRunsOverview: React.FC = () => {
 
       {/* Test Cases Table */}
       <Card className="overflow-visible">
-        <div className="p-6 border-b border-slate-700">
-          <h3 className="text-lg font-semibold text-white">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             Test Cases ({filteredTestCases.length}{filteredTestCases.length !== allTestCasesWithExecution.length ? ` of ${allTestCasesWithExecution.length}` : ''})
           </h3>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-slate-600 dark:text-gray-400">
             Test cases from all active test runs in {selectedProject?.name}
           </p>
         </div>
 
         <div className="overflow-x-auto" style={{ overflow: 'visible' }}>
           <table className="w-full">
-            <thead className="bg-slate-800/50 border-b border-slate-700">
+            <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Test Case ID</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Title</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Test Run</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Configuration</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Priority</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Type</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Execution Result</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Test Case ID</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Title</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Test Run</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Configuration</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Priority</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Type</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Execution Result</th>
               </tr>
             </thead>
             <tbody>
               {filteredTestCases.map((testCase) => (
-                <tr key={`${testCase.testRunId}-${testCase.id}-${testCase.configurationId || 'no-config'}`} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
-                  <td className="py-4 px-6 text-sm text-gray-300 font-mono">
+                <tr key={`${testCase.testRunId}-${testCase.id}-${testCase.configurationId || 'no-config'}`} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors">
+                  <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
                     TC{testCase.id}
                   </td>
                   <td className="py-4 px-6">
@@ -937,7 +940,7 @@ const TestRunsOverview: React.FC = () => {
                       className="text-left w-full group"
                       disabled={!testCase.fullTestCase}
                     >
-                      <h3 className="font-semibold text-white group-hover:text-cyan-400 transition-colors cursor-pointer">
+                      <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors cursor-pointer">
                         {testCase.title}
                       </h3>
                     </button>
@@ -952,14 +955,14 @@ const TestRunsOverview: React.FC = () => {
                   </td>
                   <td className="py-4 px-6">
                     {testCase.configurationLabel ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700/50 text-gray-200 border border-slate-600">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-gray-200 border border-slate-300 dark:border-slate-600">
                         <span className={getDeviceColor(testCase.configurationLabel)}>
                           {getDeviceIcon(testCase.configurationLabel)}
                         </span>
                         {testCase.configurationLabel}
                       </span>
                     ) : (
-                      <span className="text-sm text-gray-400">N/A</span>
+                      <span className="text-sm text-slate-600 dark:text-gray-400">N/A</span>
                     )}
                   </td>
                   <td className="py-4 px-6">

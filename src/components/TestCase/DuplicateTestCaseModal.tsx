@@ -320,17 +320,17 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Duplicate Test Case" size="xl">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
             Test Case
           </label>
-          <div className="bg-slate-700 border border-slate-600 rounded-lg p-3">
-            <p className="text-white font-medium">{testCase?.title}</p>
-            <p className="text-xs text-gray-400 mt-1">TC{testCase?.id}</p>
+          <div className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg p-3">
+            <p className="text-slate-900 dark:text-white font-medium">{testCase?.title}</p>
+            <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">TC{testCase?.id}</p>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
             Target Project *
           </label>
           <ProjectSelector
@@ -343,14 +343,14 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-gray-300">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300">
               Target Folder <span className="text-red-400">*</span>
             </label>
             <button
               type="button"
               onClick={() => setIsCreateFolderModalOpen(true)}
               disabled={!selectedProjectId}
-              className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 disabled:text-slate-500 dark:text-gray-500 disabled:cursor-not-allowed transition-colors"
             >
               <FolderPlus className="w-3.5 h-3.5" />
               New Folder
@@ -363,14 +363,14 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
           ) : (
             <>
               {selectedFolderId && selectedFolder && (
-                <div className="bg-slate-700 border border-slate-600 rounded-lg p-3 mb-3">
-                  <p className="text-sm text-gray-300">
-                    Selected: <span className="text-white font-medium">{selectedFolder.name}</span>
+                <div className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg p-3 mb-3">
+                  <p className="text-sm text-slate-600 dark:text-gray-300">
+                    Selected: <span className="text-slate-900 dark:text-white font-medium">{selectedFolder.name}</span>
                   </p>
                 </div>
               )}
               {folderTree.length > 0 ? (
-                <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 max-h-64 overflow-y-auto">
+                <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 max-h-64 overflow-y-auto">
                   <FolderTree
                     folders={folderTree}
                     selectedFolderId={selectedFolderId}
@@ -381,13 +381,13 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
                   />
                 </div>
               ) : (
-                <div className="text-center py-4 text-gray-400 text-sm bg-slate-800 border border-slate-700 rounded-lg">
+                <div className="text-center py-4 text-slate-500 dark:text-gray-400 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
                   No folders available in this project. Please create a folder first.
                 </div>
               )}
             </>
           )}
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-slate-500 dark:text-gray-400 mt-2">
             A folder must be selected to duplicate the test case.
           </p>
         </div>

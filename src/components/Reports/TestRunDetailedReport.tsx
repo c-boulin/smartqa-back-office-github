@@ -685,9 +685,9 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
       case 'new':
         return 'bg-blue-500/20 text-blue-400 border border-blue-500/50';
       case 'untested':
-        return 'bg-gray-500/20 text-gray-400 border border-gray-500/50';
+        return 'bg-gray-500/20 text-slate-600 dark:text-gray-400 border border-gray-500/50';
       case 'passed':
-        return 'bg-green-500/20 text-green-400 border border-green-500/50';
+        return 'bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/50';
       case 'failed':
         return 'bg-red-500/20 text-red-400 border border-red-500/50';
       case 'blocked':
@@ -695,11 +695,11 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
       case 'in progress':
         return 'bg-blue-500/20 text-blue-400 border border-blue-500/50';
       case 'done':
-        return 'bg-green-500/20 text-green-400 border border-green-500/50';
+        return 'bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/50';
       case 'closed':
         return 'bg-purple-500/20 text-purple-400 border border-purple-500/50';
       default:
-        return 'bg-gray-500/20 text-gray-400 border border-gray-500/50';
+        return 'bg-gray-500/20 text-slate-600 dark:text-gray-400 border border-gray-500/50';
     }
   };
 
@@ -714,7 +714,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
       case 'low':
         return 'text-green-400';
       default:
-        return 'text-gray-400';
+        return 'text-slate-600 dark:text-gray-400';
     }
   };
 
@@ -807,10 +807,10 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <Loader className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading detailed report data...</p>
+          <p className="text-slate-600 dark:text-gray-400">Loading detailed report data...</p>
         </div>
       </div>
     );
@@ -818,11 +818,11 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
   if (error || !reportData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
         <Card className="p-8 text-center">
           <div className="text-red-400 mb-4">
             <p className="text-lg font-medium">Failed to load detailed report data</p>
-            <p className="text-sm text-gray-400 mt-2">{error}</p>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">{error}</p>
           </div>
           <Button onClick={onBack}>
             Back to Reports
@@ -833,24 +833,24 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 border-b border-purple-500/20 shadow-2xl px-6 py-4">
+      <div className="bg-gradient-to-r from-slate-100 via-purple-100 to-slate-100 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 border-b border-purple-500/20 shadow-2xl px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button
               variant="secondary"
               icon={ArrowLeft}
               onClick={onBack}
-              className="text-gray-300 hover:text-white"
+              className="text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white"
             >
               Back to Reports
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-white">{title || 'Test Run Detailed Report'}</h1>
-              <div className="flex items-center space-x-4 mt-2 text-sm text-gray-300">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{title || 'Test Run Detailed Report'}</h1>
+              <div className="flex items-center space-x-4 mt-2 text-sm text-slate-700 dark:text-gray-300">
                 <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                  <div className="w-6 h-6 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center text-slate-900 dark:text-white text-xs font-bold">
                     {authState.user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
                   </div>
                   <span>{authState.user?.name || 'Unknown User'}</span>
@@ -859,7 +859,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                 <span>{title || 'Test Run Detailed Report'}</span>
               </div>
               {description && (
-                <p className="text-sm text-gray-400 mt-2">{description}</p>
+                <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">{description}</p>
               )}
             </div>
           </div>
@@ -868,14 +868,14 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
               variant="secondary"
               icon={Download}
               onClick={() => setIsDownloadModalOpen(true)}
-              className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600"
+              className="bg-slate-100 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600"
             >
               Download
             </Button>
             <Button
               icon={Share}
               onClick={() => setIsShareModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-slate-900 dark:text-white"
             >
               Share
             </Button>
@@ -892,12 +892,12 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
             <div data-report-section="performance-chart">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-white">Test Results Trends</h3>
-                <p className="text-sm text-gray-400">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Test Results Trends</h3>
+                <p className="text-sm text-slate-600 dark:text-gray-400">
                   Test case execution results over the {(creationDateFilter && !testRunIds) ? creationDateFilter.toLowerCase() : 'last 7 days'}
                 </p>
               </div>
-              <MoreHorizontal className="w-5 h-5 text-gray-400" />
+              <MoreHorizontal className="w-5 h-5 text-slate-600 dark:text-gray-400" />
             </div>
 
             <div className="h-64">
@@ -978,7 +978,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
             <div data-report-section="summary-cards-grid">
             {/* Active Test Runs */}
             <Card gradient className="p-6 text-center">
-              <h3 className="text-lg font-semibold text-white mb-2">Active Test Runs</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Active Test Runs</h3>
               <div className="text-4xl font-bold text-cyan-400">
                 {reportData.activeTestRuns} / {reportData.totalTestRuns}
               </div>
@@ -986,7 +986,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
             {/* Closed Test Runs */}
             <Card gradient className="p-6 text-center">
-              <h3 className="text-lg font-semibold text-white mb-2">Closed Test Runs</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Closed Test Runs</h3>
               <div className="text-4xl font-bold text-purple-400">
                 {reportData.closedTestRuns} / {reportData.totalTestRuns}
               </div>
@@ -994,13 +994,13 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
             {/* Total Test Cases */}
             <Card gradient className="p-6 text-center">
-              <h3 className="text-lg font-semibold text-white mb-2">Total Test Cases</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Total Test Cases</h3>
               <div className="text-4xl font-bold text-green-400">{reportData.totalTestCases}</div>
             </Card>
 
             {/* Total Linked Issues */}
             <Card gradient className="p-6 text-center">
-              <h3 className="text-lg font-semibold text-white mb-2">Total Linked Issues</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Total Linked Issues</h3>
               <div className="text-4xl font-bold text-orange-400">{reportData.totalLinkedIssues}</div>
             </Card>
             </div>
@@ -1010,46 +1010,46 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         {/* Test Cases Table */}
         <Card className="overflow-hidden">
           <div data-report-section="test-cases-table">
-          <div className="px-6 py-4 border-b border-slate-700">
-            <h3 className="text-lg font-semibold text-white">
+          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
               {reportData.testCasesIncluded.length} Test cases included in this report
             </h3>
           </div>
           
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-800/50 border-b border-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                 <tr>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                     TEST RUN
                   </th>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                     TEST CASE
                   </th>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                     TEST RUN LATEST STATUS
                   </th>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                     TEST CASE PRIORITY
                   </th>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                     TEST CASE ASSIGNEE
                   </th>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                     CONFIGURATION
                   </th>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
-                    <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                  <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
+                    <MoreHorizontal className="w-4 h-4 text-slate-600 dark:text-gray-400" />
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
                 {reportData.testCasesIncluded.map((testCase) => (
-                  <tr key={`${testCase.testRunId}-${testCase.testCaseId}`} className="hover:bg-slate-800/30 transition-colors">
+                  <tr key={`${testCase.testRunId}-${testCase.testCaseId}`} className="hover:bg-slate-50 dark:bg-slate-800/30 transition-colors">
                     <td className="py-4 px-6">
                       <div>
-                        <div className="text-sm font-medium text-white">TR-{testCase.testRunId}</div>
-                        <div className="text-sm text-gray-400">{testCase.testRunName}</div>
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">TR-{testCase.testRunId}</div>
+                        <div className="text-sm text-slate-600 dark:text-gray-400">{testCase.testRunName}</div>
                         <div className="flex items-center space-x-2 mt-1">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(testCase.testRunStatus)}`}>
                             {testCase.testRunStatus}
@@ -1059,8 +1059,8 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                     </td>
                     <td className="py-4 px-6">
                       <div>
-                        <div className="text-sm font-medium text-white">TC-{testCase.testCaseId}</div>
-                        <div className="text-sm text-gray-400">{testCase.testCaseTitle}</div>
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">TC-{testCase.testCaseId}</div>
+                        <div className="text-sm text-slate-600 dark:text-gray-400">{testCase.testCaseTitle}</div>
                       </div>
                     </td>
                     <td className="py-4 px-6">
@@ -1074,15 +1074,15 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                       </span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="text-sm text-white">{testCase.assignee}</span>
+                      <span className="text-sm text-slate-900 dark:text-white">{testCase.assignee}</span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="text-sm text-gray-400">
+                      <span className="text-sm text-slate-600 dark:text-gray-400">
                         {testCase.configurationName || 'Default'}
                       </span>
                     </td>
                     <td className="py-4 px-6">
-                      <button className="p-1 text-gray-400 hover:text-cyan-400 transition-colors">
+                      <button className="p-1 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
                     </td>
@@ -1093,7 +1093,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
             
             {reportData.testCasesIncluded.length === 0 && (
               <div className="text-center py-12">
-                <div className="text-gray-400 mb-4">
+                <div className="text-slate-600 dark:text-gray-400 mb-4">
                   <p className="text-lg font-medium">No test cases found</p>
                   <p className="text-sm">No test cases are included in the test runs for this project</p>
                 </div>

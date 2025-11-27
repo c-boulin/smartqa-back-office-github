@@ -50,8 +50,8 @@ export const useFolders = (projectId?: string | null) => {
 
       setFolders(transformedFolders);
       setFolderTree(tree);
-      
-      // Auto-select the first folder SEULEMENT si aucun dossier n'est sélectionné OU si le projet a changé
+
+      // Auto-select the first folder when there's only one folder (e.g., Default Folder)
       const projectChanged = previousProjectId.current !== targetProjectId;
 
       // Don't auto-select folder if coming from dashboard with filters
@@ -59,8 +59,11 @@ export const useFolders = (projectId?: string | null) => {
                                  window.history.state &&
                                  window.history.state.applyFilter;
 
-      // NEVER auto-select folders - always start with no folder selected
-      if (projectChanged) {
+      // Auto-select if there's exactly one folder (Default Folder scenario)
+      if (tree.length === 1 && projectChanged && !hasNavigationState) {
+        const firstFolder = tree[0];
+        setSelectedFolderId(firstFolder.id);
+      } else if (projectChanged) {
         setSelectedFolderId(null);
       } else if (hasNavigationState) {
         setSelectedFolderId(null);
@@ -102,16 +105,16 @@ export const useFolders = (projectId?: string | null) => {
 
       setFolders(cached.folders);
       setFolderTree(cached.tree);
-      
-      // Auto-select first folder if none selected
-      if (!selectedFolderId && cached.tree.length > 0) {
+
+      // Auto-select first folder if none selected and there's exactly one folder
+      if (!selectedFolderId && cached.tree.length === 1) {
         const firstFolder = foldersApiService.getFirstFolder(cached.tree);
         if (firstFolder) {
 
           setSelectedFolderId(firstFolder.id);
         }
       }
-      
+
       setLoading(false);
       return;
     }
@@ -157,8 +160,14 @@ export const useFolders = (projectId?: string | null) => {
           setFolders(cached.folders);
           setFolderTree(cached.tree);
           setLoading(false);
-          
-          // NEVER auto-select folders from cache
+
+          // Auto-select if there's exactly one folder from cache
+          if (cached.tree.length === 1 && !selectedFolderId) {
+            const firstFolder = foldersApiService.getFirstFolder(cached.tree);
+            if (firstFolder) {
+              setSelectedFolderId(firstFolder.id);
+            }
+          }
 
         }
       }

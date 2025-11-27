@@ -270,10 +270,15 @@ class TestPlansApiService {
     return response;
   }
 
-  async updateTestPlanStatus(id: string, status: string, currentTestPlan: TestPlan): Promise<UpdateTestPlanResponse & { included?: Array<Record<string, unknown>> }> {
-    // Fetch the full test plan data to get all relationships
-    const fullTestPlanResponse = await this.getTestPlanWithTestRuns(id);
-    const fullTestPlan = fullTestPlanResponse.data;
+  async updateTestPlanStatus(id: string, status: string, currentTestPlan: TestPlan, fullTestPlanData?: ApiTestPlan): Promise<UpdateTestPlanResponse & { included?: Array<Record<string, unknown>> }> {
+    let fullTestPlan: ApiTestPlan;
+
+    if (fullTestPlanData) {
+      fullTestPlan = fullTestPlanData;
+    } else {
+      const fullTestPlanResponse = await this.getTestPlanWithTestRuns(id);
+      fullTestPlan = fullTestPlanResponse.data;
+    }
 
     const requestBody = {
       data: {
@@ -281,7 +286,7 @@ class TestPlansApiService {
         type: "TestPlan",
         attributes: {
           title: currentTestPlan.title,
-          status: status,
+          status: parseInt(status),
           createdAt: currentTestPlan.createdAt.toISOString(),
           updatedAt: new Date().toISOString(),
           ...(currentTestPlan.dateStart && { dateStart: currentTestPlan.dateStart.toISOString() }),

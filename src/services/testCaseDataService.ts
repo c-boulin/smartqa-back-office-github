@@ -179,9 +179,10 @@ class TestCaseDataService {
       const tagRefs = response.data.relationships?.tags?.data || [];
       const tags: string[] = tagRefs.map((tagRef: { id: string; type: string }) => {
         const tagId = tagRef.id.split('/').pop() || tagRef.id;
-        const includedTag = included.find((item: { type: string; id: string }) =>
-          item.type === 'Tag' && item.id.includes(tagId)
-        );
+        const includedTag = included.find((item: { type: string; id: string }) => {
+          const itemId = item.id.split('/').pop() || item.id;
+          return item.type === 'Tag' && itemId === tagId;
+        });
         return includedTag?.attributes?.label || '';
       }).filter(Boolean);
 
@@ -189,9 +190,10 @@ class TestCaseDataService {
       const attachmentRefs = response.data.relationships?.attachments?.data || [];
       const attachments: ProcessedAttachment[] = attachmentRefs.map((attachmentRef: { id: string; meta?: { order?: number } }, index: number) => {
         const attachmentId = attachmentRef.id.split('/').pop() || attachmentRef.id;
-        const includedAttachment = included.find((item: { type: string; id: string }) =>
-          item.type === 'Attachment' && item.id.includes(attachmentId)
-        );
+        const includedAttachment = included.find((item: { type: string; id: string }) => {
+          const itemId = item.id.split('/').pop() || item.id;
+          return item.type === 'Attachment' && itemId === attachmentId;
+        });
 
         if (includedAttachment?.attributes) {
           const url = includedAttachment.attributes.url;
@@ -215,9 +217,10 @@ class TestCaseDataService {
       const stepResultRefs = response.data.relationships?.stepResults?.data || [];
       const stepResults: ProcessedStepResult[] = stepResultRefs.map((stepResultRef: { id: string; meta?: { order?: number } }) => {
         const stepResultId = stepResultRef.id.split('/').pop() || stepResultRef.id;
-        const includedStepResult = included.find((item: { type: string; id: string }) =>
-          item.type === 'StepResult' && item.id.includes(stepResultId)
-        );
+        const includedStepResult = included.find((item: { type: string; id: string }) => {
+          const itemId = item.id.split('/').pop() || item.id;
+          return item.type === 'StepResult' && itemId === stepResultId;
+        });
 
         if (includedStepResult?.attributes) {
           const stepContent = includedStepResult.attributes.step || '';
@@ -244,9 +247,10 @@ class TestCaseDataService {
       const sharedSteps: ProcessedSharedStep[] = sharedStepRefs.map((sharedStepRef: { id: string; meta?: { pivot_id?: number; order?: number } }, index: number) => {
         const sharedStepId = sharedStepRef.id.split('/').pop() || sharedStepRef.id;
 
-        const includedSharedStep = included.find((item: { type: string; id: string }) =>
-          item.type === 'SharedStep' && item.id.includes(sharedStepId)
-        );
+        const includedSharedStep = included.find((item: { type: string; id: string }) => {
+          const itemId = item.id.split('/').pop() || item.id;
+          return item.type === 'SharedStep' && itemId === sharedStepId;
+        });
 
         if (includedSharedStep) {
 

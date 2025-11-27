@@ -53,7 +53,6 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
   // Form state
   const [formData, setFormData] = useState({
     title: '',
-    template: 1,
     description: '',
     preconditions: '',
     owner: '',
@@ -103,7 +102,6 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
       // Populate form with existing test case data
       setFormData({
         title: testCase.title,
-        template: 1,
         description: testCase.description,
         preconditions: testCase.preconditions || '',
         owner: testCase.ownerId || '', // Use existing owner from test case
@@ -122,7 +120,6 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
       const currentUser = users.find(user => user.email === authState.user?.email);
       setFormData({
         title: '',
-        template: 1,
         description: '',
         preconditions: '',
         owner: currentUser?.id || '',
@@ -298,7 +295,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
       priority: formData.priority,
       testCaseType: formData.testCaseType,
       automationStatus: formData.automationStatus,
-      template: formData.template || 1,
+      template: 1,
       tags: selectedTags,
       stepResultsRelationships: finalStepResultsRelationships,
       sharedStepsRelationships: finalSharedStepsRelationships,

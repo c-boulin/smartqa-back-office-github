@@ -281,7 +281,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-0 right-0 p-2 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors z-10"
+          className="absolute top-0 right-0 p-2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors z-10"
           title="Close modal"
         >
           <X className="w-5 h-5" />
@@ -289,7 +289,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
         {/* Header */}
         <div className="mb-6 pr-10">
-          <h2 className="text-xl font-bold text-white">Create Report</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Create Report</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -297,13 +297,13 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
           <div className="space-y-6">
             {/* Project */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                 Project
               </label>
               <select
                 value={formData.project}
                 onChange={(e) => handleInputChange('project', e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
                 required
                 disabled={isSubmitting}
               >
@@ -318,13 +318,13 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
             {/* Type of Report */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                 Type of Report
               </label>
               <select
                 value={formData.reportType}
                 onChange={(e) => handleInputChange('reportType', e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
                 disabled={isSubmitting}
               >
                 {reportTypes.map((type) => (
@@ -337,7 +337,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
             {/* Select test runs to include based on */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
                 Select test runs to include based on:
               </label>
               <div className="space-y-3">
@@ -348,10 +348,10 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                     value="creation_time"
                     checked={formData.testRunSelection === 'creation_time'}
                     onChange={(e) => handleInputChange('testRunSelection', e.target.value)}
-                    className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 focus:ring-blue-500 focus:ring-2"
+                    className="w-4 h-4 text-blue-600 bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 focus:ring-blue-500 focus:ring-2"
                     disabled={isSubmitting}
                   />
-                  <span className="ml-3 text-white">Creation Time</span>
+                  <span className="ml-3 text-slate-900 dark:text-white">Creation Time</span>
                 </label>
                 <label className="flex items-center cursor-pointer">
                   <input
@@ -360,10 +360,10 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                     value="specific_test_run"
                     checked={formData.testRunSelection === 'specific_test_run'}
                     onChange={(e) => handleInputChange('testRunSelection', e.target.value)}
-                    className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 focus:ring-blue-500 focus:ring-2"
+                    className="w-4 h-4 text-blue-600 bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 focus:ring-blue-500 focus:ring-2"
                     disabled={isSubmitting}
                   />
-                  <span className="ml-3 text-white">Specific Test Run</span>
+                  <span className="ml-3 text-slate-900 dark:text-white">Specific Test Run</span>
                 </label>
               </div>
             </div>
@@ -372,13 +372,13 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
             <div>
               {formData.testRunSelection === 'creation_time' ? (
                 <>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                     Include test runs created in
                   </label>
                   <select
                     value={formData.includeTestRuns}
                     onChange={(e) => handleInputChange('includeTestRuns', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     disabled={isSubmitting}
                   >
                     {timeOptions.map((option) => (
@@ -391,7 +391,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-300">
+                    <label className="block text-sm font-medium text-slate-600 dark:text-gray-300">
                       Select Test Runs ({formData.specificTestRunIds.length} selected)
                     </label>
                     {testRuns.length > 0 && (
@@ -404,7 +404,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                         >
                           Select All
                         </button>
-                        <span className="text-gray-500">|</span>
+                        <span className="text-slate-500 dark:text-gray-500">|</span>
                         <button
                           type="button"
                           onClick={handleDeselectAllTestRuns}
@@ -417,29 +417,29 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                     )}
                   </div>
                   {loadingTestRuns ? (
-                    <div className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-gray-400 flex items-center">
+                    <div className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-500 dark:text-gray-400 flex items-center">
                       <Loader className="w-4 h-4 mr-2 animate-spin" />
                       Loading test runs...
                     </div>
                   ) : testRuns.length > 0 ? (
-                    <div className="w-full bg-slate-700 border border-slate-600 rounded-lg max-h-60 overflow-y-auto">
+                    <div className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg max-h-60 overflow-y-auto">
                       {testRuns.map((testRun) => (
                         <label
                           key={testRun.id}
-                          className="flex items-center px-3 py-2 hover:bg-slate-600 cursor-pointer transition-colors border-b border-slate-600 last:border-b-0"
+                          className="flex items-center px-3 py-2 hover:bg-slate-300 dark:hover:bg-slate-600 cursor-pointer transition-colors border-b border-slate-300 dark:border-slate-600 last:border-b-0"
                         >
                           <input
                             type="checkbox"
                             checked={formData.specificTestRunIds.includes(testRun.id)}
                             onChange={() => handleTestRunToggle(testRun.id)}
-                            className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-500 rounded focus:ring-blue-500 focus:ring-2"
+                            className="w-4 h-4 text-blue-600 bg-slate-100 dark:bg-slate-700 border-slate-500 rounded focus:ring-blue-500 focus:ring-2"
                             disabled={isSubmitting}
                           />
                           <div className="ml-3 flex-1">
-                            <div className="text-white text-sm">
+                            <div className="text-slate-900 dark:text-white text-sm">
                               TR-{testRun.id} - {testRun.name}
                             </div>
-                            <div className="text-xs text-gray-400">
+                            <div className="text-xs text-slate-500 dark:text-gray-400">
                               {testRun.status === 'open' ? 'Active' : 'Closed'}
                             </div>
                           </div>
@@ -447,7 +447,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                       ))}
                     </div>
                   ) : (
-                    <div className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-gray-400">
+                    <div className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-500 dark:text-gray-400">
                       No test runs available
                     </div>
                   )}
@@ -478,8 +478,8 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
             {/* Advanced Filters Section */}
             {showAdvancedFilters && (
-              <div className="border border-slate-600 rounded-lg p-4 space-y-4">
-                <div className="text-sm font-medium text-gray-300 mb-4">
+              <div className="border border-slate-300 dark:border-slate-600 rounded-lg p-4 space-y-4">
+                <div className="text-sm font-medium text-slate-600 dark:text-gray-300 mb-4">
                   Test Case Filters ({[
                     ...formData.filters.statusOfTestCase,
                     ...formData.filters.testCaseType,
@@ -585,7 +585,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                 />
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                     Created
                   </label>
                   <select
@@ -594,7 +594,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                       ...formData.filters,
                       createdDateRange: e.target.value
                     })}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     disabled={isSubmitting}
                   >
                     <option value="">Select an Option</option>
@@ -606,7 +606,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                     Last Updated
                   </label>
                   <select
@@ -615,7 +615,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                       ...formData.filters,
                       lastUpdatedDateRange: e.target.value
                     })}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     disabled={isSubmitting}
                   >
                     <option value="">Select an Option</option>
@@ -633,14 +633,14 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
           <div className="space-y-6">
             {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                 Title *
               </label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => handleInputChange('title', e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
                 required
                 disabled={isSubmitting}
                 placeholder="Enter report title"
@@ -662,14 +662,14 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
             {/* Description (conditional) */}
             {showDescription && (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                   Description
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                  className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   disabled={isSubmitting}
                   placeholder="Enter report description"
                 />
@@ -677,10 +677,10 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
             )}
 
             {/* Schedule reports */}
-            <div className="bg-slate-800/50 border border-slate-600 rounded-lg p-4">
+            <div className="bg-white dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-lg p-4">
               <div className="mb-4">
-                <h4 className="text-white font-medium">Schedule reports</h4>
-                <p className="text-sm text-gray-400">Automate report generation at specific intervals</p>
+                <h4 className="text-slate-900 dark:text-white font-medium">Schedule reports</h4>
+                <p className="text-sm text-slate-500 dark:text-gray-400">Automate report generation at specific intervals</p>
               </div>
 
               <div className="space-y-4">
@@ -691,8 +691,8 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                     onClick={() => handleInputChange('frequency', 'daily')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       formData.frequency === 'daily'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                        ? 'bg-blue-600 text-slate-900 dark:text-white'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-slate-600'
                     }`}
                     disabled={isSubmitting}
                   >
@@ -703,8 +703,8 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                     onClick={() => handleInputChange('frequency', 'weekly')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       formData.frequency === 'weekly'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                        ? 'bg-blue-600 text-slate-900 dark:text-white'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-slate-600'
                     }`}
                     disabled={isSubmitting}
                   >
@@ -714,7 +714,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
                 {/* Format selector */}
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">
+                  <label className="block text-sm text-slate-500 dark:text-gray-400 mb-2">
                     Report format:
                   </label>
                   <div className="flex space-x-2">
@@ -723,8 +723,8 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                       onClick={() => handleInputChange('format', 'pdf')}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         formData.format === 'pdf'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                          ? 'bg-blue-600 text-slate-900 dark:text-white'
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-slate-600'
                       }`}
                       disabled={isSubmitting}
                     >
@@ -735,8 +735,8 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                       onClick={() => handleInputChange('format', 'csv')}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         formData.format === 'csv'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                          ? 'bg-blue-600 text-slate-900 dark:text-white'
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-slate-600'
                       }`}
                       disabled={isSubmitting}
                     >
@@ -748,13 +748,13 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
                 {/* Day of Week (for weekly) */}
                 {formData.frequency === 'weekly' && (
                   <div>
-                    <label className="block text-sm text-gray-400 mb-2">
+                    <label className="block text-sm text-slate-500 dark:text-gray-400 mb-2">
                       Day of the week:
                     </label>
                     <select
                       value={formData.dayOfWeek}
                       onChange={(e) => handleInputChange('dayOfWeek', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                      className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
                       disabled={isSubmitting}
                     >
                       <option value="monday">Monday</option>
@@ -772,7 +772,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
             {/* Recipients */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                 Recipients *
               </label>
 
@@ -793,7 +793,7 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="lg:col-span-2 flex justify-end space-x-3 pt-6 border-t border-slate-700">
+          <div className="lg:col-span-2 flex justify-end space-x-3 pt-6 border-t border-slate-200 dark:border-slate-700">
             <Button
               variant="secondary"
               onClick={onClose}

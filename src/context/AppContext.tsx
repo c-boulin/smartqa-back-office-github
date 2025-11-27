@@ -49,6 +49,7 @@ type AppAction =
   | { type: 'CLEAR_DATA' };
 
 const SELECTED_PROJECT_KEY = 'smartqa_selected_project_id';
+const LAST_SELECTED_PROJECT_KEY = 'smartqa_last_selected_project_id';
 
 const getStoredSelectedProjectId = (): string | null => {
   try {
@@ -58,10 +59,19 @@ const getStoredSelectedProjectId = (): string | null => {
   }
 };
 
+const getStoredLastSelectedProjectId = (): string | null => {
+  try {
+    return localStorage.getItem(LAST_SELECTED_PROJECT_KEY);
+  } catch {
+    return null;
+  }
+};
+
 const setStoredSelectedProjectId = (projectId: string | null): void => {
   try {
     if (projectId) {
       localStorage.setItem(SELECTED_PROJECT_KEY, projectId);
+      localStorage.setItem(LAST_SELECTED_PROJECT_KEY, projectId);
     } else {
       localStorage.removeItem(SELECTED_PROJECT_KEY);
     }
@@ -205,6 +215,7 @@ const AppContext = createContext<{
   getFilteredTestExecutions: () => TestExecution[];
   getFilteredTestPlans: () => TestPlan[];
   getSelectedProject: () => Project | null;
+  getLastSelectedProjectId: () => string | null;
   loadProjects: () => Promise<void>;
   loadTags: () => Promise<void>;
   loadConfigurations: () => Promise<void>;
@@ -357,6 +368,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return state.projects.find(p => p.id === state.selectedProjectId) || null;
   }, [state.selectedProjectId, state.projects]);
 
+  const getLastSelectedProjectId = useCallback(() => {
+    return getStoredLastSelectedProjectId();
+  }, []);
+
   // Effect to handle authentication state changes
   useEffect(() => {
     // Prevent multiple initializations
@@ -387,13 +402,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [authState.isAuthenticated]); // Only depend on authentication state
 
   return (
-    <AppContext.Provider value={{ 
-      state, 
-      dispatch, 
+    <AppContext.Provider value={{
+      state,
+      dispatch,
       getFilteredTestCases,
       getFilteredTestExecutions,
       getFilteredTestPlans,
       getSelectedProject,
+      getLastSelectedProjectId,
       loadProjects,
       loadTags,
       loadConfigurations,

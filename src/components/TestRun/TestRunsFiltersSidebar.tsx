@@ -41,14 +41,14 @@ const TestRunsFiltersSidebar: React.FC<TestRunsFiltersSidebarProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="absolute right-0 top-0 h-full w-96 bg-gradient-to-b from-slate-800 to-slate-900 border-l border-purple-500/30 shadow-2xl">
+      <div className="absolute right-0 top-0 h-full w-96 bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border-l border-slate-300 dark:border-purple-500/30 shadow-2xl">
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-slate-700">
-            <h3 className="text-xl font-semibold text-white">Filters</h3>
+          <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Filters</h3>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+              className="p-2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -58,7 +58,7 @@ const TestRunsFiltersSidebar: React.FC<TestRunsFiltersSidebarProps> = ({
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {/* Assignee Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
                 Assignee
               </label>
               
@@ -66,7 +66,7 @@ const TestRunsFiltersSidebar: React.FC<TestRunsFiltersSidebarProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAssigneeDropdownOpen(!isAssigneeDropdownOpen)}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between"
+                  className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between"
                 >
                   <span>
                     {filters.assignee === 'all' 
@@ -74,7 +74,7 @@ const TestRunsFiltersSidebar: React.FC<TestRunsFiltersSidebarProps> = ({
                       : availableUsers.find(u => u.id === filters.assignee)?.name || 'Unknown User'
                     }
                   </span>
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-slate-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -85,23 +85,23 @@ const TestRunsFiltersSidebar: React.FC<TestRunsFiltersSidebarProps> = ({
                       className="fixed inset-0 z-10" 
                       onClick={() => setIsAssigneeDropdownOpen(false)}
                     />
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
                       {/* Search bar inside dropdown */}
-                      <div className="p-3 border-b border-slate-700">
+                      <div className="p-3 border-b border-slate-200 dark:border-slate-700">
                         <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-gray-400 w-4 h-4" />
                           <input
                             type="text"
                             placeholder="Search users..."
                             value={userSearchTerm}
                             onChange={(e) => setUserSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-8 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm"
+                            className="w-full pl-10 pr-8 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm"
                             autoFocus
                           />
                           {userSearchTerm && (
                             <button
                               onClick={() => setUserSearchTerm('')}
-                              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -117,8 +117,8 @@ const TestRunsFiltersSidebar: React.FC<TestRunsFiltersSidebarProps> = ({
                             onFilterChange('assignee', 'all');
                             setIsAssigneeDropdownOpen(false);
                           }}
-                          className={`w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors ${
-                            filters.assignee === 'all' ? 'bg-slate-700 text-cyan-400' : 'text-white'
+                          className={`w-full px-4 py-2 text-left hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors ${
+                            filters.assignee === 'all' ? 'bg-cyan-100 dark:bg-slate-700 text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-white'
                           }`}
                         >
                           All Assignees
@@ -132,20 +132,20 @@ const TestRunsFiltersSidebar: React.FC<TestRunsFiltersSidebarProps> = ({
                               onFilterChange('assignee', user.id);
                               setIsAssigneeDropdownOpen(false);
                             }}
-                            className={`w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors ${
-                              filters.assignee === user.id ? 'bg-slate-700 text-cyan-400' : 'text-white'
+                            className={`w-full px-4 py-2 text-left hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors ${
+                              filters.assignee === user.id ? 'bg-cyan-100 dark:bg-slate-700 text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-white'
                             }`}
                           >
                             <div>
                               <div className="font-medium">{user.name}</div>
-                              <div className="text-xs text-gray-400">{user.email}</div>
+                              <div className="text-xs text-slate-500 dark:text-gray-400">{user.email}</div>
                             </div>
                           </button>
                         ))}
                         
                         {/* Show search results info */}
                         {userSearchTerm && filteredUsers.length === 0 && (
-                          <div className="px-4 py-2 text-xs text-gray-400">
+                          <div className="px-4 py-2 text-xs text-slate-500 dark:text-gray-400">
                             No users found matching "{userSearchTerm}"
                           </div>
                         )}
@@ -158,13 +158,13 @@ const TestRunsFiltersSidebar: React.FC<TestRunsFiltersSidebarProps> = ({
 
             {/* State Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
                 State
               </label>
               <select
                 value={filters.state}
                 onChange={(e) => onFilterChange('state', e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
               >
                 <option value="all">All States</option>
                 <option value="1">New</option>
@@ -178,7 +178,7 @@ const TestRunsFiltersSidebar: React.FC<TestRunsFiltersSidebarProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="border-t border-slate-700 p-6">
+          <div className="border-t border-slate-200 dark:border-slate-700 p-6">
             <div className="flex space-x-3">
               <Button
                 variant="secondary"

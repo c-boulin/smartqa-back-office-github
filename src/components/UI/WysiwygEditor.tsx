@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import { useTheme } from '../../context/ThemeContext';
 
 interface WysiwygEditorProps {
   value: string;
@@ -18,6 +19,7 @@ const WysiwygEditor: React.FC<WysiwygEditorProps> = ({
   className = ''
 }) => {
   const quillRef = useRef<ReactQuill>(null);
+  const { theme } = useTheme();
 
   const modules = {
     toolbar: [
@@ -37,90 +39,91 @@ const WysiwygEditor: React.FC<WysiwygEditorProps> = ({
     'link'
   ];
 
-  // Custom styles for dark theme
   useEffect(() => {
     const style = document.createElement('style');
+    const isDark = theme === 'dark';
+
     style.textContent = `
       .ql-snow {
-        border: 1px solid #475569 !important;
+        border: 1px solid ${isDark ? '#475569' : '#d1d5db'} !important;
         border-radius: 0.5rem !important;
-        background-color: #334155 !important;
+        background-color: ${isDark ? '#334155' : '#ffffff'} !important;
       }
-      
+
       .ql-snow .ql-toolbar {
-        border-bottom: 1px solid #475569 !important;
-        background-color: #1e293b !important;
+        border-bottom: 1px solid ${isDark ? '#475569' : '#d1d5db'} !important;
+        background-color: ${isDark ? '#1e293b' : '#f9fafb'} !important;
         border-radius: 0.5rem 0.5rem 0 0 !important;
       }
-      
+
       .ql-snow .ql-container {
         border: none !important;
-        background-color: #334155 !important;
-        color: #f1f5f9 !important;
+        background-color: ${isDark ? '#334155' : '#ffffff'} !important;
+        color: ${isDark ? '#f1f5f9' : '#1f2937'} !important;
         border-radius: 0 0 0.5rem 0.5rem !important;
       }
-      
+
       .ql-snow:focus-within {
         outline: 2px solid #06b6d4 !important;
         outline-offset: 0px !important;
         border-radius: 0.5rem !important;
       }
-      
+
       .ql-snow .ql-editor {
-        color: #f1f5f9 !important;
+        color: ${isDark ? '#f1f5f9' : '#1f2937'} !important;
         min-height: 120px;
       }
-      
+
       .ql-snow .ql-editor.ql-blank::before {
-        color: #94a3b8 !important;
+        color: ${isDark ? '#94a3b8' : '#6b7280'} !important;
         font-style: normal !important;
       }
-      
+
       .ql-snow .ql-stroke {
-        stroke: #94a3b8 !important;
+        stroke: ${isDark ? '#94a3b8' : '#4b5563'} !important;
       }
-      
+
       .ql-snow .ql-fill {
-        fill: #94a3b8 !important;
+        fill: ${isDark ? '#94a3b8' : '#4b5563'} !important;
       }
-      
+
       .ql-snow .ql-picker-label {
-        color: #94a3b8 !important;
+        color: ${isDark ? '#94a3b8' : '#4b5563'} !important;
       }
-      
+
       .ql-snow .ql-picker-options {
-        background-color: #1e293b !important;
-        border: 1px solid #475569 !important;
+        background-color: ${isDark ? '#1e293b' : '#ffffff'} !important;
+        border: 1px solid ${isDark ? '#475569' : '#d1d5db'} !important;
       }
-      
+
       .ql-snow .ql-picker-item {
-        color: #f1f5f9 !important;
+        color: ${isDark ? '#f1f5f9' : '#1f2937'} !important;
       }
-      
+
       .ql-snow .ql-picker-item:hover {
-        background-color: #334155 !important;
+        background-color: ${isDark ? '#334155' : '#f3f4f6'} !important;
       }
-      
+
       .ql-snow .ql-tooltip {
-        background-color: #1e293b !important;
-        border: 1px solid #475569 !important;
-        color: #f1f5f9 !important;
+        background-color: ${isDark ? '#1e293b' : '#ffffff'} !important;
+        border: 1px solid ${isDark ? '#475569' : '#d1d5db'} !important;
+        color: ${isDark ? '#f1f5f9' : '#1f2937'} !important;
       }
-      
+
       .ql-snow .ql-tooltip input {
-        background-color: #334155 !important;
-        border: 1px solid #475569 !important;
-        color: #f1f5f9 !important;
+        background-color: ${isDark ? '#334155' : '#ffffff'} !important;
+        border: 1px solid ${isDark ? '#475569' : '#d1d5db'} !important;
+        color: ${isDark ? '#f1f5f9' : '#1f2937'} !important;
       }
-      
+
       .ql-snow .ql-active {
         color: #06b6d4 !important;
       }
-      
+
       .ql-snow .ql-active .ql-stroke {
         stroke: #06b6d4 !important;
       }
-      
+
       .ql-snow .ql-active .ql-fill {
         fill: #06b6d4 !important;
       }
@@ -130,7 +133,7 @@ const WysiwygEditor: React.FC<WysiwygEditorProps> = ({
     return () => {
       document.head.removeChild(style);
     };
-  }, []);
+  }, [theme]);
 
   return (
     <div className={className}>

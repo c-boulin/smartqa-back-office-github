@@ -187,7 +187,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center px-6">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-cyan-400/10 to-purple-500/10 rounded-full blur-3xl"></div>
@@ -198,7 +198,7 @@ const Login: React.FC = () => {
         {/* Back to Home Link */}
         <Link 
           to="/" 
-          className="inline-flex items-center text-gray-300 hover:text-cyan-400 transition-colors mb-8"
+          className="inline-flex items-center text-slate-600 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors mb-8"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Home
@@ -210,7 +210,7 @@ const Login: React.FC = () => {
             <div className="flex justify-center mb-4">
               <div className="relative">
                 <div className="w-16 h-16 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center">
-                  <Hexagon className="w-8 h-8 text-white fill-white/20" />
+                  <Hexagon className="w-8 h-8 text-slate-900 dark:text-white fill-slate-900/20 dark:fill-white/20" />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-purple-500 opacity-30 rounded-full blur-lg"></div>
               </div>
@@ -220,7 +220,7 @@ const Login: React.FC = () => {
                 Welcome to SMARTQA
               </span>
             </h1>
-            <p className="text-gray-400">Sign in with your organization account</p>
+            <p className="text-slate-600 dark:text-gray-400">Sign in with your organization account</p>
           </div>
 
           {/* SSO Login */}
@@ -243,7 +243,7 @@ const Login: React.FC = () => {
             </Button>
 
             {/* Microsoft-style design elements */}
-            <div className="flex items-center justify-center space-x-2 text-xs text-gray-500">
+            <div className="flex items-center justify-center space-x-2 text-xs text-slate-500 dark:text-gray-500">
               <div className="w-2 h-2 bg-red-500 rounded-sm"></div>
               <div className="w-2 h-2 bg-green-500 rounded-sm"></div>
               <div className="w-2 h-2 bg-blue-500 rounded-sm"></div>
@@ -253,13 +253,13 @@ const Login: React.FC = () => {
           </div>
 
           {/* Info */}
-          <div className="mt-8 p-4 bg-slate-800/50 border border-slate-700 rounded-lg">
-            <p className="text-sm text-gray-400 text-center">
+          <div className="mt-8 p-4 bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 rounded-lg">
+            <p className="text-sm text-slate-600 dark:text-gray-400 text-center">
               <strong className="text-cyan-400">Secure Authentication:</strong> 
               <br />
               Sign in using your organization's Microsoft account
               <br />
-              <span className="text-xs text-gray-500 mt-1 block">
+              <span className="text-xs text-slate-500 dark:text-gray-500 mt-1 block">
                 A popup window will open for authentication
               </span>
             </p>

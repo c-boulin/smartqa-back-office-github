@@ -147,14 +147,14 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
             Name *
           </label>
           <input
             type="text"
             value={formData.name}
             onChange={(e) => handleInputChange('name', e.target.value)}
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
             required
             disabled={isSubmitting}
             placeholder="Enter folder name"
@@ -163,14 +163,14 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
             Description
           </label>
           <textarea
             value={formData.description}
             onChange={(e) => handleInputChange('description', e.target.value)}
             rows={3}
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
             disabled={isSubmitting}
             placeholder="Enter folder description"
           />
@@ -178,13 +178,13 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
 
         {/* Parent Folder */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
             Parent Folder
           </label>
 
           {selectedParentFolder && (
             <div className="mb-2">
-              <div className="inline-flex items-center gap-2 px-3 py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-sm text-cyan-400">
+              <div className="inline-flex items-center gap-2 px-3 py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-sm text-cyan-700 dark:text-cyan-400">
                 <span>📁 {selectedParentFolder.name}</span>
                 <button
                   type="button"
@@ -202,7 +202,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
           <select
             value={formData.parentId}
             onChange={(e) => handleInputChange('parentId', e.target.value)}
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
             disabled={isSubmitting}
           >
             <option value="">No parent (root folder)</option>
@@ -213,13 +213,13 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
             ))}
           </select>
           {availableParentFolders.length === 0 && (
-            <p className="text-sm text-gray-400 mt-1">No folders available as parent</p>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">No folders available as parent</p>
           )}
         </div>
 
         {/* Children Folders - Multi-select */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
             Children Folders
           </label>
           <select
@@ -228,7 +228,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
             disabled={isSubmitting}
             multiple
             size={Math.min(6, flatChildrenFolders.length || 1)}
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
           >
             {flatChildrenFolders.map(({ folder, level }) => (
               <option 
@@ -241,9 +241,9 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
             ))}
           </select>
           {availableChildrenFolders.length === 0 && (
-            <p className="text-sm text-gray-400 mt-1">No folders available as children</p>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">No folders available as children</p>
           )}
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
             Click on folders to select/deselect them as children. Hold Ctrl/Cmd for multiple selections.
           </p>
         </div>
@@ -251,7 +251,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
         {/* Selected Children Display */}
         {formData.childrenIds.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               Selected Children ({formData.childrenIds.length})
             </label>
             <div className="flex flex-wrap gap-2">

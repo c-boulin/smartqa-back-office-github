@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { projectsApiService, ProjectsApiResponse } from '../services/projectsApi';
+import { foldersApiService } from '../services/foldersApi';
 import { Project } from '../types';
 import toast from 'react-hot-toast';
 import { useLoading } from '../context/LoadingContext';
@@ -265,26 +266,42 @@ export const useProjects = () => {
       setLoading(false);
     }
   };
-  const createProject = async (projectData: { name: string; description: string }) => {
+  const createProject = async (projectData: { name: string; description: string; userId?: string }) => {
     return withLoading(
       (async () => {
         const response = await projectsApiService.createProject({
           title: projectData.name,
           description: projectData.description
         });
-        
+
         // Transform and add the new project to the current list
         const newProject = projectsApiService.transformApiProject(response.data);
         setProjects(prevProjects => [newProject, ...prevProjects]);
-        
+
         // Update pagination to reflect the new total
         setPagination(prev => ({
           ...prev,
           totalItems: prev.totalItems + 1,
           totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage)
         }));
-        
+
+        // Create default folder for the new project
+        if (projectData.userId) {
+          try {
+            await foldersApiService.createFolder({
+              name: 'Default Folder',
+              description: 'Default folder for organizing test cases',
+              projectId: newProject.id,
+              childrenIds: [],
+              userId: projectData.userId
+            });
+          } catch (error) {
+            console.error('Failed to create default folder:', error);
+          }
+        }
+
         toast.success('Project created successfully');
+        return newProject.id;
       })(),
       'Creating project...'
     );

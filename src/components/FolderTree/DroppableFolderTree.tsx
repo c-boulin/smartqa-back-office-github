@@ -24,6 +24,7 @@ const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
 }) => {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [isDragInProgress, setIsDragInProgress] = useState(false);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
   const handleToggleExpanded = React.useCallback((folderId: string) => {
     setExpandedFolders(prev => {
@@ -89,6 +90,7 @@ const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
 
     const handleDragEnd = () => {
       setIsDragInProgress(false);
+      setDragOverFolderId(null);
 
     };
 
@@ -104,7 +106,7 @@ const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
   if (loading) {
     return (
       <div className="p-4 text-center">
-        <div className="flex items-center justify-center text-gray-400 text-sm">
+        <div className="flex items-center justify-center text-slate-500 dark:text-gray-400 text-sm">
           <Loader className="w-4 h-4 mr-2 animate-spin" />
           Loading folders...
         </div>
@@ -115,7 +117,7 @@ const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
   if (folders.length === 0) {
     return (
       <div className="p-4 text-center">
-        <div className="text-gray-400 text-sm">No folders found</div>
+        <div className="text-slate-500 dark:text-gray-400 text-sm">No folders found</div>
       </div>
     );
   }
@@ -123,7 +125,7 @@ const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
   return (
     <div className="space-y-1">
       {isDragInProgress && (
-        <div className="text-xs text-cyan-400 px-3 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg mb-2">
+        <div className="text-xs text-cyan-700 dark:text-cyan-400 px-3 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg mb-2">
           💡 Drop test case on any folder to move it
         </div>
       )}
@@ -141,6 +143,8 @@ const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
           onDeleteFolder={onDeleteFolder}
           onTestCaseDropped={onTestCaseDropped}
           isDragInProgress={isDragInProgress}
+          dragOverFolderId={dragOverFolderId}
+          onDragOverFolder={setDragOverFolderId}
         />
       ))}
     </div>

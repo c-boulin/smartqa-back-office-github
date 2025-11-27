@@ -246,12 +246,12 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between"
+        className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 text-left flex items-center justify-between"
       >
         <div className="flex items-center flex-1 min-w-0">
-          <ConfigIcon className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+          <ConfigIcon className="w-4 h-4 mr-2 text-slate-400 dark:text-gray-400 flex-shrink-0" />
           <span className="truncate">
-            {selectedConfigurations.length > 0 
+            {selectedConfigurations.length > 0
               ? `${selectedConfigurations.length} configuration${selectedConfigurations.length !== 1 ? 's' : ''} selected`
               : placeholder
             }
@@ -259,29 +259,28 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
         </div>
         <div className="flex items-center space-x-2 flex-shrink-0">
           {selectedConfigurations.length > 0 && (
-            <button
-              type="button"
+            <div
               onClick={(e) => {
                 e.stopPropagation();
                 onConfigurationsChange([]);
               }}
-              className="text-gray-400 hover:text-red-400 transition-colors"
+              className="text-slate-400 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
               title="Clear all selections"
             >
               <X className="w-4 h-4" />
-            </button>
+            </div>
           )}
-          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-4 h-4 text-slate-400 dark:text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </div>
       </button>
 
       {/* Dropdown */}
       {isOpen && !disabled && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50 max-h-80 overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg z-50 max-h-80 overflow-hidden">
           {/* Search Bar */}
-          <div className="p-3 border-b border-slate-700">
+          <div className="p-3 border-b border-slate-200 dark:border-slate-700">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-400 w-4 h-4" />
               <input
                 ref={inputRef}
                 type="text"
@@ -289,13 +288,13 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full pl-10 pr-8 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm"
+                className="w-full pl-10 pr-8 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 text-sm"
                 autoFocus
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -308,7 +307,7 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
             {loading ? (
               <div className="flex items-center justify-center py-4">
                 <Loader className="w-4 h-4 mr-2 animate-spin text-cyan-400" />
-                <span className="text-gray-400 text-sm">Loading configurations...</span>
+                <span className="text-slate-500 dark:text-gray-400 text-sm">Loading configurations...</span>
               </div>
             ) : error ? (
               <div className="px-4 py-3 text-red-400 text-sm">
@@ -320,7 +319,7 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
                 <button
                   type="button"
                   onClick={() => onConfigurationsChange([])}
-                  className="w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors text-gray-400 border-b border-slate-700"
+                  className="w-full px-4 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-gray-400 border-b border-slate-200 dark:border-slate-700"
                 >
                   <div className="flex items-center">
                     <X className="w-4 h-4 mr-2" />
@@ -335,21 +334,21 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
                       key={config.id}
                       type="button"
                       onClick={() => handleConfigurationSelect(config)}
-                      className={`w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors ${
-                        selectedConfigurations.some(selected => selected.id === config.id) ? 'bg-slate-700 text-cyan-400' : 'text-white'
+                      className={`w-full px-4 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${
+                        selectedConfigurations.some(selected => selected.id === config.id) ? 'bg-slate-200 dark:bg-slate-700 text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-white'
                       }`}
                     >
                       <div className="flex items-center">
-                        <ConfigIcon className="w-4 h-4 mr-2 text-gray-400" />
+                        <ConfigIcon className="w-4 h-4 mr-2 text-slate-400 dark:text-gray-400" />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{config.label}</div>
-                          <div className="text-xs text-gray-400">ID: {config.id}</div>
+                          <div className="text-xs text-slate-500 dark:text-gray-400">ID: {config.id}</div>
                         </div>
                       </div>
                     </button>
                   ))
                 ) : (
-                  <div className="px-4 py-3 text-gray-400 text-sm">
+                  <div className="px-4 py-3 text-slate-500 dark:text-gray-400 text-sm">
                     {searchTerm ? `No configurations found matching "${searchTerm}"` : 'No configurations available'}
                   </div>
                 )}

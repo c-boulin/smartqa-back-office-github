@@ -53,14 +53,14 @@ const TestRunDetailsFilters: React.FC<TestRunDetailsFiltersProps> = ({
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-400 w-4 h-4 z-10" />
             <input
               type="text"
               placeholder="Search test cases by title..."
               value={searchTerm}
               onChange={(e) => onSearchTermChange(e.target.value)}
               onKeyPress={onSearchKeyPress}
-              className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
             />
           </div>
         </div>
@@ -73,7 +73,7 @@ const TestRunDetailsFilters: React.FC<TestRunDetailsFiltersProps> = ({
           >
             Filters
             {(filters.automationStatus !== 'all' || filters.priority !== 'all' || filters.type !== 'all' || filters.result !== 'all' || (filters.tags && filters.tags.length > 0)) && (
-              <span className="ml-2 px-2 py-0.5 bg-cyan-500 text-white text-xs rounded-full">
+              <span className="ml-2 px-2 py-0.5 bg-cyan-500 text-slate-900 dark:text-white text-xs rounded-full">
                 {[
                   filters.automationStatus !== 'all' ? 1 : 0,
                   filters.priority !== 'all' ? 1 : 0,
@@ -90,9 +90,9 @@ const TestRunDetailsFilters: React.FC<TestRunDetailsFiltersProps> = ({
       {/* Active filters display */}
       {hasActiveFilters && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-gray-400">Active filters:</span>
+          <span className="text-sm text-slate-600 dark:text-gray-400">Active filters:</span>
           {currentSearchTerm && (
-            <span className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400">
+            <span className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-700 dark:text-cyan-400">
               Search: "{currentSearchTerm}"
               <button
                 onClick={() => onClearIndividualFilter('search')}
@@ -116,7 +116,7 @@ const TestRunDetailsFilters: React.FC<TestRunDetailsFiltersProps> = ({
             </span>
           )}
           {filters.priority !== 'all' && (
-            <span className="inline-flex items-center px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full text-sm text-green-400">
+            <span className="inline-flex items-center px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full text-sm text-green-700 dark:text-green-400">
               Priority: {filters.priority}
               <button
                 onClick={() => onClearIndividualFilter('priority')}
@@ -204,7 +204,7 @@ const TestRunDetailsFilters: React.FC<TestRunDetailsFiltersProps> = ({
           )}
           <button
             onClick={onClearAllFilters}
-            className="text-sm text-gray-400 hover:text-white underline"
+            className="text-sm text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white underline"
           >
             Clear all filters
           </button>

@@ -30,7 +30,7 @@ const AppContent: React.FC = () => {
   return (
     <>
       <Router>
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="min-h-screen bg-slate-50 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
@@ -50,17 +50,18 @@ const AppContent: React.FC = () => {
               <Route path="test-plans" element={<TestPlans />} />
               <Route path="test-plans/:id" element={<TestPlanDetails />} />
               <Route path="reports" element={<Reports />} />
-              <Route path="settings" element={<div className="text-white">Settings - In Development</div>} />
+              <Route path="settings" element={<div className="text-slate-900 dark:text-white">Settings - In Development</div>} />
             </Route>
           </Routes>
           <Toaster
             position="top-right"
             toastOptions={{
               duration: 4000,
+              className: '',
               style: {
-                background: '#1F2937',
-                color: '#F3F4F6',
-                border: '1px solid #374151'
+                background: 'rgb(var(--color-surface-primary))',
+                color: 'rgb(var(--color-text-primary))',
+                border: '1px solid rgb(var(--color-border-primary))'
               }
             }}
           />

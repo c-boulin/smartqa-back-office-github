@@ -49,6 +49,9 @@ export interface ApiTestRun {
     configurations?: {
       data: Array<{ type: string; id: string }>;
     };
+    testPlan?: {
+      data: { type: string; id: string } | Array<{ type: string; id: string }>;
+    };
   };
 }
 
@@ -228,7 +231,7 @@ class TestRunsApiService {
 
   async getTestRun(id: string): Promise<{ data: ApiTestRun; included?: Array<Record<string, unknown>> }> {
 
-    const response = await apiService.authenticatedRequest(`/test_runs/${id}?include=user,configurations,testPlans,testCases`);
+    const response = await apiService.authenticatedRequest(`/test_runs/${id}?include=user,configurations,testPlans,testCases,testCases.tags`);
 
     return response;
   }
@@ -376,6 +379,10 @@ class TestRunsApiService {
       throw new Error('No response received from server');
     }
 
+    if (testRunData.state === 2 && testRunData.testPlanId) {
+      await this.updateTestPlanStateToInProgress(testRunData.testPlanId);
+    }
+
     return response;
   }
 
@@ -404,10 +411,16 @@ class TestRunsApiService {
       throw new Error('No response received from server');
     }
 
+    const testPlanId = response.data?.relationships?.testPlan?.data?.id?.split('/').pop();
+    if (testPlanId) {
+      await this.checkAndUpdateTestPlanToDone(testPlanId);
+    }
+
     return response;
   }
 
-  async updateTestRunState(id: string, state: number): Promise<{ data: ApiTestRun }> {
+  async updateTestRunState(id: string, state: number, testPlanId?: string): Promise<{ data: ApiTestRun }> {
+
     const requestBody = {
       data: {
         type: "TestRun",
@@ -426,8 +439,94 @@ class TestRunsApiService {
       throw new Error('No response received from server');
     }
 
+    if (state === 2 && testPlanId) {
+      await this.updateTestPlanStateToInProgress(testPlanId);
+    }
+
+    if (state === 5 && testPlanId) {
+      await this.updateTestPlanStateToDone(testPlanId);
+    }
+
     return response;
   }
+
+  private async updateTestPlanStateToInProgress(testPlanId: string): Promise<void> {
+    try {
+      const { testPlansApiService } = await import('./testPlansApi');
+      const testPlanResponse = await testPlansApiService.getTestPlanWithTestRuns(testPlanId);
+      const testPlan = testPlansApiService.transformApiTestPlan(testPlanResponse.data, testPlanResponse.included);
+
+      if (testPlan.status !== '2') {
+        await testPlansApiService.updateTestPlanStatus(testPlanId, '2', testPlan, testPlanResponse.data);
+      }
+    } catch (error) {
+      console.error('Failed to update test plan state to in progress:', error);
+    }
+  }
+
+  private async updateTestPlanStateToDone(testPlanId: string): Promise<void> {
+    try {
+      const { testPlansApiService } = await import('./testPlansApi');
+      const testPlanResponse = await testPlansApiService.getTestPlanWithTestRuns(testPlanId);
+      const testPlan = testPlansApiService.transformApiTestPlan(testPlanResponse.data, testPlanResponse.included);
+
+      if (testPlan.status !== '3') {
+        await testPlansApiService.updateTestPlanStatus(testPlanId, '3', testPlan, testPlanResponse.data);
+      }
+    } catch (error) {
+      console.error('Failed to update test plan state to done:', error);
+    }
+  }
+
+  private async checkAndUpdateTestPlanToDone(testPlanId: string): Promise<void> {
+    try {
+      const { testPlansApiService } = await import('./testPlansApi');
+      const testPlanResponse = await testPlansApiService.getTestPlanWithTestRuns(testPlanId);
+      const testPlan = testPlansApiService.transformApiTestPlan(testPlanResponse.data, testPlanResponse.included);
+
+      if (testPlan.status === '3') {
+        return;
+      }
+
+      const testRunIds = testPlan.testRunIds;
+      if (testRunIds.length === 0) {
+        return;
+      }
+
+      const allTestRunsClosed = await this.checkIfAllTestRunsClosed(testRunIds, testPlanResponse.included || []);
+      if (!allTestRunsClosed) {
+        return;
+      }
+
+      await testPlansApiService.updateTestPlanStatus(testPlanId, '3', testPlan, testPlanResponse.data);
+    } catch (error) {
+      console.error('Failed to check and update test plan to done:', error);
+    }
+  }
+
+  private async checkIfAllTestRunsClosed(testRunIds: string[], included: Array<Record<string, unknown>>): Promise<boolean> {
+    for (const testRunId of testRunIds) {
+      const testRunData = included.find(item =>
+        item.type === 'TestRun' && (
+          item.attributes?.id?.toString() === testRunId ||
+          (item.id as string)?.split('/').pop() === testRunId
+        )
+      );
+
+      if (!testRunData) {
+        return false;
+      }
+
+      const state = (testRunData.attributes as Record<string, unknown>)?.state;
+      const isClosed = state === 6 || state === "6" || parseInt(state?.toString() || '0') === 6;
+
+      if (!isClosed) {
+        return false;
+      }
+    }
+    return true;
+  }
+
 
   // Helper method to find creator in included data
   private findCreatorInIncluded(creatorId: string, included: ApiCreator[] = []): ApiCreator | null {
@@ -623,6 +722,17 @@ class TestRunsApiService {
       return parsedDate;
     };
     
+    // Extract test plan ID from attributes or relationships
+    let testPlanId = apiTestRun.attributes.test_plan_id;
+    if (!testPlanId && apiTestRun.relationships.testPlan?.data) {
+      // Handle both single object and array formats
+      if (Array.isArray(apiTestRun.relationships.testPlan.data) && apiTestRun.relationships.testPlan.data.length > 0) {
+        testPlanId = apiTestRun.relationships.testPlan.data[0].id.split('/').pop() || undefined;
+      } else if (apiTestRun.relationships.testPlan.data && typeof apiTestRun.relationships.testPlan.data === 'object' && 'id' in apiTestRun.relationships.testPlan.data) {
+        testPlanId = (apiTestRun.relationships.testPlan.data as { id: string }).id.split('/').pop() || undefined;
+      }
+    }
+
     return {
       id: apiTestRun.attributes.id.toString(),
       name: apiTestRun.attributes.name,
@@ -647,7 +757,7 @@ class TestRunsApiService {
       startDate: parseDate(apiTestRun.attributes.startDate),
       endDate: parseOptionalDate(apiTestRun.attributes.endDate),
       closedDate: parseOptionalDate(apiTestRun.attributes.closedDate),
-      testPlanId: apiTestRun.attributes.test_plan_id,
+      testPlanId: testPlanId,
       assignedTo: {
         id: assignedUserId,
         name: assignedUser?.attributes.name || 'Unassigned',

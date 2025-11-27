@@ -106,7 +106,7 @@ const TagsWithTooltip: React.FC<TagsWithTooltipProps> = ({
 
   if (!Array.isArray(tags) || tags.length === 0) {
     return (
-      <span className="text-gray-500 text-xs">No tags</span>
+      <span className="text-slate-500 dark:text-gray-500 text-xs">No tags</span>
     );
   }
 
@@ -129,7 +129,7 @@ const TagsWithTooltip: React.FC<TagsWithTooltipProps> = ({
       {visibleTags.map((tag, index) => (
         <span
           key={index}
-          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 border border-cyan-500/30"
         >
           <TagIcon className="w-3 h-3 mr-1" />
           {tag}
@@ -141,7 +141,7 @@ const TagsWithTooltip: React.FC<TagsWithTooltipProps> = ({
         <div className="relative">
           <span
             ref={triggerRef}
-            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30 cursor-help hover:bg-gray-500/30 hover:text-gray-300 transition-colors relative"
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/20 text-slate-600 border border-gray-500/30 cursor-help hover:bg-gray-500/30 hover:text-slate-700 dark:text-gray-300 transition-colors relative"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             aria-label={`${hiddenTags.length} more tags: ${hiddenTags.join(', ')}`}
@@ -170,8 +170,8 @@ const TagsWithTooltip: React.FC<TagsWithTooltipProps> = ({
                 </div>
                 <div className="space-y-0.5">
                   {hiddenTags.map((tag, index) => (
-                    <div key={index} className="flex items-center text-xs text-gray-300">
-                      <TagIcon className="w-3 h-3 mr-2 text-gray-400 flex-shrink-0" />
+                    <div key={index} className="flex items-center text-xs text-slate-700 dark:text-gray-300">
+                      <TagIcon className="w-3 h-3 mr-2 text-slate-600 dark:text-gray-400 flex-shrink-0" />
                       <span className="truncate">{tag}</span>
                     </div>
                   ))}

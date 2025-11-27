@@ -40,16 +40,16 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
   onSubmit
 }) => {
   return (
-    <div className="w-80 border-l border-slate-700 pl-6 flex flex-col">
+    <div className="w-80 border-l border-slate-300 dark:border-slate-700 pl-6 flex flex-col">
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-4 pl-2 pr-2">
           {/* Owner */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               Owner
             </label>
             {usersLoading ? (
-              <div className="flex items-center text-gray-400 text-sm">
+              <div className="flex items-center text-slate-500 dark:text-gray-400 text-sm">
                 <Loader className="w-4 h-4 mr-2 animate-spin" />
                 Loading users...
               </div>
@@ -57,7 +57,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
               <select
                 value={formData.owner}
                 onChange={(e) => onInputChange('owner', e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm max-w-full"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 text-sm max-w-full"
                 disabled={isSubmitting}
                 required
               >
@@ -73,7 +73,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
 
           {/* State */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               State
             </label>
             <IconSelect
@@ -90,7 +90,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
 
           {/* Priority */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               Priority
             </label>
             <IconSelect
@@ -104,13 +104,13 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
 
           {/* Type of Test Case */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               Type of Test Case
             </label>
             <select
               value={formData.testCaseType}
               onChange={(e) => onInputChange('testCaseType', parseInt(e.target.value))}
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm max-w-full"
+              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 text-sm max-w-full"
               disabled={isSubmitting}
             >
               {Object.entries(TEST_CASE_TYPES).map(([value, label]) => (
@@ -121,13 +121,13 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
 
           {/* Automation Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               Automation Status
             </label>
             <select
               value={formData.automationStatus}
               onChange={(e) => onInputChange('automationStatus', parseInt(e.target.value))}
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm max-w-full"
+              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 text-sm max-w-full"
               disabled={isSubmitting}
             >
               {Object.entries(AUTOMATION_STATUS).map(([value, label]) => (
@@ -138,7 +138,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
 
           {/* Tags */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               Tags
             </label>
             <div className="max-w-full">
@@ -156,7 +156,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
       </div>
 
       {/* Footer - Moved inside sidebar */}
-      <div className="border-t border-slate-700 pt-4 mt-4 flex-shrink-0">
+      <div className="border-t border-slate-300 dark:border-slate-700 pt-4 mt-4 flex-shrink-0">
         <div className="flex flex-col space-y-3">
           <Button variant="secondary" onClick={onClose} disabled={isSubmitting} className="w-full">
             Cancel

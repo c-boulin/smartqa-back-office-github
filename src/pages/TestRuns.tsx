@@ -16,6 +16,7 @@ import TestRunsFiltersSidebar from '../components/TestRun/TestRunsFiltersSidebar
 import { useApp } from '../context/AppContext';
 import { useTestRuns } from '../hooks/useTestRuns';
 import { useTestRunsFilters } from '../hooks/useTestRunsFilters';
+import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { useUsers } from '../context/UsersContext';
 import { TestRun } from '../services/testRunsApi';
 import toast from 'react-hot-toast';
@@ -26,6 +27,8 @@ const TestRuns: React.FC = () => {
   const { users } = useUsers();
   const navigate = useNavigate();
   const selectedProject = getSelectedProject();
+
+  useRestoreLastProject();
   
   const { 
     testRuns, 
@@ -388,8 +391,10 @@ const TestRuns: React.FC = () => {
   }, []);
 
   const handleTestRunNameClick = useCallback((testRun: TestRun) => {
-
-    navigate(`/test-runs/${testRun.id}`);
+    const url = testRun.testPlanId
+      ? `/test-runs/${testRun.id}?testPlanId=${testRun.testPlanId}`
+      : `/test-runs/${testRun.id}`;
+    navigate(url);
   }, [navigate]);
 
   const getStateIcon = (state: number) => {
@@ -408,7 +413,7 @@ const TestRuns: React.FC = () => {
   const getStateColor = (state: number) => {
     switch (state) {
       case 1: // New
-        return 'text-gray-400 bg-gray-500/20 border-gray-500/50';
+        return 'text-slate-600 dark:text-gray-400 bg-gray-500/20 border-gray-500/50';
       case 2: // In progress
         return 'text-blue-400 bg-blue-500/20 border-blue-500/50';
       case 3: // Under review
@@ -416,11 +421,11 @@ const TestRuns: React.FC = () => {
       case 4: // Rejected
         return 'text-red-400 bg-red-500/20 border-red-500/50';
       case 5: // Done
-        return 'text-green-400 bg-green-500/20 border-green-500/50';
+        return 'text-green-700 dark:text-green-400 bg-green-500/20 border-green-500/50';
       case 6: // Closed
         return 'text-purple-400 bg-purple-500/20 border-purple-500/50';
       default:
-        return 'text-gray-400 bg-gray-500/20 border-gray-500/50';
+        return 'text-slate-600 dark:text-gray-400 bg-gray-500/20 border-gray-500/50';
     }
   };
 
@@ -441,7 +446,7 @@ const TestRuns: React.FC = () => {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <Loader className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading test runs...</p>
+          <p className="text-slate-600 dark:text-gray-400">Loading test runs...</p>
         </div>
       </div>
     );
@@ -453,7 +458,7 @@ const TestRuns: React.FC = () => {
         <Card className="p-8 text-center">
           <div className="text-red-400 mb-4">
             <p className="text-lg font-medium">Failed to load test runs</p>
-            <p className="text-sm text-gray-400 mt-2">{error}</p>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">{error}</p>
           </div>
           <Button onClick={() => fetchTestRuns(1)}>
             Try Again
@@ -468,8 +473,8 @@ const TestRuns: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white">Test Runs</h2>
-          <p className="text-gray-400">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Test Runs</h2>
+          <p className="text-slate-600 dark:text-gray-400">
             {selectedProject 
               ? `Manage test runs for ${selectedProject.name} (${pagination.totalItems} total)` 
               : `Please select a project to view test runs`
@@ -477,7 +482,7 @@ const TestRuns: React.FC = () => {
           </p>
           {selectedProject && (
             <div className="mt-2">
-              <div className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400">
+              <div className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-700 dark:text-cyan-400">
                 📁 Project: {selectedProject.name} ({filteredTestRuns.length} {activeTab} test runs)
               </div>
             </div>
@@ -501,7 +506,7 @@ const TestRuns: React.FC = () => {
       {/* Show message if no project selected */}
       {!selectedProject && (
         <Card className="p-8 text-center">
-          <div className="text-gray-400 mb-4">
+          <div className="text-slate-600 dark:text-gray-400 mb-4">
             <Play className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">No project selected</p>
             <p className="text-sm">Please select a project from the sidebar to view and manage test runs.</p>
@@ -514,18 +519,18 @@ const TestRuns: React.FC = () => {
         <>
           {/* Tabs */}
           <Card className="p-0 overflow-hidden">
-            <div className="flex border-b border-slate-700">
+            <div className="flex border-b border-slate-200 dark:border-slate-700">
               <button
                 onClick={() => setActiveTab('active')}
                 className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${
                   activeTab === 'active'
                     ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border-b-2 border-cyan-400'
-                    : 'text-gray-400 hover:text-cyan-400 hover:bg-slate-800/50'
+                    : 'text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:bg-slate-800/50'
                 }`}
               >
                 <Activity className="w-4 h-4" />
                 <span>Active Test Runs</span>
-                <span className="ml-2 px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs rounded-full">
+                <span className="ml-2 px-2 py-0.5 bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 text-xs rounded-full">
                   {testRuns.filter(tr => tr.state !== 6).length}
                 </span>
               </button>
@@ -534,7 +539,7 @@ const TestRuns: React.FC = () => {
                 className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${
                   activeTab === 'closed'
                     ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border-b-2 border-cyan-400'
-                    : 'text-gray-400 hover:text-cyan-400 hover:bg-slate-800/50'
+                    : 'text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-50 dark:bg-slate-800/50'
                 }`}
               >
                 <Archive className="w-4 h-4" />
@@ -571,21 +576,21 @@ const TestRuns: React.FC = () => {
             
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-slate-800/50 border-b border-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                   <tr>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">ID</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Name</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">State</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Progress</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Test Cases</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Assignee</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-400">Actions</th>
+                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">ID</th>
+                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Name</th>
+                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">State</th>
+                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Progress</th>
+                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Test Cases</th>
+                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Assignee</th>
+                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTestRuns.map((testRun) => (
-                    <tr key={testRun.id} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
-                      <td className="py-4 px-6 text-sm text-gray-300 font-mono">
+                    <tr key={testRun.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors">
+                      <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
                         TR{testRun.id}
                       </td>
                       <td className="py-4 px-6">
@@ -594,12 +599,12 @@ const TestRuns: React.FC = () => {
                             onClick={() => handleTestRunNameClick(testRun)}
                             className="text-left w-full group"
                           >
-                            <h3 className="font-semibold text-white group-hover:text-cyan-400 transition-colors cursor-pointer mb-1">
+                            <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors cursor-pointer mb-1">
                               {testRun.name}
                             </h3>
                           </button>
                           {testRun.description && (
-                            <p className="text-sm text-gray-400 truncate max-w-xs">{testRun.description}</p>
+                            <p className="text-sm text-slate-600 dark:text-gray-400 truncate max-w-xs">{testRun.description}</p>
                           )}
                         </div>
                       </td>
@@ -612,23 +617,23 @@ const TestRuns: React.FC = () => {
                       <td className="py-4 px-6">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-400">Progress</span>
-                            <span className="text-white font-medium">{testRun.progress}%</span>
+                            <span className="text-slate-600 dark:text-gray-400">Progress</span>
+                            <span className="text-slate-900 dark:text-white font-medium">{testRun.progress}%</span>
                           </div>
-                          <div className="w-full bg-slate-700 rounded-full h-2">
+                          <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
                             <div 
                               className="bg-gradient-to-r from-cyan-400 to-purple-500 h-2 rounded-full transition-all duration-300"
                               style={{ width: `${testRun.progress}%` }}
                             ></div>
                           </div>
-                          <div className="flex items-center justify-between text-xs text-gray-400">
+                          <div className="flex items-center justify-between text-xs text-slate-600 dark:text-gray-400">
                             <span>Pass Rate: {testRun.passRate}%</span>
                           </div>
                         </div>
                       </td>
                       <td className="py-4 px-6">
                         <div className="space-y-1 text-sm">
-                          <div className="text-white font-medium">{testRun.testCasesCount} total</div>
+                          <div className="text-slate-900 dark:text-white font-medium">{testRun.testCasesCount} total</div>
                           <div className="flex space-x-2 text-xs">
                             <span className="text-green-400">{testRun.passedCount} passed</span>
                             <span className="text-red-400">{testRun.failedCount} failed</span>
@@ -641,11 +646,11 @@ const TestRuns: React.FC = () => {
                       <td className="py-4 px-6">
                         <div className="flex items-center">
                           <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center mr-3">
-                            <User className="w-4 h-4 text-white" />
+                            <User className="w-4 h-4 text-slate-900 dark:text-white" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-white">{testRun.assignedTo.name}</p>
-                            <p className="text-xs text-gray-400">{testRun.assignedTo.email}</p>
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">{testRun.assignedTo.name}</p>
+                            <p className="text-xs text-slate-600 dark:text-gray-400">{testRun.assignedTo.email}</p>
                           </div>
                         </div>
                       </td>
@@ -654,7 +659,7 @@ const TestRuns: React.FC = () => {
                           {activeTab === 'active' && ( // Only show edit button for active test runs
                             <button
                               onClick={() => openEditModal(testRun)}
-                              className="p-2 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded-lg transition-colors"
+                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                               title="Edit"
                               disabled={isSubmitting}
                             >
@@ -663,7 +668,7 @@ const TestRuns: React.FC = () => {
                           )}
                           <button
                             onClick={() => openCloneModal(testRun)}
-                            className="p-2 text-gray-400 hover:text-green-400 hover:bg-slate-700 rounded-lg transition-colors"
+                            className="p-2 text-slate-600 dark:text-gray-400 hover:text-green-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                             title="Clone Test Run"
                             disabled={isSubmitting}
                           >
@@ -672,7 +677,7 @@ const TestRuns: React.FC = () => {
                           {activeTab === 'active' && testRun.state !== 6 && ( // Only show close button for active test runs
                             <button
                               onClick={() => openCloseModal(testRun)}
-                              className="p-2 text-gray-400 hover:text-orange-400 hover:bg-slate-700 rounded-lg transition-colors"
+                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-orange-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                               title="Close Test Run"
                               disabled={isSubmitting}
                             >
@@ -681,7 +686,7 @@ const TestRuns: React.FC = () => {
                           )}
                           <button
                             onClick={() => openDeleteDialog(testRun)}
-                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
+                            className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                             title="Delete"
                             disabled={isSubmitting}
                           >
@@ -696,7 +701,7 @@ const TestRuns: React.FC = () => {
               
               {filteredTestRuns.length === 0 && !loading && (
                 <div className="text-center py-12">
-                  <div className="text-gray-400 mb-4">
+                  <div className="text-slate-600 dark:text-gray-400 mb-4">
                     <Play className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p className="text-lg font-medium">No {activeTab} test runs found</p>
                     <p className="text-sm">
@@ -714,9 +719,9 @@ const TestRuns: React.FC = () => {
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div className="border-t border-slate-700 px-6 py-4">
+              <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm text-slate-600 dark:text-gray-400">
                     Showing {filteredTestRuns.length} of {testRuns.length} test runs
                   </div>
                   <div className="flex items-center space-x-2">
@@ -729,7 +734,7 @@ const TestRuns: React.FC = () => {
                     >
                       Previous
                     </Button>
-                    <span className="text-sm text-gray-400">
+                    <span className="text-sm text-slate-600 dark:text-gray-400">
                       Page {pagination.currentPage} of {pagination.totalPages}
                     </span>
                     <Button

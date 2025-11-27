@@ -40,14 +40,14 @@ const TestRunDetailsFiltersSidebar: React.FC<TestRunDetailsFiltersSidebarProps> 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="absolute right-0 top-0 h-full w-96 bg-gradient-to-b from-slate-800 to-slate-900 border-l border-purple-500/30 shadow-2xl">
+      <div className="absolute right-0 top-0 h-full w-96 bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border-l border-slate-300 dark:border-purple-500/30 shadow-2xl">
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-slate-700">
-            <h3 className="text-xl font-semibold text-white">Filters</h3>
+          <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Filters</h3>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+              className="p-2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -57,13 +57,13 @@ const TestRunDetailsFiltersSidebar: React.FC<TestRunDetailsFiltersSidebarProps> 
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {/* Execution Result Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
                 Execution Result
               </label>
               <select
                 value={filters.result}
                 onChange={(e) => onFilterChange('result', e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
               >
                 <option value="all">All Results</option>
                 <option value="passed">Passed</option>
@@ -79,13 +79,13 @@ const TestRunDetailsFiltersSidebar: React.FC<TestRunDetailsFiltersSidebarProps> 
 
             {/* Automation Status Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
                 Automation Status
               </label>
               <select
                 value={filters.automationStatus}
                 onChange={(e) => onFilterChange('automationStatus', e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
               >
                 <option value="all">All Automation Status</option>
                 <option value="1">{AUTOMATION_STATUS_LABELS[1]}</option>
@@ -98,13 +98,13 @@ const TestRunDetailsFiltersSidebar: React.FC<TestRunDetailsFiltersSidebarProps> 
 
             {/* Priority Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
                 Priority
               </label>
               <select
                 value={filters.priority}
                 onChange={(e) => onFilterChange('priority', e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
               >
                 <option value="all">All Priorities</option>
                 <option value="low">Low</option>
@@ -116,13 +116,13 @@ const TestRunDetailsFiltersSidebar: React.FC<TestRunDetailsFiltersSidebarProps> 
 
             {/* Type Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
                 Test Type
               </label>
               <select
                 value={filters.type}
                 onChange={(e) => onFilterChange('type', e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
               >
                 <option value="all">All Types</option>
                 {Object.entries(TEST_CASE_TYPES).map(([value, label]) => (
@@ -133,7 +133,7 @@ const TestRunDetailsFiltersSidebar: React.FC<TestRunDetailsFiltersSidebarProps> 
 
             {/* Tags Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
                 Tags
               </label>
               <TagSelector
@@ -147,13 +147,13 @@ const TestRunDetailsFiltersSidebar: React.FC<TestRunDetailsFiltersSidebarProps> 
 
             {/* State Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
                 State
               </label>
               <select
                 value={filters.state}
                 onChange={(e) => onFilterChange('state', e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
               >
                 <option value="all">All States</option>
                 <option value="1">Active</option>
@@ -166,7 +166,7 @@ const TestRunDetailsFiltersSidebar: React.FC<TestRunDetailsFiltersSidebarProps> 
           </div>
 
           {/* Footer */}
-          <div className="border-t border-slate-700 p-6">
+          <div className="border-t border-slate-200 dark:border-slate-700 p-6">
             <div className="flex space-x-3">
               <Button
                 variant="secondary"

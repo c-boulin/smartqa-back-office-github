@@ -167,6 +167,20 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
           onFoldersExtracted(allFolders);
         }
 
+        // Transform and set the filtered test cases for display
+        const filteredTestCases = filteredResponse.data.map(apiTestCase =>
+          testCasesApiService.transformApiTestCase(apiTestCase, filteredResponse.included)
+        );
+        setTestCases(filteredTestCases);
+
+        // Set pagination based on filtered results
+        setPagination({
+          currentPage: filteredResponse.meta.currentPage,
+          totalItems: filteredResponse.meta.totalItems,
+          itemsPerPage: filteredResponse.meta.itemsPerPage,
+          totalPages: filteredResponse.meta.totalPages
+        });
+
       } else {
         // Normal load - fetch test cases and folders in parallel
         const [firstPageResponse, foldersResponse] = await Promise.all([

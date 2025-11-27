@@ -58,15 +58,15 @@ const SharedStepViewModal: React.FC<SharedStepViewModalProps> = ({
             <div className="flex-1">
               <div className="flex items-center mb-2">
                 <Layers className="w-5 h-5 text-purple-400 mr-2" />
-                <h3 className="text-lg font-semibold text-white">{sharedStep.title}</h3>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{sharedStep.title}</h3>
                 <span className="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">
                   Shared Step
                 </span>
               </div>
               {sharedStep.description && (
-                <p className="text-gray-300 mb-3">{sharedStep.description}</p>
+                <p className="text-slate-700 dark:text-gray-300 mb-3">{sharedStep.description}</p>
               )}
-              <div className="flex items-center space-x-6 text-sm text-gray-400">
+              <div className="flex items-center space-x-6 text-sm text-slate-600 dark:text-gray-400">
                 <div className="flex items-center">
                   <User className="w-4 h-4 mr-1" />
                   <span>{sharedStep.createdBy.name}</span>
@@ -84,33 +84,33 @@ const SharedStepViewModal: React.FC<SharedStepViewModalProps> = ({
 
         {/* Steps and Results */}
         <div>
-          <h4 className="text-lg font-medium text-gray-300 mb-4">Steps and Results</h4>
+          <h4 className="text-lg font-medium text-slate-700 dark:text-gray-300 mb-4">Steps and Results</h4>
           
           {stepResults.length > 0 ? (
             <div className="space-y-4">
               {stepResults.map((stepResult, index) => (
-                <div key={stepResult.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+                <div key={stepResult.id} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
                   <div className="flex items-center mb-3">
-                    <h5 className="text-sm font-medium text-white">Step {index + 1}</h5>
+                    <h5 className="text-sm font-medium text-slate-900 dark:text-white">Step {index + 1}</h5>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-2">
+                      <label className="block text-xs font-medium text-slate-600 dark:text-gray-400 mb-2">
                         Step
                       </label>
-                      <div 
-                        className="text-sm text-gray-300 bg-slate-700/50 border border-slate-600 rounded p-3 min-h-[80px]"
+                      <div
+                        className="html-content text-sm text-slate-700 dark:text-gray-300 bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded p-3 min-h-[80px]"
                         dangerouslySetInnerHTML={{ __html: stepResult.step }}
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-2">
+                      <label className="block text-xs font-medium text-slate-600 dark:text-gray-400 mb-2">
                         Expected Result
                       </label>
-                      <div 
-                        className="text-sm text-gray-300 bg-slate-700/50 border border-slate-600 rounded p-3 min-h-[80px]"
+                      <div
+                        className="html-content text-sm text-slate-700 dark:text-gray-300 bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded p-3 min-h-[80px]"
                         dangerouslySetInnerHTML={{ __html: stepResult.result }}
                       />
                     </div>
@@ -119,14 +119,14 @@ const SharedStepViewModal: React.FC<SharedStepViewModalProps> = ({
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-400 border-2 border-dashed border-slate-600 rounded-lg">
+            <div className="text-center py-8 text-slate-600 dark:text-gray-400 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg">
               <p>No steps defined for this shared step.</p>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end pt-4 border-t border-slate-700">
+        <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>

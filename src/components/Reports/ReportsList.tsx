@@ -38,13 +38,13 @@ const ReportsList: React.FC<ReportsListProps> = ({
       case 'execution':
         return 'bg-blue-500/20 text-blue-400 border-blue-500/50';
       case 'project':
-        return 'bg-green-500/20 text-green-400 border-green-500/50';
+        return 'bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/50';
       case 'dashboard':
         return 'bg-purple-500/20 text-purple-400 border-purple-500/50';
       case 'trend':
         return 'bg-orange-500/20 text-orange-400 border-orange-500/50';
       default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/50';
+        return 'bg-gray-500/20 text-slate-600 dark:text-gray-400 border-gray-500/50';
     }
   };
 
@@ -69,30 +69,30 @@ const ReportsList: React.FC<ReportsListProps> = ({
         <Card key={report.id} className="p-6 hover:shadow-lg transition-shadow">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-white mb-2">{report.name}</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{report.name}</h3>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getReportTypeColor(report.type)}`}>
                 {getReportTypeLabel(report.type)}
               </span>
             </div>
             <div className="relative">
-              <button className="p-2 text-gray-400 hover:text-white transition-colors">
+              <button className="p-2 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors">
                 <MoreHorizontal className="w-4 h-4" />
               </button>
             </div>
           </div>
 
           <div className="space-y-3 mb-4">
-            <div className="flex items-center text-sm text-gray-400">
+            <div className="flex items-center text-sm text-slate-600 dark:text-gray-400">
               <Calendar className="w-4 h-4 mr-2" />
               <span>
                 {format(report.dateRange.start, 'MMM dd')} - {format(report.dateRange.end, 'MMM dd, yyyy')}
               </span>
             </div>
-            <div className="flex items-center text-sm text-gray-400">
+            <div className="flex items-center text-sm text-slate-600 dark:text-gray-400">
               <User className="w-4 h-4 mr-2" />
               <span>{report.createdBy}</span>
             </div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-slate-600 dark:text-gray-400">
               Created: {format(report.createdAt, 'MMM dd, yyyy')}
             </div>
           </div>

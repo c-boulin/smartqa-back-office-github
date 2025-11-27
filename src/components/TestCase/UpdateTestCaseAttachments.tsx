@@ -75,13 +75,13 @@ const UpdateTestCaseAttachments: React.FC<UpdateTestCaseAttachmentsProps> = ({
 
   return (
     <div className="space-y-4">
-      <label className="block text-sm font-medium text-gray-300 mb-2">
+      <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
         Attachments
       </label>
       
       {/* Loading state for attachments */}
       {loadingAttachments && (
-        <div className="flex items-center text-gray-400 text-sm mb-4">
+        <div className="flex items-center text-slate-500 dark:text-gray-400 text-sm mb-4">
           <Loader className="w-4 h-4 mr-2 animate-spin" />
           Loading existing attachments...
         </div>
@@ -90,23 +90,23 @@ const UpdateTestCaseAttachments: React.FC<UpdateTestCaseAttachmentsProps> = ({
       {/* Display existing attachments from GET response */}
       {!loadingAttachments && existingAttachments.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium text-gray-400 mb-2">
+          <h4 className="text-sm font-medium text-slate-500 dark:text-gray-400 mb-2">
             Existing Attachments ({existingAttachments.length})
           </h4>
           <div className="space-y-2">
             {existingAttachments.map((attachment) => (
               <div
                 key={attachment.id}
-                className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg space-y-2"
+                className="p-3 bg-green-50 dark:bg-green-500/10 border border-green-300 dark:border-green-500/30 rounded-lg space-y-2"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3 flex-1 min-w-0">
-                    <div className="text-green-400">
+                    <div className="text-green-600 dark:text-green-400">
                       <CheckCircle className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">{attachment.name || attachment.fileName}</p>
-                      <p className="text-xs text-green-400">Existing attachment</p>
+                      <p className="text-sm text-slate-900 dark:text-white truncate">{attachment.name || attachment.fileName}</p>
+                      <p className="text-xs text-green-600 dark:text-green-400">Existing attachment</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -114,7 +114,7 @@ const UpdateTestCaseAttachments: React.FC<UpdateTestCaseAttachmentsProps> = ({
                       href={attachment.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-green-400 hover:text-green-300 text-sm underline"
+                      className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm underline"
                     >
                       View
                     </a>
@@ -122,7 +122,7 @@ const UpdateTestCaseAttachments: React.FC<UpdateTestCaseAttachmentsProps> = ({
                       type="button"
                       onClick={() => onRemoveExistingAttachment(attachment.id)}
                       disabled={isSubmitting || savingAttachmentId === attachment.id}
-                      className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-100 dark:hover:bg-red-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Remove attachment"
                     >
                       <X className="w-4 h-4" />
@@ -137,7 +137,7 @@ const UpdateTestCaseAttachments: React.FC<UpdateTestCaseAttachmentsProps> = ({
                       value={editingName}
                       onChange={(e) => setEditingName(e.target.value)}
                       placeholder="Enter attachment name"
-                      className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                      className="flex-1 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
                       disabled={savingAttachmentId === attachment.id}
                       autoFocus
                     />
@@ -163,7 +163,7 @@ const UpdateTestCaseAttachments: React.FC<UpdateTestCaseAttachmentsProps> = ({
                       type="button"
                       onClick={handleCancelEdit}
                       disabled={savingAttachmentId === attachment.id}
-                      className="px-3 py-2 bg-slate-600 text-white rounded-lg text-sm hover:bg-slate-500 transition-colors disabled:opacity-50"
+                      className="px-3 py-2 bg-slate-300 dark:bg-slate-600 text-slate-900 dark:text-white rounded-lg text-sm hover:bg-slate-400 dark:hover:bg-slate-500 transition-colors disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -173,7 +173,7 @@ const UpdateTestCaseAttachments: React.FC<UpdateTestCaseAttachmentsProps> = ({
                     type="button"
                     onClick={() => handleEditClick(attachment)}
                     disabled={isSubmitting || savingAttachmentId !== null}
-                    className="text-xs text-cyan-400 hover:text-cyan-300 underline disabled:opacity-50"
+                    className="text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 underline disabled:opacity-50"
                   >
                     Edit name
                   </button>

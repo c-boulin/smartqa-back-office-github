@@ -121,7 +121,7 @@ const FolderNode: React.FC<FolderNodeProps> = React.memo(({
             className={`flex items-center py-2 px-3 cursor-pointer transition-colors rounded-lg flex-1 min-w-0 max-w-[calc(100%-32px)] ${
               isSelected
                 ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/30'
-                : 'text-gray-300 hover:text-cyan-400 hover:bg-slate-800/50'
+                : 'text-slate-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
             }`}
             style={{ paddingLeft: `${12 + level * 16}px` }}
             onClick={handleSelect}
@@ -129,7 +129,7 @@ const FolderNode: React.FC<FolderNodeProps> = React.memo(({
           {hasChildren ? (
             <button
               onClick={handleToggle}
-              className="flex items-center justify-center w-4 h-4 mr-2 text-gray-400 hover:text-cyan-400 transition-colors"
+              className="flex items-center justify-center w-4 h-4 mr-2 text-slate-500 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
               type="button"
             >
               {isExpanded ? (
@@ -153,15 +153,15 @@ const FolderNode: React.FC<FolderNodeProps> = React.memo(({
                 <span className="truncate text-sm font-medium max-w-[140px]">{folder.name}</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${
                   testCasesCount > 0
-                    ? 'text-cyan-400 bg-cyan-500/20 border border-cyan-500/30'
-                    : 'text-gray-500 bg-slate-700/50 border border-slate-600'
+                    ? 'text-cyan-700 dark:text-cyan-400 bg-cyan-500/20 border border-cyan-500/30'
+                    : 'text-slate-500 dark:text-gray-500 bg-slate-200 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600'
                 }`}>
                   {testCasesCount}
                 </span>
               </div>
               {/* Show description only for the selected folder */}
               {isSelected && folder.description && (
-                <div className="text-xs text-gray-400 mt-1 truncate overflow-hidden">
+                <div className="text-xs text-slate-600 dark:text-gray-400 mt-1 truncate overflow-hidden">
                   {folder.description}
                 </div>
               )}
@@ -176,7 +176,7 @@ const FolderNode: React.FC<FolderNodeProps> = React.memo(({
             <button
               ref={dropdownButtonRef}
               onClick={handleThreeDotsClick}
-              className="p-1 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded transition-colors flex-shrink-0"
+              className="p-1 text-slate-500 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors flex-shrink-0"
               title="Folder actions"
             >
               <MoreHorizontal className="w-4 h-4" />
@@ -193,7 +193,7 @@ const FolderNode: React.FC<FolderNodeProps> = React.memo(({
                   }}
                 />
                 <div
-                  className="fixed bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-[120] min-w-[120px]"
+                  className="fixed bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-xl z-[120] min-w-[120px]"
                   style={{
                     top: dropdownPosition.alignTop ? 'auto' : `${dropdownPosition.top}px`,
                     bottom: dropdownPosition.alignTop ? `${window.innerHeight - dropdownPosition.top}px` : 'auto',
@@ -203,7 +203,7 @@ const FolderNode: React.FC<FolderNodeProps> = React.memo(({
                   {onEditFolder && (
                     <button
                       onClick={handleEdit}
-                      className="w-full px-3 py-2 text-left text-gray-300 hover:text-cyan-400 hover:bg-slate-700 transition-colors flex items-center text-sm rounded-t-lg"
+                      className="w-full px-3 py-2 text-left text-slate-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center text-sm rounded-t-lg"
                     >
                       <SquarePen className="w-3 h-3 mr-2" />
                       Edit
@@ -212,7 +212,7 @@ const FolderNode: React.FC<FolderNodeProps> = React.memo(({
                   {onDeleteFolder && (
                     <button
                       onClick={handleDelete}
-                      className="w-full px-3 py-2 text-left text-gray-300 hover:text-red-400 hover:bg-slate-700 transition-colors flex items-center text-sm rounded-b-lg"
+                      className="w-full px-3 py-2 text-left text-slate-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center text-sm rounded-b-lg"
                     >
                       <Trash2 className="w-3 h-3 mr-2" />
                       Delete
@@ -326,7 +326,7 @@ const FolderTree: React.FC<FolderTreeProps> = React.memo(({
   if (loading) {
     return (
       <div className="p-4 text-center">
-        <div className="flex items-center justify-center text-gray-400 text-sm">
+        <div className="flex items-center justify-center text-slate-500 dark:text-gray-400 text-sm">
           <Loader className="w-4 h-4 mr-2 animate-spin" />
           Loading folders...
         </div>
@@ -337,7 +337,7 @@ const FolderTree: React.FC<FolderTreeProps> = React.memo(({
   if (folders.length === 0) {
     return (
       <div className="p-4 text-center">
-        <div className="text-gray-400 text-sm">No folders found</div>
+        <div className="text-slate-500 dark:text-gray-400 text-sm">No folders found</div>
       </div>
     );
   }

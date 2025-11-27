@@ -11,6 +11,7 @@ import TestRunSummaryReport from '../components/Reports/TestRunSummaryReport';
 import TestRunDetailedReport from '../components/Reports/TestRunDetailedReport';
 import { useApp } from '../context/AppContext';
 import { useScheduledReports } from '../hooks/useScheduledReports';
+import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { scheduledReportsApiService, ScheduledReport } from '../services/scheduledReportsApi';
 import toast from 'react-hot-toast';
 
@@ -18,6 +19,8 @@ const Reports: React.FC = () => {
   const { getSelectedProject, state } = useApp();
   const selectedProject = getSelectedProject();
   const location = useLocation();
+
+  useRestoreLastProject();
   const {
     scheduledReports,
     loading: scheduledReportsLoading,
@@ -259,11 +262,11 @@ const Reports: React.FC = () => {
     
     if (!projectForReport) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
           <Card className="p-8 text-center">
             <div className="text-red-400 mb-4">
               <p className="text-lg font-medium">No project selected</p>
-              <p className="text-sm text-gray-400 mt-2">Please select a project to generate the report</p>
+              <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">Please select a project to generate the report</p>
             </div>
             <Button onClick={handleBackToList}>
               Back to Reports
@@ -294,11 +297,11 @@ const Reports: React.FC = () => {
     
     if (!projectForReport) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
           <Card className="p-8 text-center">
             <div className="text-red-400 mb-4">
               <p className="text-lg font-medium">No project selected</p>
-              <p className="text-sm text-gray-400 mt-2">Please select a project to generate the detailed report</p>
+              <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">Please select a project to generate the detailed report</p>
             </div>
             <Button onClick={handleBackToList}>
               Back to Reports
@@ -325,13 +328,13 @@ const Reports: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Reports</h1>
-            <p className="text-gray-400">Generate and manage test reports</p>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Reports</h1>
+            <p className="text-slate-600 dark:text-gray-400">Generate and manage test reports</p>
           </div>
           <Button
             onClick={() => setIsCreateModalOpen(true)}
@@ -349,13 +352,13 @@ const Reports: React.FC = () => {
             <div className="relative p-6">
               <button
                 onClick={() => setShowIntroductionPanel(false)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                className="absolute top-4 right-4 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
               <div className="pr-8">
-                <h2 className="text-2xl font-bold text-white mb-3">Introducing Reports</h2>
-                <p className="text-gray-300 text-base">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Introducing Reports</h2>
+                <p className="text-slate-700 dark:text-gray-300 text-base">
                   Effortlessly generate, schedule and share diverse insights with various report types all within a few simple clicks
                 </p>
               </div>
@@ -365,18 +368,18 @@ const Reports: React.FC = () => {
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-600 dark:text-gray-400 w-4 h-4" />
           <input
             type="text"
             placeholder="Search reports..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
             >
               <X className="w-4 h-4" />
             </button>
@@ -387,10 +390,10 @@ const Reports: React.FC = () => {
         {showIntroPanel && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-white">Report Templates</h2>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Report Templates</h2>
               <button
                 onClick={() => setShowIntroPanel(false)}
-                className="text-gray-400 hover:text-white"
+                className="text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -407,8 +410,8 @@ const Reports: React.FC = () => {
                     <BarChart className="w-6 h-6 text-cyan-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Test Run Summary</h3>
-                    <p className="text-sm text-gray-400">Provides overview of key metrics for test runs.</p>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Test Run Summary</h3>
+                    <p className="text-sm text-slate-600 dark:text-gray-400">Provides overview of key metrics for test runs.</p>
                   </div>
                 </div>
               </Card>
@@ -423,8 +426,8 @@ const Reports: React.FC = () => {
                     <FileText className="w-6 h-6 text-purple-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Test Run Detailed Report</h3>
-                    <p className="text-sm text-gray-400">Provides comprehensive details for analysis.</p>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Test Run Detailed Report</h3>
+                    <p className="text-sm text-slate-600 dark:text-gray-400">Provides comprehensive details for analysis.</p>
                   </div>
                 </div>
               </Card>
@@ -441,24 +444,24 @@ const Reports: React.FC = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-slate-800/50 border-b border-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                   <tr>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                       TITLE
                     </th>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                       CREATED BY
                     </th>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                       FREQUENCY
                     </th>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                       TYPE OF REPORT
                     </th>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                       STATUS
                     </th>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                       ACTIONS
                     </th>
                   </tr>
@@ -472,42 +475,42 @@ const Reports: React.FC = () => {
                       scheduledReportsApiService.getReportTemplateLabel(report.reportTemplate).toLowerCase().includes(searchTerm.toLowerCase())
                     )
                     .map((report) => (
-                      <tr key={report.id} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={report.id} className="hover:bg-slate-50 dark:bg-slate-800/30 transition-colors">
                         <td className="py-4 px-6">
                           <button
                             onClick={() => handleViewReport(report)}
                             className="text-left w-full"
                           >
-                            <div className="text-sm font-medium text-white hover:text-cyan-400 transition-colors">
+                            <div className="text-sm font-medium text-slate-900 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
                               {report.title}
                             </div>
                             {report.description && (
-                              <div className="text-xs text-gray-400 mt-1">{report.description}</div>
+                              <div className="text-xs text-slate-600 dark:text-gray-400 mt-1">{report.description}</div>
                             )}
                           </button>
                         </td>
                         <td className="py-4 px-6">
                           <div>
-                            <div className="text-sm text-white">{report.createdBy}</div>
-                            <div className="text-sm text-gray-400">
+                            <div className="text-sm text-slate-900 dark:text-white">{report.createdBy}</div>
+                            <div className="text-sm text-slate-600 dark:text-gray-400">
                               {format(report.createdAt, 'MMM dd, yyyy')}
                             </div>
                           </div>
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex flex-col gap-1">
-                            <span className="text-sm text-white">
+                            <span className="text-sm text-slate-900 dark:text-white">
                               {scheduledReportsApiService.getFrequencyLabel(report.frequency)}
                             </span>
                             {report.dayToSend && (
-                              <span className="text-xs text-gray-400">
+                              <span className="text-xs text-slate-600 dark:text-gray-400">
                                 on {scheduledReportsApiService.getDayLabel(report.dayToSend)}
                               </span>
                             )}
                           </div>
                         </td>
                         <td className="py-4 px-6">
-                          <span className="text-sm text-white">
+                          <span className="text-sm text-slate-900 dark:text-white">
                             {scheduledReportsApiService.getReportTemplateLabel(report.reportTemplate)}
                           </span>
                         </td>
@@ -515,7 +518,7 @@ const Reports: React.FC = () => {
                           <select
                             value={report.isActive !== false ? 'active' : 'inactive'}
                             onChange={(e) => handleStatusChange(report, e.target.value === 'active')}
-                            className="px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                            className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
                           >
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
@@ -524,14 +527,14 @@ const Reports: React.FC = () => {
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
                             <button
-                              className="p-2 text-gray-400 hover:text-green-400 hover:bg-slate-700 rounded-lg transition-colors"
+                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-green-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                               onClick={() => handleViewReport(report)}
                               title="View report"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
-                              className="p-2 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded-lg transition-colors"
+                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                               onClick={() => {
                                 setSelectedScheduledReport(report);
                                 setIsUpdateModalOpen(true);
@@ -541,7 +544,7 @@ const Reports: React.FC = () => {
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button
-                              className="p-2 text-gray-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
+                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                               onClick={() => {
                                 setSelectedScheduledReportId(report.id);
                                 setIsDeleteDialogOpen(true);
@@ -564,7 +567,7 @@ const Reports: React.FC = () => {
                 scheduledReportsApiService.getReportTemplateLabel(report.reportTemplate).toLowerCase().includes(searchTerm.toLowerCase())
               ).length === 0 && (
                 <div className="text-center py-12">
-                  <div className="text-gray-400 mb-4">
+                  <div className="text-slate-600 dark:text-gray-400 mb-4">
                     <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p className="text-lg font-medium">No scheduled reports found</p>
                     <p className="text-sm">

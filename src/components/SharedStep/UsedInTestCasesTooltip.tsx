@@ -99,11 +99,11 @@ const UsedInTestCasesTooltip: React.FC<UsedInTestCasesTooltipProps> = ({
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className={`absolute left-0 z-50 w-80 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl overflow-hidden ${
+          <div className={`absolute left-0 z-50 w-80 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xl overflow-hidden ${
             openUpwards ? 'bottom-full mb-2' : 'top-full mt-2'
           }`}>
-            <div className="px-4 py-3 bg-slate-900/50 border-b border-slate-700">
-              <h4 className="text-sm font-semibold text-white">
+            <div className="px-4 py-3 bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
                 Used in {usedInCount} test case{usedInCount !== 1 ? 's' : ''}
               </h4>
             </div>
@@ -122,7 +122,7 @@ const UsedInTestCasesTooltip: React.FC<UsedInTestCasesTooltipProps> = ({
               )}
 
               {!loading && !error && testCases.length === 0 && (
-                <div className="px-4 py-3 text-sm text-gray-400">
+                <div className="px-4 py-3 text-sm text-slate-600 dark:text-gray-400">
                   No test cases found
                 </div>
               )}
@@ -132,13 +132,13 @@ const UsedInTestCasesTooltip: React.FC<UsedInTestCasesTooltipProps> = ({
                   {testCases.map((testCase) => (
                     <li
                       key={testCase.id}
-                      className="px-4 py-3 hover:bg-slate-700/50 transition-colors"
+                      className="px-4 py-3 hover:bg-slate-100 dark:bg-slate-700/50 transition-colors"
                     >
                       <div className="flex items-start space-x-2">
                         <span className="text-xs font-mono text-cyan-400">
                           #{testCase.id}
                         </span>
-                        <span className="text-sm text-gray-200 flex-1">
+                        <span className="text-sm text-slate-300 dark:text-gray-200 flex-1">
                           {testCase.title}
                         </span>
                       </div>

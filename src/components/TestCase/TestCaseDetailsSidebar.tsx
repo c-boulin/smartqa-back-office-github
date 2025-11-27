@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader, Calendar, Tag as TagIcon, Clock, CheckCircle, SquarePen, Eye, XCircle, AlertTriangle, Target, Shield, Flame, MessageSquare, Trash2, Save, Pencil } from 'lucide-react';
+import { X, Loader, Calendar, Tag as TagIcon, Clock, CheckCircle, SquarePen, Eye, XCircle, AlertTriangle, Target, Shield, Flame, MessageSquare, Trash2, Save, Pencil, Play } from 'lucide-react';
 import { format } from 'date-fns';
 import { sharedStepsApiService } from '../../services/sharedStepsApi';
 import { testCaseExecutionsApiService, TestCaseExecution } from '../../services/testCaseExecutionsApi';
@@ -25,6 +25,7 @@ interface TestCaseDetailsSidebarProps {
   configurationLabel?: string;
   onExecutionResultChange?: (testCaseId: string, testRunId: string, newResultId: TestResultId) => void;
   onAttachmentRemoved?: () => void;
+  onRunTest?: (testCase: TestCase) => void;
   availableTags?: Array<{ id: string; label: string }>;
 }
 
@@ -70,7 +71,7 @@ const STATES = {
   1: { label: 'Active', icon: CheckCircle, color: 'text-green-400' },
   2: { label: 'Draft', icon: SquarePen, color: 'text-orange-400' },
   3: { label: 'In Review', icon: Eye, color: 'text-blue-400' },
-  4: { label: 'Outdated', icon: Clock, color: 'text-gray-400' },
+  4: { label: 'Outdated', icon: Clock, color: 'text-slate-600 dark:text-gray-400' },
   5: { label: 'Rejected', icon: XCircle, color: 'text-red-400' }
 } as const;
 
@@ -87,12 +88,12 @@ const ImageModal: React.FC<{
     <div className="fixed inset-0 z-[60] overflow-hidden">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}></div>
       <div className="absolute inset-4 flex items-center justify-center">
-        <div className="relative max-w-[90vw] max-h-[90vh] bg-slate-800 rounded-lg border border-slate-600 shadow-2xl">
-          <div className="flex items-center justify-between p-4 border-b border-slate-700">
-            <h3 className="text-lg font-semibold text-white">Image Viewer</h3>
+        <div className="relative max-w-[90vw] max-h-[90vh] bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-600 shadow-2xl">
+          <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Image Viewer</h3>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+              className="p-2 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -169,9 +170,9 @@ const ClickableHtmlContent: React.FC<{
   }, [content, onImageClick]);
 
   return (
-    <div 
+    <div
       ref={contentRef}
-      className={className}
+      className={`html-content ${className}`}
       dangerouslySetInnerHTML={{ __html: content }}
     />
   );
@@ -292,7 +293,7 @@ const TestResultDropdown: React.FC<{
         type="button"
         onClick={handleToggle}
         disabled={disabled || isUpdating}
-        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between bg-slate-700 border-slate-600 text-white ${
+        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white ${
           disabled || isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'
         }`}
       >
@@ -301,9 +302,9 @@ const TestResultDropdown: React.FC<{
           <span>{TEST_RESULTS[value]}</span>
         </div>
         {isUpdating ? (
-          <Loader className="w-4 h-4 animate-spin text-gray-400" />
+          <Loader className="w-4 h-4 animate-spin text-slate-600 dark:text-gray-400" />
         ) : (
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-slate-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         )}
@@ -317,26 +318,26 @@ const TestResultDropdown: React.FC<{
           />
           <div
             ref={dropdownRef}
-            className={`absolute left-0 right-0 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-[71] w-80 max-h-96 ${
+            className={`absolute left-0 right-0 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-2xl z-[71] w-80 max-h-96 ${
               dropdownPosition === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
             }`}
           >
-            <div className="p-3 border-b border-slate-600">
-              <h4 className="text-sm font-medium text-white mb-3">Select Result</h4>
+            <div className="p-3 border-b border-slate-300 dark:border-slate-600">
+              <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-3">Select Result</h4>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {Object.entries(TEST_RESULTS).map(([resultId, label]) => (
                   <button
                     key={resultId}
                     type="button"
                     onClick={() => handleResultSelect(parseInt(resultId) as TestResultId)}
-                   className={`w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors flex items-center text-sm ${
+                   className={`w-full px-4 py-2 text-left hover:bg-slate-100 dark:bg-slate-700 transition-colors flex items-center text-sm ${
                      selectedResult === parseInt(resultId) 
                        ? 'bg-cyan-600/30 border-l-4 border-cyan-400' 
                        : ''
                    }`}
                   >
                     <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${getResultColor(parseInt(resultId) as TestResultId)}`}></div>
-                   <span className={`${selectedResult === parseInt(resultId) ? 'text-cyan-300 font-medium' : 'text-white'}`}>
+                   <span className={`${selectedResult === parseInt(resultId) ? 'text-cyan-300 font-medium' : 'text-slate-900 dark:text-white'}`}>
                      {label}
                    </span>
                    {selectedResult === parseInt(resultId) && (
@@ -348,12 +349,12 @@ const TestResultDropdown: React.FC<{
             </div>
 
             {/* Action Buttons */}
-            <div className="border-t border-slate-600 p-3">
+            <div className="border-t border-slate-300 dark:border-slate-600 p-3">
               <div className="flex flex-col space-y-2">
                 <button
                   type="button"
                   onClick={handleOpenCommentModal}
-                  className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-sm rounded transition-colors flex items-center justify-center"
+                  className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-600 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white text-sm rounded transition-colors flex items-center justify-center"
                 >
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Add Comment
@@ -362,7 +363,7 @@ const TestResultDropdown: React.FC<{
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                    className="px-3 py-1.5 text-xs text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
@@ -370,7 +371,7 @@ const TestResultDropdown: React.FC<{
                     type="button"
                     onClick={handleQuickUpdate}
                     disabled={disabled || isUpdating}
-                    className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors disabled:opacity-50 font-medium"
+                    className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-slate-900 dark:text-white rounded transition-colors disabled:opacity-50 font-medium"
                   >
                     Update
                   </button>
@@ -396,6 +397,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
   configurationLabel,
   onExecutionResultChange,
   onAttachmentRemoved,
+  onRunTest,
   availableTags = []
 }) => {
   const [testCaseDetails, setTestCaseDetails] = useState<TestCaseDetails | null>(null);
@@ -574,19 +576,15 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
         name: att.name
       }));
       
-      // The testCase already has properly formatted string values
-      // We just need to capitalize them for display
-      const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
-
       const details: TestCaseDetails = {
         id: testCase.id,
         title: testCase.title,
         description: testCase.description,
         preconditions: testCase.preconditions || '',
-        priority: capitalizeFirst(testCase.priority), // Already a string: 'low', 'medium', 'high', 'critical'
-        type: capitalizeFirst(testCase.type), // Already a string: 'functional', 'regression', 'smoke', etc.
-        status: capitalizeFirst(testCase.status), // Already a string: 'draft', 'active', 'deprecated'
-        automationStatus: testCase.automationStatus, // Already a number: 1-5
+        priority: testCase.priority,
+        type: testCase.type,
+        status: testCase.status,
+        automationStatus: testCase.automationStatus,
         tags: tags || [],
         stepResults: transformedStepResults,
         sharedSteps: transformedSharedSteps,
@@ -607,12 +605,12 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
   };
 
   const getPriorityNumber = (priority: string): number => {
-    const priorityMap = { 'Low': 4, 'Medium': 1, 'High': 3, 'Critical': 2 };
+    const priorityMap = { 'low': 4, 'medium': 1, 'high': 3, 'critical': 2 };
     return priorityMap[priority as keyof typeof priorityMap] || 1;
   };
 
   const getStateNumber = (status: string): number => {
-    const stateMap = { 'Active': 1, 'Draft': 2, 'In Review': 3, 'Outdated': 4, 'Rejected': 5 };
+    const stateMap = { 'active': 1, 'draft': 2, 'in_review': 3, 'outdated': 4, 'rejected': 5, 'deprecated': 4 };
     return stateMap[status as keyof typeof stateMap] || 2;
   };
 
@@ -657,8 +655,15 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
       setEditingAttachmentId(null);
       setEditingName('');
 
-      if (testCase) {
-        await fetchTestCaseDetails(testCase.id);
+      if (testCaseDetails) {
+        setTestCaseDetails({
+          ...testCaseDetails,
+          attachments: testCaseDetails.attachments.map(att =>
+            att.id === attachmentId
+              ? { ...att, name: editingName.trim() }
+              : att
+          )
+        });
       }
     } catch (error) {
       console.error('Failed to update attachment name:', error);
@@ -777,14 +782,14 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
     <>
       <div className="fixed inset-0 z-50 overflow-hidden">
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-        <div className="fixed top-0 right-0 bottom-0 w-[33vw] bg-gradient-to-b from-slate-800 to-slate-900 border-l border-purple-500/30 shadow-2xl">
+        <div className="fixed top-0 right-0 bottom-0 w-[33vw] bg-gradient-to-b from-white to-slate-100 dark:from-slate-800 dark:to-slate-900 border-l border-slate-300 dark:border-purple-500/30 shadow-2xl">
           <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-slate-700">
-              <h3 className="text-xl font-semibold text-white">TEST CASE DETAILS</h3>
+            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white">TEST CASE DETAILS</h3>
               <button
                 onClick={onClose}
-                className="p-2 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                className="p-2 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -796,14 +801,14 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
                     <Loader className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-4" />
-                    <p className="text-gray-400">Loading test case details...</p>
+                    <p className="text-slate-600 dark:text-gray-400">Loading test case details...</p>
                   </div>
                 </div>
               ) : error ? (
                 <div className="text-center py-12">
                   <div className="text-red-400 mb-4">
                     <p className="text-lg font-medium">Failed to load details</p>
-                    <p className="text-sm text-gray-400 mt-2">{error}</p>
+                    <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">{error}</p>
                   </div>
                 </div>
               ) : testCaseDetails ? (
@@ -813,13 +818,13 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                     <div className="flex items-center space-x-2 mb-2">
                       <span className="text-sm font-medium text-cyan-400">TC-{testCaseDetails.id}</span>
                     </div>
-                    <h2 className="text-lg font-semibold text-white mb-4">{testCaseDetails.title}</h2>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{testCaseDetails.title}</h2>
                   </div>
 
                   {/* Metadata */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <h4 className="text-xs font-medium text-gray-400 mb-2">Priority</h4>
+                      <h4 className="text-xs font-medium text-slate-600 dark:text-gray-400 mb-2">Priority</h4>
                       <div className="flex items-center">
                         {(() => {
                           const priorityNum = getPriorityNumber(testCaseDetails.priority);
@@ -827,14 +832,14 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                           return (
                             <>
                               <priorityConfig.icon className={`w-4 h-4 mr-2 ${priorityConfig.color}`} />
-                              <span className="text-sm text-white">{priorityConfig.label}</span>
+                              <span className="text-sm text-slate-900 dark:text-white">{priorityConfig.label}</span>
                             </>
                           );
                         })()}
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-xs font-medium text-gray-400 mb-2">Status</h4>
+                      <h4 className="text-xs font-medium text-slate-600 dark:text-gray-400 mb-2">Status</h4>
                       <div className="flex items-center">
                         {(() => {
                           const stateNum = getStateNumber(testCaseDetails.status);
@@ -842,7 +847,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                           return (
                             <>
                               <stateConfig.icon className={`w-4 h-4 mr-2 ${stateConfig.color}`} />
-                              <span className="text-sm text-white">{stateConfig.label}</span>
+                              <span className="text-sm text-slate-900 dark:text-white">{stateConfig.label}</span>
                             </>
                           );
                         })()}
@@ -853,13 +858,13 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                   {/* Type and Automation */}
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <h4 className="text-xs font-medium text-gray-400 mb-2">Type</h4>
+                      <h4 className="text-xs font-medium text-slate-600 dark:text-gray-400 mb-2">Type</h4>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/50">
-                        {testCaseDetails.type}
+                        {testCaseDetails.type.charAt(0).toUpperCase() + testCaseDetails.type.slice(1).replace('_', ' ')}
                       </span>
                     </div>
                     <div>
-                      <h4 className="text-xs font-medium text-gray-400 mb-2">Automation Status</h4>
+                      <h4 className="text-xs font-medium text-slate-600 dark:text-gray-400 mb-2">Automation Status</h4>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/50">
                         {testCaseDetails.automationStatus === 1 ? 'Not automated' :
                          testCaseDetails.automationStatus === 2 ? 'Automated' :
@@ -870,8 +875,8 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                     </div>
                     {configurationLabel && (context === 'test-run-details' || context === 'test-runs-overview') && (
                       <div>
-                        <h4 className="text-xs font-medium text-gray-400 mb-2">Configuration</h4>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700/50 text-gray-200 border border-slate-600">
+                        <h4 className="text-xs font-medium text-slate-600 dark:text-gray-400 mb-2">Configuration</h4>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-gray-200 border border-slate-300 dark:border-slate-600">
                           <span className={getDeviceColor(configurationLabel)}>
                             {getDeviceIcon(configurationLabel)}
                           </span>
@@ -884,12 +889,12 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                   {/* Tags */}
                   {testCaseDetails.tags && testCaseDetails.tags.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-medium text-gray-400 mb-2">Tags</h4>
+                      <h4 className="text-xs font-medium text-slate-600 dark:text-gray-400 mb-2">Tags</h4>
                       <div className="flex flex-wrap gap-2">
                         {testCaseDetails.tags.map((tag, index) => (
                           <span
                             key={index}
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 border border-cyan-500/30"
                           >
                             <TagIcon className="w-3 h-3 mr-1" />
                             {tag}
@@ -902,10 +907,10 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                   {/* Description */}
                   {testCaseDetails.description && (
                     <div>
-                      <h4 className="text-sm font-medium text-gray-300 mb-2">Description</h4>
+                      <h4 className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Description</h4>
                       <ClickableHtmlContent
                         content={testCaseDetails.description}
-                        className="text-sm text-gray-300 bg-slate-700/50 border border-slate-600 rounded-lg p-3"
+                        className="text-sm text-slate-700 dark:text-gray-300 bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg p-3"
                         onImageClick={handleImageClick}
                       />
                     </div>
@@ -914,10 +919,10 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                   {/* Preconditions */}
                   {testCaseDetails.preconditions && (
                     <div>
-                      <h4 className="text-sm font-medium text-gray-300 mb-2">Preconditions</h4>
+                      <h4 className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Preconditions</h4>
                       <ClickableHtmlContent
                         content={testCaseDetails.preconditions}
-                        className="text-sm text-gray-300 bg-slate-700/50 border border-slate-600 rounded-lg p-3"
+                        className="text-sm text-slate-700 dark:text-gray-300 bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg p-3"
                         onImageClick={handleImageClick}
                       />
                     </div>
@@ -926,7 +931,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                   {/* All Steps & Results */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-sm font-medium text-gray-300">All Steps & Results:</h4>
+                      <h4 className="text-sm font-medium text-slate-700 dark:text-gray-300">All Steps & Results:</h4>
                     </div>
 
                     <div className="space-y-4">
@@ -937,16 +942,16 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                           const isSharedStep = 'stepResults' in item;
                           
                           return (
-                            <div key={`${isSharedStep ? 'shared' : 'step'}-${item.id}`} className="border border-slate-600 rounded-lg">
-                              <div className="bg-slate-700/50 px-4 py-2 border-b border-slate-600">
+                            <div key={`${isSharedStep ? 'shared' : 'step'}-${item.id}`} className="border border-slate-300 dark:border-slate-600 rounded-lg">
+                              <div className="bg-slate-100 dark:bg-slate-700/50 px-4 py-2 border-b border-slate-300 dark:border-slate-600">
                                 <div className="flex items-center justify-between">
-                                  <h5 className="text-sm font-medium text-white flex items-center">
-                                    <span className="w-6 h-6 bg-cyan-500 text-white rounded-full flex items-center justify-center text-xs font-bold mr-2">
+                                  <h5 className="text-sm font-medium text-slate-900 dark:text-white flex items-center">
+                                    <span className="w-6 h-6 bg-cyan-500 text-slate-900 dark:text-white rounded-full flex items-center justify-center text-xs font-bold mr-2">
                                       {String(index + 1).padStart(2, '0')}
                                     </span>
                                     Step {String(index + 1).padStart(2, '0')}
                                     {isSharedStep && (
-                                      <span className="ml-2 text-xs text-purple-400">- Shared Step</span>
+                                      <span className="ml-2 text-xs text-purple-600 dark:text-purple-400">- Shared Step</span>
                                     )}
                                   </h5>
                                 </div>
@@ -955,33 +960,33 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                               <div className="p-4">
                                 {isSharedStep ? (
                                   <div>
-                                    <h6 className="font-medium text-purple-200 mb-2">{(item as SharedStepWithDetails).title}</h6>
+                                    <h6 className="font-medium text-purple-900 dark:text-purple-200 mb-2">{(item as SharedStepWithDetails).title}</h6>
                                     {(item as SharedStepWithDetails).description && (
-                                      <p className="text-sm text-purple-300/80 mb-3">{(item as SharedStepWithDetails).description}</p>
+                                      <p className="text-sm text-purple-700 dark:text-purple-300/80 mb-3">{(item as SharedStepWithDetails).description}</p>
                                     )}
                                     
                                     {/* Display shared step's step results */}
                                     {(item as SharedStepWithDetails).stepResults.length > 0 ? (
                                       <div className="space-y-3 mt-3">
                                         {(item as SharedStepWithDetails).stepResults.map((stepResult, stepIndex) => (
-                                          <div key={stepResult.id} className="bg-purple-900/20 border border-purple-500/30 rounded p-3">
-                                            <div className="text-xs text-purple-300 font-medium mb-2">
+                                          <div key={stepResult.id} className="bg-purple-50 dark:bg-purple-900/20 border border-purple-300 dark:border-purple-500/30 rounded p-3">
+                                            <div className="text-xs text-purple-800 dark:text-purple-300 font-medium mb-2">
                                               Shared Step {stepIndex + 1}
                                             </div>
                                             <div className="space-y-2">
                                               <div>
-                                                <div className="text-xs text-purple-400 mb-1">Step</div>
+                                                <div className="text-xs text-purple-700 dark:text-purple-400 mb-1">Step</div>
                                                 <ClickableHtmlContent
                                                   content={stepResult.step}
-                                                  className="text-sm text-purple-200"
+                                                  className="text-sm text-purple-900 dark:text-purple-200"
                                                   onImageClick={handleImageClick}
                                                 />
                                               </div>
                                               <div>
-                                                <div className="text-xs text-purple-400 mb-1">Result</div>
+                                                <div className="text-xs text-purple-700 dark:text-purple-400 mb-1">Result</div>
                                                 <ClickableHtmlContent
                                                   content={stepResult.result}
-                                                  className="text-sm text-purple-200"
+                                                  className="text-sm text-purple-900 dark:text-purple-200"
                                                   onImageClick={handleImageClick}
                                                 />
                                               </div>
@@ -990,7 +995,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                         ))}
                                       </div>
                                     ) : (
-                                      <div className="text-xs text-purple-300/60 mt-3">
+                                      <div className="text-xs text-purple-600 dark:text-purple-300/60 mt-3">
                                         No step details available for this shared step
                                       </div>
                                     )}
@@ -998,18 +1003,18 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                 ) : (
                                   <div className="space-y-3">
                                     <div>
-                                      <h6 className="text-xs font-medium text-gray-400 mb-1">Step</h6>
+                                      <h6 className="text-xs font-medium text-slate-600 dark:text-gray-400 mb-1">Step</h6>
                                       <ClickableHtmlContent
                                         content={(item as StepResult).step}
-                                        className="text-sm text-gray-300"
+                                        className="text-sm text-slate-700 dark:text-gray-300"
                                         onImageClick={handleImageClick}
                                       />
                                     </div>
                                     <div>
-                                      <h6 className="text-xs font-medium text-gray-400 mb-1">Result</h6>
+                                      <h6 className="text-xs font-medium text-slate-600 dark:text-gray-400 mb-1">Result</h6>
                                       <ClickableHtmlContent
                                         content={(item as StepResult).result}
-                                        className="text-sm text-gray-300"
+                                        className="text-sm text-slate-700 dark:text-gray-300"
                                         onImageClick={handleImageClick}
                                       />
                                     </div>
@@ -1022,7 +1027,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                     </div>
 
                     {testCaseDetails.stepResults.length === 0 && testCaseDetails.sharedSteps.length === 0 && (
-                      <div className="text-center py-8 text-gray-400 border-2 border-dashed border-slate-600 rounded-lg">
+                      <div className="text-center py-8 text-slate-600 dark:text-gray-400 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg">
                         <p>No steps defined for this test case.</p>
                       </div>
                     )}
@@ -1030,7 +1035,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
 
                   {/* Show message for closed test runs */}
                   {context !== 'test-cases' && testRunId && isTestRunClosed && (
-                    <div className="pt-4 border-t border-slate-700">
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                       <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 text-orange-400 mr-2" />
@@ -1045,8 +1050,8 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
 
                   {/* Test Execution Result - Only show for test run contexts */}
                   {context !== 'test-cases' && testRunId && currentExecutionResult && !isTestRunClosed && (
-                    <div className="pt-4 border-t border-slate-700 space-y-4">
-                      <h4 className="text-sm font-medium text-gray-300 mb-3">Test Execution Result</h4>
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-700 space-y-4">
+                      <h4 className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-3">Test Execution Result</h4>
                       <TestResultDropdown
                         value={currentExecutionResult}
                         onChange={handleExecutionResultChange}
@@ -1058,17 +1063,17 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                           setIsCommentModalOpen(true);
                         }}
                       />
-                      <p className="text-xs text-gray-400 mt-2">
+                      <p className="text-xs text-slate-600 dark:text-gray-400 mt-2">
                         Update the execution result for this test case in the current test run
                       </p>
                       
                       {/* Execution History */}
                       {testCaseDetails.executions && testCaseDetails.executions.length > 0 && (
                         <div>
-                          <h4 className="text-sm font-medium text-gray-300 mb-3">Execution History</h4>
+                          <h4 className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-3">Execution History</h4>
                           <div className="space-y-2 max-h-48 overflow-y-auto">
                             {testCaseDetails.executions.map((execution, index) => (
-                              <div key={execution.id} className="bg-slate-700/50 border border-slate-600 rounded-lg p-3">
+                              <div key={execution.id} className="bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg p-3">
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center">
                                     <div
@@ -1088,20 +1093,20 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                       data-result={execution.result}
                                       data-label={execution.resultLabel}
                                     ></div>
-                                    <span className="text-sm font-medium text-white">{execution.resultLabel}</span>
+                                    <span className="text-sm font-medium text-slate-900 dark:text-white">{execution.resultLabel}</span>
                                     {index === 0 && (
-                                      <span className="ml-2 text-xs text-cyan-400 bg-cyan-500/20 px-2 py-0.5 rounded-full">
+                                      <span className="ml-2 text-xs text-cyan-700 dark:text-cyan-400 bg-cyan-500/20 px-2 py-0.5 rounded-full">
                                         Latest
                                       </span>
                                     )}
                                   </div>
                                 </div>
                                 {execution.comment && (
-                                  <div className="mb-2 p-3 bg-slate-800/50 border border-slate-600 rounded">
-                                    <div className="text-xs text-gray-400 mb-1">Comment:</div>
+                                  <div className="mb-2 p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded">
+                                    <div className="text-xs text-slate-600 dark:text-gray-400 mb-1">Comment:</div>
                                     <ClickableHtmlContent
                                       content={execution.comment}
-                                      className="text-sm text-gray-300 prose prose-invert prose-sm max-w-none"
+                                      className="text-sm text-slate-700 dark:text-gray-300 prose prose-invert prose-sm max-w-none"
                                       onImageClick={handleImageClick}
                                     />
                                   </div>
@@ -1117,14 +1122,14 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                   {/* Attachments */}
                   {testCaseDetails.attachments && testCaseDetails.attachments.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-medium text-gray-300 mb-2">Attachments ({testCaseDetails.attachments.length})</h4>
+                      <h4 className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Attachments ({testCaseDetails.attachments.length})</h4>
                       <div className="space-y-2">
                         {testCaseDetails.attachments.map((attachment) => (
-                          <div key={attachment.id} className="bg-slate-700/50 border border-slate-600 rounded-lg p-3 space-y-2">
+                          <div key={attachment.id} className="bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg p-3 space-y-2">
                             {isImageUrl(attachment.url) ? (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <div className="text-xs text-gray-400 truncate flex-1 min-w-0">
+                                  <div className="text-xs text-slate-600 dark:text-gray-400 truncate flex-1 min-w-0">
                                     {attachment.name || getFileNameFromUrl(attachment.url)}
                                   </div>
                                   {context === 'test-cases' && (
@@ -1149,7 +1154,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                             ) : (
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                  <div className="text-sm text-gray-300 truncate">
+                                  <div className="text-sm text-slate-700 dark:text-gray-300 truncate">
                                     {attachment.name || getFileNameFromUrl(attachment.url)}
                                   </div>
                                 </div>
@@ -1158,7 +1163,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                     href={attachment.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center px-2 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded text-xs text-cyan-400 hover:bg-cyan-500/30 transition-colors"
+                                    className="inline-flex items-center px-2 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded text-xs text-cyan-700 dark:text-cyan-400 hover:bg-cyan-500/30 transition-colors"
                                   >
                                     Download
                                   </a>
@@ -1178,13 +1183,13 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
 
                             {context === 'test-cases' && (
                               editingAttachmentId === attachment.id ? (
-                                <div className="flex items-center space-x-2 pt-2 border-t border-slate-600">
+                                <div className="flex items-center space-x-2 pt-2 border-t border-slate-300 dark:border-slate-600">
                                   <input
                                     type="text"
                                     value={editingName}
                                     onChange={(e) => setEditingName(e.target.value)}
                                     placeholder="Enter attachment name"
-                                    className="flex-1 px-2 py-1.5 bg-slate-600 border border-slate-500 rounded text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                                    className="flex-1 px-2 py-1.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-400"
                                     disabled={savingAttachmentId === attachment.id}
                                     autoFocus
                                   />
@@ -1204,7 +1209,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                     type="button"
                                     onClick={handleCancelAttachmentEdit}
                                     disabled={savingAttachmentId === attachment.id}
-                                    className="px-2 py-1.5 bg-slate-600 text-white rounded text-xs hover:bg-slate-500 transition-colors disabled:opacity-50"
+                                    className="px-2 py-1.5 bg-slate-200 dark:bg-slate-600 text-slate-900 dark:text-white rounded text-xs hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors disabled:opacity-50"
                                   >
                                     <X className="w-3 h-3" />
                                   </button>
@@ -1214,7 +1219,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                   type="button"
                                   onClick={() => handleEditAttachmentClick(attachment)}
                                   disabled={savingAttachmentId !== null}
-                                  className="flex items-center space-x-1 text-xs text-cyan-400 hover:text-cyan-300 underline disabled:opacity-50 pt-2 border-t border-slate-600"
+                                  className="flex items-center space-x-1 text-xs text-cyan-400 hover:text-cyan-300 underline disabled:opacity-50 pt-2 border-t border-slate-300 dark:border-slate-600"
                                 >
                                   <Pencil className="w-3 h-3" />
                                   <span>Edit name</span>
@@ -1228,23 +1233,52 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                   )}
 
                   {/* Metadata Footer */}
-                  <div className="pt-4 border-t border-slate-700 space-y-3">
-                    <div className="flex items-center text-xs text-gray-400">
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700 space-y-3">
+                    <div className="flex items-center text-xs text-slate-600 dark:text-gray-400">
                       <Calendar className="w-4 h-4 mr-2" />
                       <span>Created: {format(testCaseDetails.createdAt, 'MMM dd, yyyy HH:mm')}</span>
                     </div>
                     {context === 'test-cases' ? (
-                      <div className="flex items-center text-xs text-gray-400">
+                      <div className="flex items-center text-xs text-slate-600 dark:text-gray-400">
                         <Clock className="w-4 h-4 mr-2" />
                         <span>Updated: {format(testCaseDetails.updatedAt, 'MMM dd, yyyy HH:mm')}</span>
                       </div>
                     ) : (
                       testCaseDetails.executions && testCaseDetails.executions.length > 0 && (
-                        <div className="flex items-center text-xs text-gray-400">
+                        <div className="flex items-center text-xs text-slate-600 dark:text-gray-400">
                           <Clock className="w-4 h-4 mr-2" />
                           <span>Last Execution: {format(testCaseDetails.executions[0].createdAt, 'MMM dd, yyyy HH:mm')}</span>
                         </div>
                       )
+                    )}
+
+                    {/* Run Test Button - Only show in test-cases context */}
+                    {context === 'test-cases' && onRunTest && testCase && (
+                      <div className="pt-3 flex justify-end">
+                        <button
+                          onClick={() => onRunTest(testCase)}
+                          className="
+                            group
+                            relative
+                            inline-flex
+                            items-center
+                            px-4 py-2
+                            font-medium
+                            text-slate-700 dark:text-gray-300
+                            bg-slate-50 dark:bg-slate-800
+                            border-2 border-slate-300 dark:border-slate-600
+                            rounded-full
+                            transition-all
+                            duration-200
+                            hover:text-cyan-600 dark:hover:text-cyan-400
+                            hover:border-cyan-400
+                            hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]
+                          "
+                        >
+                          <span className="mr-2">Run Test</span>
+                          <Play className="w-4 h-4 fill-current" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

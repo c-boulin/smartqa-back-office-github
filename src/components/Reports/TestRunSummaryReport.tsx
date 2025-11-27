@@ -758,10 +758,10 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading report data...</p>
+          <p className="text-slate-600 dark:text-gray-400">Loading report data...</p>
         </div>
       </div>
     );
@@ -769,11 +769,11 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
 
   if (error || !reportData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
         <Card className="p-8 text-center">
           <div className="text-red-400 mb-4">
             <p className="text-lg font-medium">Failed to load report data</p>
-            <p className="text-sm text-gray-400 mt-2">{error}</p>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">{error}</p>
           </div>
           <Button onClick={onBack}>
             Back to Reports
@@ -807,24 +807,24 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
   ].filter(item => item.value > 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 border-b border-purple-500/20 shadow-2xl px-6 py-4">
+      <div className="bg-gradient-to-r from-slate-100 via-purple-100 to-slate-100 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 border-b border-purple-500/20 shadow-2xl px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button
               variant="secondary"
               icon={ArrowLeft}
               onClick={onBack}
-              className="text-gray-300 hover:text-white"
+              className="text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white"
             >
               Back to Reports
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-white">{title || 'Test Run Summary Report'}</h1>
-              <div className="flex items-center space-x-4 mt-2 text-sm text-gray-300">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{title || 'Test Run Summary Report'}</h1>
+              <div className="flex items-center space-x-4 mt-2 text-sm text-slate-700 dark:text-gray-300">
                 <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                  <div className="w-6 h-6 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center text-slate-900 dark:text-white text-xs font-bold">
                     {authState.user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
                   </div>
                   <span>{authState.user?.name || 'Unknown User'}</span>
@@ -833,7 +833,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
                 <span>Test Run Summary</span>
               </div>
               {description && (
-                <p className="text-sm text-gray-400 mt-2">{description}</p>
+                <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">{description}</p>
               )}
             </div>
           </div>
@@ -842,14 +842,14 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
               variant="secondary"
               icon={Download}
               onClick={() => setIsDownloadModalOpen(true)}
-              className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600"
+              className="bg-slate-100 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600"
             >
               Download
             </Button>
             <Button
               icon={Share}
               onClick={() => setIsShareModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-slate-900 dark:text-white"
             >
               Share
             </Button>
@@ -863,8 +863,8 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6" data-report-section="summary-cards">
           {/* Total Test Runs */}
           <Card gradient className="p-6 text-center">
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Total Test Runs</h3>
-            <div className="text-4xl font-bold text-white mb-4">{reportData.totalTestRuns}</div>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Total Test Runs</h3>
+            <div className="text-4xl font-bold text-slate-900 dark:text-white mb-4">{reportData.totalTestRuns}</div>
             
             {/* Mini pie chart for test runs */}
             {totalTestRunsForPie > 0 && (
@@ -890,7 +890,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
               </div>
             )}
             
-            <div className="text-xs text-gray-400 space-y-1">
+            <div className="text-xs text-slate-600 dark:text-gray-400 space-y-1">
               <div className="flex items-center justify-center">
                 <div className="w-2 h-2 bg-cyan-400 rounded-full mr-2"></div>
                 <span>Active Test Runs</span>
@@ -904,20 +904,20 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
 
           {/* Total Test Cases */}
           <Card gradient className="p-6 text-center">
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Total Test Cases</h3>
-            <div className="text-4xl font-bold text-white">{reportData.totalTestCases}</div>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Total Test Cases</h3>
+            <div className="text-4xl font-bold text-slate-900 dark:text-white">{reportData.totalTestCases}</div>
           </Card>
 
           {/* Total Linked Issues */}
           <Card gradient className="p-6 text-center">
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Total Linked Issues</h3>
-            <div className="text-4xl font-bold text-white">{reportData.totalLinkedIssues}</div>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Total Linked Issues</h3>
+            <div className="text-4xl font-bold text-slate-900 dark:text-white">{reportData.totalLinkedIssues}</div>
           </Card>
 
           {/* Placeholder for 4th card */}
           <Card gradient className="p-6 text-center">
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Project</h3>
-            <div className="text-lg font-bold text-white">{projectName}</div>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Project</h3>
+            <div className="text-lg font-bold text-slate-900 dark:text-white">{projectName}</div>
           </Card>
         </div>
 
@@ -927,8 +927,8 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           <Card gradient className="p-6">
             <div data-report-section="pie-chart">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Test Case Break-up</h3>
-              <MoreHorizontal className="w-5 h-5 text-gray-400" />
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Test Case Break-up</h3>
+              <MoreHorizontal className="w-5 h-5 text-slate-600 dark:text-gray-400" />
             </div>
             
             {testCasePieData.length > 0 ? (
@@ -990,9 +990,9 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center">
                         <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: entry.color }}></div>
-                        <span className="text-sm text-gray-300">{entry.name}</span>
+                        <span className="text-sm text-slate-700 dark:text-gray-300">{entry.name}</span>
                       </div>
-                      <span className="text-sm text-gray-300">
+                      <span className="text-sm text-slate-700 dark:text-gray-300">
                         {entry.value}
                       </span>
                     </div>
@@ -1001,7 +1001,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
               </div>
             ) : (
               <div className="flex items-center justify-center h-64">
-                <div className="text-center text-gray-400">
+                <div className="text-center text-slate-600 dark:text-gray-400">
                   <p className="text-lg font-medium">No test case data</p>
                   <p className="text-sm">No test cases found in test runs</p>
                 </div>
@@ -1014,8 +1014,8 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           <Card gradient className="p-6">
             <div data-report-section="bar-chart">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Test Runs Break-up</h3>
-              <MoreHorizontal className="w-5 h-5 text-gray-400" />
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Test Runs Break-up</h3>
+              <MoreHorizontal className="w-5 h-5 text-slate-600 dark:text-gray-400" />
             </div>
             
             <div className="h-64">
@@ -1061,21 +1061,21 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         <Card gradient className="p-6">
           <div data-report-section="assignee-results">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Test Results across top 5 assignees</h3>
-            <MoreHorizontal className="w-5 h-5 text-gray-400" />
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Test Results across top 5 assignees</h3>
+            <MoreHorizontal className="w-5 h-5 text-slate-600 dark:text-gray-400" />
           </div>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm font-medium text-gray-400 border-b border-slate-700 pb-2">
+            <div className="grid grid-cols-2 gap-4 text-sm font-medium text-slate-600 dark:text-gray-400 border-b border-slate-200 dark:border-slate-700 pb-2">
               <div>ASSIGNEE</div>
               <div>COUNT</div>
             </div>
 
             {reportData.assigneeResults.slice(0, 5).map((result, index) => (
               <div key={index} className="grid grid-cols-2 gap-4 items-center">
-                <div className="text-sm text-white">{index + 1}. {result.assignee}</div>
+                <div className="text-sm text-slate-900 dark:text-white">{index + 1}. {result.assignee}</div>
                 <div className="flex items-center">
-                  <div className="flex-1 bg-slate-700 rounded-full h-2 mr-3">
+                  <div className="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-2 mr-3">
                     <div
                       className="bg-gradient-to-r from-purple-400 to-purple-600 h-2 rounded-full"
                       style={{
@@ -1083,13 +1083,13 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
                       }}
                     ></div>
                   </div>
-                  <span className="text-sm text-white font-medium">{result.count}</span>
+                  <span className="text-sm text-slate-900 dark:text-white font-medium">{result.count}</span>
                 </div>
               </div>
             ))}
 
             {reportData.assigneeResults.length === 0 && (
-              <div className="text-center py-8 text-gray-400">
+              <div className="text-center py-8 text-slate-600 dark:text-gray-400">
                 <p>No assignee data available</p>
               </div>
             )}
@@ -1102,36 +1102,36 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           {/* Defects Linked with Test Results */}
           <Card gradient className="p-6">
             <div data-report-section="defects-section">
-              <h3 className="text-lg font-semibold text-white mb-4">Defects Linked with Test Results</h3>
-              <div className="text-4xl font-bold text-white">{reportData.defectsLinkedWithTestResults}</div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Defects Linked with Test Results</h3>
+              <div className="text-4xl font-bold text-slate-900 dark:text-white">{reportData.defectsLinkedWithTestResults}</div>
             </div>
           </Card>
 
           {/* Requirements Linked with Test Runs */}
           <Card gradient className="p-6">
             <div data-report-section="requirements-section">
-              <h3 className="text-lg font-semibold text-white mb-4">Requirements Linked with Test Runs</h3>
-              <div className="text-4xl font-bold text-white">{reportData.requirementsLinkedWithTestRuns}</div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Requirements Linked with Test Runs</h3>
+              <div className="text-4xl font-bold text-slate-900 dark:text-white">{reportData.requirementsLinkedWithTestRuns}</div>
             </div>
           </Card>
 
           {/* No Defects by Priority */}
           <Card gradient className="p-6">
             <div data-report-section="defects-priority-section">
-              <div className="text-center text-gray-400 mb-2">
+              <div className="text-center text-slate-600 dark:text-gray-400 mb-2">
                 <span className="text-sm font-medium">No Defects by Priority</span>
               </div>
-              <p className="text-xs text-gray-500 text-center">There are no defects available to show by priority.</p>
+              <p className="text-xs text-slate-500 dark:text-gray-500 text-center">There are no defects available to show by priority.</p>
             </div>
           </Card>
 
           {/* No Defects by Status */}
           <Card gradient className="p-6">
             <div data-report-section="defects-status-section">
-              <div className="text-center text-gray-400 mb-2">
+              <div className="text-center text-slate-600 dark:text-gray-400 mb-2">
                 <span className="text-sm font-medium">No Defects by Status</span>
               </div>
-              <p className="text-xs text-gray-500 text-center">There are no defects available to show by status.</p>
+              <p className="text-xs text-slate-500 dark:text-gray-500 text-center">There are no defects available to show by status.</p>
             </div>
           </Card>
         </div>

@@ -15,6 +15,8 @@ interface DroppableFolderNodeProps {
   onDeleteFolder?: (folder: FolderType) => void;
   onTestCaseDropped: (testCaseId: string, targetFolderId: string) => void;
   isDragInProgress: boolean;
+  dragOverFolderId: string | null;
+  onDragOverFolder: (folderId: string | null) => void;
 }
 
 const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
@@ -27,15 +29,17 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
   onEditFolder,
   onDeleteFolder,
   onTestCaseDropped,
-  isDragInProgress
+  isDragInProgress,
+  dragOverFolderId,
+  onDragOverFolder
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; alignTop: boolean } | null>(null);
   const dropdownButtonRef = React.useRef<HTMLButtonElement>(null);
   const isSelected = selectedFolderId === folder.id;
   const isExpanded = expandedFolders.has(folder.id);
   const hasChildren = folder.children.length > 0;
+  const isDragOver = dragOverFolderId === folder.id;
 
   const handleToggle = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -57,33 +61,33 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Check if the dragged item is a test case
     const dragData = e.dataTransfer.types.includes('application/json');
     if (dragData) {
       e.dataTransfer.dropEffect = 'move';
-      setIsDragOver(true);
+      onDragOverFolder(folder.id);
     }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Only hide drag over state if we're actually leaving this element
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
-    
+
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setIsDragOver(false);
+      onDragOverFolder(null);
     }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragOver(false);
+    onDragOverFolder(null);
 
     try {
       const dragDataString = e.dataTransfer.getData('application/json');
@@ -167,17 +171,16 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
 
   return (
     <div className="relative">
-      <div className="flex items-center min-w-0 gap-1">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_28px] gap-2 items-center" style={{ paddingLeft: `${level * 12}px` }}>
         <Tooltip content={folder.description ? `${folder.name}\n─────\n${folder.description}` : folder.name}>
           <div
-            className={`flex items-center py-2 px-3 cursor-pointer transition-colors rounded-lg flex-1 min-w-0 max-w-[calc(100%-32px)] ${
+            className={`flex items-center py-2 px-2 cursor-pointer transition-colors rounded-lg overflow-hidden ${
               isSelected
                 ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/30'
                 : isDragOver && isDragInProgress
                 ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400 border border-green-500/50 border-dashed'
-                : 'text-gray-300 hover:text-cyan-400 hover:bg-slate-800/50'
+                : 'text-slate-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
             }`}
-            style={{ paddingLeft: `${12 + level * 16}px` }}
             onClick={handleSelect}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -186,7 +189,7 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
           {hasChildren ? (
             <button
               onClick={handleToggle}
-              className="flex items-center justify-center w-4 h-4 mr-2 text-gray-400 hover:text-cyan-400 transition-colors"
+              className="flex items-center justify-center w-4 h-4 mr-2 text-slate-500 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
               type="button"
             >
               {isExpanded ? (
@@ -198,7 +201,7 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
           ) : (
             <div className="w-4 h-4 mr-2" />
           )}
-          
+
           <div className="flex items-center flex-1 min-w-0 overflow-hidden">
             {hasChildren ? (
               <FolderOpen className="w-4 h-4 mr-2 flex-shrink-0" />
@@ -206,18 +209,9 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
               <Folder className="w-4 h-4 mr-2 flex-shrink-0" />
             )}
             <div className="flex-1 min-w-0 overflow-hidden">
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-sm font-medium max-w-[140px]">{folder.name}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${
-                  testCasesCount > 0
-                    ? 'text-cyan-400 bg-cyan-500/20 border border-cyan-500/30'
-                    : 'text-gray-500 bg-slate-700/50 border border-slate-600'
-                }`}>
-                  {testCasesCount}
-                </span>
-              </div>
+              <span className="truncate text-sm font-medium min-w-0 block">{folder.name}</span>
               {isSelected && folder.description && (
-                <div className="text-xs text-gray-400 mt-1 truncate overflow-hidden">
+                <div className="text-xs text-slate-600 dark:text-gray-400 mt-1 truncate overflow-hidden">
                   {folder.description}
                 </div>
               )}
@@ -231,13 +225,21 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
           </div>
         </Tooltip>
 
-        {/* Three-dots button - outside the folder box */}
-        {(onEditFolder || onDeleteFolder) && (
-          <div className="relative flex-shrink-0">
+        <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium whitespace-nowrap ${
+          testCasesCount > 0
+            ? 'text-cyan-700 dark:text-cyan-400 bg-cyan-500/20 border border-cyan-500/30'
+            : 'text-slate-500 dark:text-gray-500 bg-slate-200 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600'
+        }`}>
+          {testCasesCount}
+        </span>
+
+        {/* Three-dots button - fixed column */}
+        {(onEditFolder || onDeleteFolder) ? (
+          <div className="flex items-center justify-center">
             <button
               ref={dropdownButtonRef}
               onClick={handleThreeDotsClick}
-              className="p-1 text-gray-400 hover:text-cyan-400 hover:bg-slate-700 rounded transition-colors flex-shrink-0"
+              className="p-1 text-slate-500 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
               title="Folder actions"
             >
               <MoreHorizontal className="w-4 h-4" />
@@ -254,7 +256,7 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
                   }}
                 />
                 <div
-                  className="fixed bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 min-w-[120px]"
+                  className="fixed bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-xl z-50 min-w-[120px]"
                   style={{
                     top: dropdownPosition.alignTop ? 'auto' : `${dropdownPosition.top}px`,
                     bottom: dropdownPosition.alignTop ? `${window.innerHeight - dropdownPosition.top}px` : 'auto',
@@ -264,7 +266,7 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
                   {onEditFolder && (
                     <button
                       onClick={handleEdit}
-                      className="w-full px-3 py-2 text-left text-gray-300 hover:text-cyan-400 hover:bg-slate-700 transition-colors flex items-center text-sm rounded-t-lg"
+                      className="w-full px-3 py-2 text-left text-slate-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center text-sm rounded-t-lg"
                     >
                       <SquarePen className="w-3 h-3 mr-2" />
                       Edit
@@ -273,7 +275,7 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
                   {onDeleteFolder && (
                     <button
                       onClick={handleDelete}
-                      className="w-full px-3 py-2 text-left text-gray-300 hover:text-red-400 hover:bg-slate-700 transition-colors flex items-center text-sm rounded-b-lg"
+                      className="w-full px-3 py-2 text-left text-slate-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center text-sm rounded-b-lg"
                     >
                       <Trash2 className="w-3 h-3 mr-2" />
                       Delete
@@ -284,11 +286,13 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
               document.body
             )}
           </div>
+        ) : (
+          <div className="w-7" />
         )}
       </div>
 
       {hasChildren && isExpanded && (
-        <div>
+        <>
           {folder.children.map((child) => (
             <DroppableFolderNode
               key={child.id}
@@ -302,9 +306,11 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
               onDeleteFolder={onDeleteFolder}
               onTestCaseDropped={onTestCaseDropped}
               isDragInProgress={isDragInProgress}
+              dragOverFolderId={dragOverFolderId}
+              onDragOverFolder={onDragOverFolder}
             />
           ))}
-        </div>
+        </>
       )}
     </div>
   );

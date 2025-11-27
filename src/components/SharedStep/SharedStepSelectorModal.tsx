@@ -242,8 +242,8 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
             {/* Header with Create Button */}
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-medium text-white">Available Shared Steps</h3>
-                <p className="text-sm text-gray-400">Select an existing shared step or create a new one</p>
+                <h3 className="text-lg font-medium text-slate-900 dark:text-white">Available Shared Steps</h3>
+                <p className="text-sm text-slate-500 dark:text-gray-400">Select an existing shared step or create a new one</p>
               </div>
               <Button
                 variant="secondary"
@@ -258,14 +258,14 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
 
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Search shared steps by title..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={handleSearchKeyPress}
-                className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                 disabled={disabled}
               />
               {currentSearchTerm && (
@@ -273,7 +273,7 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
                   Searching for: "{currentSearchTerm}"
                   <button
                     onClick={clearSearch}
-                    className="ml-2 text-gray-400 hover:text-white underline"
+                    className="ml-2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white underline"
                   >
                     Clear search
                   </button>
@@ -287,14 +287,14 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
                     <Loader className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-4" />
-                    <p className="text-gray-400">Loading shared steps...</p>
+                    <p className="text-slate-500 dark:text-gray-400">Loading shared steps...</p>
                   </div>
                 </div>
               ) : error && sharedSteps.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-red-400 mb-4">
                     <p className="text-lg font-medium">Failed to load shared steps</p>
-                    <p className="text-sm text-gray-400 mt-2">{error}</p>
+                    <p className="text-sm text-slate-500 dark:text-gray-400 mt-2">{error}</p>
                   </div>
                   <Button onClick={() => fetchSharedSteps(1)}>
                     Try Again
@@ -302,7 +302,7 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
                 </div>
               ) : sharedSteps.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="text-gray-400 mb-4">
+                  <div className="text-slate-500 dark:text-gray-400 mb-4">
                     <Layers className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p className="text-lg font-medium">No shared steps found</p>
                     <p className="text-sm">
@@ -325,20 +325,20 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
               ) : (
                 <div className="space-y-3">
                   {sharedSteps.map((sharedStep) => (
-                    <Card key={sharedStep.id} className="p-4 hover:bg-slate-700/50 transition-colors cursor-pointer" onClick={() => handleSelectSharedStep(sharedStep)}>
+                    <Card key={sharedStep.id} className="p-4 hover:bg-slate-100 dark:bg-slate-700/50 transition-colors cursor-pointer" onClick={() => handleSelectSharedStep(sharedStep)}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center mb-2">
                             <Layers className="w-4 h-4 text-purple-400 mr-2" />
-                            <h3 className="font-semibold text-white">{sharedStep.title}</h3>
+                            <h3 className="font-semibold text-slate-900 dark:text-white">{sharedStep.title}</h3>
                             <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">
                               Shared
                             </span>
                           </div>
                           {sharedStep.description && (
-                            <p className="text-sm text-gray-400 mb-2">{sharedStep.description}</p>
+                            <p className="text-sm text-slate-500 dark:text-gray-400 mb-2">{sharedStep.description}</p>
                           )}
-                          <div className="flex items-center space-x-4 text-xs text-gray-400">
+                          <div className="flex items-center space-x-4 text-xs text-slate-500 dark:text-gray-400">
                             <span>{sharedStep.stepsCount} step{sharedStep.stepsCount !== 1 ? 's' : ''}</span>
                             <span>Used in {sharedStep.usedInCount} test case{sharedStep.usedInCount !== 1 ? 's' : ''}</span>
                             <div className="flex items-center">
@@ -370,7 +370,7 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
             {/* Pagination */}
             {pagination.totalPages > 1 && (
               <div className="flex items-center justify-between pt-4 border-t border-slate-700">
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-slate-500 dark:text-gray-400">
                   Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
                   {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
                   {pagination.totalItems} shared steps
@@ -390,7 +390,7 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
                   >
                     Previous
                   </Button>
-                  <span className="text-sm text-gray-400">
+                  <span className="text-sm text-slate-500 dark:text-gray-400">
                     Page {pagination.currentPage} of {pagination.totalPages}
                   </span>
                   <Button
@@ -434,8 +434,8 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
                   Back
                 </Button>
                 <div>
-                  <h3 className="text-lg font-medium text-white">Create New Shared Step</h3>
-                  <p className="text-sm text-gray-400">Define reusable steps for your test cases</p>
+                  <h3 className="text-lg font-medium text-slate-900 dark:text-white">Create New Shared Step</h3>
+                  <p className="text-sm text-slate-500 dark:text-gray-400">Define reusable steps for your test cases</p>
                 </div>
               </div>
             </div>
@@ -445,14 +445,14 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
               <div className="space-y-8">
                 {/* Title - Full width */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
                     Title *
                   </label>
                   <input
                     type="text"
                     value={createFormData.title}
                     onChange={(e) => handleCreateInputChange('title', e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-lg"
+                    className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 text-lg"
                     required
                     disabled={isCreatingSharedStep}
                     placeholder="Enter shared step title"
@@ -463,10 +463,10 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <label className="block text-lg font-medium text-gray-300 mb-1">
+                      <label className="block text-lg font-medium text-slate-600 dark:text-gray-300 mb-1">
                         Steps and Results
                       </label>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-sm text-slate-500 dark:text-gray-400">
                         Define the reusable steps that can be shared across multiple test cases
                       </p>
                     </div>
@@ -526,13 +526,13 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
                         </div>
                       </>
                     ) : (
-                      <div className="text-center py-16 text-gray-400 border-2 border-dashed border-slate-600 rounded-xl">
+                      <div className="text-center py-16 text-slate-500 dark:text-gray-400 border-2 border-dashed border-slate-600 rounded-xl">
                         <div className="max-w-md mx-auto">
-                          <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Plus className="w-8 h-8 text-gray-400" />
+                          <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Plus className="w-8 h-8 text-slate-500 dark:text-gray-400" />
                           </div>
-                          <h3 className="text-lg font-medium text-gray-300 mb-2">No steps added yet</h3>
-                          <p className="text-sm text-gray-400 mb-4">
+                          <h3 className="text-lg font-medium text-slate-600 dark:text-gray-300 mb-2">No steps added yet</h3>
+                          <p className="text-sm text-slate-500 dark:text-gray-400 mb-4">
                             Create reusable test steps that can be shared across multiple test cases.
                           </p>
                           <Button
@@ -556,7 +556,7 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
             {/* Footer - Fixed at bottom with better spacing */}
             <div className="border-t border-slate-700 pt-6 mt-8 flex-shrink-0">
               <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-slate-500 dark:text-gray-400">
                   {createTestSteps.length > 0 && (
                     <span>
                       {createTestSteps.length} step{createTestSteps.length !== 1 ? 's' : ''} defined

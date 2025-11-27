@@ -37,10 +37,10 @@ const CloseTestRunModal: React.FC<CloseTestRunModalProps> = ({
             </div>
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-white mb-2">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
               Close Test Run: "{testRun.name}"
             </h3>
-            <p className="text-gray-300 mb-4">
+            <p className="text-slate-700 dark:text-gray-300 mb-4">
               You are about to close this test run. Once closed, it cannot be reopened.
             </p>
           </div>
@@ -48,13 +48,13 @@ const CloseTestRunModal: React.FC<CloseTestRunModalProps> = ({
 
         {/* Confirmation Question */}
         <div className="text-center">
-          <p className="text-white font-medium">
+          <p className="text-slate-900 dark:text-white font-medium">
             Are you sure you want to close this test run?
           </p>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end space-x-3 pt-4 border-t border-slate-700">
+        <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-700">
           <Button 
             variant="secondary" 
             onClick={onClose}

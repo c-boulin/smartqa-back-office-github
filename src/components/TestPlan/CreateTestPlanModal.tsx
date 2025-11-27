@@ -110,7 +110,7 @@ const CreateTestPlanModal: React.FC<CreateTestPlanModalProps> = ({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-0 right-0 p-2 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors z-10"
+          className="absolute top-0 right-0 p-2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors z-10"
           title="Close modal"
         >
           <X className="w-5 h-5" />
@@ -121,23 +121,23 @@ const CreateTestPlanModal: React.FC<CreateTestPlanModalProps> = ({
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-full border border-cyan-500/30 mb-4">
             <Calendar className="w-8 h-8 text-cyan-400" />
           </div>
-          <h2 className="text-lg font-bold text-white mb-1">Create New Test Plan</h2>
-          <p className="text-sm text-gray-400">Define your testing strategy and timeline</p>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Create New Test Plan</h2>
+          <p className="text-sm text-slate-500 dark:text-gray-400">Define your testing strategy and timeline</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Test Plan Details Card */}
           <div className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-slate-600/50 rounded-xl p-3">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               Title
             </label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-gray-400 pointer-events-none" />
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => handleInputChange('title', e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all text-lg font-medium"
+                className="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all text-lg font-medium"
                 required
                 disabled={isSubmitting}
                 placeholder="Enter test plan title..."
@@ -148,23 +148,23 @@ const CreateTestPlanModal: React.FC<CreateTestPlanModalProps> = ({
           
           {/* Owner Selection Card */}
           <div className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-slate-600/50 rounded-xl p-3">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               Owner
             </label>
             {usersLoading ? (
               <div className="flex items-center justify-center py-4">
                 <div className="text-center">
                   <Loader className="w-6 h-6 text-cyan-400 animate-spin mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">Loading team members...</p>
+                  <p className="text-slate-500 dark:text-gray-400 text-sm">Loading team members...</p>
                 </div>
               </div>
             ) : (
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-gray-400 pointer-events-none" />
                 <select
                   value={formData.assignedTo}
                   onChange={(e) => handleInputChange('assignedTo', e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all"
                   required
                   disabled={isSubmitting}
                 >

@@ -20,7 +20,7 @@ const Modal: React.FC<ModalProps> = ({
 
   const sizeClasses = {
     sm: 'max-w-md',
-    md: 'max-w-lg',
+    md: 'w-[512px] max-w-[512px]',
     lg: 'max-w-2xl',
     xl: 'w-[900px] max-w-[900px]',
     full: 'max-w-[90vw] w-[90vw] max-h-[95vh]',
@@ -31,15 +31,15 @@ const Modal: React.FC<ModalProps> = ({
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 py-4 text-center">
-        <div className="fixed inset-0 transition-opacity bg-black/75 backdrop-blur-sm" onClick={onClose}></div>
+        <div className="fixed inset-0 transition-opacity bg-black/60 dark:bg-black/75 backdrop-blur-sm" onClick={onClose}></div>
         
-        <div className={`inline-block ${sizeClasses[size]} p-6 overflow-hidden text-left align-middle transition-all transform bg-gradient-to-br from-slate-800 to-slate-900 shadow-2xl rounded-xl border border-purple-500/30 my-4`}>
+        <div className={`inline-block ${sizeClasses[size]} p-6 overflow-hidden text-left align-middle transition-all transform bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-2xl rounded-xl border border-slate-300 dark:border-purple-500/30 my-4`}>
           {title && (
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
-            <h3 className="text-xl font-semibold text-white">{title}</h3>
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h3>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              className="p-2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
               title="Close modal"
             >
               <X className="w-5 h-5" />
@@ -47,7 +47,7 @@ const Modal: React.FC<ModalProps> = ({
             </div>
           )}
           
-          <div className="text-gray-300">
+          <div className="text-slate-700 dark:text-gray-300">
             {children}
           </div>
         </div>

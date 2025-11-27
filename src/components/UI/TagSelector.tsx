@@ -87,7 +87,7 @@ const TagSelector: React.FC<TagSelectorProps> = ({
           {selectedTags.map((tag) => (
             <span
               key={tag.id}
-              className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-400"
+              className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-600 dark:text-cyan-400"
             >
               <TagIcon className="w-3 h-3 mr-1" />
               {tag.label}
@@ -95,7 +95,7 @@ const TagSelector: React.FC<TagSelectorProps> = ({
                 <button
                   type="button"
                   onClick={() => handleTagRemove(tag)}
-                  className="ml-2 text-cyan-400 hover:text-cyan-300 transition-colors"
+                  className="ml-2 text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 transition-colors"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -116,23 +116,23 @@ const TagSelector: React.FC<TagSelectorProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+          className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
         />
-        <TagIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <TagIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-400" />
       </div>
 
       {/* Dropdown */}
       {isOpen && !disabled && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
           {/* Search input inside dropdown */}
-          <div className="p-3 border-b border-slate-700">
+          <div className="p-3 border-b border-slate-200 dark:border-slate-700">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search tags..."
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm"
+              className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 text-sm"
               autoFocus
             />
           </div>
@@ -143,9 +143,9 @@ const TagSelector: React.FC<TagSelectorProps> = ({
               key={tag.id}
               type="button"
               onClick={() => handleTagSelect(tag)}
-              className="w-full px-4 py-2 text-left text-white hover:bg-slate-700 transition-colors flex items-center"
+              className="w-full px-4 py-2 text-left text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center"
             >
-              <TagIcon className="w-4 h-4 mr-2 text-gray-400" />
+              <TagIcon className="w-4 h-4 mr-2 text-slate-400 dark:text-gray-400" />
               {tag.label}
             </button>
           ))}
@@ -165,7 +165,7 @@ const TagSelector: React.FC<TagSelectorProps> = ({
                 setSearchTerm('');
                 setIsOpen(false);
               }}
-              className="w-full px-4 py-2 text-left text-cyan-400 hover:bg-slate-700 transition-colors flex items-center border-t border-slate-700"
+              className="w-full px-4 py-2 text-left text-cyan-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center border-t border-slate-200 dark:border-slate-700"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add "{searchTerm}" (will be created on save)
@@ -174,7 +174,7 @@ const TagSelector: React.FC<TagSelectorProps> = ({
 
           {/* No results */}
           {filteredTags.length === 0 && !canCreateNew && (
-            <div className="px-4 py-2 text-gray-400 text-sm">
+            <div className="px-4 py-2 text-slate-500 dark:text-gray-400 text-sm">
               {searchTerm ? 'No tags found' : 'Start typing to search tags'}
             </div>
           )}
