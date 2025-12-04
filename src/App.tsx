@@ -13,6 +13,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Callback from './pages/Callback';
+import TeamSelection from './pages/TeamSelection';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import TestCases from './pages/TestCases';
@@ -23,6 +24,7 @@ import TestRunsOverview from './pages/TestRunsOverview';
 import TestPlans from './pages/TestPlans';
 import TestPlanDetails from './pages/TestPlanDetails';
 import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 
 const AppContent: React.FC = () => {
   const { loading } = useLoading();
@@ -35,8 +37,13 @@ const AppContent: React.FC = () => {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/callback" element={<Callback />} />
-            <Route path="/" element={
+            <Route path="/team-selection" element={
               <ProtectedRoute>
+                <TeamSelection />
+              </ProtectedRoute>
+            } />
+            <Route path="/" element={
+              <ProtectedRoute requireTeam={true}>
                 <Layout />
               </ProtectedRoute>
             }>
@@ -50,7 +57,7 @@ const AppContent: React.FC = () => {
               <Route path="test-plans" element={<TestPlans />} />
               <Route path="test-plans/:id" element={<TestPlanDetails />} />
               <Route path="reports" element={<Reports />} />
-              <Route path="settings" element={<div className="text-slate-900 dark:text-white">Settings - In Development</div>} />
+              <Route path="settings" element={<Settings />} />
             </Route>
           </Routes>
           <Toaster

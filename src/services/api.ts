@@ -6,6 +6,16 @@ export interface SSOInitResponse {
   };
 }
 
+export interface Role {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  permissions: string[];
+}
+
 export interface SSOLoginResponse {
   data: {
     id: string;
@@ -16,9 +26,13 @@ export interface SSOLoginResponse {
       name: string;
       login: string;
       email: string;
+      role_id: string;
+      team_id: string | null;
       created_at: string;
       updated_at: string;
+      role: Role;
     };
+    permissions: string[];
   };
 }
 
@@ -28,6 +42,28 @@ export interface User {
   login: string;
   email: string;
   token: string;
+  team_id: string | null;
+  role_id: string | null;
+  role?: Role;
+  permissions?: string[];
+}
+
+export interface Team {
+  id: number;
+  name: string;
+  description?: string;
+}
+
+export interface TeamsApiResponse {
+  data: {
+    id: string;
+    type: string;
+    attributes: {
+      id: number;
+      name: string;
+      description: string;
+    };
+  }[];
 }
 
 class ApiService {
@@ -57,11 +93,24 @@ class ApiService {
       },
       body: JSON.stringify({ sesame_token: sesameToken }),
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to login with SSO');
     }
     return response.json();
+  }
+
+  async getTeams(): Promise<TeamsApiResponse> {
+    return this.authenticatedRequest('/teams', {
+      method: 'GET',
+    });
+  }
+
+  async selectTeam(teamId: number): Promise<{ data: User }> {
+    return this.authenticatedRequest('/users/select-team', {
+      method: 'POST',
+      body: JSON.stringify({ team_id: teamId }),
+    });
   }
 
   // Helper method for authenticated API calls

@@ -4,6 +4,8 @@ import StatusBadge from '../UI/StatusBadge';
 import TagsWithTooltip from '../UI/TagsWithTooltip';
 import RunTestButton from '../UI/RunTestButton';
 import { TestCase, TEST_CASE_TYPES } from '../../types';
+import { usePermissions } from '../../hooks/usePermissions';
+import { PERMISSIONS } from '../../utils/permissions';
 
 interface DraggableTestCaseRowProps {
   testCase: TestCase;
@@ -26,6 +28,12 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
   isSubmitting
 }) => {
   const [dragStarted, setDragStarted] = useState(false);
+  const { hasPermission } = usePermissions();
+
+  const hasAnyAction = hasPermission(PERMISSIONS.TEST_CASE.UPDATE) ||
+                       hasPermission(PERMISSIONS.TEST_CASE.DELETE) ||
+                       hasPermission(PERMISSIONS.TEST_CASE.CREATE) ||
+                       hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE);
 
   const handleDragStart = (e: React.DragEvent) => {
     setDragStarted(true);
@@ -131,41 +139,51 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
       <td className="py-3 px-3 whitespace-nowrap">
         <StatusBadge status={testCase.automationStatus} type="automation" />
       </td>
-      <td className="py-3 px-3 whitespace-nowrap">
-        <RunTestButton
-          onClick={() => onRunTest(testCase)}
-          disabled={isSubmitting}
-          size="sm"
-        />
-      </td>
-      <td className="py-3 px-3 whitespace-nowrap">
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={() => onEditTestCase(testCase)}
-            className="p-1.5 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-            title="Edit"
+      {hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && (
+        <td className="py-3 px-3 whitespace-nowrap">
+          <RunTestButton
+            onClick={() => onRunTest(testCase)}
             disabled={isSubmitting}
-          >
-            <SquarePen className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onDuplicateTestCase(testCase)}
-            className="p-1.5 text-slate-600 dark:text-gray-400 hover:text-green-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-            title="Duplicate"
-            disabled={isSubmitting}
-          >
-            <Copy className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onDeleteTestCase(testCase)}
-            className="p-1.5 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-            title="Delete"
-            disabled={isSubmitting}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </td>
+            size="sm"
+          />
+        </td>
+      )}
+      {hasAnyAction && (
+        <td className="py-3 px-3 whitespace-nowrap">
+          <div className="flex items-center space-x-1">
+            {hasPermission(PERMISSIONS.TEST_CASE.UPDATE) && (
+              <button
+                onClick={() => onEditTestCase(testCase)}
+                className="p-1.5 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                title="Edit"
+                disabled={isSubmitting}
+              >
+                <SquarePen className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {hasPermission(PERMISSIONS.TEST_CASE.CREATE) && (
+              <button
+                onClick={() => onDuplicateTestCase(testCase)}
+                className="p-1.5 text-slate-600 dark:text-gray-400 hover:text-green-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                title="Duplicate"
+                disabled={isSubmitting}
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {hasPermission(PERMISSIONS.TEST_CASE.DELETE) && (
+              <button
+                onClick={() => onDeleteTestCase(testCase)}
+                className="p-1.5 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                title="Delete"
+                disabled={isSubmitting}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </td>
+      )}
     </tr>
   );
 };
