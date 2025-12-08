@@ -10,6 +10,8 @@ import { attachmentsApiService } from '../../services/attachmentsApi';
 import { TestCase } from '../../types';
 import { TEST_RESULTS, TestResultId } from '../../types';
 import { getDeviceIcon, getDeviceColor } from '../../utils/deviceIcons';
+import { usePermissions } from '../../hooks/usePermissions';
+import { PERMISSIONS } from '../../utils/permissions';
 import toast from 'react-hot-toast';
 import AddExecutionCommentModal from '../TestRun/AddExecutionCommentModal';
 
@@ -400,6 +402,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
   onRunTest,
   availableTags = []
 }) => {
+  const { hasPermission } = usePermissions();
   const [testCaseDetails, setTestCaseDetails] = useState<TestCaseDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1055,7 +1058,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                       <TestResultDropdown
                         value={currentExecutionResult}
                         onChange={handleExecutionResultChange}
-                        disabled={isUpdatingResult}
+                        disabled={!hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE) || isUpdatingResult}
                         isUpdating={isUpdatingResult}
                         testCaseTitle={testCase?.title || ''}
                         onOpenCommentModal={(selectedResultId) => {
@@ -1064,7 +1067,9 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                         }}
                       />
                       <p className="text-xs text-slate-600 dark:text-gray-400 mt-2">
-                        Update the execution result for this test case in the current test run
+                        {hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE)
+                          ? 'Update the execution result for this test case in the current test run'
+                          : 'You do not have permission to update test execution results'}
                       </p>
                       
                       {/* Execution History */}
@@ -1132,7 +1137,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                   <div className="text-xs text-slate-600 dark:text-gray-400 truncate flex-1 min-w-0">
                                     {attachment.name || getFileNameFromUrl(attachment.url)}
                                   </div>
-                                  {context === 'test-cases' && (
+                                  {context === 'test-cases' && hasPermission(PERMISSIONS.ATTACHMENT.DELETE) && (
                                     <button
                                       onClick={() => handleRemoveAttachment(attachment.id)}
                                       disabled={savingAttachmentId === attachment.id}
@@ -1167,7 +1172,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                   >
                                     Download
                                   </a>
-                                  {context === 'test-cases' && (
+                                  {context === 'test-cases' && hasPermission(PERMISSIONS.ATTACHMENT.DELETE) && (
                                     <button
                                       onClick={() => handleRemoveAttachment(attachment.id)}
                                       disabled={savingAttachmentId === attachment.id}
@@ -1181,7 +1186,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                               </div>
                             )}
 
-                            {context === 'test-cases' && (
+                            {context === 'test-cases' && hasPermission(PERMISSIONS.ATTACHMENT.UPDATE) && (
                               editingAttachmentId === attachment.id ? (
                                 <div className="flex items-center space-x-2 pt-2 border-t border-slate-300 dark:border-slate-600">
                                   <input
@@ -1253,7 +1258,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                     )}
 
                     {/* Run Test Button - Only show in test-cases context */}
-                    {context === 'test-cases' && onRunTest && testCase && (
+                    {context === 'test-cases' && onRunTest && testCase && hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && (
                       <div className="pt-3 flex justify-end">
                         <button
                           onClick={() => onRunTest(testCase)}

@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, Search, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Layers, User } from 'lucide-react';
+import { Plus, Search, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Layers, User, Eye } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import CreateSharedStepModal from '../components/SharedStep/CreateSharedStepModal';
 import EditSharedStepModal from '../components/SharedStep/EditSharedStepModal';
+import SharedStepViewModal from '../components/SharedStep/SharedStepViewModal';
 import UsedInTestCasesTooltip from '../components/SharedStep/UsedInTestCasesTooltip';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -12,11 +13,18 @@ import { useSharedSteps } from '../hooks/useSharedSteps';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { SharedStep, sharedStepsApiService } from '../services/sharedStepsApi';
 import toast from 'react-hot-toast';
+import { usePermissions } from '../hooks/usePermissions';
+import { PERMISSIONS } from '../utils/permissions';
+import PermissionGuard from '../components/PermissionGuard';
 
 const SharedSteps: React.FC = () => {
   const { getSelectedProject } = useApp();
+  const { hasPermission } = usePermissions();
   const { state: authState } = useAuth();
   const selectedProject = getSelectedProject();
+
+  const hasAnyAction = hasPermission(PERMISSIONS.SHARED_STEP.UPDATE) ||
+                       hasPermission(PERMISSIONS.SHARED_STEP.DELETE);
 
   useRestoreLastProject();
   
@@ -36,6 +44,7 @@ const SharedSteps: React.FC = () => {
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedSharedStep, setSelectedSharedStep] = useState<SharedStep | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -320,14 +329,16 @@ const SharedSteps: React.FC = () => {
             </div>
           )}
         </div>
-        <Button 
-          icon={Plus} 
-          onClick={() => setIsCreateModalOpen(true)}
-          disabled={!selectedProject}
-          title={!selectedProject ? 'Please select a project first' : 'Create new shared step'}
-        >
-          New Shared Step
-        </Button>
+        <PermissionGuard permission={PERMISSIONS.SHARED_STEP.CREATE}>
+          <Button
+            icon={Plus}
+            onClick={() => setIsCreateModalOpen(true)}
+            disabled={!selectedProject}
+            title={!selectedProject ? 'Please select a project first' : 'Create new shared step'}
+          >
+            New Shared Step
+          </Button>
+        </PermissionGuard>
       </div>
 
       {/* Show message if no project selected */}
@@ -432,22 +443,39 @@ const SharedSteps: React.FC = () => {
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => openEditModal(sharedStep)}
-                            className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                            title="Edit"
-                            disabled={isSubmitting}
-                          >
-                            <SquarePen className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => openDeleteDialog(sharedStep)}
-                            className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                            title="Delete"
-                            disabled={isSubmitting}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {hasPermission(PERMISSIONS.SHARED_STEP.READ) && (
+                            <button
+                              onClick={() => {
+                                setSelectedSharedStep(sharedStep);
+                                setIsViewModalOpen(true);
+                              }}
+                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                              title="View"
+                              disabled={isSubmitting}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          )}
+                          {hasPermission(PERMISSIONS.SHARED_STEP.UPDATE) && (
+                            <button
+                              onClick={() => openEditModal(sharedStep)}
+                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                              title="Edit"
+                              disabled={isSubmitting}
+                            >
+                              <SquarePen className="w-4 h-4" />
+                            </button>
+                          )}
+                          {hasPermission(PERMISSIONS.SHARED_STEP.DELETE) && (
+                            <button
+                              onClick={() => openDeleteDialog(sharedStep)}
+                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                              title="Delete"
+                              disabled={isSubmitting}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -523,6 +551,15 @@ const SharedSteps: React.FC = () => {
         onClose={closeEditModal}
         onSubmit={handleEditSharedStep}
         isSubmitting={isSubmitting}
+        sharedStep={selectedSharedStep}
+      />
+
+      <SharedStepViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setSelectedSharedStep(null);
+        }}
         sharedStep={selectedSharedStep}
       />
 

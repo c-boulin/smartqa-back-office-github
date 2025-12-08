@@ -17,10 +17,13 @@ import {
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { projectsApiService } from '../../services/projectsApi';
+import { usePermissions } from '../../hooks/usePermissions';
+import { PERMISSIONS } from '../../utils/permissions';
 
 const Sidebar: React.FC = () => {
   const { state, dispatch, getSelectedProject, loadProjects } = useApp();
   const { state: authState } = useAuth();
+  const { hasAnyPermission } = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -34,15 +37,54 @@ const Sidebar: React.FC = () => {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/test-cases', icon: TestTube, label: 'Test Cases' },
-    { path: '/shared-steps', icon: Layers, label: 'Shared Steps' },
-    { path: '/test-runs', icon: Play, label: 'Test Runs' },
-    { path: '/test-plans', icon: Calendar, label: 'Test Plans' },
-    { path: '/reports', icon: BarChart3, label: 'Reports' },
-    { path: '/settings', icon: Settings, label: 'Settings' }
+  const allNavItems = [
+    {
+      path: '/dashboard',
+      icon: LayoutDashboard,
+      label: 'Dashboard',
+      permissions: [PERMISSIONS.TEST_CASE.READ, PERMISSIONS.TEST_RUN.READ]
+    },
+    {
+      path: '/test-cases',
+      icon: TestTube,
+      label: 'Test Cases',
+      permissions: [PERMISSIONS.TEST_CASE.READ]
+    },
+    {
+      path: '/shared-steps',
+      icon: Layers,
+      label: 'Shared Steps',
+      permissions: [PERMISSIONS.SHARED_STEP.READ]
+    },
+    {
+      path: '/test-runs',
+      icon: Play,
+      label: 'Test Runs',
+      permissions: [PERMISSIONS.TEST_RUN.READ]
+    },
+    {
+      path: '/test-plans',
+      icon: Calendar,
+      label: 'Test Plans',
+      permissions: [PERMISSIONS.TEST_PLAN.READ]
+    },
+    {
+      path: '/reports',
+      icon: BarChart3,
+      label: 'Reports',
+      permissions: [PERMISSIONS.TEST_RUN.READ]
+    },
+    {
+      path: '/settings',
+      icon: Settings,
+      label: 'Settings',
+      permissions: [PERMISSIONS.ADMIN_PANEL.READ]
+    }
   ];
+
+  const navItems = allNavItems.filter(item =>
+    item.permissions.length === 0 || hasAnyPermission(item.permissions)
+  );
 
   // Use allProjects for search results, fallback to state.projects for display
   const projectsToShow = allProjects.length > 0 ? allProjects : state.projects;

@@ -125,31 +125,40 @@ const Login: React.FC = () => {
             name: response.data.attributes.name,
             login: response.data.attributes.login,
             email: response.data.attributes.email,
-            token: response.data.token
+            token: response.data.token,
+            team_id: response.data.attributes.team_id,
+            role_id: response.data.attributes.role_id,
+            role: response.data.attributes.role,
+            permissions: response.data.permissions
           };
 
           // Store authentication data synchronously
           login(userData);
-          
+
           // Verify the data was stored
           const storedToken = localStorage.getItem('auth_token');
           const storedUserData = localStorage.getItem('user_data');
-          
+
           if (!storedToken || !storedUserData) {
             throw new Error('Failed to store authentication data');
           }
 
           toast.success(`Welcome back, ${userData.name}!`);
-          
+
           // Close popup
           popup.close();
-          
+
           // Clear the popup check interval since we're successful
           clearInterval(checkClosed);
 
           // Use a longer delay to ensure everything is settled
           setTimeout(() => {
-            navigate('/projects');
+            const isSuperAdmin = userData.role?.slug === 'superadmin';
+            if (!userData.team_id && !isSuperAdmin) {
+              navigate('/team-selection');
+            } else {
+              navigate('/projects');
+            }
           }, 500);
 
         } catch (error) {
