@@ -49,6 +49,7 @@ interface TestCaseWithExecution {
   testRunName: string;
   testRunStatus: string;
   testCaseId: string;
+  testCaseProjectRelativeId?: number;
   testCaseTitle: string;
   latestStatus: string;
   priority: string;
@@ -438,6 +439,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                          _testRun.state === 5 ? 'Done' :
                          _testRun.state === 6 ? 'Closed' : 'Active',
             testCaseId: testCaseId,
+            testCaseProjectRelativeId: testCase.attributes.project_relative_id,
             testCaseTitle: testCase.attributes.title || `Test Case ${testCaseId}`,
             latestStatus: latestStatus,
             priority: priorityLabel,
@@ -1059,7 +1061,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                     </td>
                     <td className="py-4 px-6">
                       <div>
-                        <div className="text-sm font-medium text-slate-900 dark:text-white">TC-{testCase.testCaseId}</div>
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">TC-{testCase.testCaseProjectRelativeId ?? testCase.testCaseId}</div>
                         <div className="text-sm text-slate-600 dark:text-gray-400">{testCase.testCaseTitle}</div>
                       </div>
                     </td>

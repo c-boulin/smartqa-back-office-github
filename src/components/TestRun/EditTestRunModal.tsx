@@ -430,7 +430,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
                     <div key={`selected-${testCase.id}`} className="flex items-center justify-between bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg p-3 min-w-0">
                       <div className="flex-1 min-w-0 pr-3">
                         <span className="text-slate-900 dark:text-white text-sm font-medium">{testCase.title}</span>
-                        <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.id}</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.projectRelativeId || testCase.id}</p>
                       </div>
                       <button
                         type="button"
@@ -494,7 +494,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
                             <div className="flex items-center justify-between min-w-0">
                               <div className="flex-1 min-w-0 pr-3">
                                 <span className="text-sm font-medium block truncate">{testCase.title}</span>
-                                <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.id}</p>
+                                <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.projectRelativeId || testCase.id}</p>
                               </div>
                               <Plus className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                             </div>

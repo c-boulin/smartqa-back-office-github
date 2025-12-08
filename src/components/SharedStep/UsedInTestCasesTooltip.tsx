@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader } from 'lucide-react';
-import { sharedStepsApiService } from '../../services/sharedStepsApi';
 import { apiService } from '../../services/api';
 
 interface TestCaseInfo {
   id: string;
   title: string;
+  projectRelativeId?: number;
 }
 
 interface UsedInTestCasesTooltipProps {
@@ -70,11 +70,12 @@ const UsedInTestCasesTooltip: React.FC<UsedInTestCasesTooltipProps> = ({
         const testCaseDetails: TestCaseInfo[] = [];
 
         if (response.included) {
-          response.included.forEach((item: { type: string; attributes: { id: number; title: string } }) => {
+          response.included.forEach((item: { type: string; attributes: { id: number; title: string; projectRelativeId?: number } }) => {
             if (item.type === 'TestCase') {
               testCaseDetails.push({
                 id: item.attributes.id.toString(),
-                title: item.attributes.title
+                title: item.attributes.title,
+                projectRelativeId: item.attributes.projectRelativeId
               });
             }
           });
@@ -179,7 +180,7 @@ const UsedInTestCasesTooltip: React.FC<UsedInTestCasesTooltipProps> = ({
                   >
                     <div className="flex items-start space-x-2">
                       <span className="text-xs font-mono text-cyan-600 dark:text-cyan-400">
-                        #{testCase.id}
+                        TC-{testCase.projectRelativeId ?? testCase.id}
                       </span>
                       <span className="text-sm text-slate-700 dark:text-gray-200 flex-1">
                         {testCase.title}

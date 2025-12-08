@@ -8,6 +8,7 @@ interface TestCaseReportData {
   testRunDate: string;
   testRunStatus: string;
   testCaseId: string;
+  testCaseProjectRelativeId?: number;
   testCaseTitle: string;
   latestStatus: string;
   priority: string;
@@ -105,7 +106,7 @@ const TestCasesReportTable: React.FC<TestCasesReportTableProps> = ({
                 </td>
                 <td className="py-4 px-6">
                   <div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-white">{testCase.testCaseId}</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white">TC-{testCase.testCaseProjectRelativeId ?? testCase.testCaseId}</div>
                     <div className="text-sm text-slate-600 dark:text-gray-400">{testCase.testCaseTitle}</div>
                     {testCase.configurationName && (
                       <div className="text-xs text-cyan-400 mt-1">
