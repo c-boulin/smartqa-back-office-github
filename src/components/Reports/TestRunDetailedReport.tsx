@@ -259,7 +259,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
         const testRunsAfterDateFilter = testRunsBeforeFilter.filter(tr => {
           const _trCreatedAt = new Date(tr.createdAt);
-          const isWithinPeriod = trCreatedAt >= dateThreshold;
+          const isWithinPeriod = _trCreatedAt >= dateThreshold;
           return isWithinPeriod;
         });
 
@@ -349,7 +349,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
           }
 
           const _testRun = testRunsMap.get(testRunId);
-          if (!testRun) {
+          if (!_testRun) {
 
             return;
           }
@@ -381,7 +381,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
           }
 
           // Track that this test case belongs to this test run
-          testRun.testCaseIds.add(testCaseId);
+          _testRun.testCaseIds.add(testCaseId);
 
           const latestStatus = TEST_RESULTS[resultId] || 'Untested';
 
@@ -429,14 +429,14 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
           // Add to test cases included list
           testCasesIncluded.push({
-            testRunId: testRun.id,
-            testRunName: testRun.name,
-            testRunStatus: testRun.state === 1 ? 'New' :
-                         testRun.state === 2 ? 'In Progress' :
-                         testRun.state === 3 ? 'Under Review' :
-                         testRun.state === 4 ? 'Rejected' :
-                         testRun.state === 5 ? 'Done' :
-                         testRun.state === 6 ? 'Closed' : 'Active',
+            testRunId: _testRun.id,
+            testRunName: _testRun.name,
+            testRunStatus: _testRun.state === 1 ? 'New' :
+                         _testRun.state === 2 ? 'In Progress' :
+                         _testRun.state === 3 ? 'Under Review' :
+                         _testRun.state === 4 ? 'Rejected' :
+                         _testRun.state === 5 ? 'Done' :
+                         _testRun.state === 6 ? 'Closed' : 'Active',
             testCaseId: testCaseId,
             testCaseTitle: testCase.attributes.title || `Test Case ${testCaseId}`,
             latestStatus: latestStatus,
