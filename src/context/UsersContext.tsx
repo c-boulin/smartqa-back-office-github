@@ -67,15 +67,22 @@ export const UsersProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // Load users when authenticated
+  // Load users when authenticated and user has valid team or is superadmin
   useEffect(() => {
-    if (authState.isAuthenticated && state.users.length === 0 && !state.loading) {
-      fetchUsers();
-    } else if (!authState.isAuthenticated) {
+    if (authState.isAuthenticated) {
+      const hasValidTeamId = authState.user?.team_id &&
+                              authState.user.team_id !== 'null' &&
+                              authState.user.team_id !== '';
+      const isSuperAdmin = authState.user?.role?.slug === 'superadmin';
+
+      if ((hasValidTeamId || isSuperAdmin) && state.users.length === 0 && !state.loading) {
+        fetchUsers();
+      }
+    } else {
       dispatch({ type: 'CLEAR_DATA' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchUsers, state.loading, state.users.length are complex dependencies
-  }, [authState.isAuthenticated]);
+  }, [authState.isAuthenticated, authState.user?.team_id, authState.user?.role?.slug]);
 
   return (
     <UsersContext.Provider value={{ state, fetchUsers }}>

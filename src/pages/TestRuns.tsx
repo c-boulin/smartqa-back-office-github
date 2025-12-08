@@ -19,14 +19,22 @@ import { useTestRunsFilters } from '../hooks/useTestRunsFilters';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { useUsers } from '../context/UsersContext';
 import { TestRun } from '../services/testRunsApi';
+import { usePermissions } from '../hooks/usePermissions';
+import { PERMISSIONS } from '../utils/permissions';
+import PermissionGuard from '../components/PermissionGuard';
 import toast from 'react-hot-toast';
 
 const TestRuns: React.FC = () => {
   const { getSelectedProject, state: appState, loadConfigurations } = useApp();
   // const { state: authState } = useAuth();
   const { users } = useUsers();
+  const { hasPermission } = usePermissions();
   const navigate = useNavigate();
   const selectedProject = getSelectedProject();
+
+  const hasAnyAction = hasPermission(PERMISSIONS.TEST_RUN.UPDATE) ||
+                       hasPermission(PERMISSIONS.TEST_RUN.DELETE) ||
+                       hasPermission(PERMISSIONS.TEST_RUN.CREATE);
 
   useRestoreLastProject();
   
@@ -488,19 +496,21 @@ const TestRuns: React.FC = () => {
             </div>
           )}
         </div>
-        <Button
-          icon={Plus}
-          onClick={() => {
-            if (appState.configurations.length === 0 && !appState.isLoadingConfigurations) {
-              loadConfigurations();
-            }
-            setIsCreateModalOpen(true);
-          }}
-          disabled={!selectedProject}
+        <PermissionGuard permission={PERMISSIONS.TEST_RUN.CREATE}>
+          <Button
+            icon={Plus}
+            onClick={() => {
+              if (appState.configurations.length === 0 && !appState.isLoadingConfigurations) {
+                loadConfigurations();
+              }
+              setIsCreateModalOpen(true);
+            }}
+            disabled={!selectedProject}
           title={!selectedProject ? 'Please select a project first' : 'Create new test run'}
         >
           New Test Run
         </Button>
+        </PermissionGuard>
       </div>
 
       {/* Show message if no project selected */}
@@ -584,7 +594,9 @@ const TestRuns: React.FC = () => {
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Progress</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Test Cases</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Assignee</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Actions</th>
+                    {hasAnyAction && (
+                      <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Actions</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -654,46 +666,52 @@ const TestRuns: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center space-x-2">
-                          {activeTab === 'active' && ( // Only show edit button for active test runs
-                            <button
-                              onClick={() => openEditModal(testRun)}
-                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                              title="Edit"
-                              disabled={isSubmitting}
-                            >
-                              <SquarePen className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => openCloneModal(testRun)}
-                            className="p-2 text-slate-600 dark:text-gray-400 hover:text-green-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                            title="Clone Test Run"
-                            disabled={isSubmitting}
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                          {activeTab === 'active' && testRun.state !== 6 && ( // Only show close button for active test runs
-                            <button
-                              onClick={() => openCloseModal(testRun)}
-                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-orange-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                              title="Close Test Run"
-                              disabled={isSubmitting}
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => openDeleteDialog(testRun)}
-                            className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                            title="Delete"
-                            disabled={isSubmitting}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+                      {hasAnyAction && (
+                        <td className="py-4 px-6">
+                          <div className="flex items-center space-x-2">
+                            {activeTab === 'active' && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
+                              <button
+                                onClick={() => openEditModal(testRun)}
+                                className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                                title="Edit"
+                                disabled={isSubmitting}
+                              >
+                                <SquarePen className="w-4 h-4" />
+                              </button>
+                            )}
+                            {hasPermission(PERMISSIONS.TEST_RUN.CREATE) && (
+                              <button
+                                onClick={() => openCloneModal(testRun)}
+                                className="p-2 text-slate-600 dark:text-gray-400 hover:text-green-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                                title="Clone Test Run"
+                                disabled={isSubmitting}
+                              >
+                                <Copy className="w-4 h-4" />
+                              </button>
+                            )}
+                            {activeTab === 'active' && testRun.state !== 6 && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
+                              <button
+                                onClick={() => openCloseModal(testRun)}
+                                className="p-2 text-slate-600 dark:text-gray-400 hover:text-orange-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                                title="Close Test Run"
+                                disabled={isSubmitting}
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                            )}
+                            {hasPermission(PERMISSIONS.TEST_RUN.DELETE) && (
+                              <button
+                                onClick={() => openDeleteDialog(testRun)}
+                                className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                                title="Delete"
+                                disabled={isSubmitting}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

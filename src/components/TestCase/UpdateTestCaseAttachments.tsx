@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { CheckCircle, Loader, X, Save } from 'lucide-react';
 import FileUpload from '../UI/FileUpload';
 import { attachmentsApiService } from '../../services/attachmentsApi';
+import { usePermissions } from '../../hooks/usePermissions';
+import { PERMISSIONS } from '../../utils/permissions';
 import toast from 'react-hot-toast';
 
 interface UpdateTestCaseAttachmentsProps {
@@ -34,6 +36,7 @@ const UpdateTestCaseAttachments: React.FC<UpdateTestCaseAttachmentsProps> = ({
   onFileNameChange,
   onAttachmentNameUpdated
 }) => {
+  const { hasPermission } = usePermissions();
   const [editingAttachmentId, setEditingAttachmentId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>('');
   const [savingAttachmentId, setSavingAttachmentId] = useState<string | null>(null);
@@ -130,53 +133,55 @@ const UpdateTestCaseAttachments: React.FC<UpdateTestCaseAttachmentsProps> = ({
                   </div>
                 </div>
 
-                {editingAttachmentId === attachment.id ? (
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      placeholder="Enter attachment name"
-                      className="flex-1 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
-                      disabled={savingAttachmentId === attachment.id}
-                      autoFocus
-                    />
+                {hasPermission(PERMISSIONS.ATTACHMENT.UPDATE) && (
+                  editingAttachmentId === attachment.id ? (
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        placeholder="Enter attachment name"
+                        className="flex-1 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
+                        disabled={savingAttachmentId === attachment.id}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveEdit(attachment.id)}
+                        disabled={savingAttachmentId === attachment.id}
+                        className="px-3 py-2 bg-cyan-500 text-white rounded-lg text-sm hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                      >
+                        {savingAttachmentId === attachment.id ? (
+                          <>
+                            <Loader className="w-4 h-4 animate-spin" />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            <span>Save</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        disabled={savingAttachmentId === attachment.id}
+                        className="px-3 py-2 bg-slate-300 dark:bg-slate-600 text-slate-900 dark:text-white rounded-lg text-sm hover:bg-slate-400 dark:hover:bg-slate-500 transition-colors disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      onClick={() => handleSaveEdit(attachment.id)}
-                      disabled={savingAttachmentId === attachment.id}
-                      className="px-3 py-2 bg-cyan-500 text-white rounded-lg text-sm hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                      onClick={() => handleEditClick(attachment)}
+                      disabled={isSubmitting || savingAttachmentId !== null}
+                      className="text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 underline disabled:opacity-50"
                     >
-                      {savingAttachmentId === attachment.id ? (
-                        <>
-                          <Loader className="w-4 h-4 animate-spin" />
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4" />
-                          <span>Save</span>
-                        </>
-                      )}
+                      Edit name
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      disabled={savingAttachmentId === attachment.id}
-                      className="px-3 py-2 bg-slate-300 dark:bg-slate-600 text-slate-900 dark:text-white rounded-lg text-sm hover:bg-slate-400 dark:hover:bg-slate-500 transition-colors disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleEditClick(attachment)}
-                    disabled={isSubmitting || savingAttachmentId !== null}
-                    className="text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 underline disabled:opacity-50"
-                  >
-                    Edit name
-                  </button>
+                  )
                 )}
               </div>
             ))}

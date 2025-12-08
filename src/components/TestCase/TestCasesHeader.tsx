@@ -2,6 +2,8 @@ import React from 'react';
 import { Plus } from 'lucide-react';
 import Button from '../UI/Button';
 import { Project } from '../../types';
+import PermissionGuard from '../PermissionGuard';
+import { PERMISSIONS } from '../../utils/permissions';
 
 interface TestCasesHeaderProps {
   selectedProject: Project | null;
@@ -41,14 +43,16 @@ const TestCasesHeader: React.FC<TestCasesHeaderProps> = ({
           )}
         </div>
       </div>
-      <Button 
-        icon={Plus} 
-        onClick={onCreateTestCase}
-        disabled={disabled}
-        title={!selectedProject ? 'Please select a project first' : !selectedFolder ? 'Please select a folder first' : 'Create new test case'}
-      >
-        New Test Case
-      </Button>
+      <PermissionGuard permission={PERMISSIONS.TEST_CASE.CREATE}>
+        <Button
+          icon={Plus}
+          onClick={onCreateTestCase}
+          disabled={disabled}
+          title={!selectedProject ? 'Please select a project first' : !selectedFolder ? 'Please select a folder first' : 'Create new test case'}
+        >
+          New Test Case
+        </Button>
+      </PermissionGuard>
     </div>
   );
 };

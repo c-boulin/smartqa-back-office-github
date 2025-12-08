@@ -13,6 +13,8 @@ import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi'
 import { configurationsApiService } from '../services/configurationsApi';
 import { useApp } from '../context/AppContext';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
+import { usePermissions } from '../hooks/usePermissions';
+import { PERMISSIONS } from '../utils/permissions';
 import { TestCase, TEST_RESULTS, TestResultId } from '../types';
 import { getDeviceIcon, getDeviceColor } from '../utils/deviceIcons';
 import toast from 'react-hot-toast';
@@ -273,6 +275,7 @@ const TestRunsOverview: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { getSelectedProject } = useApp();
   const selectedProject = getSelectedProject();
+  const { hasPermission } = usePermissions();
 
   useRestoreLastProject();
 
@@ -977,7 +980,12 @@ const TestRunsOverview: React.FC = () => {
                     <TestResultDropdown
                       value={testCase.executionStatus}
                       onChange={(newResultId, comment) => handleExecutionResultChange(testCase.id, testCase.testRunId, newResultId, comment, testCase.configurationId)}
-                      disabled={testRuns.find(tr => tr.id === testCase.testRunId)?.state === 6 || updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testCase.testRunId}`)}
+                      disabled={
+                        !hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) ||
+                        !hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE) ||
+                        testRuns.find(tr => tr.id === testCase.testRunId)?.state === 6 ||
+                        updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testCase.testRunId}`)
+                      }
                       isUpdating={updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testCase.testRunId}`)}
                       testCaseTitle={testCase.title}
                       onOpenCommentModal={(selectedResultId) => {

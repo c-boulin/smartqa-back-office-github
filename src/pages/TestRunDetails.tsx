@@ -17,6 +17,8 @@ import { useTestRunDetailsFilters } from '../hooks/useTestRunDetailsFilters';
 import { useApp } from '../context/AppContext';
 import { TestCase, TEST_RESULTS, TestResultId, Tag } from '../types';
 import { getDeviceIcon, getDeviceColor } from '../utils/deviceIcons';
+import { usePermissions } from '../hooks/usePermissions';
+import { PERMISSIONS } from '../utils/permissions';
 import toast from 'react-hot-toast';
 
 // Test Result Dropdown Component
@@ -274,6 +276,7 @@ const TestRunDetails: React.FC = () => {
   const [searchParams] = useSearchParams();
   const testPlanIdFromUrl = searchParams.get('testPlanId') || undefined;
   const { state: appState, createTag } = useApp();
+  const { hasPermission } = usePermissions();
   const [testRun, setTestRun] = useState<TestRun | null>(null);
   const [testCases, setTestCases] = useState<TestCaseWithExecution[]>([]);
   const [filteredTestCases, setFilteredTestCases] = useState<TestCaseWithExecution[]>([]);
@@ -1006,7 +1009,7 @@ const TestRunDetails: React.FC = () => {
                       <TestResultDropdown
                         value={testCase.executionStatus}
                         onChange={(newResultId, comment) => handleExecutionResultChange(testCase.id, newResultId, comment, testCase.configurationId)}
-                        disabled={isTestRunClosed || updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testRun?.id}`)}
+                        disabled={!hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE) || isTestRunClosed || updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testRun?.id}`)}
                         isUpdating={updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testRun?.id}`)}
                         testCaseTitle={testCase.title}
                         onOpenCommentModal={(selectedResultId) => {

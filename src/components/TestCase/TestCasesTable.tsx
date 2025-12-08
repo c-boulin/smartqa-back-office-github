@@ -4,6 +4,8 @@ import Card from '../UI/Card';
 import Button from '../UI/Button';
 import DraggableTestCaseRow from './DraggableTestCaseRow';
 import { TestCase } from '../../types';
+import { usePermissions } from '../../hooks/usePermissions';
+import { PERMISSIONS } from '../../utils/permissions';
 
 interface TestCasesTableProps {
   testCases: TestCase[];
@@ -41,6 +43,12 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
   onPageChange,
   isSubmitting
 }) => {
+  const { hasPermission } = usePermissions();
+
+  const hasAnyAction = hasPermission(PERMISSIONS.TEST_CASE.UPDATE) ||
+                       hasPermission(PERMISSIONS.TEST_CASE.DELETE) ||
+                       hasPermission(PERMISSIONS.TEST_CASE.CREATE) ||
+                       hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE);
   return (
     <Card className="overflow-hidden">
       {/* Loader overlay - positioned at top of card for visibility */}
@@ -69,8 +77,12 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
               <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Priority</th>
               <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Tags</th>
               <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Auto Status</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Run</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Actions</th>
+              {hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && (
+                <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Run</th>
+              )}
+              {hasAnyAction && (
+                <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody>

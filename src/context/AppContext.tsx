@@ -378,10 +378,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (isInitializing.current) {
       return;
     }
-    
+
     if (authState.isAuthenticated) {
-      // User is authenticated, load projects only if not already loaded
-      if (!hasLoadedRef.current && !loadingRef.current) {
+      const hasValidTeamId = authState.user?.team_id &&
+                              authState.user.team_id !== 'null' &&
+                              authState.user.team_id !== '';
+      const isSuperAdmin = authState.user?.role?.slug === 'superadmin';
+
+      // Only load data if user has a valid team or is superadmin
+      if ((hasValidTeamId || isSuperAdmin) && !hasLoadedRef.current && !loadingRef.current) {
         isInitializing.current = true;
         loadProjects();
         loadTags();
@@ -399,7 +404,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'CLEAR_DATA' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadConfigurations, loadProjects, loadTags are stable
-  }, [authState.isAuthenticated]); // Only depend on authentication state
+  }, [authState.isAuthenticated, authState.user?.team_id, authState.user?.role?.slug]);
 
   return (
     <AppContext.Provider value={{

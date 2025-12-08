@@ -12,6 +12,9 @@ import { useUsers } from '../context/UsersContext';
 import { useTestPlans } from '../hooks/useTestPlans';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { TestPlan } from '../services/testPlansApi';
+import { usePermissions } from '../hooks/usePermissions';
+import { PERMISSIONS } from '../utils/permissions';
+import PermissionGuard from '../components/PermissionGuard';
 import toast from 'react-hot-toast';
 
 const TestPlans: React.FC = () => {
@@ -19,7 +22,11 @@ const TestPlans: React.FC = () => {
   // const { state: authState } = useAuth();
   const navigate = useNavigate();
   const { users } = useUsers();
+  const { hasPermission } = usePermissions();
   const selectedProject = getSelectedProject();
+
+  const hasAnyAction = hasPermission(PERMISSIONS.TEST_PLAN.UPDATE) ||
+                       hasPermission(PERMISSIONS.TEST_PLAN.DELETE);
 
   useRestoreLastProject();
   
@@ -260,14 +267,16 @@ const TestPlans: React.FC = () => {
             </div>
           )}
         </div>
-        <Button 
-          icon={Plus} 
-          onClick={() => setIsCreateModalOpen(true)}
-          disabled={!selectedProject}
-          title={!selectedProject ? 'Please select a project first' : 'Create new test plan'}
-        >
-          New Test Plan
-        </Button>
+        <PermissionGuard permission={PERMISSIONS.TEST_PLAN.CREATE}>
+          <Button
+            icon={Plus}
+            onClick={() => setIsCreateModalOpen(true)}
+            disabled={!selectedProject}
+            title={!selectedProject ? 'Please select a project first' : 'Create new test plan'}
+          >
+            New Test Plan
+          </Button>
+        </PermissionGuard>
       </div>
 
       {/* Show message if no project selected */}
@@ -376,7 +385,9 @@ const TestPlans: React.FC = () => {
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Title</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Progress</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Duration</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Actions</th>
+                {hasAnyAction && (
+                  <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -472,43 +483,49 @@ const TestPlans: React.FC = () => {
                         <span className="text-slate-500 dark:text-gray-500 text-sm">No dates set</span>
                       )}
                     </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center space-x-2">
-                        <select
-                          value={testPlan.status}
-                          onChange={async (e) => {
-                            try {
-                              await updateTestPlanStatus(testPlan.id, e.target.value);
-                            } catch {
-                              // Error already handled in hook
-                            }
-                          }}
-                          className="px-2 py-1 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                          disabled={isSubmitting}
-                        >
-                          <option value="1">New</option>
-                          <option value="2">In Progress</option>
-                          <option value="3">Done</option>
-                          <option value="4">Closed</option>
-                        </select>
-                        <button
-                          onClick={() => openEditModal(testPlan)}
-                          className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                          title="Edit"
-                          disabled={isSubmitting}
-                        >
-                          <SquarePen className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openDeleteDialog(testPlan)}
-                          className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                          title="Delete"
-                          disabled={isSubmitting}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {hasAnyAction && (
+                      <td className="py-4 px-6">
+                        <div className="flex items-center space-x-2">
+                          <select
+                            value={testPlan.status}
+                            onChange={async (e) => {
+                              try {
+                                await updateTestPlanStatus(testPlan.id, e.target.value);
+                              } catch {
+                                // Error already handled in hook
+                              }
+                            }}
+                            className="px-2 py-1 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                            disabled={isSubmitting}
+                          >
+                            <option value="1">New</option>
+                            <option value="2">In Progress</option>
+                            <option value="3">Done</option>
+                            <option value="4">Closed</option>
+                          </select>
+                          {hasPermission(PERMISSIONS.TEST_PLAN.UPDATE) && (
+                            <button
+                              onClick={() => openEditModal(testPlan)}
+                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                              title="Edit"
+                              disabled={isSubmitting}
+                            >
+                              <SquarePen className="w-4 h-4" />
+                            </button>
+                          )}
+                          {hasPermission(PERMISSIONS.TEST_PLAN.DELETE) && (
+                            <button
+                              onClick={() => openDeleteDialog(testPlan)}
+                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                              title="Delete"
+                              disabled={isSubmitting}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

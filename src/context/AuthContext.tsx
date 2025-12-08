@@ -11,6 +11,7 @@ interface AuthState {
 type AuthAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_USER'; payload: User }
+  | { type: 'UPDATE_USER'; payload: User }
   | { type: 'SET_ERROR'; payload: string }
   | { type: 'LOGOUT' };
 
@@ -31,6 +32,14 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         user: action.payload,
         isAuthenticated: true,
         isLoading: false,
+        error: null
+      };
+    case 'UPDATE_USER':
+      localStorage.setItem('user_data', JSON.stringify(action.payload));
+      return {
+        ...state,
+        user: action.payload,
+        isAuthenticated: true,
         error: null
       };
     case 'SET_ERROR':
@@ -55,6 +64,10 @@ const AuthContext = createContext<{
   dispatch: React.Dispatch<AuthAction>;
   login: (user: User) => void;
   logout: () => void;
+  updateUser: (user: User) => void;
+  hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (permissions: string[]) => boolean;
+  hasAllPermissions: (permissions: string[]) => boolean;
 } | null>(null);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -64,10 +77,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Check for existing authentication on app load
     const token = localStorage.getItem('auth_token');
     const userData = localStorage.getItem('user_data');
-    
+
     if (token && userData) {
       try {
         const user = JSON.parse(userData);
+        console.log('🔐 Loaded user from localStorage:', {
+          name: user.name,
+          hasPermissions: !!user.permissions,
+          permissionsCount: user.permissions?.length || 0,
+          permissions: user.permissions
+        });
         dispatch({ type: 'SET_USER', payload: user });
       } catch {
         // Clear invalid data
@@ -76,6 +95,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (state.user) {
+      console.log('👤 Current user permissions:', {
+        name: state.user.name,
+        permissionsCount: state.user.permissions?.length || 0,
+        permissions: state.user.permissions
+      });
+    }
+  }, [state.user]);
 
   const login = (user: User) => {
     localStorage.setItem('auth_token', user.token);
@@ -87,8 +116,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     dispatch({ type: 'LOGOUT' });
   };
 
+  const updateUser = (user: User) => {
+    dispatch({ type: 'UPDATE_USER', payload: user });
+  };
+
+  const hasPermission = (permission: string): boolean => {
+    if (!state.user) return false;
+    if (!state.user.permissions || !Array.isArray(state.user.permissions)) {
+      console.warn('User has no permissions array. This may indicate an old session. Please log out and log in again.');
+      return false;
+    }
+    return state.user.permissions.includes(permission);
+  };
+
+  const hasAnyPermission = (permissions: string[]): boolean => {
+    if (!state.user) return false;
+    if (!state.user.permissions || !Array.isArray(state.user.permissions)) {
+      console.warn('User has no permissions array. This may indicate an old session. Please log out and log in again.');
+      return false;
+    }
+    if (permissions.length === 0) return true;
+    return permissions.some(permission => state.user.permissions!.includes(permission));
+  };
+
+  const hasAllPermissions = (permissions: string[]): boolean => {
+    if (!state.user) return false;
+    if (!state.user.permissions || !Array.isArray(state.user.permissions)) {
+      console.warn('User has no permissions array. This may indicate an old session. Please log out and log in again.');
+      return false;
+    }
+    if (permissions.length === 0) return true;
+    return permissions.every(permission => state.user.permissions!.includes(permission));
+  };
+
   return (
-    <AuthContext.Provider value={{ state, dispatch, login, logout }}>
+    <AuthContext.Provider value={{ state, dispatch, login, logout, updateUser, hasPermission, hasAnyPermission, hasAllPermissions }}>
       {children}
     </AuthContext.Provider>
   );
