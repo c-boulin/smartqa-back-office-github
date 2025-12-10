@@ -81,10 +81,10 @@ const UpdateTestCaseSteps: React.FC<UpdateTestCaseStepsProps> = ({
         if (idParts.length >= 3 && idParts[0] === 'shared') {
           const sharedStepId = idParts[1];
           const thirdPart = idParts[2];
-          
+
           // Check if it's a pivot ID (from existing data) or timestamp (from new instances)
           const isPivotId = !isNaN(parseInt(thirdPart)) && parseInt(thirdPart) < 1000000000000; // Pivot IDs are smaller than timestamps
-          
+
           if (isPivotId) {
             // Existing shared step with pivot ID
             const pivotId = parseInt(thirdPart);
@@ -92,9 +92,8 @@ const UpdateTestCaseSteps: React.FC<UpdateTestCaseStepsProps> = ({
             return sharedStep ? { type: 'shared' as const, id: orderItem.id, sharedStep } : null;
           } else {
             // New shared step instance with timestamp
-            // Extract the shared step ID and find by ID, not by position
-            const sharedStepId = idParts[1];
-            const sharedStep = sharedSteps.find(s => s.id === sharedStepId && !s.pivotId);
+            // Find by instanceId (the full unique ID) to support duplicate shared steps
+            const sharedStep = sharedSteps.find(s => s.instanceId === orderItem.id);
             return sharedStep ? { type: 'shared' as const, id: orderItem.id, sharedStep } : null;
           }
         }
@@ -166,18 +165,27 @@ const UpdateTestCaseSteps: React.FC<UpdateTestCaseStepsProps> = ({
                   ) : (
                     <DraggableSharedStep
                       key={item.id}
-                     sharedStep={item.sharedStep!}
-                     uniqueId={item.id}
+                      sharedStep={item.sharedStep!}
+                      uniqueId={item.id}
                       index={index}
-                      onRemove={(sharedStepId) => {
-                        // Extract pivot ID from the combined ID and call removal with pivot ID
+                      onRemove={() => {
+                        // Extract pivot ID or use instance ID based on type
                         const idParts = item.id.split('-');
                         if (idParts.length >= 3 && idParts[0] === 'shared') {
-                          const pivotId = parseInt(idParts[2]);
+                          const thirdPart = idParts[2];
+                          const isPivotId = !isNaN(parseInt(thirdPart)) && parseInt(thirdPart) < 1000000000000;
 
-                          onRemoveSharedStep(`pivot-${pivotId}`); // Pass pivot ID for deletion
+                          if (isPivotId) {
+                            // Existing shared step with pivot ID
+                            const pivotId = parseInt(thirdPart);
+                            onRemoveSharedStep(`pivot-${pivotId}`);
+                          } else {
+                            // New shared step instance - use full unique ID
+                            onRemoveSharedStep(item.id);
+                          }
                         } else {
-                          onRemoveSharedStep(sharedStepId);
+                          // Fallback
+                          onRemoveSharedStep(item.id);
                         }
                       }}
                       onView={onViewSharedStep}

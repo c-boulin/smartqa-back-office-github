@@ -83,10 +83,10 @@ interface SharedStepRelationship {
 
 export const buildSharedStepsRelationships = (
   stepOrder: Array<{ type: 'step' | 'shared'; id: string }>,
-  sharedSteps: Array<{ id: string; title: string; pivotId?: number }>
+  sharedSteps: Array<{ id: string; title: string; pivotId?: number; instanceId?: string }>
 ): SharedStepRelationship[] => {
   const sharedStepsRelationships: SharedStepRelationship[] = [];
-  
+
   for (let position = 0; position < stepOrder.length; position++) {
     const orderItem = stepOrder[position];
     const order = position + 1;
@@ -97,10 +97,10 @@ export const buildSharedStepsRelationships = (
       if (idParts.length >= 3 && idParts[0] === 'shared') {
         const sharedStepId = idParts[1];
         const thirdPart = idParts[2];
-        
+
         // Check if it's a pivot ID (from existing data) or timestamp (from new instances)
         const isPivotId = !isNaN(parseInt(thirdPart)) && parseInt(thirdPart) < 1000000000000; // Pivot IDs are smaller than timestamps
-        
+
         if (isPivotId) {
           // Existing shared step with pivot ID - find by both ID and pivot ID
           const pivotId = parseInt(thirdPart);
@@ -115,9 +115,8 @@ export const buildSharedStepsRelationships = (
             });
           }
         } else {
-          // New shared step instance with timestamp - find by ID, not by position
-          const sharedStepId = idParts[1];
-          const sharedStep = sharedSteps.find(s => s.id === sharedStepId && !s.pivotId);
+          // New shared step instance with timestamp - find by instanceId for uniqueness
+          const sharedStep = sharedSteps.find(s => s.instanceId === orderItem.id);
           if (sharedStep) {
             sharedStepsRelationships.push({
               type: "SharedStep",
@@ -131,6 +130,6 @@ export const buildSharedStepsRelationships = (
       }
     }
   }
-  
+
   return sharedStepsRelationships;
 };
