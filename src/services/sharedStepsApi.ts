@@ -385,8 +385,10 @@ class SharedStepsApiService {
     // Count steps and results
     const stepsCount = apiSharedStep.relationships.stepResults?.data?.length || 0;
 
-    // Count test cases using this shared step
-    const usedInCount = apiSharedStep.relationships.testCases?.data?.length || 0;
+    // Count unique test cases using this shared step (deduplicate by test case ID)
+    const testCaseIds = apiSharedStep.relationships.testCases?.data?.map(tc => tc.id) || [];
+    const uniqueTestCaseIds = [...new Set(testCaseIds)];
+    const usedInCount = uniqueTestCaseIds.length;
 
     // Extract step result IDs OR full details from included data
     const stepResultRefs = apiSharedStep.relationships.stepResults?.data || [];

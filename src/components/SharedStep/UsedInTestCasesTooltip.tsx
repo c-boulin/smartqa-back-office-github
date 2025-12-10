@@ -71,11 +71,14 @@ const UsedInTestCasesTooltip: React.FC<UsedInTestCasesTooltipProps> = ({
           (tc: { id: string }) => tc.id.split('/').pop()
         );
 
+        // Deduplicate test case IDs (in case the same test case uses the shared step multiple times)
+        const uniqueTestCaseIds = [...new Set(testCaseIds)];
+
         const testCaseDetails: TestCaseInfo[] = [];
 
         if (response.included) {
           response.included.forEach((item: { type: string; attributes: { id: number; title: string; projectRelativeId?: number } }) => {
-            if (item.type === 'TestCase') {
+            if (item.type === 'TestCase' && uniqueTestCaseIds.includes(item.attributes.id.toString())) {
               testCaseDetails.push({
                 id: item.attributes.id.toString(),
                 title: item.attributes.title,
