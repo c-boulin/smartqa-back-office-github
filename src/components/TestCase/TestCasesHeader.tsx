@@ -48,7 +48,7 @@ const TestCasesHeader: React.FC<TestCasesHeaderProps> = ({
           icon={Plus}
           onClick={onCreateTestCase}
           disabled={disabled}
-          title={!selectedProject ? 'Please select a project first' : !selectedFolder ? 'Please select a folder first' : 'Create new test case'}
+          title={!selectedProject ? 'Please select a project first' : 'Create new test case'}
         >
           New Test Case
         </Button>

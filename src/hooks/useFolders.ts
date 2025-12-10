@@ -8,11 +8,12 @@ export const useFolders = (projectId?: string | null) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  
+
   // Cache pour éviter les rechargements inutiles
   const foldersCache = useRef<Map<string, { folders: Folder[]; tree: Folder[] }>>(new Map());
   const previousProjectId = useRef<string | null>(null);
   const isInitialized = useRef(false);
+  const hasAutoSelected = useRef<Map<string, boolean>>(new Map());
 
   // Function to update folders with extracted data from test cases
   const updateFoldersFromTestCases = useCallback(async (extractedFolders: Array<Record<string, unknown>>, forceProjectId?: string) => {
@@ -51,26 +52,13 @@ export const useFolders = (projectId?: string | null) => {
       setFolders(transformedFolders);
       setFolderTree(tree);
 
-      // Auto-select the first folder when there's only one folder (e.g., Default Folder)
       const projectChanged = previousProjectId.current !== targetProjectId;
 
-      // Don't auto-select folder if coming from dashboard with filters
-      const hasNavigationState = window.location.pathname === '/test-cases' &&
-                                 window.history.state &&
-                                 window.history.state.applyFilter;
-
-      // Auto-select if there's exactly one folder (Default Folder scenario)
-      if (tree.length === 1 && projectChanged && !hasNavigationState) {
-        const firstFolder = tree[0];
-        setSelectedFolderId(firstFolder.id);
-      } else if (projectChanged) {
+      if (projectChanged) {
         setSelectedFolderId(null);
-      } else if (hasNavigationState) {
-        setSelectedFolderId(null);
-      } else if (tree.length === 0) {
-        setSelectedFolderId(null);
+        hasAutoSelected.current.delete(targetProjectId);
       }
-      
+
       // Update the previous project ID
       previousProjectId.current = targetProjectId;
       isInitialized.current = true;
@@ -106,12 +94,13 @@ export const useFolders = (projectId?: string | null) => {
       setFolders(cached.folders);
       setFolderTree(cached.tree);
 
-      // Auto-select first folder if none selected and there's exactly one folder
-      if (!selectedFolderId && cached.tree.length === 1) {
+      // Auto-select first folder only if we haven't auto-selected for this project yet
+      if (!hasAutoSelected.current.get(targetProjectId) && !selectedFolderId && cached.tree.length === 1) {
         const firstFolder = foldersApiService.getFirstFolder(cached.tree);
         if (firstFolder) {
 
           setSelectedFolderId(firstFolder.id);
+          hasAutoSelected.current.set(targetProjectId, true);
         }
       }
 
@@ -161,11 +150,12 @@ export const useFolders = (projectId?: string | null) => {
           setFolderTree(cached.tree);
           setLoading(false);
 
-          // Auto-select if there's exactly one folder from cache
-          if (cached.tree.length === 1 && !selectedFolderId) {
+          // Auto-select only if we haven't auto-selected for this project yet
+          if (!hasAutoSelected.current.get(projectId) && cached.tree.length === 1 && !selectedFolderId) {
             const firstFolder = foldersApiService.getFirstFolder(cached.tree);
             if (firstFolder) {
               setSelectedFolderId(firstFolder.id);
+              hasAutoSelected.current.set(projectId, true);
             }
           }
 
@@ -179,6 +169,7 @@ export const useFolders = (projectId?: string | null) => {
       setLoading(false);
       previousProjectId.current = null;
       isInitialized.current = false;
+      hasAutoSelected.current.clear();
     }
   }, [projectId, fetchFolders]); // Ajouter fetchFolders comme dépendance
 
