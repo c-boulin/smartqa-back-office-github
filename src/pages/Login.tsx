@@ -126,7 +126,6 @@ const Login: React.FC = () => {
             login: response.data.attributes.login,
             email: response.data.attributes.email,
             token: response.data.token,
-            team_id: response.data.attributes.team_id,
             role_id: response.data.attributes.role_id,
             role: response.data.attributes.role,
             permissions: response.data.permissions
@@ -151,14 +150,9 @@ const Login: React.FC = () => {
           // Clear the popup check interval since we're successful
           clearInterval(checkClosed);
 
-          // Use a longer delay to ensure everything is settled
+          // Redirect to projects page
           setTimeout(() => {
-            const isSuperAdmin = userData.role?.slug === 'superadmin';
-            if (!userData.team_id && !isSuperAdmin) {
-              navigate('/team-selection');
-            } else {
-              navigate('/projects');
-            }
+            navigate('/projects');
           }, 500);
 
         } catch (error) {

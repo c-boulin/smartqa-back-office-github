@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  TestTube, 
-  Play, 
-  Calendar, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  TestTube,
+  Play,
+  Calendar,
+  BarChart3,
   Settings,
   Layers,
   ChevronDown,
@@ -82,9 +82,18 @@ const Sidebar: React.FC = () => {
     }
   ];
 
-  const navItems = allNavItems.filter(item =>
-    item.permissions.length === 0 || hasAnyPermission(item.permissions)
-  );
+  const navItems = allNavItems.filter(item => {
+    const hasAccess = item.permissions.length === 0 || hasAnyPermission(item.permissions);
+    if (!hasAccess) {
+      console.log(`🚫 Filtered out: ${item.label} (requires: ${item.permissions.join(', ')})`);
+    }
+    return hasAccess;
+  });
+
+  useEffect(() => {
+    console.log('📊 Sidebar: Current user permissions:', authState.user?.permissions);
+    console.log('📋 Sidebar: Visible nav items:', navItems.map(item => item.label));
+  }, [authState.user?.permissions, navItems.length]);
 
   // Use allProjects for search results, fallback to state.projects for display
   const projectsToShow = allProjects.length > 0 ? allProjects : state.projects;

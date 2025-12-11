@@ -18,12 +18,6 @@ export interface ApiUser {
         id: string;
       } | [];
     };
-    team?: {
-      data: {
-        type: string;
-        id: string;
-      } | [];
-    };
   };
 }
 
@@ -40,22 +34,6 @@ export interface IncludedRole {
   };
 }
 
-export interface IncludedTeam {
-  id: string;
-  type: 'Team';
-  attributes: {
-    id: number;
-    name: string;
-    description: string;
-  };
-}
-
-export interface Team {
-  id: string;
-  name: string;
-  description?: string;
-}
-
 export interface UsersApiResponse {
   links: {
     self: string;
@@ -70,7 +48,7 @@ export interface UsersApiResponse {
     currentPage: number;
   };
   data: ApiUser[];
-  included?: Array<IncludedRole | IncludedTeam>;
+  included?: IncludedRole[];
 }
 
 export interface User {
@@ -79,9 +57,7 @@ export interface User {
   login: string;
   email: string;
   role_id: string | null;
-  team_id: string | null;
   role?: Role;
-  team?: Team;
 }
 
 class UsersApiService {
@@ -102,13 +78,13 @@ class UsersApiService {
   }
 
   async getUsers(): Promise<UsersApiResponse> {
-    const response = await apiService.authenticatedRequest('/users?itemsPerPage=100&include=role,team');
+    const response = await apiService.authenticatedRequest('/users?itemsPerPage=100&include=role');
     return response || this.getDefaultUsersResponse();
   }
 
   async getUserById(userId: string): Promise<User | null> {
     try {
-      const response = await apiService.authenticatedRequest(`/users/${userId}?include=role,team`);
+      const response = await apiService.authenticatedRequest(`/users/${userId}?include=role`);
 
       if (response?.data) {
         return this.transformApiUser(response.data, response.included);
@@ -148,20 +124,6 @@ class UsersApiService {
     return [];
   }
 
-  async getTeams(): Promise<Team[]> {
-    const response = await apiService.authenticatedRequest('/teams');
-
-    if (Array.isArray(response.data)) {
-      return response.data.map((item: any) => ({
-        id: item.attributes.id.toString(),
-        name: item.attributes.name,
-        description: item.attributes.description
-      }));
-    }
-
-    return [];
-  }
-
   async updateUserRole(userId: string, roleId: number): Promise<void> {
     await apiService.authenticatedRequest(`/users/${userId}/assign-role`, {
       method: 'PATCH',
@@ -175,48 +137,9 @@ class UsersApiService {
     });
   }
 
-  async updateUserTeam(userId: string, teamId: number): Promise<void> {
-    await apiService.authenticatedRequest(`/users/${userId}/assign-team`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/vnd.api+json',
-        'Accept': 'application/vnd.api+json',
-      },
-      body: JSON.stringify({
-        team_id: teamId
-      })
-    });
-  }
-
-  async createTeam(name: string, description: string): Promise<Team> {
-    const response = await apiService.authenticatedRequest('/teams', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/vnd.api+json',
-      },
-      body: JSON.stringify({
-        data: {
-          type: 'teams',
-          attributes: {
-            name,
-            description
-          }
-        }
-      })
-    });
-
-    return {
-      id: response.data.attributes.id.toString(),
-      name: response.data.attributes.name,
-      description: response.data.attributes.description
-    };
-  }
-
-  transformApiUser(apiUser: ApiUser, included?: Array<IncludedRole | IncludedTeam>): User {
+  transformApiUser(apiUser: ApiUser, included?: IncludedRole[]): User {
     let role: Role | undefined;
     let roleId: string | null = null;
-    let team: Team | undefined;
-    let teamId: string | null = null;
 
     if (apiUser.relationships?.role?.data && !Array.isArray(apiUser.relationships.role.data)) {
       const roleReference = apiUser.relationships.role.data;
@@ -225,7 +148,7 @@ class UsersApiService {
       if (roleIdFromPath && included) {
         const includedRole = included.find(
           item => item.type === 'Role' && item.id === roleReference.id
-        ) as IncludedRole | undefined;
+        );
 
         if (includedRole) {
           roleId = includedRole.attributes.id.toString();
@@ -242,37 +165,13 @@ class UsersApiService {
       }
     }
 
-    if (apiUser.relationships?.team?.data && !Array.isArray(apiUser.relationships.team.data)) {
-      const teamReference = apiUser.relationships.team.data;
-      const teamIdFromPath = teamReference.id.split('/').pop();
-
-      if (teamIdFromPath && included) {
-        const includedTeam = included.find(
-          item => item.type === 'Team' && item.id === teamReference.id
-        ) as IncludedTeam | undefined;
-
-        if (includedTeam) {
-          teamId = includedTeam.attributes.id.toString();
-          team = {
-            id: includedTeam.attributes.id.toString(),
-            name: includedTeam.attributes.name,
-            description: includedTeam.attributes.description
-          };
-        }
-      } else if (teamIdFromPath) {
-        teamId = teamIdFromPath;
-      }
-    }
-
     return {
       id: apiUser.attributes.id.toString(),
       name: apiUser.attributes.name,
       login: apiUser.attributes.login,
       email: apiUser.attributes.email,
       role_id: roleId,
-      team_id: teamId,
-      role,
-      team
+      role
     };
   }
 }
