@@ -37,7 +37,7 @@ const Landing: React.FC = () => {
       icon: FolderOpen,
       title: 'Project Management',
       description: 'Create, organize, and manage multiple testing projects with advanced filtering and search capabilities.',
-      benefits: ['Unlimited projects', 'Advanced search', 'Status tracking', 'Team collaboration']
+      benefits: ['Unlimited projects', 'Advanced search', 'Status tracking', 'Collaboration']
     },
     {
       icon: TestTube,
@@ -60,8 +60,8 @@ const Landing: React.FC = () => {
     {
       icon: Calendar,
       title: 'Test Plans',
-      description: 'Create and manage test plans with scheduling, progress tracking, and team assignments.',
-      benefits: ['Schedule management', 'Progress tracking', 'Team assignments', 'Milestone tracking']
+      description: 'Create and manage test plans with scheduling, progress tracking, and user assignments.',
+      benefits: ['Schedule management', 'Progress tracking', 'User assignments', 'Milestone tracking']
     },
     {
       icon: BarChart3,
@@ -166,7 +166,7 @@ const Landing: React.FC = () => {
             <div className="bg-gradient-to-br from-white to-slate-100 dark:from-slate-800/80 dark:to-slate-900/80 border border-slate-300 dark:border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
               <Users className="w-8 h-8 text-green-600 dark:text-green-400 mx-auto mb-4" />
               <h3 className="text-slate-900 dark:text-white font-semibold mb-2">Collaboration</h3>
-              <p className="text-slate-600 dark:text-gray-400 text-sm">Team-based testing with shared workflows</p>
+              <p className="text-slate-600 dark:text-gray-400 text-sm">Collaborative testing with shared workflows</p>
             </div>
             <div className="bg-gradient-to-br from-white to-slate-100 dark:from-slate-800/80 dark:to-slate-900/80 border border-slate-300 dark:border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
               <Shield className="w-8 h-8 text-yellow-600 dark:text-yellow-400 mx-auto mb-4" />

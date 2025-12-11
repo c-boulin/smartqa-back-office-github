@@ -155,7 +155,7 @@ const CreateTestPlanModal: React.FC<CreateTestPlanModalProps> = ({
               <div className="flex items-center justify-center py-4">
                 <div className="text-center">
                   <Loader className="w-6 h-6 text-cyan-400 animate-spin mx-auto mb-2" />
-                  <p className="text-slate-500 dark:text-gray-400 text-sm">Loading team members...</p>
+                  <p className="text-slate-500 dark:text-gray-400 text-sm">Loading users...</p>
                 </div>
               </div>
             ) : (
