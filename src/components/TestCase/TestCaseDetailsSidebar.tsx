@@ -819,7 +819,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                   {/* Test Case ID and Title */}
                   <div>
                     <div className="flex items-center space-x-2 mb-2">
-                      <span className="text-sm font-medium text-cyan-400">TC-{testCaseDetails.id}</span>
+                      <span className="text-sm font-medium text-cyan-400">TC-{testCase?.projectRelativeId ?? testCaseDetails.id}</span>
                     </div>
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{testCaseDetails.title}</h2>
                   </div>

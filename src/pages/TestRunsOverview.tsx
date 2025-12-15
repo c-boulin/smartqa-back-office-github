@@ -494,6 +494,7 @@ const TestRunsOverview: React.FC = () => {
       filtered = filtered.filter(testCase =>
         testCase.title.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
         testCase.id.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
+        (testCase.fullTestCase?.projectRelativeId?.toString() || '').includes(currentSearchTerm.toLowerCase()) ||
         testCase.testRunName.toLowerCase().includes(currentSearchTerm.toLowerCase())
       );
     }
@@ -556,6 +557,7 @@ const TestRunsOverview: React.FC = () => {
       filtered = filtered.filter(testCase =>
         testCase.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         testCase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (testCase.fullTestCase?.projectRelativeId?.toString() || '').includes(searchTerm.toLowerCase()) ||
         testCase.testRunName.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -935,7 +937,7 @@ const TestRunsOverview: React.FC = () => {
               {filteredTestCases.map((testCase) => (
                 <tr key={`${testCase.testRunId}-${testCase.id}-${testCase.configurationId || 'no-config'}`} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors">
                   <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
-                    TC{testCase.id}
+                    TC{testCase.fullTestCase?.projectRelativeId || testCase.id}
                   </td>
                   <td className="py-4 px-6">
                     <button

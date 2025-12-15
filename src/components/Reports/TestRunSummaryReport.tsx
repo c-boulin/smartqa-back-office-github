@@ -216,7 +216,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
 
           testRuns = testRuns.filter(tr => {
             const _trCreatedAt = new Date(tr.createdAt);
-            const isWithinPeriod = trCreatedAt >= dateThreshold;
+            const isWithinPeriod = _trCreatedAt >= dateThreshold;
 
             return isWithinPeriod;
           });
@@ -370,7 +370,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
               return;
             }
 
-            const [, testCaseId] = compositeKey.split('-');
+            const [, testCaseId] = _compositeKey.split('-');
 
             // Find the test case to get its assignee
             const testCase = passedReportData.testCases.find((tc) =>
@@ -491,7 +491,7 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
 
         testRuns = testRuns.filter(tr => {
           const _trCreatedAt = new Date(tr.createdAt);
-          const isWithinPeriod = trCreatedAt >= dateThreshold;
+          const isWithinPeriod = _trCreatedAt >= dateThreshold;
 
           return isWithinPeriod;
         });

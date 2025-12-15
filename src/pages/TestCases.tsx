@@ -544,14 +544,14 @@ const TestCases: React.FC = () => {
   }, [searchTerm, handleSearch]);
 
   const handleCreateTestCase = useCallback(async (data: Record<string, unknown>) => {
-    if (!data || !selectedProject || !selectedFolderId || !authState.user?.id) {
+    if (!data || !selectedProject || !authState.user?.id) {
       toast.error('Missing required data');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      
+
       // Handle new tags creation first
       const processedTags = [];
       for (const tag of data.tags || []) {
@@ -568,8 +568,8 @@ const TestCases: React.FC = () => {
           processedTags.push(tag);
         }
       }
-      
-      await createTestCase({
+
+      const testCasePayload: Record<string, unknown> = {
         title: data.title,
         description: data.description,
         priority: data.priority,
@@ -580,13 +580,19 @@ const TestCases: React.FC = () => {
         preconditions: data.preconditions,
         tags: processedTags,
         projectId: selectedProject.id,
-        folderId: selectedFolderId,
         creatorId: authState.user.id,
         testSteps: data.testSteps || [],
         stepResultsRelationships: data.stepResultsRelationships || [],
         sharedStepsRelationships: data.sharedStepsRelationships || [],
         createdAttachments: data.createdAttachments || []
-      });
+      };
+
+      // Only add folderId if a folder is selected
+      if (selectedFolderId) {
+        testCasePayload.folderId = selectedFolderId;
+      }
+
+      await createTestCase(testCasePayload);
       
       await fetchAllTestCasesAndExtractFolders(selectedProject.id);
       setIsCreateModalOpen(false);
@@ -877,7 +883,7 @@ const TestCases: React.FC = () => {
         totalItems={pagination.totalItems}
         selectedFolder={selectedFolder}
         onCreateTestCase={() => setIsCreateModalOpen(true)}
-        disabled={!selectedProject || !selectedFolderId}
+        disabled={!selectedProject}
       />
 
       {/* Show message if no project selected */}
@@ -1027,9 +1033,7 @@ const TestCases: React.FC = () => {
         }}
         onConfirm={handleDeleteFolder}
         title="Delete Folder"
-        message={`Deleting the folder "${folderToManage?.name}" will also delete all test cases inside it. If you want to keep the test cases, move them to another folder first.`}
-        warningCount={folderToManage?.testCasesCount || 0}
-        warningType="test case"
+        message={`Are you sure you want to delete the folder "${folderToManage?.name}"? Test cases in this folder will not be deleted and will remain in the project.`}
         confirmText="Delete"
         variant="danger"
       />

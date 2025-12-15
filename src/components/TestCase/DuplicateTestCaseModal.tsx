@@ -440,7 +440,7 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
         }}
         onConfirm={handleConfirmDelete}
         title="Delete Folder"
-        message={`Are you sure you want to delete "${folderToDelete?.name}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete the folder "${folderToDelete?.name}"? Test cases in this folder will not be deleted and will remain in the project.`}
         confirmText="Delete"
         confirmVariant="danger"
       />

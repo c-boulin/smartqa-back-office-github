@@ -19,6 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { projectsApiService } from '../../services/projectsApi';
 import { usePermissions } from '../../hooks/usePermissions';
 import { PERMISSIONS } from '../../utils/permissions';
+import { Project } from '../../types';
 
 const Sidebar: React.FC = () => {
   const { state, dispatch, getSelectedProject, loadProjects } = useApp();
@@ -403,8 +404,19 @@ const Sidebar: React.FC = () => {
                 </div>
 
                 {/* Dropdown Items */}
-
                 <div>
+                  {/* View All Projects - Always on top */}
+                  <button
+                    onClick={() => handleProjectSelect('all')}
+                    className={`w-full px-4 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-b border-slate-200 dark:border-slate-700 ${
+                      location.pathname === '/projects'
+                        ? 'bg-slate-200 dark:bg-slate-700 text-cyan-600 dark:text-cyan-400'
+                        : 'text-slate-900 dark:text-white'
+                    }`}
+                  >
+                    {location.pathname === '/projects' ? '✓ ' : '🌐 '}View all projects
+                  </button>
+
                   {filteredProjects.length > 0 && (
                     <>
                       {searchTerm && (

@@ -73,7 +73,8 @@ export interface ProcessedSharedStep {
   title: string;
   description?: string;
   order: number;
-  pivotId: number;
+  pivotId?: number;
+  instanceId?: string;
   projectId: string;
   stepsCount: number;
   usedInCount: number;
@@ -164,9 +165,9 @@ class TestCaseDataService {
   async fetchCompleteTestCaseData(testCaseId: string): Promise<TestCaseDataFetchResult> {
 
     try {
-      // Single request with all includes (including nested sharedSteps.stepResults)
+      // Request 1: Main test case data with attachments, stepResults, and tags
       const response = await apiService.authenticatedRequest(
-        `/test_cases/${testCaseId}?include=attachments,stepResults,sharedSteps,sharedSteps.stepResults,user,tags`
+        `/test_cases/${testCaseId}?include=attachments,stepResults,user,tags`
       );
 
       if (!response?.data) {
@@ -174,6 +175,13 @@ class TestCaseDataService {
       }
 
       const included = response.included || [];
+
+      // Request 2: Get shared steps with order and pivot_id metadata
+      const sharedStepsResponse = await apiService.authenticatedRequest(
+        `/test_cases/${testCaseId}/shared_steps`
+      );
+
+      const sharedStepRefs = sharedStepsResponse?.data?.relationships?.sharedSteps?.data || [];
 
       // Process tags
       const tagRefs = response.data.relationships?.tags?.data || [];
@@ -241,36 +249,44 @@ class TestCaseDataService {
 
       stepResults.sort((a, b) => a.order - b.order);
 
-      // Process shared steps
-      const sharedStepRefs = response.data.relationships?.sharedSteps?.data || [];
+      // Process shared steps using the metadata from the separate endpoint
+      console.log('🔍 Raw shared step refs from /shared_steps:', JSON.stringify(sharedStepRefs, null, 2));
 
-      const sharedSteps: ProcessedSharedStep[] = sharedStepRefs.map((sharedStepRef: { id: string; meta?: { pivot_id?: number; order?: number } }, index: number) => {
+      // Fetch full details for each shared step
+      const sharedStepsPromises = sharedStepRefs.map(async (sharedStepRef: { id: string; meta: { order: number; pivot_id: number } }) => {
         const sharedStepId = sharedStepRef.id.split('/').pop() || sharedStepRef.id;
 
-        const includedSharedStep = included.find((item: { type: string; id: string }) => {
-          const itemId = item.id.split('/').pop() || item.id;
-          return item.type === 'SharedStep' && itemId === sharedStepId;
-        });
-
-        if (includedSharedStep) {
-
-          const transformedSharedStep = sharedStepsApiService.transformApiSharedStep(
-            includedSharedStep,
-            included
+        try {
+          // Fetch the full shared step with its step results
+          const sharedStepResponse = await apiService.authenticatedRequest(
+            `/shared_steps/${sharedStepId}?include=stepResults,user`
           );
 
-          const order = includedSharedStep.attributes?.order || sharedStepRef.meta?.order || index + 1;
-          const pivotId = includedSharedStep.attributes?.pivotId || sharedStepRef.meta?.pivot_id || 0;
+          if (!sharedStepResponse?.data) {
+            console.warn(`⚠️ No data for shared step ${sharedStepId}`);
+            return null;
+          }
+
+          const transformedSharedStep = sharedStepsApiService.transformApiSharedStep(
+            sharedStepResponse.data,
+            sharedStepResponse.included || []
+          );
+
+          console.log(`📌 Shared step ${sharedStepId} - order: ${sharedStepRef.meta.order}, pivot_id: ${sharedStepRef.meta.pivot_id}`);
 
           return {
             ...transformedSharedStep,
-            order: order,
-            pivotId: pivotId
+            order: sharedStepRef.meta.order,
+            pivotId: sharedStepRef.meta.pivot_id
           } as ProcessedSharedStep;
+        } catch (error) {
+          console.error(`❌ Failed to fetch shared step ${sharedStepId}:`, error);
+          return null;
         }
+      });
 
-        return null;
-      }).filter(Boolean) as ProcessedSharedStep[];
+      const sharedSteps: ProcessedSharedStep[] = (await Promise.all(sharedStepsPromises))
+        .filter((step): step is ProcessedSharedStep => step !== null);
 
       sharedSteps.sort((a, b) => a.order - b.order);
 

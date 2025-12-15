@@ -15,6 +15,7 @@ import { Tag } from '../../services/tagsApi';
 import { SharedStep } from '../../services/sharedStepsApi';
 import { TestCase } from '../../types';
 import { attachmentsApiService } from '../../services/attachmentsApi';
+import { testCaseDataService } from '../../services/testCaseDataService';
 import { getStateNumber, getPriorityNumber, getTestTypeNumber, buildStepResultsRelationships, buildSharedStepsRelationships } from '../../utils/updateTestCaseHelpers';
 
 interface TestStep {
@@ -165,25 +166,36 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
     // Allow adding the same shared step multiple times
     // Create a unique instance ID using timestamp to differentiate duplicates
     const instanceId = `shared-${sharedStep.id}-${Date.now()}`;
-    
-    setSharedSteps(prev => [...prev, sharedStep]);
+
+    // Create a unique instance object with the instance ID
+    const sharedStepInstance = {
+      ...sharedStep,
+      instanceId: instanceId
+    };
+
+    setSharedSteps(prev => [...prev, sharedStepInstance]);
     setStepOrder(prev => [...prev, { type: 'shared', id: instanceId }]);
   };
 
-  const removeSharedStep = (sharedStepId: string) => {
-    // Handle both regular shared step removal and pivot-based removal
-    if (sharedStepId.startsWith('pivot-')) {
-      const pivotId = parseInt(sharedStepId.replace('pivot-', ''));
+  const removeSharedStep = async (uniqueId: string) => {
+    // Handle both pivot-based removal (existing) and instance-based removal (new)
+    if (uniqueId.startsWith('pivot-')) {
+      const pivotId = parseInt(uniqueId.replace('pivot-', ''));
 
-      // Call the deletion function with pivot ID
-      deleteSharedStepInstance(pivotId).catch(error => {
-        console.error('❌ Failed to delete shared step instance:', error);
-        toast.error('Failed to delete shared step instance');
-      });
+      if (testCase?.id) {
+        try {
+          // Call API to delete the shared step instance
+          await testCaseDataService.deleteSharedStepInstance(testCase.id, pivotId);
+          // Remove from local state after successful API call
+          deleteSharedStepInstance(pivotId);
+        } catch (error) {
+          console.error('❌ Failed to delete shared step instance:', error);
+        }
+      }
     } else {
-      // Legacy removal by shared step ID
-      setSharedSteps(prev => prev.filter(step => step.id !== sharedStepId));
-      setStepOrder(prev => prev.filter(item => !(item.type === 'shared' && item.id === `shared-${sharedStepId}`)));
+      // For new instances, remove by instanceId (which is the full uniqueId)
+      setSharedSteps(prev => prev.filter(step => step.instanceId !== uniqueId));
+      setStepOrder(prev => prev.filter(item => !(item.type === 'shared' && item.id === uniqueId)));
     }
   };
 

@@ -967,7 +967,7 @@ const TestRunDetails: React.FC = () => {
               {filteredTestCases.map((testCase, index) => (
                 <tr key={`${testCase.id}-${testCase.configurationId || 'default'}-${index}`} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors" style={{ position: 'relative', overflow: 'visible' }}>
                   <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
-                    TC{testCase.id}
+                    TC-{testCase.fullTestCase?.projectRelativeId ?? testCase.id}
                   </td>
                   <td className="py-4 px-6">
                     <button

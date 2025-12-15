@@ -19,7 +19,8 @@ interface SharedStepInstance {
   title: string;
   description?: string;
   order: number;
-  pivotId: number;
+  pivotId?: number;
+  instanceId?: string;
   projectId: string;
   stepsCount: number;
   usedInCount: number;
@@ -189,13 +190,9 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
   }, []);
 
   const handleDeleteSharedStepInstance = useCallback(async (pivotId: number) => {
-    // Find the test case ID from the current context
-    // This would need to be passed from the parent component
-
-    // For now, just remove from local state
-    // The actual API call should be made from the parent component
+    // Remove from local state by pivot ID
     setSharedSteps(prev => prev.filter(step => step.pivotId !== pivotId));
-    setStepOrder(prev => prev.filter(item => 
+    setStepOrder(prev => prev.filter(item =>
       !(item.type === 'shared' && item.id.includes(`-${pivotId}`))
     ));
   }, []);
