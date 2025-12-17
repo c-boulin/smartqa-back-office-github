@@ -232,10 +232,17 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
     if (over && active.id !== over.id) {
       const oldIndex = stepOrder.findIndex(item => item.id === active.id);
       const newIndex = stepOrder.findIndex(item => item.id === over.id);
-      
+
       if (oldIndex !== -1 && newIndex !== -1) {
         const reorderedOrder = arrayMove(stepOrder, oldIndex, newIndex);
         setStepOrder(reorderedOrder);
+
+        const oldSharedStepIndex = stepOrder.slice(0, oldIndex).filter(item => item.type === 'shared').length;
+        const newSharedStepIndex = reorderedOrder.slice(0, newIndex).filter(item => item.type === 'shared').length;
+
+        if (stepOrder[oldIndex].type === 'shared') {
+          setSharedSteps(prev => arrayMove(prev, oldSharedStepIndex, newSharedStepIndex));
+        }
       }
     }
   };
