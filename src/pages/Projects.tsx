@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Plus, Search, Filter, SquarePen, Trash2, Copy, ChevronLeft, ChevronRight, Loader } from 'lucide-react';
+import { Plus, Search, Filter, SquarePen, Trash2, Copy, ChevronLeft, ChevronRight, Loader, FolderOpen, Globe } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
@@ -97,32 +97,12 @@ const CloneModal: React.FC<{
 }> = ({ isOpen, onClose, onSubmit, title, projectData, setProjectData, isSubmitting, isTemplate, cloneType, setCloneType }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('CloneModal: Form submitted');
-    console.log('Is Template:', isTemplate);
-    console.log('Clone Type:', cloneType);
-    console.log('Project Data:', projectData);
     onSubmit();
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="small">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {isTemplate && (
-          <div>
-            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
-              Clone As *
-            </label>
-            <select
-              value={cloneType}
-              onChange={(e) => setCloneType(e.target.value as 'template' | 'project')}
-              className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
-              disabled={isSubmitting}
-            >
-              <option value="template">Template</option>
-              <option value="project">Project</option>
-            </select>
-          </div>
-        )}
         <div>
           <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
             {isTemplate && cloneType === 'project' ? 'Project Name *' : isTemplate ? 'Template Name *' : 'Project Name *'}
@@ -135,7 +115,7 @@ const CloneModal: React.FC<{
             required
             disabled={isSubmitting}
             placeholder={isTemplate && cloneType === 'project' ? 'Enter project name' : isTemplate ? 'Enter template name' : 'Enter project name'}
-            autoFocus={!isTemplate}
+            autoFocus
           />
         </div>
         <div>
@@ -151,6 +131,44 @@ const CloneModal: React.FC<{
             placeholder="Enter description"
           />
         </div>
+        {isTemplate && (
+          <div>
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
+              Target Section *
+            </label>
+            <div className="mb-3 px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-gray-400 text-sm">
+              Selected: {cloneType === 'template' ? 'Templates' : 'Projects'}
+            </div>
+            <div className="p-3 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg space-y-2">
+              <button
+                type="button"
+                onClick={() => setCloneType('template')}
+                disabled={isSubmitting}
+                className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
+                  cloneType === 'template'
+                    ? 'bg-cyan-500 text-white'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                }`}
+              >
+                <FolderOpen className="w-5 h-5 mr-3" />
+                <span className="font-medium">Templates</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCloneType('project')}
+                disabled={isSubmitting}
+                className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
+                  cloneType === 'project'
+                    ? 'bg-cyan-500 text-white'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                }`}
+              >
+                <Globe className="w-5 h-5 mr-3" />
+                <span className="font-medium">Projects</span>
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex justify-end space-x-3 pt-4">
           <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             Cancel
@@ -396,42 +414,28 @@ const Projects: React.FC = () => {
   const handleCloneProject = useCallback(async () => {
     if (!projectToManage) return;
 
-    console.log('=== Clone Handler Started ===');
-    console.log('Active Tab:', activeTab);
-    console.log('Clone Type:', cloneType);
-    console.log('Project to manage:', projectToManage);
-    console.log('New Project Data:', newProject);
-
     try {
       setIsSubmitting(true);
 
       if (activeTab === 'templates') {
         if (cloneType === 'project') {
-          console.log('Cloning template to project...');
-          console.log('Calling POST /projects/' + projectToManage.id + '/clone');
           await cloneTemplateToProject(projectToManage.id, {
             title: newProject.name,
             description: newProject.description
           });
-          console.log('Clone to project successful');
           await loadProjects(true);
+          setActiveTab('projects');
         } else {
-          console.log('Cloning template to template...');
-          console.log('Calling POST /templates/' + projectToManage.id + '/clone');
           await cloneTemplate(projectToManage.id, {
             title: newProject.name,
             description: newProject.description
           });
-          console.log('Clone to template successful');
         }
       } else {
-        console.log('Cloning project to project...');
-        console.log('Calling POST /projects/' + projectToManage.id + '/clone');
         await cloneProject(projectToManage.id, {
           title: newProject.name,
           description: newProject.description
         });
-        console.log('Clone project successful');
         await loadProjects(true);
       }
     } catch (error) {
