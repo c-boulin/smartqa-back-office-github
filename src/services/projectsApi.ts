@@ -307,6 +307,38 @@ class ProjectsApiService {
     });
   }
 
+  async updateTemplate(id: string, templateData: {
+    title: string;
+    description: string;
+  }): Promise<UpdateProjectResponse> {
+    const requestBody: UpdateProjectRequest = {
+      data: {
+        type: "Project",
+        attributes: {
+          title: templateData.title,
+          description: templateData.description
+        }
+      }
+    };
+
+    const response = await apiService.authenticatedRequest(`/projects/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+
+    return response;
+  }
+
+  async deleteTemplate(id: string): Promise<void> {
+    await apiService.authenticatedRequest(`/projects/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async cloneProject(id: string, projectData: { title: string; description: string }): Promise<{ data: ApiProject }> {
     const requestBody = {
       title: projectData.title,

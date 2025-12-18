@@ -233,7 +233,9 @@ const Projects: React.FC = () => {
     fetchTemplatesWithSort,
     cloneTemplate,
     cloneTemplateToProject,
-    createTemplate
+    createTemplate,
+    updateTemplate,
+    deleteTemplate
   } = useTemplates();
 
   const items = activeTab === 'projects' ? projects : templates;
@@ -397,9 +399,12 @@ const Projects: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      await updateProject(projectToManage.id, newProject);
-      // Refresh the global project list in AppContext
-      await loadProjects(true);
+      if (activeTab === 'templates') {
+        await updateTemplate(projectToManage.id, newProject);
+      } else {
+        await updateProject(projectToManage.id, newProject);
+        await loadProjects(true);
+      }
       setIsEditModalOpen(false);
       setProjectToManage(null);
       setNewProject({ name: '', description: '' });
@@ -409,7 +414,7 @@ const Projects: React.FC = () => {
       setIsSubmitting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
-  }, [updateProject, projectToManage, newProject]);
+  }, [updateProject, updateTemplate, projectToManage, newProject, activeTab]);
 
   const handleCloneProject = useCallback(async () => {
     if (!projectToManage) return;
@@ -452,12 +457,15 @@ const Projects: React.FC = () => {
 
   const handleDeleteProject = useCallback(async () => {
     if (!projectToManage) return;
-    
+
     try {
       setIsSubmitting(true);
-      await deleteProject(projectToManage.id);
-      // Refresh the global project list in AppContext
-      await loadProjects(true);
+      if (activeTab === 'templates') {
+        await deleteTemplate(projectToManage.id);
+      } else {
+        await deleteProject(projectToManage.id);
+        await loadProjects(true);
+      }
       setProjectToManage(null);
     } catch {
       // Error is already handled in the hook
@@ -465,7 +473,7 @@ const Projects: React.FC = () => {
       setIsSubmitting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
-  }, [deleteProject, projectToManage]);
+  }, [deleteProject, deleteTemplate, projectToManage, activeTab]);
 
   const openEditModal = useCallback((project: Project) => {
     setProjectToManage(project);
@@ -932,7 +940,7 @@ const Projects: React.FC = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSubmit={handleEditProject}
-        title="Edit Project"
+        title={activeTab === 'templates' ? 'Edit Template' : 'Edit Project'}
         projectData={newProject}
         setProjectData={setNewProject}
         isSubmitting={isSubmitting}
@@ -955,8 +963,12 @@ const Projects: React.FC = () => {
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDeleteProject}
-        title="Delete Project"
-        message={`Are you sure you want to delete the project "${projectToManage?.name}"? This action is irreversible and will delete all associated test cases, test runs, and data.`}
+        title={activeTab === 'templates' ? 'Delete Template' : 'Delete Project'}
+        message={
+          activeTab === 'templates'
+            ? `Are you sure you want to delete the template "${projectToManage?.name}"? This action is irreversible and will delete all associated test cases and data.`
+            : `Are you sure you want to delete the project "${projectToManage?.name}"? This action is irreversible and will delete all associated test cases, test runs, and data.`
+        }
         confirmText="Delete"
         variant="danger"
       />

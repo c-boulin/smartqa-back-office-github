@@ -213,19 +213,27 @@ export const useTemplates = () => {
   };
 
   const cloneTemplate = async (id: string, data: { title: string; description: string }) => {
-    console.log('useTemplates Hook: cloneTemplate called');
-    console.log('Template ID:', id);
-    console.log('Data:', data);
     try {
-      await withLoading((async () => {
+      return await withLoading((async () => {
         const response = await projectsApiService.cloneTemplate(id, data);
+
+        if (!response || !response.data) {
+          throw new Error('Invalid response from clone API');
+        }
+
+        const clonedTemplate = projectsApiService.transformApiProject(response.data);
+        setTemplates(prevTemplates => [clonedTemplate, ...prevTemplates]);
+
+        setPagination(prev => ({
+          ...prev,
+          totalItems: prev.totalItems + 1,
+          totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage)
+        }));
+
         toast.success('Template cloned successfully');
-        const sortOption = { param: 'order[createdAt]=desc' };
-        await fetchTemplatesWithSort(1, sortOption.param);
-        return response;
+        return clonedTemplate.id;
       })());
     } catch (err) {
-      console.error('useTemplates Hook: Error in cloneTemplate', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to clone template';
       toast.error(errorMessage);
       throw err;
@@ -273,6 +281,46 @@ export const useTemplates = () => {
     );
   };
 
+  const updateTemplate = async (id: string, templateData: { name: string; description: string }) => {
+    return withLoading(
+      (async () => {
+        const response = await projectsApiService.updateTemplate(id, {
+          title: templateData.name,
+          description: templateData.description
+        });
+
+        const updatedTemplate = projectsApiService.transformApiProject(response.data);
+        setTemplates(prevTemplates =>
+          prevTemplates.map(template =>
+            template.id === id ? updatedTemplate : template
+          )
+        );
+
+        toast.success('Template updated successfully');
+      })(),
+      'Updating template...'
+    );
+  };
+
+  const deleteTemplate = async (id: string) => {
+    return withLoading(
+      (async () => {
+        await projectsApiService.deleteTemplate(id);
+
+        setTemplates(prevTemplates => prevTemplates.filter(template => template.id !== id));
+
+        setPagination(prev => ({
+          ...prev,
+          totalItems: Math.max(0, prev.totalItems - 1),
+          totalPages: Math.ceil(Math.max(0, prev.totalItems - 1) / prev.itemsPerPage)
+        }));
+
+        toast.success('Template deleted successfully');
+      })(),
+      'Deleting template...'
+    );
+  };
+
   return {
     templates,
     loading,
@@ -285,6 +333,8 @@ export const useTemplates = () => {
     fetchTemplatesWithSort,
     cloneTemplate,
     cloneTemplateToProject,
-    createTemplate
+    createTemplate,
+    updateTemplate,
+    deleteTemplate
   };
 };
