@@ -430,6 +430,12 @@ const Projects: React.FC = () => {
           });
           await loadProjects(true);
           setActiveTab('projects');
+          const sortOption = SORT_OPTIONS.find(option => option.value === sortBy);
+          if (filterMode === 'my-projects') {
+            await fetchProjectsCreatedByUser(authState.user?.id?.toString() || '', 1, sortOption?.param);
+          } else {
+            await fetchProjectsWithSort(1, sortOption?.param);
+          }
         } else {
           await cloneTemplate(projectToManage.id, {
             title: newProject.name,
@@ -452,8 +458,8 @@ const Projects: React.FC = () => {
       setNewProject({ name: '', description: '' });
       setCloneType('template');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
-  }, [cloneProject, cloneTemplate, cloneTemplateToProject, projectToManage, newProject, activeTab, cloneType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects, authState.user are stable
+  }, [cloneProject, cloneTemplate, cloneTemplateToProject, projectToManage, newProject, activeTab, cloneType, sortBy, fetchProjectsWithSort, fetchProjectsCreatedByUser, filterMode]);
 
   const handleDeleteProject = useCallback(async () => {
     if (!projectToManage) return;

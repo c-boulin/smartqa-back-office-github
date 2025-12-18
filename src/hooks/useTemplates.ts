@@ -241,17 +241,19 @@ export const useTemplates = () => {
   };
 
   const cloneTemplateToProject = async (id: string, data: { title: string; description: string }) => {
-    console.log('useTemplates Hook: cloneTemplateToProject called');
-    console.log('Template ID:', id);
-    console.log('Data:', data);
     try {
-      await withLoading((async () => {
+      return await withLoading((async () => {
         const response = await projectsApiService.cloneTemplateToProject(id, data);
+
+        if (!response || !response.data) {
+          throw new Error('Invalid response from clone API');
+        }
+
+        const clonedProject = projectsApiService.transformApiProject(response.data);
         toast.success('Template cloned to project successfully');
-        return response;
+        return clonedProject;
       })());
     } catch (err) {
-      console.error('useTemplates Hook: Error in cloneTemplateToProject', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to clone template to project';
       toast.error(errorMessage);
       throw err;
