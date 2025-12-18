@@ -83,11 +83,16 @@ class ApiService {
   // Helper method for authenticated API calls
   async authenticatedRequest(endpoint: string, options: RequestInit = {}) {
     const token = localStorage.getItem('auth_token');
-    
+
+    console.log('=== authenticatedRequest called ===');
+    console.log('Endpoint:', endpoint);
+    console.log('Options:', options);
+    console.log('Full URL:', `${this.baseURL}${endpoint}`);
+
     if (!token || token.trim() === '') {
       throw new Error('No authentication token found');
     }
-    
+
     const headers = {
       'Content-Type': 'application/vnd.api+json',
       'Accept': 'application/vnd.api+json',
@@ -95,13 +100,19 @@ class ApiService {
       ...options.headers,
     };
 
+    console.log('Headers:', headers);
+    console.log('About to make fetch call...');
+
     let response;
     try {
       response = await fetch(`${this.baseURL}${endpoint}`, {
         ...options,
         headers,
       });
+      console.log('Fetch completed. Response status:', response.status);
+      console.log('Response:', response);
     } catch (error) {
+      console.error('Fetch error:', error);
       // Handle network-level errors (Failed to fetch, CORS, etc.)
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         throw new Error('Unable to connect to the server. Please check your internet connection or try again later.');

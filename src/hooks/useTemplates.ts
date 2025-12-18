@@ -217,13 +217,13 @@ export const useTemplates = () => {
     console.log('Template ID:', id);
     console.log('Data:', data);
     try {
-      await withLoading(async () => {
+      await withLoading((async () => {
         const response = await projectsApiService.cloneTemplate(id, data);
         toast.success('Template cloned successfully');
         const sortOption = { param: 'order[createdAt]=desc' };
         await fetchTemplatesWithSort(1, sortOption.param);
         return response;
-      });
+      })());
     } catch (err) {
       console.error('useTemplates Hook: Error in cloneTemplate', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to clone template';
@@ -237,11 +237,11 @@ export const useTemplates = () => {
     console.log('Template ID:', id);
     console.log('Data:', data);
     try {
-      await withLoading(async () => {
+      await withLoading((async () => {
         const response = await projectsApiService.cloneTemplateToProject(id, data);
         toast.success('Template cloned to project successfully');
         return response;
-      });
+      })());
     } catch (err) {
       console.error('useTemplates Hook: Error in cloneTemplateToProject', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to clone template to project';
