@@ -55,6 +55,7 @@ export interface CreateProjectRequest {
     attributes: {
       title: string;
       description: string;
+      is_template?: boolean;
     };
   };
 }
@@ -231,6 +232,33 @@ class ProjectsApiService {
         attributes: {
           title: projectData.title,
           description: projectData.description
+        }
+      }
+    };
+
+    const response = await apiService.authenticatedRequest('/projects', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+
+    return response;
+  }
+
+  async createTemplate(templateData: {
+    title: string;
+    description: string;
+  }): Promise<CreateProjectResponse> {
+    const requestBody: CreateProjectRequest = {
+      data: {
+        type: "Project",
+        attributes: {
+          title: templateData.title,
+          description: templateData.description,
+          is_template: true
         }
       }
     };

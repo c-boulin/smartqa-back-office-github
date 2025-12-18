@@ -29,12 +29,15 @@ const ProjectModal: React.FC<{
     onSubmit();
   };
 
+  const isTemplate = title.includes('Template');
+  const entityName = isTemplate ? 'template' : 'project';
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="small">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
-            Project Name *
+            {isTemplate ? 'Template Name *' : 'Project Name *'}
           </label>
           <input
             type="text"
@@ -43,7 +46,7 @@ const ProjectModal: React.FC<{
             className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
             required
             disabled={isSubmitting}
-            placeholder="Enter project name"
+            placeholder={`Enter ${entityName} name`}
             autoFocus
           />
         </div>
@@ -57,7 +60,7 @@ const ProjectModal: React.FC<{
             rows={3}
             className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
             disabled={isSubmitting}
-            placeholder="Enter project description"
+            placeholder={`Enter ${entityName} description`}
           />
         </div>
         <div className="flex justify-end space-x-3 pt-4">
@@ -211,7 +214,8 @@ const Projects: React.FC = () => {
     searchTemplatesCreatedByUser,
     fetchTemplatesWithSort,
     cloneTemplate,
-    cloneTemplateToProject
+    cloneTemplateToProject,
+    createTemplate
   } = useTemplates();
 
   const items = activeTab === 'projects' ? projects : templates;
@@ -356,6 +360,19 @@ const Projects: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
   }, [createProject, newProject, authState.user?.id]);
+
+  const handleCreateTemplate = useCallback(async () => {
+    try {
+      setIsSubmitting(true);
+      await createTemplate(newProject);
+      setIsCreateModalOpen(false);
+      setNewProject({ name: '', description: '' });
+    } catch {
+      // Error is already handled in the hook
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [createTemplate, newProject]);
 
   const handleEditProject = useCallback(async () => {
     if (!projectToManage) return;
@@ -617,13 +634,22 @@ const Projects: React.FC = () => {
             Manage your testing {activeTab} ({pagination.totalItems} total)
           </p>
         </div>
-        {activeTab === 'projects' && (
+        {activeTab === 'projects' ? (
           <PermissionGuard permission={PERMISSIONS.PROJECT.CREATE}>
             <Button
               icon={Plus}
               onClick={() => setIsCreateModalOpen(true)}
             >
               New Project
+            </Button>
+          </PermissionGuard>
+        ) : (
+          <PermissionGuard permission={PERMISSIONS.PROJECT.CREATE}>
+            <Button
+              icon={Plus}
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              New Template
             </Button>
           </PermissionGuard>
         )}
@@ -891,8 +917,8 @@ const Projects: React.FC = () => {
       <ProjectModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateProject}
-        title="Create New Project"
+        onSubmit={activeTab === 'templates' ? handleCreateTemplate : handleCreateProject}
+        title={activeTab === 'templates' ? 'Create New Template' : 'Create New Project'}
         projectData={newProject}
         setProjectData={setNewProject}
         isSubmitting={isSubmitting}

@@ -250,6 +250,29 @@ export const useTemplates = () => {
     }
   };
 
+  const createTemplate = async (templateData: { name: string; description: string }) => {
+    return withLoading(
+      (async () => {
+        const response = await projectsApiService.createTemplate({
+          title: templateData.name,
+          description: templateData.description
+        });
+
+        const newTemplate = projectsApiService.transformApiProject(response.data);
+        setTemplates(prevTemplates => [newTemplate, ...prevTemplates]);
+
+        setPagination(prev => ({
+          ...prev,
+          totalItems: prev.totalItems + 1,
+          totalPages: Math.ceil((prev.totalItems + 1) / prev.itemsPerPage)
+        }));
+
+        toast.success('Template created successfully');
+        return response;
+      })()
+    );
+  };
+
   return {
     templates,
     loading,
@@ -261,6 +284,7 @@ export const useTemplates = () => {
     searchTemplatesCreatedByUser,
     fetchTemplatesWithSort,
     cloneTemplate,
-    cloneTemplateToProject
+    cloneTemplateToProject,
+    createTemplate
   };
 };
