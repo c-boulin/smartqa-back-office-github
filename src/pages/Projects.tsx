@@ -94,6 +94,10 @@ const CloneModal: React.FC<{
 }> = ({ isOpen, onClose, onSubmit, title, projectData, setProjectData, isSubmitting, isTemplate, cloneType, setCloneType }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('CloneModal: Form submitted');
+    console.log('Is Template:', isTemplate);
+    console.log('Clone Type:', cloneType);
+    console.log('Project Data:', projectData);
     onSubmit();
   };
 
@@ -375,27 +379,42 @@ const Projects: React.FC = () => {
   const handleCloneProject = useCallback(async () => {
     if (!projectToManage) return;
 
+    console.log('=== Clone Handler Started ===');
+    console.log('Active Tab:', activeTab);
+    console.log('Clone Type:', cloneType);
+    console.log('Project to manage:', projectToManage);
+    console.log('New Project Data:', newProject);
+
     try {
       setIsSubmitting(true);
 
       if (activeTab === 'templates') {
         if (cloneType === 'project') {
+          console.log('Cloning template to project...');
+          console.log('Calling POST /projects/' + projectToManage.id + '/clone');
           await cloneTemplateToProject(projectToManage.id, {
             title: newProject.name,
             description: newProject.description
           });
+          console.log('Clone to project successful');
           await loadProjects(true);
         } else {
+          console.log('Cloning template to template...');
+          console.log('Calling POST /templates/' + projectToManage.id + '/clone');
           await cloneTemplate(projectToManage.id, {
             title: newProject.name,
             description: newProject.description
           });
+          console.log('Clone to template successful');
         }
       } else {
+        console.log('Cloning project to project...');
+        console.log('Calling POST /projects/' + projectToManage.id + '/clone');
         await cloneProject(projectToManage.id, {
           title: newProject.name,
           description: newProject.description
         });
+        console.log('Clone project successful');
         await loadProjects(true);
       }
     } catch (error) {

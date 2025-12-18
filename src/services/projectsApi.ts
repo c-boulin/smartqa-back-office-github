@@ -381,10 +381,16 @@ class ProjectsApiService {
       description: projectData.description
     };
 
+    console.log('API Service: Cloning template');
+    console.log('URL: /templates/' + id + '/clone');
+    console.log('Request Body:', requestBody);
+
     const response = await apiService.authenticatedRequest(`/templates/${id}/clone`, {
       method: 'POST',
       body: JSON.stringify(requestBody),
     });
+
+    console.log('API Response:', response);
 
     if (!response) {
       throw new Error('No response received from server');
@@ -423,10 +429,16 @@ class ProjectsApiService {
       description: projectData.description
     };
 
+    console.log('API Service: Cloning template to project');
+    console.log('URL: /projects/' + id + '/clone');
+    console.log('Request Body:', requestBody);
+
     const response = await apiService.authenticatedRequest(`/projects/${id}/clone`, {
       method: 'POST',
       body: JSON.stringify(requestBody),
     });
+
+    console.log('API Response:', response);
 
     if (!response) {
       throw new Error('No response received from server');

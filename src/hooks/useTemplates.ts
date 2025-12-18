@@ -213,6 +213,9 @@ export const useTemplates = () => {
   };
 
   const cloneTemplate = async (id: string, data: { title: string; description: string }) => {
+    console.log('useTemplates Hook: cloneTemplate called');
+    console.log('Template ID:', id);
+    console.log('Data:', data);
     try {
       await withLoading(async () => {
         const response = await projectsApiService.cloneTemplate(id, data);
@@ -222,6 +225,7 @@ export const useTemplates = () => {
         return response;
       });
     } catch (err) {
+      console.error('useTemplates Hook: Error in cloneTemplate', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to clone template';
       toast.error(errorMessage);
       throw err;
@@ -229,6 +233,9 @@ export const useTemplates = () => {
   };
 
   const cloneTemplateToProject = async (id: string, data: { title: string; description: string }) => {
+    console.log('useTemplates Hook: cloneTemplateToProject called');
+    console.log('Template ID:', id);
+    console.log('Data:', data);
     try {
       await withLoading(async () => {
         const response = await projectsApiService.cloneTemplateToProject(id, data);
@@ -236,6 +243,7 @@ export const useTemplates = () => {
         return response;
       });
     } catch (err) {
+      console.error('useTemplates Hook: Error in cloneTemplateToProject', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to clone template to project';
       toast.error(errorMessage);
       throw err;
