@@ -20,7 +20,7 @@ const Modal: React.FC<ModalProps> = ({
 
   const sizeClasses = {
     sm: 'max-w-md',
-    md: 'w-[512px] max-w-[512px]',
+    md: 'w-[512px] max-w-[512px] max-h-[85vh]',
     lg: 'max-w-2xl',
     xl: 'w-[900px] max-w-[900px]',
     full: 'max-w-[90vw] w-[90vw] max-h-[95vh]',
@@ -33,7 +33,7 @@ const Modal: React.FC<ModalProps> = ({
       <div className="flex items-center justify-center min-h-screen px-4 py-4 text-center">
         <div className="fixed inset-0 transition-opacity bg-black/60 dark:bg-black/75 backdrop-blur-sm" onClick={onClose}></div>
         
-        <div className={`inline-block ${sizeClasses[size]} p-6 overflow-hidden text-left align-middle transition-all transform bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-2xl rounded-xl border border-slate-300 dark:border-purple-500/30 my-4`}>
+        <div className={`inline-block ${sizeClasses[size]} p-6 overflow-auto text-left align-middle transition-all transform bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-2xl rounded-xl border border-slate-300 dark:border-purple-500/30 my-4`}>
           {title && (
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
             <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h3>
