@@ -47,7 +47,7 @@ const Modal: React.FC<ModalProps> = ({
             </div>
           )}
 
-          <div className="text-slate-700 dark:text-gray-300 overflow-y-auto flex-1">
+          <div className="text-slate-700 dark:text-gray-300 overflow-y-auto flex-1 px-1">
             {children}
           </div>
         </div>
