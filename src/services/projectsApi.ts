@@ -320,6 +320,60 @@ class ProjectsApiService {
 
     return response;
   }
+
+  async getTemplates(page: number = 1, itemsPerPage: number = 30): Promise<ProjectsApiResponse> {
+    const response = await apiService.authenticatedRequest(`/templates?page=${page}&itemsPerPage=${itemsPerPage}`);
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  async getTemplatesWithSort(page: number = 1, itemsPerPage: number = 30, sortParam?: string): Promise<ProjectsApiResponse> {
+    let url = `/templates?page=${page}&itemsPerPage=${itemsPerPage}`;
+    if (sortParam) {
+      url += `&${sortParam}`;
+    }
+    const response = await apiService.authenticatedRequest(url);
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  async searchTemplates(searchTerm: string, page: number = 1, itemsPerPage: number = 30, sortParam?: string): Promise<ProjectsApiResponse> {
+    const trimmedTerm = searchTerm.trim();
+    const isNumeric = /^\d+$/.test(trimmedTerm);
+    const searchParam = trimmedTerm ? (isNumeric ? `id=${encodeURIComponent(trimmedTerm)}` : `title=${encodeURIComponent(trimmedTerm)}`) : '';
+    let url = `/templates?page=${page}&itemsPerPage=${itemsPerPage}`;
+    if (searchParam) {
+      url += `&${searchParam}`;
+    }
+    if (sortParam) {
+      url += `&${sortParam}`;
+    }
+
+    const response = await apiService.authenticatedRequest(url);
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  async getTemplatesCreatedByUser(userId: string, page: number = 1, itemsPerPage: number = 30, sortParam?: string): Promise<ProjectsApiResponse> {
+    let url = `/templates?created_by=${userId}&page=${page}&itemsPerPage=${itemsPerPage}`;
+    if (sortParam) {
+      url += `&${sortParam}`;
+    }
+
+    const response = await apiService.authenticatedRequest(url);
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  async searchTemplatesCreatedByUser(searchTerm: string, userId: string, page: number = 1, itemsPerPage: number = 30, sortParam?: string): Promise<ProjectsApiResponse> {
+    const searchParam = searchTerm.trim() ? `title=${encodeURIComponent(searchTerm)}` : '';
+    let url = `/templates?created_by=${userId}&page=${page}&itemsPerPage=${itemsPerPage}`;
+    if (searchParam) {
+      url += `&${searchParam}`;
+    }
+    if (sortParam) {
+      url += `&${sortParam}`;
+    }
+
+    const response = await apiService.authenticatedRequest(url);
+    return response || this.getDefaultProjectsResponse();
+  }
 }
 
 export const projectsApiService = new ProjectsApiService();
