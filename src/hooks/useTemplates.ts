@@ -212,6 +212,36 @@ export const useTemplates = () => {
     }
   };
 
+  const cloneTemplate = async (id: string, data: { title: string; description: string }) => {
+    try {
+      await withLoading(async () => {
+        const response = await projectsApiService.cloneTemplate(id, data);
+        toast.success('Template cloned successfully');
+        const sortOption = { param: 'order[createdAt]=desc' };
+        await fetchTemplatesWithSort(1, sortOption.param);
+        return response;
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to clone template';
+      toast.error(errorMessage);
+      throw err;
+    }
+  };
+
+  const cloneTemplateToProject = async (id: string, data: { title: string; description: string }) => {
+    try {
+      await withLoading(async () => {
+        const response = await projectsApiService.cloneTemplateToProject(id, data);
+        toast.success('Template cloned to project successfully');
+        return response;
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to clone template to project';
+      toast.error(errorMessage);
+      throw err;
+    }
+  };
+
   return {
     templates,
     loading,
@@ -221,6 +251,8 @@ export const useTemplates = () => {
     searchTemplates,
     fetchTemplatesCreatedByUser,
     searchTemplatesCreatedByUser,
-    fetchTemplatesWithSort
+    fetchTemplatesWithSort,
+    cloneTemplate,
+    cloneTemplateToProject
   };
 };

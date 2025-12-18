@@ -15,7 +15,6 @@ import { usePermissions } from '../hooks/usePermissions';
 import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
 
-// Composant modal pour créer/éditer un projet
 const ProjectModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -81,6 +80,90 @@ const ProjectModal: React.FC<{
   );
 };
 
+const CloneModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: () => void;
+  title: string;
+  projectData: { name: string; description: string };
+  setProjectData: (data: { name: string; description: string }) => void;
+  isSubmitting: boolean;
+  isTemplate: boolean;
+  cloneType: 'template' | 'project';
+  setCloneType: (type: 'template' | 'project') => void;
+}> = ({ isOpen, onClose, onSubmit, title, projectData, setProjectData, isSubmitting, isTemplate, cloneType, setCloneType }) => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="small">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {isTemplate && (
+          <div>
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
+              Clone As *
+            </label>
+            <select
+              value={cloneType}
+              onChange={(e) => setCloneType(e.target.value as 'template' | 'project')}
+              className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
+              disabled={isSubmitting}
+            >
+              <option value="template">Template</option>
+              <option value="project">Project</option>
+            </select>
+          </div>
+        )}
+        <div>
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
+            {isTemplate && cloneType === 'project' ? 'Project Name *' : isTemplate ? 'Template Name *' : 'Project Name *'}
+          </label>
+          <input
+            type="text"
+            value={projectData.name}
+            onChange={(e) => setProjectData({ ...projectData, name: e.target.value })}
+            className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
+            required
+            disabled={isSubmitting}
+            placeholder={isTemplate && cloneType === 'project' ? 'Enter project name' : isTemplate ? 'Enter template name' : 'Enter project name'}
+            autoFocus={!isTemplate}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
+            Description
+          </label>
+          <textarea
+            value={projectData.description}
+            onChange={(e) => setProjectData({ ...projectData, description: e.target.value })}
+            rows={3}
+            className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
+            disabled={isSubmitting}
+            placeholder="Enter description"
+          />
+        </div>
+        <div className="flex justify-end space-x-3 pt-4">
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader className="w-4 h-4 mr-2 animate-spin" />
+                Duplicating...
+              </>
+            ) : (
+              'Duplicate'
+            )}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
 const Projects: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -122,7 +205,9 @@ const Projects: React.FC = () => {
     searchTemplates,
     fetchTemplatesCreatedByUser,
     searchTemplatesCreatedByUser,
-    fetchTemplatesWithSort
+    fetchTemplatesWithSort,
+    cloneTemplate,
+    cloneTemplateToProject
   } = useTemplates();
 
   const items = activeTab === 'projects' ? projects : templates;
@@ -140,6 +225,7 @@ const Projects: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToManage, setProjectToManage] = useState<Project | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cloneType, setCloneType] = useState<'template' | 'project'>('template');
   const [newProject, setNewProject] = useState({
     name: '',
     description: ''
@@ -292,22 +378,37 @@ const Projects: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      await cloneProject(projectToManage.id, {
-        title: newProject.name,
-        description: newProject.description
-      });
-
-      await loadProjects(true);
+      if (activeTab === 'templates') {
+        if (cloneType === 'project') {
+          await cloneTemplateToProject(projectToManage.id, {
+            title: newProject.name,
+            description: newProject.description
+          });
+          await loadProjects(true);
+        } else {
+          await cloneTemplate(projectToManage.id, {
+            title: newProject.name,
+            description: newProject.description
+          });
+        }
+      } else {
+        await cloneProject(projectToManage.id, {
+          title: newProject.name,
+          description: newProject.description
+        });
+        await loadProjects(true);
+      }
     } catch (error) {
-      console.error('Error cloning project:', error);
+      console.error('Error cloning:', error);
     } finally {
       setIsSubmitting(false);
       setIsCloneModalOpen(false);
       setProjectToManage(null);
       setNewProject({ name: '', description: '' });
+      setCloneType('template');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
-  }, [cloneProject, projectToManage, newProject]);
+  }, [cloneProject, cloneTemplate, cloneTemplateToProject, projectToManage, newProject, activeTab, cloneType]);
 
   const handleDeleteProject = useCallback(async () => {
     if (!projectToManage) return;
@@ -341,8 +442,9 @@ const Projects: React.FC = () => {
       name: `${project.name} (copy)`,
       description: project.description
     });
+    setCloneType(activeTab === 'templates' ? 'template' : 'project');
     setIsCloneModalOpen(true);
-  }, []);
+  }, [activeTab]);
 
   const openDeleteDialog = useCallback((project: Project) => {
     setProjectToManage(project);
@@ -787,14 +889,17 @@ const Projects: React.FC = () => {
         isSubmitting={isSubmitting}
       />
 
-      <ProjectModal
+      <CloneModal
         isOpen={isCloneModalOpen}
         onClose={() => setIsCloneModalOpen(false)}
         onSubmit={handleCloneProject}
-        title="Clone Project"
+        title={activeTab === 'templates' ? 'Clone Template' : 'Clone Project'}
         projectData={newProject}
         setProjectData={setNewProject}
         isSubmitting={isSubmitting}
+        isTemplate={activeTab === 'templates'}
+        cloneType={cloneType}
+        setCloneType={setCloneType}
       />
 
       <ConfirmDialog
