@@ -291,7 +291,7 @@ class ScheduledReportsApiService {
   async getScheduledReports(projectId?: string): Promise<ScheduledReport[]> {
     try {
       const endpoint = projectId
-        ? `/scheduled_reports?filter[project_id]=${projectId}&include=creator`
+        ? `/scheduled_reports?project_id=${projectId}&include=creator`
         : '/scheduled_reports?include=creator';
 
       const response = await apiService.authenticatedRequest(endpoint);

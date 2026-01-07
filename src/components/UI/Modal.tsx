@@ -23,19 +23,19 @@ const Modal: React.FC<ModalProps> = ({
     md: 'w-[512px] max-w-[512px]',
     lg: 'max-w-2xl',
     xl: 'w-[900px] max-w-[900px]',
-    full: 'max-w-[90vw] w-[90vw] max-h-[95vh]',
-    custom: 'max-w-[75vw] w-[75vw] max-h-[95vh]',
-    small: 'w-[400px] h-[500px] max-w-[400px] max-h-[500px]'
+    full: 'max-w-[90vw] w-[90vw]',
+    custom: 'max-w-[75vw] w-[75vw]',
+    small: 'w-[450px] max-w-[450px]'
   };
 
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 py-4 text-center">
+      <div className="flex items-center justify-center min-h-screen px-4 py-6 text-center">
         <div className="fixed inset-0 transition-opacity bg-black/60 dark:bg-black/75 backdrop-blur-sm" onClick={onClose}></div>
-        
-        <div className={`inline-block ${sizeClasses[size]} p-6 overflow-hidden text-left align-middle transition-all transform bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-2xl rounded-xl border border-slate-300 dark:border-purple-500/30 my-4`}>
+
+        <div className={`inline-block ${sizeClasses[size]} max-h-[90vh] flex flex-col p-6 text-left align-middle transition-all transform bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-2xl rounded-xl border border-slate-300 dark:border-purple-500/30 my-4`}>
           {title && (
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
             <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h3>
             <button
               onClick={onClose}
@@ -46,8 +46,8 @@ const Modal: React.FC<ModalProps> = ({
             </button>
             </div>
           )}
-          
-          <div className="text-slate-700 dark:text-gray-300">
+
+          <div className="text-slate-700 dark:text-gray-300 overflow-y-auto flex-1 px-1">
             {children}
           </div>
         </div>

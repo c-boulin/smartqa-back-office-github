@@ -335,7 +335,8 @@ const Sidebar: React.FC = () => {
     };
 
     initializeDropdown();
-  }, [isDropdownOpen, searchTerm, allProjects.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDropdownOpen, searchTerm]);
 
   return (
     <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl">

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Plus, Search, Filter, SquarePen, Trash2, Copy, ChevronLeft, ChevronRight, Loader } from 'lucide-react';
+import { Plus, Search, Filter, SquarePen, Trash2, Copy, ChevronLeft, ChevronRight, Loader, FolderOpen, Globe } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
@@ -8,13 +8,14 @@ import ConfirmDialog from '../components/UI/ConfirmDialog';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useProjects } from '../hooks/useProjects';
+import { useTemplates } from '../hooks/useTemplates';
 import { Project } from '../types';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../hooks/usePermissions';
 import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
+import { projectsApiService } from '../services/projectsApi';
 
-// Composant modal pour créer/éditer un projet
 const ProjectModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -23,7 +24,107 @@ const ProjectModal: React.FC<{
   projectData: { name: string; description: string };
   setProjectData: (data: { name: string; description: string }) => void;
   isSubmitting: boolean;
-}> = ({ isOpen, onClose, onSubmit, title, projectData, setProjectData, isSubmitting }) => {
+  templates?: Project[];
+  selectedTemplateId?: string;
+  setSelectedTemplateId?: (id: string) => void;
+  templatesLoading?: boolean;
+}> = ({ isOpen, onClose, onSubmit, title, projectData, setProjectData, isSubmitting, templates, selectedTemplateId, setSelectedTemplateId, templatesLoading }) => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit();
+  };
+
+  const isTemplate = title.includes('Template');
+  const isCreateProject = title.includes('Create') && title.includes('Project');
+  const entityName = isTemplate ? 'template' : 'project';
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="small">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
+            {isTemplate ? 'Template Name *' : 'Project Name *'}
+          </label>
+          <input
+            type="text"
+            value={projectData.name}
+            onChange={(e) => setProjectData({ ...projectData, name: e.target.value })}
+            className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
+            required
+            disabled={isSubmitting}
+            placeholder={`Enter ${entityName} name`}
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
+            Description *
+          </label>
+          <textarea
+            value={projectData.description}
+            onChange={(e) => setProjectData({ ...projectData, description: e.target.value })}
+            rows={3}
+            className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
+            required
+            disabled={isSubmitting}
+            placeholder={`Enter ${entityName} description`}
+          />
+        </div>
+        {isCreateProject && templates && setSelectedTemplateId && (
+          <div>
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
+              Default Template
+            </label>
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => setSelectedTemplateId(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
+              disabled={isSubmitting || templatesLoading}
+            >
+              <option value="">None - Create Blank Project</option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+            {templatesLoading && (
+              <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">Loading templates...</p>
+            )}
+          </div>
+        )}
+        <div className="flex justify-end space-x-3 pt-4">
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader className="w-4 h-4 mr-2 animate-spin" />
+                {title.includes('Create') ? 'Creating...' : title.includes('Clone') ? 'Duplicating...' : 'Updating...'}
+              </>
+            ) : (
+              title.includes('Create') ? 'Create' : title.includes('Clone') ? 'Duplicate' : 'Update'
+            )}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const CloneModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: () => void;
+  title: string;
+  projectData: { name: string; description: string };
+  setProjectData: (data: { name: string; description: string }) => void;
+  isSubmitting: boolean;
+  isTemplate: boolean;
+  cloneType: 'template' | 'project';
+  setCloneType: (type: 'template' | 'project') => void;
+}> = ({ isOpen, onClose, onSubmit, title, projectData, setProjectData, isSubmitting, isTemplate, cloneType, setCloneType }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit();
@@ -34,7 +135,7 @@ const ProjectModal: React.FC<{
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
-            Project Name *
+            {isTemplate && cloneType === 'project' ? 'Project Name *' : isTemplate ? 'Template Name *' : 'Project Name *'}
           </label>
           <input
             type="text"
@@ -43,7 +144,7 @@ const ProjectModal: React.FC<{
             className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
             required
             disabled={isSubmitting}
-            placeholder="Enter project name"
+            placeholder={isTemplate && cloneType === 'project' ? 'Enter project name' : isTemplate ? 'Enter template name' : 'Enter project name'}
             autoFocus
           />
         </div>
@@ -57,9 +158,47 @@ const ProjectModal: React.FC<{
             rows={3}
             className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
             disabled={isSubmitting}
-            placeholder="Enter project description"
+            placeholder="Enter description"
           />
         </div>
+        {isTemplate && (
+          <div>
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
+              Target Section *
+            </label>
+            <div className="mb-3 px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-gray-400 text-sm">
+              Selected: {cloneType === 'template' ? 'Templates' : 'Projects'}
+            </div>
+            <div className="p-3 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg space-y-2">
+              <button
+                type="button"
+                onClick={() => setCloneType('template')}
+                disabled={isSubmitting}
+                className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
+                  cloneType === 'template'
+                    ? 'bg-cyan-500 text-white'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                }`}
+              >
+                <FolderOpen className="w-5 h-5 mr-3" />
+                <span className="font-medium">Templates</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCloneType('project')}
+                disabled={isSubmitting}
+                className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
+                  cloneType === 'project'
+                    ? 'bg-cyan-500 text-white'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                }`}
+              >
+                <Globe className="w-5 h-5 mr-3" />
+                <span className="font-medium">Projects</span>
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex justify-end space-x-3 pt-4">
           <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             Cancel
@@ -68,10 +207,10 @@ const ProjectModal: React.FC<{
             {isSubmitting ? (
               <>
                 <Loader className="w-4 h-4 mr-2 animate-spin" />
-                {title.includes('Create') ? 'Creating...' : title.includes('Clone') ? 'Duplicating...' : 'Updating...'}
+                Duplicating...
               </>
             ) : (
-              title.includes('Create') ? 'Create' : title.includes('Clone') ? 'Duplicate' : 'Update'
+              'Duplicate'
             )}
           </Button>
         </div>
@@ -94,11 +233,13 @@ const Projects: React.FC = () => {
                        hasPermission(PERMISSIONS.PROJECT.DELETE) ||
                        hasPermission(PERMISSIONS.PROJECT.CREATE);
 
+  const [activeTab, setActiveTab] = useState<'projects' | 'templates'>('projects');
+
   const {
     projects,
-    loading,
-    error,
-    pagination,
+    loading: projectsLoading,
+    error: projectsError,
+    pagination: projectsPagination,
     fetchProjects,
     searchProjects,
     fetchProjectsCreatedByUser,
@@ -110,6 +251,28 @@ const Projects: React.FC = () => {
     cloneProject
   } = useProjects();
 
+  const {
+    templates,
+    loading: templatesLoading,
+    error: templatesError,
+    pagination: templatesPagination,
+    fetchTemplates,
+    searchTemplates,
+    fetchTemplatesCreatedByUser,
+    searchTemplatesCreatedByUser,
+    fetchTemplatesWithSort,
+    cloneTemplate,
+    cloneTemplateToProject,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate
+  } = useTemplates();
+
+  const items = activeTab === 'projects' ? projects : templates;
+  const loading = activeTab === 'projects' ? projectsLoading : templatesLoading;
+  const error = activeTab === 'projects' ? projectsError : templatesError;
+  const pagination = activeTab === 'projects' ? projectsPagination : templatesPagination;
+
   const [searchTerm, setSearchTerm] = useState('');
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'my-projects'>('all');
@@ -120,10 +283,14 @@ const Projects: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToManage, setProjectToManage] = useState<Project | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cloneType, setCloneType] = useState<'template' | 'project'>('template');
   const [newProject, setNewProject] = useState({
     name: '',
     description: ''
   });
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [modalTemplates, setModalTemplates] = useState<Project[]>([]);
+  const [templatesLoadingForModal, setTemplatesLoadingForModal] = useState(false);
 
   const SORT_OPTIONS = useMemo(() => [
     { value: 'createdAt-desc', label: 'Creation Date (New → Old)', param: 'order[createdAt]=desc' },
@@ -138,64 +305,88 @@ const Projects: React.FC = () => {
   const handleSearch = useCallback(async (term: string) => {
     setCurrentSearchTerm(term);
     const sortOption = SORT_OPTIONS.find(option => option.value === sortBy);
-    
+
     if (term.trim()) {
       if (filterMode === 'my-projects') {
-        // Recherche dans mes projets
-        await searchProjectsCreatedByUser(term, authState.user?.id?.toString() || '', 1, sortOption?.param);
+        if (activeTab === 'projects') {
+          await searchProjectsCreatedByUser(term, authState.user?.id?.toString() || '', 1, sortOption?.param);
+        } else {
+          await searchTemplatesCreatedByUser(term, authState.user?.id?.toString() || '', 1, sortOption?.param);
+        }
       } else {
-        // Recherche dans tous les projets
-        await searchProjects(term, 1, sortOption?.param);
+        if (activeTab === 'projects') {
+          await searchProjects(term, 1, sortOption?.param);
+        } else {
+          await searchTemplates(term, 1, sortOption?.param);
+        }
       }
     } else {
-      // Si la recherche est vide, revenir à la liste normale
       await handleFilterChange(filterMode);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_OPTIONS, authState.user?.id, handleFilterChange are stable
-  }, [searchProjects, searchProjectsCreatedByUser, filterMode, sortBy]);
+  }, [searchProjects, searchProjectsCreatedByUser, searchTemplates, searchTemplatesCreatedByUser, filterMode, sortBy, activeTab]);
 
   const handleFilterChange = useCallback(async (mode: 'all' | 'my-projects') => {
     setFilterMode(mode);
     setSearchTerm('');
     setCurrentSearchTerm('');
-    
+
     const sortOption = SORT_OPTIONS.find(option => option.value === sortBy);
-    
+
     if (mode === 'my-projects') {
       const userId = authState.user?.id?.toString() || '';
-
-      await fetchProjectsCreatedByUser(userId || '', 1, sortOption?.param);
+      if (activeTab === 'projects') {
+        await fetchProjectsCreatedByUser(userId || '', 1, sortOption?.param);
+      } else {
+        await fetchTemplatesCreatedByUser(userId || '', 1, sortOption?.param);
+      }
     } else {
-      await fetchProjectsWithSort(1, sortOption?.param);
+      if (activeTab === 'projects') {
+        await fetchProjectsWithSort(1, sortOption?.param);
+      } else {
+        await fetchTemplatesWithSort(1, sortOption?.param);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_OPTIONS is a constant
-  }, [fetchProjectsCreatedByUser, fetchProjectsWithSort, sortBy, authState]);
+  }, [fetchProjectsCreatedByUser, fetchProjectsWithSort, fetchTemplatesCreatedByUser, fetchTemplatesWithSort, sortBy, authState, activeTab]);
 
   const handleSortChange = useCallback(async (newSortBy: string) => {
     setSortBy(newSortBy);
     const sortOption = SORT_OPTIONS.find(option => option.value === newSortBy);
-    
+
     if (currentSearchTerm.trim()) {
-      // Si on a une recherche active, refaire la recherche avec le nouveau tri
       if (filterMode === 'my-projects') {
         const userId = authState.user?.id?.toString() || '';
-
-        await searchProjectsCreatedByUser(currentSearchTerm, userId, 1, sortOption?.param);
+        if (activeTab === 'projects') {
+          await searchProjectsCreatedByUser(currentSearchTerm, userId, 1, sortOption?.param);
+        } else {
+          await searchTemplatesCreatedByUser(currentSearchTerm, userId, 1, sortOption?.param);
+        }
       } else {
-        await searchProjects(currentSearchTerm, 1, sortOption?.param);
+        if (activeTab === 'projects') {
+          await searchProjects(currentSearchTerm, 1, sortOption?.param);
+        } else {
+          await searchTemplates(currentSearchTerm, 1, sortOption?.param);
+        }
       }
     } else {
-      // Sinon, refaire la liste avec le nouveau tri
       if (filterMode === 'my-projects') {
         const userId = authState.user?.id?.toString() || '';
-
-        await fetchProjectsCreatedByUser(userId, 1, sortOption?.param);
+        if (activeTab === 'projects') {
+          await fetchProjectsCreatedByUser(userId, 1, sortOption?.param);
+        } else {
+          await fetchTemplatesCreatedByUser(userId, 1, sortOption?.param);
+        }
       } else {
-        await fetchProjectsWithSort(1, sortOption?.param);
+        if (activeTab === 'projects') {
+          await fetchProjectsWithSort(1, sortOption?.param);
+        } else {
+          await fetchTemplatesWithSort(1, sortOption?.param);
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_OPTIONS, authState.user?.id are stable
-  }, [searchProjects, searchProjectsCreatedByUser, fetchProjectsCreatedByUser, fetchProjectsWithSort, currentSearchTerm, filterMode]);
+  }, [searchProjects, searchProjectsCreatedByUser, searchTemplates, searchTemplatesCreatedByUser, fetchProjectsCreatedByUser, fetchProjectsWithSort, fetchTemplatesCreatedByUser, fetchTemplatesWithSort, currentSearchTerm, filterMode, activeTab]);
 
   const handleSearchKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -207,12 +398,35 @@ const Projects: React.FC = () => {
   const handleCreateProject = useCallback(async () => {
     try {
       setIsSubmitting(true);
-      await createProject({
-        ...newProject,
-        userId: authState.user?.id
-      });
-      // Refresh the global project list in AppContext
+
+      if (selectedTemplateId) {
+        await cloneTemplateToProject(selectedTemplateId, {
+          title: newProject.name,
+          description: newProject.description
+        });
+      } else {
+        await createProject({
+          ...newProject,
+          userId: authState.user?.id
+        });
+      }
+
       await loadProjects(true);
+      setIsCreateModalOpen(false);
+      setNewProject({ name: '', description: '' });
+      setSelectedTemplateId('');
+    } catch {
+      // Error is already handled in the hook
+    } finally {
+      setIsSubmitting(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
+  }, [createProject, cloneTemplateToProject, newProject, authState.user?.id, selectedTemplateId]);
+
+  const handleCreateTemplate = useCallback(async () => {
+    try {
+      setIsSubmitting(true);
+      await createTemplate(newProject);
       setIsCreateModalOpen(false);
       setNewProject({ name: '', description: '' });
     } catch {
@@ -220,17 +434,19 @@ const Projects: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
-  }, [createProject, newProject, authState.user?.id]);
+  }, [createTemplate, newProject]);
 
   const handleEditProject = useCallback(async () => {
     if (!projectToManage) return;
 
     try {
       setIsSubmitting(true);
-      await updateProject(projectToManage.id, newProject);
-      // Refresh the global project list in AppContext
-      await loadProjects(true);
+      if (activeTab === 'templates') {
+        await updateTemplate(projectToManage.id, newProject);
+      } else {
+        await updateProject(projectToManage.id, newProject);
+        await loadProjects(true);
+      }
       setIsEditModalOpen(false);
       setProjectToManage(null);
       setNewProject({ name: '', description: '' });
@@ -240,7 +456,7 @@ const Projects: React.FC = () => {
       setIsSubmitting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
-  }, [updateProject, projectToManage, newProject]);
+  }, [updateProject, updateTemplate, projectToManage, newProject, activeTab]);
 
   const handleCloneProject = useCallback(async () => {
     if (!projectToManage) return;
@@ -248,31 +464,56 @@ const Projects: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      await cloneProject(projectToManage.id, {
-        title: newProject.name,
-        description: newProject.description
-      });
-
-      await loadProjects(true);
+      if (activeTab === 'templates') {
+        if (cloneType === 'project') {
+          await cloneTemplateToProject(projectToManage.id, {
+            title: newProject.name,
+            description: newProject.description
+          });
+          await loadProjects(true);
+          setActiveTab('projects');
+          const sortOption = SORT_OPTIONS.find(option => option.value === sortBy);
+          if (filterMode === 'my-projects') {
+            await fetchProjectsCreatedByUser(authState.user?.id?.toString() || '', 1, sortOption?.param);
+          } else {
+            await fetchProjectsWithSort(1, sortOption?.param);
+          }
+        } else {
+          await cloneTemplate(projectToManage.id, {
+            title: newProject.name,
+            description: newProject.description
+          });
+        }
+      } else {
+        await cloneProject(projectToManage.id, {
+          title: newProject.name,
+          description: newProject.description
+        });
+        await loadProjects(true);
+      }
     } catch (error) {
-      console.error('Error cloning project:', error);
+      console.error('Error cloning:', error);
     } finally {
       setIsSubmitting(false);
       setIsCloneModalOpen(false);
       setProjectToManage(null);
       setNewProject({ name: '', description: '' });
+      setCloneType('template');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
-  }, [cloneProject, projectToManage, newProject]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects, authState.user are stable
+  }, [cloneProject, cloneTemplate, cloneTemplateToProject, projectToManage, newProject, activeTab, cloneType, sortBy, fetchProjectsWithSort, fetchProjectsCreatedByUser, filterMode]);
 
   const handleDeleteProject = useCallback(async () => {
     if (!projectToManage) return;
-    
+
     try {
       setIsSubmitting(true);
-      await deleteProject(projectToManage.id);
-      // Refresh the global project list in AppContext
-      await loadProjects(true);
+      if (activeTab === 'templates') {
+        await deleteTemplate(projectToManage.id);
+      } else {
+        await deleteProject(projectToManage.id);
+        await loadProjects(true);
+      }
       setProjectToManage(null);
     } catch {
       // Error is already handled in the hook
@@ -280,7 +521,7 @@ const Projects: React.FC = () => {
       setIsSubmitting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects is stable
-  }, [deleteProject, projectToManage]);
+  }, [deleteProject, deleteTemplate, projectToManage, activeTab]);
 
   const openEditModal = useCallback((project: Project) => {
     setProjectToManage(project);
@@ -297,8 +538,9 @@ const Projects: React.FC = () => {
       name: `${project.name} (copy)`,
       description: project.description
     });
+    setCloneType(activeTab === 'templates' ? 'template' : 'project');
     setIsCloneModalOpen(true);
-  }, []);
+  }, [activeTab]);
 
   const openDeleteDialog = useCallback((project: Project) => {
     setProjectToManage(project);
@@ -307,26 +549,40 @@ const Projects: React.FC = () => {
 
   const handlePageChange = useCallback((page: number) => {
     const sortOption = SORT_OPTIONS.find(option => option.value === sortBy);
-    
+
     if (currentSearchTerm.trim()) {
       if (filterMode === 'my-projects') {
         const userId = authState.user?.id?.toString() || '';
-
-        searchProjectsCreatedByUser(currentSearchTerm, userId, page, sortOption?.param);
+        if (activeTab === 'projects') {
+          searchProjectsCreatedByUser(currentSearchTerm, userId, page, sortOption?.param);
+        } else {
+          searchTemplatesCreatedByUser(currentSearchTerm, userId, page, sortOption?.param);
+        }
       } else {
-        searchProjects(currentSearchTerm, page, sortOption?.param);
+        if (activeTab === 'projects') {
+          searchProjects(currentSearchTerm, page, sortOption?.param);
+        } else {
+          searchTemplates(currentSearchTerm, page, sortOption?.param);
+        }
       }
     } else {
       if (filterMode === 'my-projects') {
         const userId = authState.user?.id?.toString() || '';
-
-        fetchProjectsCreatedByUser(userId, page, sortOption?.param);
+        if (activeTab === 'projects') {
+          fetchProjectsCreatedByUser(userId, page, sortOption?.param);
+        } else {
+          fetchTemplatesCreatedByUser(userId, page, sortOption?.param);
+        }
       } else {
-        fetchProjectsWithSort(page, sortOption?.param);
+        if (activeTab === 'projects') {
+          fetchProjectsWithSort(page, sortOption?.param);
+        } else {
+          fetchTemplatesWithSort(page, sortOption?.param);
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_OPTIONS, authState.user?.id are stable
-  }, [currentSearchTerm, filterMode, sortBy, searchProjects, searchProjectsCreatedByUser, fetchProjectsCreatedByUser, fetchProjectsWithSort]);
+  }, [currentSearchTerm, filterMode, sortBy, activeTab, searchProjects, searchProjectsCreatedByUser, searchTemplates, searchTemplatesCreatedByUser, fetchProjectsCreatedByUser, fetchProjectsWithSort, fetchTemplatesCreatedByUser, fetchTemplatesWithSort]);
 
   const clearAllFilters = useCallback(() => {
     setSearchTerm('');
@@ -334,9 +590,13 @@ const Projects: React.FC = () => {
     setFilterMode('all');
     setSortBy('createdAt-desc');
     const sortOption = SORT_OPTIONS.find(option => option.value === 'createdAt-desc');
-    fetchProjectsWithSort(1, sortOption?.param);
+    if (activeTab === 'projects') {
+      fetchProjectsWithSort(1, sortOption?.param);
+    } else {
+      fetchTemplatesWithSort(1, sortOption?.param);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_OPTIONS is a constant
-  }, [fetchProjectsWithSort]);
+  }, [fetchProjectsWithSort, fetchTemplatesWithSort, activeTab]);
 
   const handleProjectClick = useCallback((project: Project) => {
     dispatch({ type: 'SET_NAVIGATING_TO_PROJECT', payload: true });
@@ -359,6 +619,15 @@ const Projects: React.FC = () => {
     }, 50);
   }, [dispatch, navigate, getSelectedProject]);
 
+  const handleTabChange = useCallback((tab: 'projects' | 'templates') => {
+    setActiveTab(tab);
+    setSearchTerm('');
+    setCurrentSearchTerm('');
+    setFilterMode('all');
+    setSortBy('createdAt-desc');
+    hasFetchedRef.current = false;
+  }, []);
+
   useEffect(() => {
     if (location.pathname !== '/projects') {
       hasFetchedRef.current = false;
@@ -379,31 +648,56 @@ const Projects: React.FC = () => {
     }
 
     const sortOption = SORT_OPTIONS.find(option => option.value === sortBy);
-    fetchProjectsWithSort(1, sortOption?.param);
+    if (activeTab === 'projects') {
+      fetchProjectsWithSort(1, sortOption?.param);
+    } else {
+      fetchTemplatesWithSort(1, sortOption?.param);
+    }
     hasFetchedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, sortBy, appState.isNavigatingToProject]);
+  }, [location.pathname, sortBy, appState.isNavigatingToProject, activeTab]);
 
-  if (loading && projects.length === 0) {
+  useEffect(() => {
+    const fetchTemplatesForModal = async () => {
+      if (isCreateModalOpen && activeTab === 'projects') {
+        setTemplatesLoadingForModal(true);
+        try {
+          const response = await projectsApiService.getTemplates(1);
+          const transformedTemplates = response.data.map(apiTemplate =>
+            projectsApiService.transformApiProject(apiTemplate)
+          );
+          setModalTemplates(transformedTemplates);
+        } catch (error) {
+          console.error('Error fetching templates for modal:', error);
+        } finally {
+          setTemplatesLoadingForModal(false);
+        }
+      }
+    };
+
+    fetchTemplatesForModal();
+  }, [isCreateModalOpen, activeTab]);
+
+  if (loading && items.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <Loader className="w-8 h-8 text-cyan-600 dark:text-cyan-400 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600 dark:text-gray-400">Loading projects...</p>
+          <p className="text-slate-600 dark:text-gray-400">Loading {activeTab}...</p>
         </div>
       </div>
     );
   }
 
-  if (error && projects.length === 0) {
+  if (error && items.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <Card className="p-8 text-center">
           <div className="text-red-600 dark:text-red-400 mb-4">
-            <p className="text-lg font-medium">Failed to load projects</p>
+            <p className="text-lg font-medium">Failed to load {activeTab}</p>
             <p className="text-sm text-slate-600 dark:text-gray-400 mt-2">{error}</p>
           </div>
-          <Button onClick={() => fetchProjects(1)}>
+          <Button onClick={() => activeTab === 'projects' ? fetchProjects(1) : fetchTemplates(1)}>
             Try Again
           </Button>
         </Card>
@@ -416,20 +710,59 @@ const Projects: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Projects</h2>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+            {activeTab === 'projects' ? 'Projects' : 'Templates'}
+          </h2>
           <p className="text-slate-600 dark:text-gray-400">
-            Manage your testing projects ({pagination.totalItems} total)
+            Manage your testing {activeTab} ({pagination.totalItems} total)
           </p>
         </div>
-        <PermissionGuard permission={PERMISSIONS.PROJECT.CREATE}>
-          <Button
-            icon={Plus}
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            New Project
-          </Button>
-        </PermissionGuard>
+        {activeTab === 'projects' ? (
+          <PermissionGuard permission={PERMISSIONS.PROJECT.CREATE}>
+            <Button
+              icon={Plus}
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              New Project
+            </Button>
+          </PermissionGuard>
+        ) : (
+          <PermissionGuard permission={PERMISSIONS.PROJECT.CREATE}>
+            <Button
+              icon={Plus}
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              New Template
+            </Button>
+          </PermissionGuard>
+        )}
       </div>
+
+      {/* Tabs */}
+      <Card className="p-0">
+        <div className="flex border-b border-slate-200 dark:border-slate-700">
+          <button
+            onClick={() => handleTabChange('projects')}
+            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+              activeTab === 'projects'
+                ? 'text-cyan-600 dark:text-cyan-400 border-b-2 border-cyan-600 dark:border-cyan-400'
+                : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            Projects
+          </button>
+          <button
+            onClick={() => handleTabChange('templates')}
+            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+              activeTab === 'templates'
+                ? 'text-cyan-600 dark:text-cyan-400 border-b-2 border-cyan-600 dark:border-cyan-400'
+                : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            Templates
+          </button>
+        </div>
+      </Card>
 
       {/* Filters */}
       <Card className="p-6">
@@ -439,7 +772,7 @@ const Projects: React.FC = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Search projects by title..."
+                placeholder={`Search ${activeTab} by title...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={handleSearchKeyPress}
@@ -455,8 +788,8 @@ const Projects: React.FC = () => {
                 onChange={(e) => handleFilterChange(e.target.value as 'all' | 'my-projects')}
                 className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
               >
-                <option value="all">All Projects</option>
-                <option value="my-projects">My Projects</option>
+                <option value="all">All {activeTab === 'projects' ? 'Projects' : 'Templates'}</option>
+                <option value="my-projects">My {activeTab === 'projects' ? 'Projects' : 'Templates'}</option>
               </select>
             </div>
             <div className="flex items-center space-x-2">
@@ -486,8 +819,8 @@ const Projects: React.FC = () => {
               </span>
             )}
             {filterMode !== 'all' && (
-              <span className="inline-flex items-center px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-sm text-purple-600 dark:text-purple-400">
-                Filter: {filterMode === 'my-projects' ? 'My Projects' : 'All Projects'}
+              <span className="inline-flex items-center px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full text-sm text-blue-600 dark:text-blue-400">
+                Filter: {filterMode === 'my-projects' ? `My ${activeTab === 'projects' ? 'Projects' : 'Templates'}` : `All ${activeTab === 'projects' ? 'Projects' : 'Templates'}`}
               </span>
             )}
             <button
@@ -521,7 +854,7 @@ const Projects: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {projects.map((project) => (
+              {items.map((project) => (
                 <tr key={project.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
                     #{project.id || 'NO_ID'}
@@ -610,15 +943,15 @@ const Projects: React.FC = () => {
             </tbody>
           </table>
           
-          {projects.length === 0 && !loading && (
+          {items.length === 0 && !loading && (
             <div className="text-center py-12">
               <div className="text-slate-500 dark:text-gray-400 mb-4">
                 <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">No projects found</p>
+                <p className="text-lg font-medium">No {activeTab} found</p>
                 <p className="text-sm">
                   {currentSearchTerm || filterMode !== 'all'
-                    ? 'No projects found matching your filters. Try adjusting your search or filters.'
-                    : 'No projects found. Create your first project to get started.'
+                    ? `No ${activeTab} found matching your filters. Try adjusting your search or filters.`
+                    : `No ${activeTab} found.${activeTab === 'projects' ? ' Create your first project to get started.' : ''}`
                   }
                 </p>
               </div>
@@ -633,7 +966,7 @@ const Projects: React.FC = () => {
               <div className="text-sm text-slate-600 dark:text-gray-400">
                 Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
                 {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
-                {pagination.totalItems} projects
+                {pagination.totalItems} {activeTab}
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -666,40 +999,54 @@ const Projects: React.FC = () => {
       {/* Modals */}
       <ProjectModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateProject}
-        title="Create New Project"
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setSelectedTemplateId('');
+        }}
+        onSubmit={activeTab === 'templates' ? handleCreateTemplate : handleCreateProject}
+        title={activeTab === 'templates' ? 'Create New Template' : 'Create New Project'}
         projectData={newProject}
         setProjectData={setNewProject}
         isSubmitting={isSubmitting}
+        templates={activeTab === 'projects' ? modalTemplates : undefined}
+        selectedTemplateId={selectedTemplateId}
+        setSelectedTemplateId={setSelectedTemplateId}
+        templatesLoading={templatesLoadingForModal}
       />
 
       <ProjectModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSubmit={handleEditProject}
-        title="Edit Project"
+        title={activeTab === 'templates' ? 'Edit Template' : 'Edit Project'}
         projectData={newProject}
         setProjectData={setNewProject}
         isSubmitting={isSubmitting}
       />
 
-      <ProjectModal
+      <CloneModal
         isOpen={isCloneModalOpen}
         onClose={() => setIsCloneModalOpen(false)}
         onSubmit={handleCloneProject}
-        title="Clone Project"
+        title={activeTab === 'templates' ? 'Clone Template' : 'Clone Project'}
         projectData={newProject}
         setProjectData={setNewProject}
         isSubmitting={isSubmitting}
+        isTemplate={activeTab === 'templates'}
+        cloneType={cloneType}
+        setCloneType={setCloneType}
       />
 
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDeleteProject}
-        title="Delete Project"
-        message={`Are you sure you want to delete the project "${projectToManage?.name}"? This action is irreversible and will delete all associated test cases, test runs, and data.`}
+        title={activeTab === 'templates' ? 'Delete Template' : 'Delete Project'}
+        message={
+          activeTab === 'templates'
+            ? `Are you sure you want to delete the template "${projectToManage?.name}"? This action is irreversible and will delete all associated test cases and data.`
+            : `Are you sure you want to delete the project "${projectToManage?.name}"? This action is irreversible and will delete all associated test cases, test runs, and data.`
+        }
         confirmText="Delete"
         variant="danger"
       />

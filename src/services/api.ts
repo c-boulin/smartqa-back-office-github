@@ -83,11 +83,11 @@ class ApiService {
   // Helper method for authenticated API calls
   async authenticatedRequest(endpoint: string, options: RequestInit = {}) {
     const token = localStorage.getItem('auth_token');
-    
+
     if (!token || token.trim() === '') {
       throw new Error('No authentication token found');
     }
-    
+
     const headers = {
       'Content-Type': 'application/vnd.api+json',
       'Accept': 'application/vnd.api+json',

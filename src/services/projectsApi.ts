@@ -55,6 +55,7 @@ export interface CreateProjectRequest {
     attributes: {
       title: string;
       description: string;
+      is_template?: boolean;
     };
   };
 }
@@ -247,6 +248,33 @@ class ProjectsApiService {
     return response;
   }
 
+  async createTemplate(templateData: {
+    title: string;
+    description: string;
+  }): Promise<CreateProjectResponse> {
+    const requestBody: CreateProjectRequest = {
+      data: {
+        type: "Project",
+        attributes: {
+          title: templateData.title,
+          description: templateData.description,
+          is_template: true
+        }
+      }
+    };
+
+    const response = await apiService.authenticatedRequest('/projects', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+
+    return response;
+  }
+
   async updateProject(id: string, projectData: {
     title: string;
     description: string;
@@ -279,6 +307,38 @@ class ProjectsApiService {
     });
   }
 
+  async updateTemplate(id: string, templateData: {
+    title: string;
+    description: string;
+  }): Promise<UpdateProjectResponse> {
+    const requestBody: UpdateProjectRequest = {
+      data: {
+        type: "Project",
+        attributes: {
+          title: templateData.title,
+          description: templateData.description
+        }
+      }
+    };
+
+    const response = await apiService.authenticatedRequest(`/projects/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+
+    return response;
+  }
+
+  async deleteTemplate(id: string): Promise<void> {
+    await apiService.authenticatedRequest(`/projects/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async cloneProject(id: string, projectData: { title: string; description: string }): Promise<{ data: ApiProject }> {
     const requestBody = {
       title: projectData.title,
@@ -289,6 +349,156 @@ class ProjectsApiService {
       method: 'POST',
       body: JSON.stringify(requestBody),
     });
+
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+
+    if (response.success && response.data) {
+      return {
+        data: {
+          id: `/api/projects/${response.data.id}`,
+          type: 'Project',
+          attributes: {
+            id: response.data.id,
+            title: response.data.title,
+            description: response.data.description,
+            createdAt: response.data.created_at,
+            updatedAt: response.data.updated_at
+          },
+          relationships: {
+            testCases: { data: [] },
+            testRuns: { data: [] },
+            sharedSteps: { data: [] },
+            creator: { data: { type: 'User', id: '' } },
+            editor: { data: { type: 'User', id: '' } },
+            destroyer: { data: [] }
+          }
+        }
+      };
+    }
+
+    return response;
+  }
+
+  async getTemplates(page: number = 1, itemsPerPage: number = 30): Promise<ProjectsApiResponse> {
+    const response = await apiService.authenticatedRequest(`/templates?page=${page}&itemsPerPage=${itemsPerPage}`);
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  async getTemplatesWithSort(page: number = 1, itemsPerPage: number = 30, sortParam?: string): Promise<ProjectsApiResponse> {
+    let url = `/templates?page=${page}&itemsPerPage=${itemsPerPage}`;
+    if (sortParam) {
+      url += `&${sortParam}`;
+    }
+    const response = await apiService.authenticatedRequest(url);
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  async searchTemplates(searchTerm: string, page: number = 1, itemsPerPage: number = 30, sortParam?: string): Promise<ProjectsApiResponse> {
+    const trimmedTerm = searchTerm.trim();
+    const isNumeric = /^\d+$/.test(trimmedTerm);
+    const searchParam = trimmedTerm ? (isNumeric ? `id=${encodeURIComponent(trimmedTerm)}` : `title=${encodeURIComponent(trimmedTerm)}`) : '';
+    let url = `/templates?page=${page}&itemsPerPage=${itemsPerPage}`;
+    if (searchParam) {
+      url += `&${searchParam}`;
+    }
+    if (sortParam) {
+      url += `&${sortParam}`;
+    }
+
+    const response = await apiService.authenticatedRequest(url);
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  async getTemplatesCreatedByUser(userId: string, page: number = 1, itemsPerPage: number = 30, sortParam?: string): Promise<ProjectsApiResponse> {
+    let url = `/templates?created_by=${userId}&page=${page}&itemsPerPage=${itemsPerPage}`;
+    if (sortParam) {
+      url += `&${sortParam}`;
+    }
+
+    const response = await apiService.authenticatedRequest(url);
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  async searchTemplatesCreatedByUser(searchTerm: string, userId: string, page: number = 1, itemsPerPage: number = 30, sortParam?: string): Promise<ProjectsApiResponse> {
+    const searchParam = searchTerm.trim() ? `title=${encodeURIComponent(searchTerm)}` : '';
+    let url = `/templates?created_by=${userId}&page=${page}&itemsPerPage=${itemsPerPage}`;
+    if (searchParam) {
+      url += `&${searchParam}`;
+    }
+    if (sortParam) {
+      url += `&${sortParam}`;
+    }
+
+    const response = await apiService.authenticatedRequest(url);
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  async cloneTemplate(id: string, projectData: { title: string; description: string }): Promise<{ data: ApiProject }> {
+    const requestBody = {
+      title: projectData.title,
+      description: projectData.description
+    };
+
+    console.log('API Service: Cloning template');
+    console.log('URL: /templates/' + id + '/clone');
+    console.log('Request Body:', requestBody);
+
+    const response = await apiService.authenticatedRequest(`/templates/${id}/clone`, {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log('API Response:', response);
+
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+
+    if (response.success && response.data) {
+      return {
+        data: {
+          id: `/api/templates/${response.data.id}`,
+          type: 'Project',
+          attributes: {
+            id: response.data.id,
+            title: response.data.title,
+            description: response.data.description,
+            createdAt: response.data.created_at,
+            updatedAt: response.data.updated_at
+          },
+          relationships: {
+            testCases: { data: [] },
+            testRuns: { data: [] },
+            sharedSteps: { data: [] },
+            creator: { data: { type: 'User', id: '' } },
+            editor: { data: { type: 'User', id: '' } },
+            destroyer: { data: [] }
+          }
+        }
+      };
+    }
+
+    return response;
+  }
+
+  async cloneTemplateToProject(id: string, projectData: { title: string; description: string }): Promise<{ data: ApiProject }> {
+    const requestBody = {
+      title: projectData.title,
+      description: projectData.description
+    };
+
+    console.log('API Service: Cloning template to project');
+    console.log('URL: /projects/' + id + '/clone');
+    console.log('Request Body:', requestBody);
+
+    const response = await apiService.authenticatedRequest(`/projects/${id}/clone`, {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log('API Response:', response);
 
     if (!response) {
       throw new Error('No response received from server');

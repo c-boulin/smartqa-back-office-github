@@ -27,7 +27,7 @@ const Reports: React.FC = () => {
     createScheduledReport,
     updateScheduledReport,
     deleteScheduledReport,
-  } = useScheduledReports();
+  } = useScheduledReports(selectedProject?.id);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
