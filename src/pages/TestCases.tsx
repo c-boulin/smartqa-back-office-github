@@ -104,7 +104,7 @@ const TestCases: React.FC = () => {
     createTestCase,
     updateTestCase,
     deleteTestCase
-  } = useTestCases(selectedProject?.id, selectedFolderId, updateFoldersFromTestCases, false);
+  } = useTestCases(selectedProject?.id, selectedFolderId, updateFoldersFromTestCases, false, tags);
 
   const { hasPendingNavigationFilter, isApplyingNavigationFilter } = useTestCasesNavigation(
     selectedProject,

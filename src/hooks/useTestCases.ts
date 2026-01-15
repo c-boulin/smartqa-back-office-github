@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { testCasesApiService, TestCasesApiResponse } from '../services/testCasesApi';
+import { Tag } from '../services/tagsApi';
 import { sharedStepsApiService } from '../services/sharedStepsApi';
 import { foldersApiService } from '../services/foldersApi';
 import { TestCase } from '../types';
 import toast from 'react-hot-toast';
 
-export const useTestCases = (projectId?: string | null, folderId?: string | null, onFoldersExtracted?: (folders: Array<Record<string, unknown>>) => void, skipInitialLoad?: boolean) => {
+export const useTestCases = (projectId?: string | null, folderId?: string | null, onFoldersExtracted?: (folders: Array<Record<string, unknown>>) => void, skipInitialLoad?: boolean, availableTags: Tag[] = []) => {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,6 +24,11 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   const previousProjectId = useRef<string | null>(null);
   const previousFolderId = useRef<string | null>(null);
   const hasInitialLoad = useRef<boolean>(false);
+  const availableTagsRef = useRef<Tag[]>(availableTags || []);
+
+  useEffect(() => {
+    availableTagsRef.current = availableTags || [];
+  }, [availableTags]);
 
   // Initial load - fetch all test cases for project and extract folders
   const fetchAllTestCasesAndExtractFolders = useCallback(async (targetProjectId?: string, initialFilters?: Record<string, unknown>) => {
@@ -85,7 +91,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
 
         // Use all test cases for folder extraction only
         const allTransformedTestCases = allTestCasesData.map(apiTestCase =>
-          testCasesApiService.transformApiTestCase(apiTestCase, firstPageResponse.included)
+          testCasesApiService.transformApiTestCase(apiTestCase, firstPageResponse.included, availableTagsRef.current)
         );
         setAllTestCases(allTransformedTestCases);
 
@@ -169,7 +175,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
 
         // Transform and set the filtered test cases for display
         const filteredTestCases = filteredResponse.data.map(apiTestCase =>
-          testCasesApiService.transformApiTestCase(apiTestCase, filteredResponse.included)
+          testCasesApiService.transformApiTestCase(apiTestCase, filteredResponse.included, availableTagsRef.current)
         );
         setTestCases(filteredTestCases);
 
@@ -217,7 +223,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
 
         // Set all test cases
         const allTransformedTestCases = allTestCasesData.map(apiTestCase =>
-          testCasesApiService.transformApiTestCase(apiTestCase, response.included)
+          testCasesApiService.transformApiTestCase(apiTestCase, response.included, availableTagsRef.current)
         );
         setAllTestCases(allTransformedTestCases);
 
@@ -391,7 +397,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       );
       
       const transformedTestCases = response.data.map(apiTestCase => 
-        testCasesApiService.transformApiTestCase(apiTestCase, response.included)
+        testCasesApiService.transformApiTestCase(apiTestCase, response.included, availableTagsRef.current)
       );
       
       setTestCases(transformedTestCases);
@@ -431,8 +437,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         page, 
         30, 
         projectId,
-        undefined, // Always omit folderId for search to search across all folders
-        'include=tags' // Include tag data
+        undefined // Always omit folderId for search to search across all folders
       );
       
       if (!response) {
@@ -447,7 +452,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       };
       
       const transformedTestCases = responseData.map(apiTestCase => 
-        testCasesApiService.transformApiTestCase(apiTestCase, response.included)
+        testCasesApiService.transformApiTestCase(apiTestCase, response.included, availableTagsRef.current)
       );
       
       setTestCases(transformedTestCases);
@@ -500,7 +505,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       };
       
       const transformedTestCases = responseData.map(apiTestCase => 
-        testCasesApiService.transformApiTestCase(apiTestCase, response.included)
+        testCasesApiService.transformApiTestCase(apiTestCase, response.included, availableTagsRef.current)
       );
       
       setTestCases(transformedTestCases);
@@ -553,7 +558,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       };
       
       const transformedTestCases = responseData.map(apiTestCase => 
-        testCasesApiService.transformApiTestCase(apiTestCase, response.included)
+        testCasesApiService.transformApiTestCase(apiTestCase, response.included, availableTagsRef.current)
       );
       
       setTestCases(transformedTestCases);
@@ -606,7 +611,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       };
       
       const transformedTestCases = responseData.map(apiTestCase => 
-        testCasesApiService.transformApiTestCase(apiTestCase, response.included)
+        testCasesApiService.transformApiTestCase(apiTestCase, response.included, availableTagsRef.current)
       );
       
       setTestCases(transformedTestCases);
@@ -659,7 +664,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       };
       
       const transformedTestCases = responseData.map(apiTestCase => 
-        testCasesApiService.transformApiTestCase(apiTestCase, response.included)
+        testCasesApiService.transformApiTestCase(apiTestCase, response.included, availableTagsRef.current)
       );
       
       setTestCases(transformedTestCases);
@@ -712,7 +717,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       };
       
       const transformedTestCases = responseData.map(apiTestCase => 
-        testCasesApiService.transformApiTestCase(apiTestCase, response.included)
+        testCasesApiService.transformApiTestCase(apiTestCase, response.included, availableTagsRef.current)
       );
       
       setTestCases(transformedTestCases);
@@ -771,7 +776,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       };
       
       const transformedTestCases = responseData.map(apiTestCase => 
-        testCasesApiService.transformApiTestCase(apiTestCase, response.included)
+        testCasesApiService.transformApiTestCase(apiTestCase, response.included, availableTagsRef.current)
       );
       
       setTestCases(transformedTestCases);
@@ -995,7 +1000,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
 
         // Only add to current list if created in the current project
         if (targetProjectId === projectId) {
-          const newTestCase = testCasesApiService.transformApiTestCase(response.data);
+          const newTestCase = testCasesApiService.transformApiTestCase(response.data, undefined, availableTagsRef.current);
           setTestCases(prevTestCases => [newTestCase, ...prevTestCases]);
 
           setPagination(prev => ({
@@ -1123,7 +1128,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
 
       // Only add to current list if created in the current project
       if (targetProjectId === projectId) {
-        const newTestCase = testCasesApiService.transformApiTestCase(response.data);
+        const newTestCase = testCasesApiService.transformApiTestCase(response.data, undefined, availableTagsRef.current);
         setTestCases(prevTestCases => [newTestCase, ...prevTestCases]);
 
         setPagination(prev => ({
@@ -1293,7 +1298,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         createdAttachments: testCaseData.createdAttachments // This now contains both existing and newly created
       });
       
-      const updatedTestCase = testCasesApiService.transformApiTestCase(response.data);
+      const updatedTestCase = testCasesApiService.transformApiTestCase(response.data, undefined, availableTagsRef.current);
       setTestCases(prevTestCases => 
         prevTestCases.map(testCase => 
           testCase.id === id ? updatedTestCase : testCase

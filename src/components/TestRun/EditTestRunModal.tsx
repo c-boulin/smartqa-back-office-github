@@ -37,15 +37,16 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
 }) => {
   // const { state: authState } = useAuth();
   const { users, loading: usersLoading } = useUsers();
-  const { getSelectedProject, createConfiguration } = useApp();
+  const { getSelectedProject, createConfiguration, state: appState } = useApp();
   const selectedProject = getSelectedProject();
+  const tags = appState.tags;
 
   // Fetch all test cases for the project
   const {
     allTestCases,
     loading: testCasesLoading,
     fetchAllTestCasesForProject
-  } = useTestCases(selectedProject?.id, null, undefined, true);
+  } = useTestCases(selectedProject?.id, null, undefined, true, tags);
 
   const [formData, setFormData] = useState({
     name: '',

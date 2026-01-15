@@ -1,5 +1,6 @@
 import { apiService } from './api';
 import { sharedStepsApiService } from './sharedStepsApi';
+import { Tag } from './tagsApi';
 
 // TypeScript interfaces for API responses
 export interface TestCaseAttachmentsResponse {
@@ -162,12 +163,12 @@ class TestCaseDataService {
   /**
    * Fetch complete test case data in a single optimized request
    */
-  async fetchCompleteTestCaseData(testCaseId: string): Promise<TestCaseDataFetchResult> {
+  async fetchCompleteTestCaseData(testCaseId: string, availableTags: Tag[] = []): Promise<TestCaseDataFetchResult> {
 
     try {
       // Request 1: Main test case data with attachments, stepResults, and tags
       const response = await apiService.authenticatedRequest(
-        `/test_cases/${testCaseId}?include=attachments,stepResults,user,tags`
+        `/test_cases/${testCaseId}?include=attachments,stepResults,user`
       );
 
       if (!response?.data) {
@@ -184,14 +185,15 @@ class TestCaseDataService {
       const sharedStepRefs = sharedStepsResponse?.data?.relationships?.sharedSteps?.data || [];
 
       // Process tags
+      const availableTagMap = new Map(availableTags.map(tag => [tag.id, tag.label]));
       const tagRefs = response.data.relationships?.tags?.data || [];
       const tags: string[] = tagRefs.map((tagRef: { id: string; type: string }) => {
         const tagId = tagRef.id.split('/').pop() || tagRef.id;
-        const includedTag = included.find((item: { type: string; id: string }) => {
-          const itemId = item.id.split('/').pop() || item.id;
-          return item.type === 'Tag' && itemId === tagId;
-        });
-        return includedTag?.attributes?.label || '';
+        const fromMap = availableTagMap.get(tagId);
+        if (fromMap) {
+          return fromMap;
+        }
+        return '';
       }).filter(Boolean);
 
       // Process attachments
@@ -338,17 +340,17 @@ class TestCaseDataService {
   /**
    * Fetch data specifically for the update modal (includes edit capabilities)
    */
-  async fetchTestCaseDataForUpdate(testCaseId: string): Promise<TestCaseDataFetchResult> {
+  async fetchTestCaseDataForUpdate(testCaseId: string, availableTags: Tag[] = []): Promise<TestCaseDataFetchResult> {
 
-    return this.fetchCompleteTestCaseData(testCaseId);
+    return this.fetchCompleteTestCaseData(testCaseId, availableTags);
   }
 
   /**
    * Fetch data specifically for the details sidebar (read-only view)
    */
-  async fetchTestCaseDataForDetails(testCaseId: string): Promise<TestCaseDataFetchResult> {
+  async fetchTestCaseDataForDetails(testCaseId: string, availableTags: Tag[] = []): Promise<TestCaseDataFetchResult> {
 
-    return this.fetchCompleteTestCaseData(testCaseId);
+    return this.fetchCompleteTestCaseData(testCaseId, availableTags);
   }
 }
 

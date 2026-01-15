@@ -456,7 +456,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
       setError(null);
 
       // Use the new service to fetch data from all three endpoints
-      const result = await testCaseDataService.fetchTestCaseDataForDetails(testCaseId);
+      const result = await testCaseDataService.fetchTestCaseDataForDetails(testCaseId, availableTags);
       
       if (!result.success) {
         console.error('❌ Failed to fetch complete test case details:', result.error);

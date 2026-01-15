@@ -313,7 +313,8 @@ class TestCasesApiService {
   }
 
   async getTestCases(page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    let url = `/test_cases?page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc&include=tags,folder`;
+    // Keep folder include for sidebar but drop tag include (handled via /tags)
+    let url = `/test_cases?page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc&include=folder`;
 
     if (projectId) {
       url += `&project=${projectId}`;
@@ -332,7 +333,7 @@ class TestCasesApiService {
     const isNumeric = /^\d+$/.test(searchTerm.trim());
     const searchParam = isNumeric ? `id=${encodeURIComponent(searchTerm)}` : `title=${encodeURIComponent(searchTerm)}`;
     
-    let url = `/test_cases?${searchParam}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc&include=tags`;
+    let url = `/test_cases?${searchParam}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
     
     if (projectId) {
       url += `&project=${projectId}`;
@@ -347,7 +348,7 @@ class TestCasesApiService {
   }
 
   async filterTestCasesByAutomation(automationStatus: 1 | 2 | 3 | 4 | 5, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    let url = `/test_cases?automation=${automationStatus}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc&include=tags`;
+    let url = `/test_cases?automation=${automationStatus}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
     
     if (projectId) {
       url += `&project=${projectId}`;
@@ -362,7 +363,7 @@ class TestCasesApiService {
   }
 
   async filterTestCasesByPriority(priority: number, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    let url = `/test_cases?priority=${priority}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc&include=tags`;
+    let url = `/test_cases?priority=${priority}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
     
     if (projectId) {
       url += `&project=${projectId}`;
@@ -377,7 +378,7 @@ class TestCasesApiService {
   }
 
   async filterTestCasesByType(type: number, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    let url = `/test_cases?type=${type}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc&include=tags`;
+    let url = `/test_cases?type=${type}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
     
     if (projectId) {
       url += `&project=${projectId}`;
@@ -392,7 +393,7 @@ class TestCasesApiService {
   }
 
   async filterTestCasesByState(state: number, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    let url = `/test_cases?state=${state}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc&include=tags`;
+    let url = `/test_cases?state=${state}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
     
     if (projectId) {
       url += `&project=${projectId}`;
@@ -407,7 +408,7 @@ class TestCasesApiService {
   }
   async filterTestCasesByTags(tagIds: string[], page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
     const tagsParam = tagIds.join(',');
-    let url = `/test_cases?tags=${tagsParam}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc&include=tags`;
+    let url = `/test_cases?tags=${tagsParam}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
     
     if (projectId) {
       url += `&project=${projectId}`;
@@ -461,8 +462,6 @@ class TestCasesApiService {
       params.set('tags', filters.tagIds.join(','));
     }
     
-    params.set('include', 'tags');
-    
     const url = `/test_cases?${params.toString()}`;
     const response = await apiService.authenticatedRequest(url);
     return response || this.getDefaultTestCasesResponse();
@@ -504,7 +503,7 @@ class TestCasesApiService {
   }
 
   async getTestCase(id: string): Promise<{ data: ApiTestCase; included?: Array<Record<string, unknown>> }> {
-    return apiService.authenticatedRequest(`/test_cases/${id}?include=attachments,tags`);
+    return apiService.authenticatedRequest(`/test_cases/${id}?include=attachments`);
   }
 
   async getTestCaseWithIncludes(id: string): Promise<{
@@ -525,7 +524,7 @@ class TestCasesApiService {
       };
     }>;
   }> {
-    return apiService.authenticatedRequest(`/test_cases/${id}?include=stepResults,sharedSteps,attachments,tags`);
+    return apiService.authenticatedRequest(`/test_cases/${id}?include=stepResults,sharedSteps,attachments`);
   }
 
   async createTestCase(testCaseData: {
@@ -846,61 +845,49 @@ class TestCasesApiService {
   }
 
   // Helper method to transform API test case to our internal format
-    transformApiTestCase(apiTestCase: ApiTestCase, included?: Array<Record<string, unknown>>) {
-
+  transformApiTestCase(apiTestCase: ApiTestCase, included?: Array<Record<string, unknown>>, availableTags: Tag[] = []) {
+    const availableTagMap = new Map(availableTags.map(tag => [tag.id, tag.label]));
 
     // Extraire l'ID du projet depuis l'URL de l'API
     const projectId = apiTestCase.relationships.project.data.id.split('/').pop() || '';
     const folderId = apiTestCase.relationships.folder?.data?.id?.split('/').pop();
     const ownerId = apiTestCase.relationships.user?.data?.id?.split('/').pop();
 
-    // Extract tags from relationships and resolve them using included data
+    // Extract tags from relationships and resolve them using available tags or included data
     let tags: string[] = [];
     
-    if (apiTestCase.relationships.tags?.data && included) {
-
-
-      // Extract tag IDs from relationships
+    if (apiTestCase.relationships.tags?.data) {
       const tagIds = apiTestCase.relationships.tags.data.map(tagRef => {
-        // Extract ID from URL format like "/api/tags/123"
         const extractedId = tagRef.id.split('/').pop();
-
         return extractedId;
       });
 
-      // Find corresponding tag labels in included data
       tags = tagIds.map(tagId => {
-
-        const tagData = included.find(item => {
-          const match = item.type === 'Tag' && item.attributes.id.toString() === tagId;
-          if (item.type === 'Tag') {
-            // Tag type matched
-          }
-          return match;
-        });
-        
-        if (tagData) {
-
-          return tagData.attributes.label;
-        } else {
-          console.warn('🏷️ ❌ Tag data not found for ID:', tagId);
-          console.warn('🏷️ Available tags in included:', included.filter(i => i.type === 'Tag').map(t => ({ id: t.attributes.id, label: t.attributes.label })));
-          return `Tag ${tagId}`;
+        if (!tagId) {
+          return null;
         }
-      }).filter(Boolean);
-    } else if (apiTestCase.relationships.tags?.data && !included) {
 
-      // Try to extract tag IDs at least
-      const tagIds = apiTestCase.relationships.tags.data.map(tagRef => {
-        return tagRef.id.split('/').pop();
-      });
-      tags = tagIds.map(id => `Tag ${id}`);
+        if (availableTagMap.has(tagId)) {
+          return availableTagMap.get(tagId) as string;
+        }
+
+        if (included) {
+          const tagData = included.find(item => {
+            const tagItem = item as { type?: unknown; attributes?: { id?: unknown; label?: unknown } };
+            return tagItem.type === 'Tag' && tagItem.attributes?.id?.toString() === tagId;
+          }) as { attributes?: { label?: unknown } } | undefined;
+
+          if (tagData?.attributes?.label) {
+            return String(tagData.attributes.label);
+          }
+        }
+
+        console.warn('🏷️ ❌ Tag data not found for ID:', tagId);
+        return `Tag ${tagId}`;
+      }).filter((label): label is string => Boolean(label));
     } else if (Array.isArray(apiTestCase.attributes.tags)) {
       // Fallback: use tags from attributes if available
       tags = apiTestCase.attributes.tags;
-
-    } else {
-      // No tags relationship data
     }
 
     // Extract step result IDs from relationships
