@@ -236,8 +236,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [state]);
 
   // Load tags from API
-  const loadTags = async () => {
-    if (!authState.isAuthenticated || state.isLoadingTags) {
+  const loadTags = useCallback(async () => {
+    if (!authState.isAuthenticated || stateRef.current.isLoadingTags) {
       return;
     }
 
@@ -256,7 +256,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } finally {
       dispatch({ type: 'SET_LOADING_TAGS', payload: false });
     }
-  };
+  }, [authState.isAuthenticated, state.isLoadingTags]);
 
   // Load configurations from API
   const loadConfigurations = async () => {

@@ -91,7 +91,7 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
     try {
 
       // Use the new service to fetch data from all three endpoints
-      const result = await testCaseDataService.fetchTestCaseDataForUpdate(testCase.id);
+      const result = await testCaseDataService.fetchTestCaseDataForUpdate(testCase.id, availableTags);
       
       if (!result.success) {
         console.error('❌ Failed to fetch complete test case data:', result.error);
