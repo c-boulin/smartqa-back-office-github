@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader } from 'lucide-react';
 import Card from '../components/UI/Card';
-import { useApp } from '../context/AppContext';
+import { projectsApiService } from '../services/projectsApi';
 import { testRunsApiService } from '../services/testRunsApi';
 import { TEST_RESULTS } from '../types';
 
@@ -17,21 +17,22 @@ interface ProjectStats {
 }
 
 export default function Overview() {
-  const { state } = useApp();
   const [loading, setLoading] = useState(true);
   const [projectStats, setProjectStats] = useState<ProjectStats[]>([]);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'all'>('week');
 
   useEffect(() => {
     fetchOverviewData();
-  }, [state.projects.length, timeRange]);
+  }, [timeRange]);
 
   const fetchOverviewData = async () => {
     setLoading(true);
     try {
+      const projectsResponse = await projectsApiService.getProjects(1, 1000);
       const stats: ProjectStats[] = [];
 
-      for (const project of state.projects) {
+      for (const apiProject of projectsResponse.data) {
+        const project = projectsApiService.transformApiProject(apiProject);
           const testRunsResponse = await testRunsApiService.getTestRuns(project.id, 1, 1000);
 
           const cutoffDate = new Date();
@@ -120,7 +121,7 @@ export default function Overview() {
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Overview</h1>
           <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
-            Test execution health check across all {state.projects.length} projects
+            Test execution health check across all projects
           </p>
         </div>
 
