@@ -7,6 +7,11 @@ interface RunTestCaseModalProps {
   isOpen: boolean;
   onClose: () => void;
   testRunName: string;
+  selectedTestCase?: {
+    id: string;
+    code: string;
+    title: string;
+  };
 }
 
 interface Service {
@@ -55,12 +60,35 @@ const mockTestCases: TestCase[] = [
   { id: '7', code: 'TC29', title: 'Articles Product Page Sub' },
 ];
 
-const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, testRunName }) => {
+const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, testRunName, selectedTestCase }) => {
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const [selectedTestCases, setSelectedTestCases] = useState<Set<string>>(new Set());
   const [runLabel, setRunLabel] = useState('');
   const [selectAllTestCases, setSelectAllTestCases] = useState(false);
+
+  // Initialize selected test case if provided and reset on close
+  React.useEffect(() => {
+    if (isOpen && selectedTestCase) {
+      setSelectedTestCases(new Set([selectedTestCase.id]));
+      setSelectAllTestCases(false);
+    } else if (isOpen && !selectedTestCase) {
+      setSelectedTestCases(new Set());
+      setSelectAllTestCases(false);
+    } else if (!isOpen) {
+      // Reset form when modal closes
+      setSelectedService('');
+      setSelectedDevice('');
+      setSelectedTestCases(new Set());
+      setRunLabel('');
+      setSelectAllTestCases(false);
+    }
+  }, [isOpen, selectedTestCase]);
+
+  // Determine which test cases to display
+  const displayTestCases = selectedTestCase
+    ? [{ id: selectedTestCase.id, code: selectedTestCase.code, title: selectedTestCase.title }]
+    : mockTestCases;
 
   const handleTestCaseToggle = (testCaseId: string) => {
     const newSelected = new Set(selectedTestCases);
@@ -70,7 +98,7 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
       newSelected.add(testCaseId);
     }
     setSelectedTestCases(newSelected);
-    setSelectAllTestCases(newSelected.size === mockTestCases.length);
+    setSelectAllTestCases(newSelected.size === displayTestCases.length);
   };
 
   const handleSelectAllTestCases = () => {
@@ -78,7 +106,7 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
       setSelectedTestCases(new Set());
       setSelectAllTestCases(false);
     } else {
-      setSelectedTestCases(new Set(mockTestCases.map(tc => tc.id)));
+      setSelectedTestCases(new Set(displayTestCases.map(tc => tc.id)));
       setSelectAllTestCases(true);
     }
   };
@@ -95,8 +123,12 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
 
   const isFormValid = selectedService && selectedDevice && selectedTestCases.size > 0;
 
+  const modalTitle = selectedTestCase
+    ? `Run Test Case: ${selectedTestCase.code} - ${testRunName}`
+    : `Run Test Cases - ${testRunName}`;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Run Test Cases - ${testRunName}`}>
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
@@ -140,17 +172,21 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
             <label className="block text-sm font-medium text-slate-700 dark:text-gray-300">
               Test cases <span className="text-cyan-500">*</span>
             </label>
-            <button
-              onClick={handleSelectAllTestCases}
-              className="text-sm text-cyan-500 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
-            >
-              Select All
-            </button>
+            {!selectedTestCase && (
+              <button
+                onClick={handleSelectAllTestCases}
+                className="text-sm text-cyan-500 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
+              >
+                Select All
+              </button>
+            )}
           </div>
           <div className="border border-slate-300 dark:border-slate-600 rounded-lg p-4 bg-slate-900 max-h-64 overflow-y-auto">
-            <p className="text-sm text-slate-400 mb-3">Select one or more test cases to run.</p>
+            <p className="text-sm text-slate-400 mb-3">
+              {selectedTestCase ? 'Running the selected test case:' : 'Select one or more test cases to run.'}
+            </p>
             <div className="space-y-2">
-              {mockTestCases.map((testCase) => (
+              {displayTestCases.map((testCase) => (
                 <label
                   key={testCase.id}
                   className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800 p-2 rounded transition-colors"
@@ -159,7 +195,8 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
                     type="checkbox"
                     checked={selectedTestCases.has(testCase.id)}
                     onChange={() => handleTestCaseToggle(testCase.id)}
-                    className="w-4 h-4 rounded border-slate-600 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900"
+                    disabled={!!selectedTestCase}
+                    className="w-4 h-4 rounded border-slate-600 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900 disabled:opacity-50"
                   />
                   <span className="text-sm text-slate-300">
                     {testCase.code} {testCase.title}

@@ -293,9 +293,17 @@ const TestRunDetails: React.FC = () => {
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [selectedTestCaseForComment, setSelectedTestCaseForComment] = useState<TestCaseWithExecution | null>(null);
   const [isRunModalOpen, setIsRunModalOpen] = useState(false);
+  const [selectedTestCaseForRun, setSelectedTestCaseForRun] = useState<TestCaseWithExecution | null>(null);
 
   // Ref to track if fetch is in progress to prevent duplicate requests
   const fetchInProgressRef = useRef(false);
+
+  // Mock function to check if a test case is automated (replace with actual data later)
+  const isTestCaseAutomated = (testCase: TestCaseWithExecution): boolean => {
+    // For now, use a simple mock: test cases with even IDs are automated
+    const numericId = typeof testCase.id === 'string' ? parseInt(testCase.id, 10) : testCase.id;
+    return numericId % 2 === 0;
+  };
 
   // Check if test run is closed (state 6)
   const isTestRunClosed = testRun?.state === 6;
@@ -807,15 +815,6 @@ const TestRunDetails: React.FC = () => {
             <p className="text-slate-600 dark:text-gray-400">Test Run TR{testRun.id}</p>
           </div>
         </div>
-        {!isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
-          <Button
-            variant="primary"
-            icon={Play}
-            onClick={() => setIsRunModalOpen(true)}
-          >
-            Run Test Cases
-          </Button>
-        )}
       </div>
 
       {/* Test Run Overview */}
@@ -971,7 +970,9 @@ const TestRunDetails: React.FC = () => {
                 {testRun && testRun.configurations && testRun.configurations.length > 0 && (
                   <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Configuration</th>
                 )}
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Automation</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Execution Result</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Actions</th>
               </tr>
             </thead>
             <tbody style={{ position: 'relative', overflow: 'visible' }}>
@@ -1015,6 +1016,17 @@ const TestRunDetails: React.FC = () => {
                       </span>
                     </td>
                   )}
+                  <td className="py-4 px-6">
+                    {isTestCaseAutomated(testCase) ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/50">
+                        Automated
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/50">
+                        Manual
+                      </span>
+                    )}
+                  </td>
                   <td className="py-4 px-6" style={{ position: 'relative', overflow: 'visible' }}>
                     <div className="space-y-2">
                       <TestResultDropdown
@@ -1029,6 +1041,22 @@ const TestRunDetails: React.FC = () => {
                         }}
                       />
                     </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    {isTestCaseAutomated(testCase) && !isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) ? (
+                      <button
+                        onClick={() => {
+                          setSelectedTestCaseForRun(testCase);
+                          setIsRunModalOpen(true);
+                        }}
+                        className="p-2 text-slate-600 dark:text-gray-400 hover:text-purple-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                        title="Run Test Case"
+                      >
+                        <Play className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <span className="text-slate-400 dark:text-slate-600">-</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -1101,8 +1129,16 @@ const TestRunDetails: React.FC = () => {
       {/* Run Test Case Modal */}
       <RunTestCaseModal
         isOpen={isRunModalOpen}
-        onClose={() => setIsRunModalOpen(false)}
+        onClose={() => {
+          setIsRunModalOpen(false);
+          setSelectedTestCaseForRun(null);
+        }}
         testRunName={testRun?.name || ''}
+        selectedTestCase={selectedTestCaseForRun ? {
+          id: selectedTestCaseForRun.id,
+          code: `TC-${selectedTestCaseForRun.fullTestCase?.projectRelativeId ?? selectedTestCaseForRun.id}`,
+          title: selectedTestCaseForRun.title
+        } : undefined}
       />
     </div>
   );
