@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Play, Clock, CheckCircle, User, Copy, Activity, Archive } from 'lucide-react';
 // import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +19,8 @@ import { useTestRuns } from '../hooks/useTestRuns';
 import { useTestRunsFilters } from '../hooks/useTestRunsFilters';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { useUsers } from '../context/UsersContext';
-import { TestRun } from '../services/testRunsApi';
+import { TestRun, testRunsApiService } from '../services/testRunsApi';
+import { testCasesApiService } from '../services/testCasesApi';
 import { usePermissions } from '../hooks/usePermissions';
 import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
@@ -79,6 +80,7 @@ const TestRuns: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'active' | 'closed'>('active');
   const [isRunModalOpen, setIsRunModalOpen] = useState(false);
   const [testRunToRun, setTestRunToRun] = useState<TestRun | null>(null);
+  const [automatedTestCases, setAutomatedTestCases] = useState<Array<{ id: string; code: string; title: string }>>([]);
 
   const handleSearch = useCallback(async (term: string) => {
     setCurrentSearchTerm(term);
@@ -284,6 +286,41 @@ const TestRuns: React.FC = () => {
     setTestRunToRun(testRun);
     setIsRunModalOpen(true);
   }, []);
+
+  useEffect(() => {
+    const fetchAutomatedTestCases = async () => {
+      if (!isRunModalOpen || !testRunToRun) {
+        setAutomatedTestCases([]);
+        return;
+      }
+
+      try {
+        const testRunResponse = await testRunsApiService.getTestRun(testRunToRun.id);
+
+        if (!testRunResponse?.included) {
+          setAutomatedTestCases([]);
+          return;
+        }
+
+        const testCases = testRunResponse.included
+          .filter(item => item.type === 'TestCase')
+          .map(rawTestCase => testCasesApiService.transformApiTestCase(rawTestCase, testRunResponse.included))
+          .filter(tc => tc.automationStatus === 2)
+          .map(tc => ({
+            id: tc.id,
+            code: `TC-${tc.projectRelativeId ?? tc.id}`,
+            title: tc.title
+          }));
+
+        setAutomatedTestCases(testCases);
+      } catch (error) {
+        console.error('Error fetching automated test cases:', error);
+        setAutomatedTestCases([]);
+      }
+    };
+
+    fetchAutomatedTestCases();
+  }, [isRunModalOpen, testRunToRun]);
 
   const handleCloseTestRun = useCallback(async () => {
     if (!testRunToClose) return;
@@ -845,6 +882,7 @@ const TestRuns: React.FC = () => {
           setTestRunToRun(null);
         }}
         testRunName={testRunToRun?.name || ''}
+        availableAutomatedTestCases={automatedTestCases}
       />
 
       <ConfirmDialog
