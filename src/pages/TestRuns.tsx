@@ -81,6 +81,8 @@ const TestRuns: React.FC = () => {
   const [isRunModalOpen, setIsRunModalOpen] = useState(false);
   const [testRunToRun, setTestRunToRun] = useState<TestRun | null>(null);
   const [automatedTestCases, setAutomatedTestCases] = useState<Array<{ id: string; code: string; title: string }>>([]);
+  const [testRunConfigurations, setTestRunConfigurations] = useState<Array<{ id: string; label: string }>>([]);
+  const [isLoadingRunModal, setIsLoadingRunModal] = useState(false);
 
   const handleSearch = useCallback(async (term: string) => {
     setCurrentSearchTerm(term);
@@ -288,17 +290,21 @@ const TestRuns: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const fetchAutomatedTestCases = async () => {
+    const fetchTestRunData = async () => {
       if (!isRunModalOpen || !testRunToRun) {
         setAutomatedTestCases([]);
+        setTestRunConfigurations([]);
+        setIsLoadingRunModal(false);
         return;
       }
 
       try {
+        setIsLoadingRunModal(true);
         const testRunResponse = await testRunsApiService.getTestRun(testRunToRun.id);
 
         if (!testRunResponse?.included) {
           setAutomatedTestCases([]);
+          setTestRunConfigurations([]);
           return;
         }
 
@@ -312,14 +318,25 @@ const TestRuns: React.FC = () => {
             title: tc.title
           }));
 
+        const configurations = testRunResponse.included
+          .filter(item => item.type === 'Configuration')
+          .map(config => ({
+            id: config.id,
+            label: (config.attributes as { label?: string }).label || `Configuration ${config.id}`
+          }));
+
         setAutomatedTestCases(testCases);
+        setTestRunConfigurations(configurations);
       } catch (error) {
-        console.error('Error fetching automated test cases:', error);
+        console.error('Error fetching test run data:', error);
         setAutomatedTestCases([]);
+        setTestRunConfigurations([]);
+      } finally {
+        setIsLoadingRunModal(false);
       }
     };
 
-    fetchAutomatedTestCases();
+    fetchTestRunData();
   }, [isRunModalOpen, testRunToRun]);
 
   const handleCloseTestRun = useCallback(async () => {
@@ -883,6 +900,8 @@ const TestRuns: React.FC = () => {
         }}
         testRunName={testRunToRun?.name || ''}
         availableAutomatedTestCases={automatedTestCases}
+        availableConfigurations={testRunConfigurations}
+        isLoading={isLoadingRunModal}
       />
 
       <ConfirmDialog

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
-import { Play } from 'lucide-react';
+import { Play, Loader } from 'lucide-react';
 
 interface RunTestCaseModalProps {
   isOpen: boolean;
@@ -13,6 +13,8 @@ interface RunTestCaseModalProps {
     title: string;
   };
   availableAutomatedTestCases?: TestCase[];
+  availableConfigurations?: Configuration[];
+  isLoading?: boolean;
 }
 
 interface Service {
@@ -21,9 +23,9 @@ interface Service {
   url: string;
 }
 
-interface Device {
+interface Configuration {
   id: string;
-  name: string;
+  label: string;
 }
 
 interface TestCase {
@@ -43,25 +45,15 @@ const mockServices: Service[] = [
   { id: '8', name: 'CH', url: 'https://www.fuzeforge.ch' },
 ];
 
-const mockDevices: Device[] = [
-  { id: '1', name: 'GalaxyS9_UA' },
-  { id: '2', name: 'GalaxyS8_UA' },
-  { id: '3', name: 'Iphone12_UA' },
-  { id: '4', name: 'IphoneSE_UA' },
-  { id: '5', name: 'Desktop_UA' },
-];
-
-const mockTestCases: TestCase[] = [
-  { id: '1', code: 'TC24', title: 'Sign In Page Navbar' },
-  { id: '2', code: 'TC26', title: 'Account Page Stub' },
-  { id: '3', code: 'TC18', title: 'Home Page Unlogged' },
-  { id: '4', code: 'TC19', title: 'Home Page Sub' },
-  { id: '5', code: 'TC27', title: 'Film Product Page Sub' },
-  { id: '6', code: 'TC22', title: 'Video Product Page Sub' },
-  { id: '7', code: 'TC29', title: 'Articles Product Page Sub' },
-];
-
-const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, testRunName, selectedTestCase, availableAutomatedTestCases = [] }) => {
+const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
+  isOpen,
+  onClose,
+  testRunName,
+  selectedTestCase,
+  availableAutomatedTestCases = [],
+  availableConfigurations = [],
+  isLoading = false
+}) => {
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const [selectedTestCases, setSelectedTestCases] = useState<Set<string>>(new Set());
@@ -89,9 +81,7 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
   // Determine which test cases to display
   const displayTestCases = selectedTestCase
     ? [{ id: selectedTestCase.id, code: selectedTestCase.code, title: selectedTestCase.title }]
-    : availableAutomatedTestCases.length > 0
-      ? availableAutomatedTestCases
-      : mockTestCases;
+    : availableAutomatedTestCases;
 
   const handleTestCaseToggle = (testCaseId: string) => {
     const newSelected = new Set(selectedTestCases);
@@ -124,7 +114,7 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
     onClose();
   };
 
-  const isFormValid = selectedService && selectedDevice && selectedTestCases.size > 0;
+  const isFormValid = !isLoading && selectedService && selectedDevice && selectedTestCases.size > 0;
 
   const modalTitle = selectedTestCase
     ? `Run Test Case: ${selectedTestCase.code} - ${testRunName}`
@@ -140,7 +130,8 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
           <select
             value={selectedService}
             onChange={(e) => setSelectedService(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            disabled={isLoading}
+            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="">Select the service...</option>
             {mockServices.map((service) => (
@@ -159,12 +150,13 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
           <select
             value={selectedDevice}
             onChange={(e) => setSelectedDevice(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            disabled={isLoading}
+            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="">Select the device...</option>
-            {mockDevices.map((device) => (
-              <option key={device.id} value={device.id}>
-                {device.name}
+            {availableConfigurations.map((config) => (
+              <option key={config.id} value={config.id}>
+                {config.label}
               </option>
             ))}
           </select>
@@ -175,7 +167,7 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
             <label className="block text-sm font-medium text-slate-700 dark:text-gray-300">
               Test cases <span className="text-cyan-500">*</span>
             </label>
-            {!selectedTestCase && (
+            {!selectedTestCase && !isLoading && (
               <button
                 onClick={handleSelectAllTestCases}
                 className="text-sm text-cyan-500 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
@@ -185,28 +177,41 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
             )}
           </div>
           <div className="border border-slate-300 dark:border-slate-600 rounded-lg p-4 bg-slate-900 max-h-64 overflow-y-auto">
-            <p className="text-sm text-slate-400 mb-3">
-              {selectedTestCase ? 'Running the selected test case:' : 'Select one or more test cases to run.'}
-            </p>
-            <div className="space-y-2">
-              {displayTestCases.map((testCase) => (
-                <label
-                  key={testCase.id}
-                  className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800 p-2 rounded transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedTestCases.has(testCase.id)}
-                    onChange={() => handleTestCaseToggle(testCase.id)}
-                    disabled={!!selectedTestCase}
-                    className="w-4 h-4 rounded border-slate-600 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900 disabled:opacity-50"
-                  />
-                  <span className="text-sm text-slate-300">
-                    {testCase.code} {testCase.title}
-                  </span>
-                </label>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader className="w-6 h-6 text-cyan-500 animate-spin" />
+                <span className="ml-2 text-sm text-slate-400">Loading test cases...</span>
+              </div>
+            ) : displayTestCases.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-slate-400">No automated test cases found in this test run.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-slate-400 mb-3">
+                  {selectedTestCase ? 'Running the selected test case:' : 'Select one or more test cases to run.'}
+                </p>
+                <div className="space-y-2">
+                  {displayTestCases.map((testCase) => (
+                    <label
+                      key={testCase.id}
+                      className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800 p-2 rounded transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedTestCases.has(testCase.id)}
+                        onChange={() => handleTestCaseToggle(testCase.id)}
+                        disabled={!!selectedTestCase}
+                        className="w-4 h-4 rounded border-slate-600 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900 disabled:opacity-50"
+                      />
+                      <span className="text-sm text-slate-300">
+                        {testCase.code} {testCase.title}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
 

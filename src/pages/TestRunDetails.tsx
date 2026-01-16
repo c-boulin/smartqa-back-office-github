@@ -1145,6 +1145,11 @@ const TestRunDetails: React.FC = () => {
             title: tc.title
           }))
         }
+        availableConfigurations={testRun?.configurations?.map(config => ({
+          id: config.id,
+          label: config.label
+        })) || []}
+        isLoading={loading}
       />
     </div>
   );
