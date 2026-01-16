@@ -213,7 +213,7 @@ export default function Overview() {
           {failedProjects.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">
-                Failed ({failedProjects.length} {failedProjects.length === 1 ? 'project' : 'projects'})
+                Failed ({failedProjects.length} {failedProjects.length === 1 ? 'case' : 'cases'})
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {failedProjects.map((project) => (
@@ -226,7 +226,7 @@ export default function Overview() {
                         <div>
                           <div className="text-sm text-slate-600 dark:text-gray-400">Passing rate</div>
                           <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {project.passingRate}%
+                            {project.passingRate} %
                           </div>
                         </div>
                         <div>
@@ -234,16 +234,6 @@ export default function Overview() {
                           <div className="text-2xl font-bold text-slate-900 dark:text-white">
                             {project.totalTestCases}
                           </div>
-                        </div>
-                      </div>
-                      <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-green-600 dark:text-green-400">
-                            Passed: {project.passedCount}
-                          </span>
-                          <span className="text-red-600 dark:text-red-400">
-                            Failed: {project.failedCount}
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -256,7 +246,7 @@ export default function Overview() {
           {passedProjects.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">
-                Passed ({passedProjects.length} {passedProjects.length === 1 ? 'project' : 'projects'})
+                Passed ({passedProjects.length} {passedProjects.length === 1 ? 'case' : 'cases'})
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {passedProjects.map((project) => (
@@ -269,7 +259,7 @@ export default function Overview() {
                         <div>
                           <div className="text-sm text-slate-600 dark:text-gray-400">Passing rate</div>
                           <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {project.passingRate}%
+                            {project.passingRate} %
                           </div>
                         </div>
                         <div>
@@ -277,13 +267,6 @@ export default function Overview() {
                           <div className="text-2xl font-bold text-slate-900 dark:text-white">
                             {project.totalTestCases}
                           </div>
-                        </div>
-                      </div>
-                      <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-green-600 dark:text-green-400">
-                            Passed: {project.passedCount}
-                          </span>
                         </div>
                       </div>
                     </div>
