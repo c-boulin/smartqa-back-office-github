@@ -10,6 +10,7 @@ import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSideba
 import TestRunDetailsFilters from '../components/TestRun/TestRunDetailsFilters';
 import TestRunDetailsFiltersSidebar from '../components/TestRun/TestRunDetailsFiltersSidebar';
 import AddExecutionCommentModal from '../components/TestRun/AddExecutionCommentModal';
+import RunTestCaseModal from '../components/TestRun/RunTestCaseModal';
 import { testRunsApiService, TestRun } from '../services/testRunsApi';
 import { testCasesApiService } from '../services/testCasesApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
@@ -291,6 +292,7 @@ const TestRunDetails: React.FC = () => {
   const [updatingResults, setUpdatingResults] = useState<Set<string>>(new Set());
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [selectedTestCaseForComment, setSelectedTestCaseForComment] = useState<TestCaseWithExecution | null>(null);
+  const [isRunModalOpen, setIsRunModalOpen] = useState(false);
 
   // Ref to track if fetch is in progress to prevent duplicate requests
   const fetchInProgressRef = useRef(false);
@@ -805,6 +807,15 @@ const TestRunDetails: React.FC = () => {
             <p className="text-slate-600 dark:text-gray-400">Test Run TR{testRun.id}</p>
           </div>
         </div>
+        {!isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
+          <Button
+            variant="primary"
+            icon={Play}
+            onClick={() => setIsRunModalOpen(true)}
+          >
+            Run Test Cases
+          </Button>
+        )}
       </div>
 
       {/* Test Run Overview */}
@@ -1086,6 +1097,13 @@ const TestRunDetails: React.FC = () => {
           testCaseTitle={selectedTestCaseForComment.title}
         />
       )}
+
+      {/* Run Test Case Modal */}
+      <RunTestCaseModal
+        isOpen={isRunModalOpen}
+        onClose={() => setIsRunModalOpen(false)}
+        testRunName={testRun?.name || ''}
+      />
     </div>
   );
 };
