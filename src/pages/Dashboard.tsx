@@ -251,7 +251,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {testRunsLoading ? (
           <SkeletonCard />
         ) : (
@@ -344,60 +344,6 @@ export default function Dashboard() {
         ) : (
           <Card gradient className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Closed Test Runs</h3>
-            </div>
-
-            <div className="h-64 flex items-center justify-center relative">
-              {closedTestRunsChartData && closedTestRunsChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={closedTestRunsChartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-700" />
-                  <XAxis
-                    dataKey="month"
-                    className="stroke-slate-600 dark:stroke-slate-400" tick={{ fill: 'currentColor' }} style={{ color: 'inherit' }}
-                    fontSize={12}
-                  />
-                  <YAxis
-                    className="stroke-slate-600 dark:stroke-slate-400" tick={{ fill: 'currentColor' }} style={{ color: 'inherit' }}
-                    fontSize={12}
-                   allowDecimals={false}
-                    domain={[0, 'dataMax']}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgb(241 245 249)', border: '1px solid rgb(203 213 225)',
-                      borderRadius: '8px',
-                      color: 'rgb(15 23 42)'
-                    }}
-                    formatter={(value) => [`${value} test run${value !== 1 ? 's' : ''}`, 'Closed']}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#06B6D4"
-                    strokeWidth={3}
-                    dot={{ fill: '#06B6D4', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, fill: '#06B6D4' }}
-                    connectNulls={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="text-center text-slate-500 dark:text-gray-400">
-                <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">No closed test runs</p>
-                <p className="text-sm">Complete test runs to see historical data</p>
-              </div>
-              )}
-            </div>
-          </Card>
-        )}
-
-        {testRunsLoading ? (
-          <SkeletonCard />
-        ) : (
-          <Card gradient className="p-6">
-            <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Issues by Type</h3>
             </div>
 
@@ -478,6 +424,60 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
+
+      {testRunsLoading ? (
+        <SkeletonCard />
+      ) : (
+        <Card gradient className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Closed Test Runs</h3>
+          </div>
+
+          <div className="h-64 flex items-center justify-center relative">
+            {closedTestRunsChartData && closedTestRunsChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={closedTestRunsChartData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-700" />
+                <XAxis
+                  dataKey="month"
+                  className="stroke-slate-600 dark:stroke-slate-400" tick={{ fill: 'currentColor' }} style={{ color: 'inherit' }}
+                  fontSize={12}
+                />
+                <YAxis
+                  className="stroke-slate-600 dark:stroke-slate-400" tick={{ fill: 'currentColor' }} style={{ color: 'inherit' }}
+                  fontSize={12}
+                 allowDecimals={false}
+                  domain={[0, 'dataMax']}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgb(241 245 249)', border: '1px solid rgb(203 213 225)',
+                    borderRadius: '8px',
+                    color: 'rgb(15 23 42)'
+                  }}
+                  formatter={(value) => [`${value} test run${value !== 1 ? 's' : ''}`, 'Closed']}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#06B6D4"
+                  strokeWidth={3}
+                  dot={{ fill: '#06B6D4', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, fill: '#06B6D4' }}
+                  connectNulls={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-center text-slate-500 dark:text-gray-400">
+              <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No closed test runs</p>
+              <p className="text-sm">Complete test runs to see historical data</p>
+            </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {testRunsLoading ? (
         <SkeletonCard height="h-80" />
