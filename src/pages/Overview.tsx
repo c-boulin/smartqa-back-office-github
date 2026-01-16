@@ -43,9 +43,7 @@ export default function Overview() {
       const projectStatsMap = new Map<string, {
         projectId: string;
         projectName: string;
-        passedCount: number;
-        failedCount: number;
-        testCaseExecutions: Map<string, string>;
+        testCaseExecutions: Map<string, { date: string; result: string }>;
       }>();
 
       projectsResponse.data.forEach(apiProject => {
@@ -53,9 +51,7 @@ export default function Overview() {
         projectStatsMap.set(project.id, {
           projectId: project.id,
           projectName: project.name,
-          passedCount: 0,
-          failedCount: 0,
-          testCaseExecutions: new Map<string, string>()
+          testCaseExecutions: new Map<string, { date: string; result: string }>()
         });
       });
 
@@ -76,31 +72,28 @@ export default function Overview() {
             const configId = execution.configuration_id ? execution.configuration_id.toString() : 'no-config';
             const key = `${testCaseId}-${configId}`;
 
-            const existingDate = projectData.testCaseExecutions.get(key);
-            if (!existingDate || new Date(existingDate) < executionDate) {
-              projectData.testCaseExecutions.set(key, execution.created_at as string);
+            const rawResult = execution.result;
+            let resultLabel: string;
 
-              const rawResult = execution.result;
-              let resultLabel: string;
-
-              if (typeof rawResult === 'number') {
-                resultLabel = TEST_RESULTS[rawResult as TestResultId]?.toLowerCase() || 'unknown';
-              } else if (typeof rawResult === 'string') {
-                const numericResult = parseInt(rawResult);
-                if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
-                  resultLabel = TEST_RESULTS[numericResult as TestResultId]?.toLowerCase() || 'unknown';
-                } else {
-                  resultLabel = rawResult.toLowerCase();
-                }
+            if (typeof rawResult === 'number') {
+              resultLabel = TEST_RESULTS[rawResult as TestResultId]?.toLowerCase() || 'unknown';
+            } else if (typeof rawResult === 'string') {
+              const numericResult = parseInt(rawResult);
+              if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
+                resultLabel = TEST_RESULTS[numericResult as TestResultId]?.toLowerCase() || 'unknown';
               } else {
-                resultLabel = 'unknown';
+                resultLabel = rawResult.toLowerCase();
               }
+            } else {
+              resultLabel = 'unknown';
+            }
 
-              if (resultLabel === 'passed') {
-                projectData.passedCount++;
-              } else if (resultLabel === 'failed') {
-                projectData.failedCount++;
-              }
+            const existing = projectData.testCaseExecutions.get(key);
+            if (!existing || new Date(existing.date) < executionDate) {
+              projectData.testCaseExecutions.set(key, {
+                date: execution.created_at as string,
+                result: resultLabel
+              });
             }
           });
         }
@@ -110,14 +103,25 @@ export default function Overview() {
       projectStatsMap.forEach((projectData) => {
         const totalTestCases = projectData.testCaseExecutions.size;
         if (totalTestCases > 0) {
-          const passingRate = Math.round((projectData.passedCount / totalTestCases) * 100);
+          let passedCount = 0;
+          let failedCount = 0;
+
+          projectData.testCaseExecutions.forEach((execution) => {
+            if (execution.result === 'passed') {
+              passedCount++;
+            } else if (execution.result === 'failed') {
+              failedCount++;
+            }
+          });
+
+          const passingRate = Math.round((passedCount / totalTestCases) * 100);
           stats.push({
             projectId: projectData.projectId,
             projectName: projectData.projectName,
             passingRate,
             totalTestCases,
-            passedCount: projectData.passedCount,
-            failedCount: projectData.failedCount
+            passedCount,
+            failedCount
           });
         }
       });
