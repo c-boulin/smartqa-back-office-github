@@ -81,7 +81,7 @@ const TestRuns: React.FC = () => {
   const [isRunModalOpen, setIsRunModalOpen] = useState(false);
   const [testRunToRun, setTestRunToRun] = useState<TestRun | null>(null);
   const [automatedTestCases, setAutomatedTestCases] = useState<Array<{ id: string; code: string; title: string }>>([]);
-  const [testRunConfigurations, setTestRunConfigurations] = useState<Array<{ id: string; label: string }>>([]);
+  const [testRunConfigurations, setTestRunConfigurations] = useState<Array<{ id: string; label: string; userAgent?: string }>>([]);
   const [isLoadingRunModal, setIsLoadingRunModal] = useState(false);
 
   const handleSearch = useCallback(async (term: string) => {
@@ -322,7 +322,8 @@ const TestRuns: React.FC = () => {
           .filter(item => item.type === 'Configuration')
           .map(config => ({
             id: config.id,
-            label: (config.attributes as { label?: string }).label || `Configuration ${config.id}`
+            label: (config.attributes as { label?: string }).label || `Configuration ${config.id}`,
+            userAgent: (config.attributes as { userAgent?: string }).userAgent
           }));
 
         setAutomatedTestCases(testCases);

@@ -570,7 +570,8 @@ class TestRunsApiService {
 
           configurations.push({
             id: configId,
-            label: includedConfig?.attributes.label || 'Unknown Configuration'
+            label: includedConfig?.attributes.label || 'Unknown Configuration',
+            userAgent: includedConfig?.attributes.userAgent
           });
         }
       }
