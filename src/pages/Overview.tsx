@@ -67,11 +67,12 @@ export default function Overview() {
       let executionsFiltered = 0;
 
       testRunsResponse.data.forEach(apiTestRun => {
-        const projectId = apiTestRun.relationships.project.data.id;
+        const projectIdFromApi = apiTestRun.relationships.project.data.id;
+        const projectId = projectIdFromApi.split('/').pop() || projectIdFromApi;
         const projectData = projectStatsMap.get(projectId);
 
         if (!projectData) {
-          console.log('Project not found in map:', projectId);
+          console.log('Project not found in map. Looking for:', projectId, 'Available keys:', Array.from(projectStatsMap.keys()));
           return;
         }
 
