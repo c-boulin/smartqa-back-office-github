@@ -180,6 +180,11 @@ class TestRunsApiService {
     };
   }
 
+  async getAllTestRuns(page: number = 1, itemsPerPage: number = 10000): Promise<TestRunsApiResponse> {
+    const response = await apiService.authenticatedRequest(`/test_runs?include=user&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`);
+    return response || this.getDefaultTestRunsResponse();
+  }
+
   async getTestRuns(projectId: string, page: number = 1, itemsPerPage: number = 30): Promise<TestRunsApiResponse> {
     // Fetch ALL test runs (both active and closed) - don't filter by state
     // Only include user data, not full testCases and configurations to improve performance

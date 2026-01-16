@@ -28,80 +28,99 @@ export default function Overview() {
   const fetchOverviewData = async () => {
     setLoading(true);
     try {
-      const projectsResponse = await projectsApiService.getProjects(1, 1000);
-      const stats: ProjectStats[] = [];
+      const [projectsResponse, testRunsResponse] = await Promise.all([
+        projectsApiService.getProjects(1, 1000),
+        testRunsApiService.getAllTestRuns(1, 10000)
+      ]);
 
-      for (const apiProject of projectsResponse.data) {
+      const cutoffDate = new Date();
+      if (timeRange === 'week') {
+        cutoffDate.setDate(cutoffDate.getDate() - 7);
+      } else if (timeRange === 'month') {
+        cutoffDate.setMonth(cutoffDate.getMonth() - 1);
+      }
+
+      const projectStatsMap = new Map<string, {
+        projectId: string;
+        projectName: string;
+        passedCount: number;
+        failedCount: number;
+        testCaseExecutions: Map<string, string>;
+      }>();
+
+      projectsResponse.data.forEach(apiProject => {
         const project = projectsApiService.transformApiProject(apiProject);
-          const testRunsResponse = await testRunsApiService.getTestRuns(project.id, 1, 1000);
+        projectStatsMap.set(project.id, {
+          projectId: project.id,
+          projectName: project.name,
+          passedCount: 0,
+          failedCount: 0,
+          testCaseExecutions: new Map<string, string>()
+        });
+      });
 
-          const cutoffDate = new Date();
-          if (timeRange === 'week') {
-            cutoffDate.setDate(cutoffDate.getDate() - 7);
-          } else if (timeRange === 'month') {
-            cutoffDate.setMonth(cutoffDate.getMonth() - 1);
-          }
+      testRunsResponse.data.forEach(apiTestRun => {
+        const projectId = apiTestRun.relationships.project.data.id;
+        const projectData = projectStatsMap.get(projectId);
 
-          let passedCount = 0;
-          let failedCount = 0;
-          const testCaseExecutions = new Map<string, string>();
+        if (!projectData) return;
 
-          testRunsResponse.data.forEach(apiTestRun => {
-            if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
-              apiTestRun.attributes.executions.forEach((execution: Record<string, unknown>) => {
-                const executionDate = new Date(execution.created_at);
-                if (timeRange !== 'all' && executionDate < cutoffDate) {
-                  return;
+        if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
+          apiTestRun.attributes.executions.forEach((execution: Record<string, unknown>) => {
+            const executionDate = new Date(execution.created_at);
+            if (timeRange !== 'all' && executionDate < cutoffDate) {
+              return;
+            }
+
+            const testCaseId = execution.test_case_id.toString();
+            const configId = execution.configuration_id ? execution.configuration_id.toString() : 'no-config';
+            const key = `${testCaseId}-${configId}`;
+
+            const existingDate = projectData.testCaseExecutions.get(key);
+            if (!existingDate || new Date(existingDate) < executionDate) {
+              projectData.testCaseExecutions.set(key, execution.created_at as string);
+
+              const rawResult = execution.result;
+              let resultLabel: string;
+
+              if (typeof rawResult === 'number') {
+                resultLabel = TEST_RESULTS[rawResult as TestResultId]?.toLowerCase() || 'unknown';
+              } else if (typeof rawResult === 'string') {
+                const numericResult = parseInt(rawResult);
+                if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
+                  resultLabel = TEST_RESULTS[numericResult as TestResultId]?.toLowerCase() || 'unknown';
+                } else {
+                  resultLabel = rawResult.toLowerCase();
                 }
+              } else {
+                resultLabel = 'unknown';
+              }
 
-                const testCaseId = execution.test_case_id.toString();
-                const configId = execution.configuration_id ? execution.configuration_id.toString() : 'no-config';
-                const key = `${testCaseId}-${configId}`;
-
-                const existingDate = testCaseExecutions.get(key);
-                if (!existingDate || new Date(existingDate) < executionDate) {
-                  testCaseExecutions.set(key, execution.created_at as string);
-
-                  const rawResult = execution.result;
-                  let resultLabel: string;
-
-                  if (typeof rawResult === 'number') {
-                    resultLabel = TEST_RESULTS[rawResult as TestResultId]?.toLowerCase() || 'unknown';
-                  } else if (typeof rawResult === 'string') {
-                    const numericResult = parseInt(rawResult);
-                    if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
-                      resultLabel = TEST_RESULTS[numericResult as TestResultId]?.toLowerCase() || 'unknown';
-                    } else {
-                      resultLabel = rawResult.toLowerCase();
-                    }
-                  } else {
-                    resultLabel = 'unknown';
-                  }
-
-                  if (resultLabel === 'passed') {
-                    passedCount++;
-                  } else if (resultLabel === 'failed') {
-                    failedCount++;
-                  }
-                }
-              });
+              if (resultLabel === 'passed') {
+                projectData.passedCount++;
+              } else if (resultLabel === 'failed') {
+                projectData.failedCount++;
+              }
             }
           });
+        }
+      });
 
-          const totalTestCases = testCaseExecutions.size;
-          const passingRate = totalTestCases > 0 ? Math.round((passedCount / totalTestCases) * 100) : 0;
-
+      const stats: ProjectStats[] = [];
+      projectStatsMap.forEach((projectData) => {
+        const totalTestCases = projectData.testCaseExecutions.size;
         if (totalTestCases > 0) {
+          const passingRate = Math.round((projectData.passedCount / totalTestCases) * 100);
           stats.push({
-            projectId: project.id,
-            projectName: project.name,
+            projectId: projectData.projectId,
+            projectName: projectData.projectName,
             passingRate,
             totalTestCases,
-            passedCount,
-            failedCount
+            passedCount: projectData.passedCount,
+            failedCount: projectData.failedCount
           });
         }
-      }
+      });
 
       stats.sort((a, b) => a.passingRate - b.passingRate);
       setProjectStats(stats);
