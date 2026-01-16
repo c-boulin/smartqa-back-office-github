@@ -1030,7 +1030,12 @@ const TestRunDetails: React.FC = () => {
                       <TestResultDropdown
                         value={testCase.executionStatus}
                         onChange={(newResultId, comment) => handleExecutionResultChange(testCase.id, newResultId, comment, testCase.configurationId)}
-                        disabled={!hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE) || isTestRunClosed || updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testRun?.id}`)}
+                        disabled={
+                          !hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE) ||
+                          isTestRunClosed ||
+                          isTestCaseAutomated(testCase) ||
+                          updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testRun?.id}`)
+                        }
                         isUpdating={updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testRun?.id}`)}
                         testCaseTitle={testCase.title}
                         onOpenCommentModal={(selectedResultId) => {
