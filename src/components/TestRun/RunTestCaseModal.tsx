@@ -12,6 +12,7 @@ interface RunTestCaseModalProps {
     code: string;
     title: string;
   };
+  availableAutomatedTestCases?: TestCase[];
 }
 
 interface Service {
@@ -60,7 +61,7 @@ const mockTestCases: TestCase[] = [
   { id: '7', code: 'TC29', title: 'Articles Product Page Sub' },
 ];
 
-const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, testRunName, selectedTestCase }) => {
+const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, testRunName, selectedTestCase, availableAutomatedTestCases = [] }) => {
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const [selectedTestCases, setSelectedTestCases] = useState<Set<string>>(new Set());
@@ -88,7 +89,9 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({ isOpen, onClose, te
   // Determine which test cases to display
   const displayTestCases = selectedTestCase
     ? [{ id: selectedTestCase.id, code: selectedTestCase.code, title: selectedTestCase.title }]
-    : mockTestCases;
+    : availableAutomatedTestCases.length > 0
+      ? availableAutomatedTestCases
+      : mockTestCases;
 
   const handleTestCaseToggle = (testCaseId: string) => {
     const newSelected = new Set(selectedTestCases);

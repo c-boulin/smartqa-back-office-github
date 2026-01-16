@@ -1137,6 +1137,14 @@ const TestRunDetails: React.FC = () => {
           code: `TC-${selectedTestCaseForRun.fullTestCase?.projectRelativeId ?? selectedTestCaseForRun.id}`,
           title: selectedTestCaseForRun.title
         } : undefined}
+        availableAutomatedTestCases={testCases
+          .filter(tc => isTestCaseAutomated(tc))
+          .map(tc => ({
+            id: tc.id,
+            code: `TC-${tc.fullTestCase?.projectRelativeId ?? tc.id}`,
+            title: tc.title
+          }))
+        }
       />
     </div>
   );
