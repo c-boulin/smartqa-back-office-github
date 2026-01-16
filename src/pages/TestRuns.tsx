@@ -11,6 +11,7 @@ import CreateTestRunModal from '../components/TestRun/CreateTestRunModal';
 import EditTestRunModal from '../components/TestRun/EditTestRunModal';
 import CloneTestRunModal from '../components/TestRun/CloneTestRunModal';
 import CloseTestRunModal from '../components/TestRun/CloseTestRunModal';
+import RunTestCaseModal from '../components/TestRun/RunTestCaseModal';
 import TestRunsFilters from '../components/TestRun/TestRunsFilters';
 import TestRunsFiltersSidebar from '../components/TestRun/TestRunsFiltersSidebar';
 import { useApp } from '../context/AppContext';
@@ -76,6 +77,8 @@ const TestRuns: React.FC = () => {
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [testRunToClose, setTestRunToClose] = useState<TestRun | null>(null);
   const [activeTab, setActiveTab] = useState<'active' | 'closed'>('active');
+  const [isRunModalOpen, setIsRunModalOpen] = useState(false);
+  const [testRunToRun, setTestRunToRun] = useState<TestRun | null>(null);
 
   const handleSearch = useCallback(async (term: string) => {
     setCurrentSearchTerm(term);
@@ -275,6 +278,11 @@ const TestRuns: React.FC = () => {
   const openCloseModal = useCallback((testRun: TestRun) => {
     setTestRunToClose(testRun);
     setIsCloseModalOpen(true);
+  }, []);
+
+  const openRunModal = useCallback((testRun: TestRun) => {
+    setTestRunToRun(testRun);
+    setIsRunModalOpen(true);
   }, []);
 
   const handleCloseTestRun = useCallback(async () => {
@@ -689,6 +697,16 @@ const TestRuns: React.FC = () => {
                                 <Copy className="w-4 h-4" />
                               </button>
                             )}
+                            {activeTab === 'active' && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
+                              <button
+                                onClick={() => openRunModal(testRun)}
+                                className="p-2 text-slate-600 dark:text-gray-400 hover:text-purple-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                                title="Run Test Cases"
+                                disabled={isSubmitting}
+                              >
+                                <Play className="w-4 h-4" />
+                              </button>
+                            )}
                             {activeTab === 'active' && testRun.state !== 6 && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
                               <button
                                 onClick={() => openCloseModal(testRun)}
@@ -818,6 +836,15 @@ const TestRuns: React.FC = () => {
         onConfirm={handleCloseTestRun}
         testRun={testRunToClose}
         isSubmitting={isSubmitting}
+      />
+
+      <RunTestCaseModal
+        isOpen={isRunModalOpen}
+        onClose={() => {
+          setIsRunModalOpen(false);
+          setTestRunToRun(null);
+        }}
+        testRunName={testRunToRun?.name || ''}
       />
 
       <ConfirmDialog
