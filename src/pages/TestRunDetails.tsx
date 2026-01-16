@@ -298,11 +298,9 @@ const TestRunDetails: React.FC = () => {
   // Ref to track if fetch is in progress to prevent duplicate requests
   const fetchInProgressRef = useRef(false);
 
-  // Mock function to check if a test case is automated (replace with actual data later)
+  // Check if a test case is automated based on its automation status
   const isTestCaseAutomated = (testCase: TestCaseWithExecution): boolean => {
-    // For now, use a simple mock: test cases with even IDs are automated
-    const numericId = typeof testCase.id === 'string' ? parseInt(testCase.id, 10) : testCase.id;
-    return numericId % 2 === 0;
+    return testCase.fullTestCase?.automationStatus === 2;
   };
 
   // Check if test run is closed (state 6)
