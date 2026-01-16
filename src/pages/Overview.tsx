@@ -24,7 +24,7 @@ export default function Overview() {
 
   useEffect(() => {
     fetchOverviewData();
-  }, [state.projects, timeRange]);
+  }, [state.projects.length, timeRange]);
 
   const fetchOverviewData = async () => {
     setLoading(true);
@@ -32,7 +32,6 @@ export default function Overview() {
       const stats: ProjectStats[] = [];
 
       for (const project of state.projects) {
-        if (project.status === 'active') {
           const testRunsResponse = await testRunsApiService.getTestRuns(project.id, 1, 1000);
 
           const cutoffDate = new Date();
@@ -91,16 +90,15 @@ export default function Overview() {
           const totalTestCases = testCaseExecutions.size;
           const passingRate = totalTestCases > 0 ? Math.round((passedCount / totalTestCases) * 100) : 0;
 
-          if (totalTestCases > 0) {
-            stats.push({
-              projectId: project.id,
-              projectName: project.name,
-              passingRate,
-              totalTestCases,
-              passedCount,
-              failedCount
-            });
-          }
+        if (totalTestCases > 0) {
+          stats.push({
+            projectId: project.id,
+            projectName: project.name,
+            passingRate,
+            totalTestCases,
+            passedCount,
+            failedCount
+          });
         }
       }
 
@@ -121,7 +119,9 @@ export default function Overview() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Overview</h1>
-          <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">Test execution health check by project</p>
+          <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
+            Test execution health check across all {state.projects.length} projects
+          </p>
         </div>
 
         <div className="flex gap-2">
@@ -157,6 +157,41 @@ export default function Overview() {
           </button>
         </div>
       </div>
+
+      {!loading && projectStats.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="p-4">
+            <div className="text-sm text-slate-600 dark:text-gray-400">Total Projects</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+              {projectStats.length}
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-sm text-slate-600 dark:text-gray-400">Projects Passing</div>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+              {passedProjects.length}
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-sm text-slate-600 dark:text-gray-400">Projects Failing</div>
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
+              {failedProjects.length}
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-sm text-slate-600 dark:text-gray-400">Overall Pass Rate</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+              {projectStats.length > 0
+                ? Math.round(
+                    (projectStats.reduce((sum, p) => sum + p.passedCount, 0) /
+                      projectStats.reduce((sum, p) => sum + p.totalTestCases, 0)) *
+                      100
+                  )
+                : 0}%
+            </div>
+          </Card>
+        </div>
+      )}
 
       <div className="flex items-center gap-6 text-sm">
         <div className="flex items-center gap-2">
