@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Activity,
   CheckCircle,
@@ -17,14 +17,17 @@ import { useTestRunsData } from '../hooks/useTestRunsData';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { TEST_CASE_TYPES } from '../types';
 
+export type AutomationFilter = 'all' | 'automated' | 'not-automated';
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { getSelectedProject, state } = useApp();
   const selectedProject = getSelectedProject();
+  const [automationFilter, setAutomationFilter] = useState<AutomationFilter>('all');
 
   useRestoreLastProject();
 
-  const { summaryData, loading: summaryLoading } = useDashboardSummary(selectedProject, state.projects);
+  const { summaryData, loading: summaryLoading } = useDashboardSummary(selectedProject, state.projects, automationFilter);
   const { data: testRunsData, loading: testRunsLoading } = useTestRunsData(selectedProject?.id);
 
   const activeTestRunsChartData = testRunsData?.activeTestRunsChart;
@@ -135,8 +138,41 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setAutomationFilter('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              automationFilter === 'all'
+                ? 'bg-cyan-500 text-white'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-gray-300 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            All Test Cases
+          </button>
+          <button
+            onClick={() => setAutomationFilter('automated')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              automationFilter === 'automated'
+                ? 'bg-green-500 text-white'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-gray-300 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            Automated
+          </button>
+          <button
+            onClick={() => setAutomationFilter('not-automated')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              automationFilter === 'not-automated'
+                ? 'bg-orange-500 text-white'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-gray-300 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            Not Automated
+          </button>
+        </div>
       </div>
 
       {selectedProject && (
