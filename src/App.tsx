@@ -14,6 +14,7 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Callback from './pages/Callback';
 import Dashboard from './pages/Dashboard';
+import Overview from './pages/Overview';
 import Projects from './pages/Projects';
 import TestCases from './pages/TestCases';
 import SharedSteps from './pages/SharedSteps';
@@ -42,6 +43,7 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }>
               <Route path="dashboard" element={<Dashboard key={`dashboard-${Date.now()}`} />} />
+              <Route path="overview" element={<Overview />} />
               <Route path="projects" element={<Projects />} />
               <Route path="test-cases" element={<TestCases />} />
               <Route path="shared-steps" element={<SharedSteps />} />

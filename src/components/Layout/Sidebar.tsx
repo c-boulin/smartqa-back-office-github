@@ -12,7 +12,8 @@ import {
   ChevronDown,
   Loader,
   Search,
-  X
+  X,
+  TrendingUp
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -44,6 +45,12 @@ const Sidebar: React.FC = () => {
       icon: LayoutDashboard,
       label: 'Dashboard',
       permissions: [PERMISSIONS.TEST_CASE.READ, PERMISSIONS.TEST_RUN.READ]
+    },
+    {
+      path: '/overview',
+      icon: TrendingUp,
+      label: 'Overview',
+      permissions: [PERMISSIONS.TEST_RUN.READ]
     },
     {
       path: '/test-cases',
