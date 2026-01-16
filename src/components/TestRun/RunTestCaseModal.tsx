@@ -26,6 +26,7 @@ interface Service {
 interface Configuration {
   id: string;
   label: string;
+  userAgent?: string;
 }
 
 interface TestCase {
@@ -156,7 +157,7 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
             <option value="">Select the device...</option>
             {availableConfigurations.map((config) => (
               <option key={config.id} value={config.id}>
-                {config.label}
+                {config.userAgent || config.label}
               </option>
             ))}
           </select>
