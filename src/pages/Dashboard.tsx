@@ -28,7 +28,7 @@ export default function Dashboard() {
   useRestoreLastProject();
 
   const { summaryData, loading: summaryLoading } = useDashboardSummary(selectedProject, state.projects, automationFilter);
-  const { data: testRunsData, loading: testRunsLoading } = useTestRunsData(selectedProject?.id);
+  const { data: testRunsData, loading: testRunsLoading } = useTestRunsData(selectedProject?.id, automationFilter);
 
   const activeTestRunsChartData = testRunsData?.activeTestRunsChart;
   const closedTestRunsChartData = testRunsData?.closedTestRunsChart;
