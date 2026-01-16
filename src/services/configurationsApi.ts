@@ -6,6 +6,7 @@ export interface ApiConfiguration {
   attributes: {
     id: number;
     label: string;
+    user_agent?: string;
     createdAt: string;
     updatedAt: string;
   };
@@ -30,6 +31,7 @@ export interface ConfigurationsApiResponse {
 export interface Configuration {
   id: string;
   label: string;
+  userAgent?: string;
 }
 
 export interface CreateConfigurationRequest {
@@ -92,8 +94,9 @@ class ConfigurationsApiService {
   // Helper method to transform API configuration to our internal format
   transformApiConfiguration(apiConfiguration: ApiConfiguration): Configuration {
     return {
-      id: apiConfiguration.attributes.id.toString(), // Use the numeric ID from attributes
-      label: apiConfiguration.attributes.label
+      id: apiConfiguration.attributes.id.toString(),
+      label: apiConfiguration.attributes.label,
+      userAgent: apiConfiguration.attributes.user_agent
     };
   }
 }

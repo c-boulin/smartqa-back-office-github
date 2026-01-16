@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Plus, Settings as ConfigIcon, Loader, Search, ChevronDown } from 'lucide-react';
 import { Configuration } from '../../services/configurationsApi';
 import { configurationsApiService } from '../../services/configurationsApi';
+import { getDeviceIcon, getDeviceColor } from '../../utils/deviceIcons';
 
 interface ConfigurationSelectorProps {
   selectedConfigurations: Configuration[];
@@ -136,7 +137,8 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
       setError(null);
 
       const filtered = allConfigurations.filter(config =>
-        config.label.toLowerCase().includes(searchTerm.toLowerCase())
+        config.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (config.userAgent && config.userAgent.toLowerCase().includes(searchTerm.toLowerCase()))
       );
 
       setConfigurations(filtered);
@@ -220,24 +222,32 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
       {/* Selected Configurations */}
       {selectedConfigurations.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
-          {selectedConfigurations.map((config) => (
-            <span
-              key={config.id}
-              className="inline-flex items-center px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full text-sm text-blue-400"
-            >
-              <ConfigIcon className="w-3 h-3 mr-1" />
-              {config.label}
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={() => handleConfigurationRemove(config)}
-                  className="ml-2 text-blue-400 hover:text-blue-300 transition-colors"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </span>
-          ))}
+          {selectedConfigurations.map((config) => {
+            const displayText = config.userAgent || config.label;
+            const deviceColor = config.userAgent ? getDeviceColor(config.userAgent) : 'text-blue-400';
+            return (
+              <span
+                key={config.id}
+                className={`inline-flex items-center px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full text-sm ${deviceColor}`}
+              >
+                {config.userAgent ? (
+                  <span className="mr-1.5">{getDeviceIcon(config.userAgent)}</span>
+                ) : (
+                  <ConfigIcon className="w-3 h-3 mr-1" />
+                )}
+                {displayText}
+                {!disabled && (
+                  <button
+                    type="button"
+                    onClick={() => handleConfigurationRemove(config)}
+                    className={`ml-2 ${deviceColor} hover:opacity-75 transition-colors`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </span>
+            );
+          })}
         </div>
       )}
 
@@ -329,24 +339,34 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
 
                 {/* Configuration options */}
                 {filteredConfigurations.length > 0 ? (
-                  filteredConfigurations.map((config) => (
-                    <button
-                      key={config.id}
-                      type="button"
-                      onClick={() => handleConfigurationSelect(config)}
-                      className={`w-full px-4 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${
-                        selectedConfigurations.some(selected => selected.id === config.id) ? 'bg-slate-200 dark:bg-slate-700 text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center">
-                        <ConfigIcon className="w-4 h-4 mr-2 text-slate-400 dark:text-gray-400" />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{config.label}</div>
-                          <div className="text-xs text-slate-500 dark:text-gray-400">ID: {config.id}</div>
+                  filteredConfigurations.map((config) => {
+                    const displayText = config.userAgent || config.label;
+                    const deviceColor = config.userAgent ? getDeviceColor(config.userAgent) : '';
+                    return (
+                      <button
+                        key={config.id}
+                        type="button"
+                        onClick={() => handleConfigurationSelect(config)}
+                        className={`w-full px-4 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${
+                          selectedConfigurations.some(selected => selected.id === config.id) ? 'bg-slate-200 dark:bg-slate-700 text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          {config.userAgent ? (
+                            <span className={`mr-2 ${deviceColor}`}>{getDeviceIcon(config.userAgent)}</span>
+                          ) : (
+                            <ConfigIcon className="w-4 h-4 mr-2 text-slate-400 dark:text-gray-400" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className={`font-medium truncate ${config.userAgent ? deviceColor : ''}`}>{displayText}</div>
+                            {config.userAgent && config.label !== config.userAgent && (
+                              <div className="text-xs text-slate-500 dark:text-gray-400 truncate">{config.label}</div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))
+                      </button>
+                    );
+                  })
                 ) : (
                   <div className="px-4 py-3 text-slate-500 dark:text-gray-400 text-sm">
                     {searchTerm ? `No configurations found matching "${searchTerm}"` : 'No configurations available'}
