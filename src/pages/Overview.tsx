@@ -33,6 +33,14 @@ export default function Overview() {
         testRunsApiService.getAllTestRuns(1, 10000)
       ]);
 
+      console.log('Projects:', projectsResponse.data.length);
+      console.log('Test Runs:', testRunsResponse.data.length);
+
+      if (testRunsResponse.data.length > 0) {
+        console.log('First test run sample:', testRunsResponse.data[0]);
+        console.log('First test run executions:', testRunsResponse.data[0]?.attributes?.executions);
+      }
+
       const cutoffDate = new Date();
       if (timeRange === 'week') {
         cutoffDate.setDate(cutoffDate.getDate() - 7);
@@ -55,16 +63,24 @@ export default function Overview() {
         });
       });
 
+      let totalExecutionsProcessed = 0;
+      let executionsFiltered = 0;
+
       testRunsResponse.data.forEach(apiTestRun => {
         const projectId = apiTestRun.relationships.project.data.id;
         const projectData = projectStatsMap.get(projectId);
 
-        if (!projectData) return;
+        if (!projectData) {
+          console.log('Project not found in map:', projectId);
+          return;
+        }
 
         if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
           apiTestRun.attributes.executions.forEach((execution: Record<string, unknown>) => {
+            totalExecutionsProcessed++;
             const executionDate = new Date(execution.created_at);
             if (timeRange !== 'all' && executionDate < cutoffDate) {
+              executionsFiltered++;
               return;
             }
 
@@ -99,9 +115,14 @@ export default function Overview() {
         }
       });
 
+      console.log('Total executions processed:', totalExecutionsProcessed);
+      console.log('Executions filtered by date:', executionsFiltered);
+
       const stats: ProjectStats[] = [];
       projectStatsMap.forEach((projectData) => {
         const totalTestCases = projectData.testCaseExecutions.size;
+        console.log(`Project ${projectData.projectName}: ${totalTestCases} test cases`);
+
         if (totalTestCases > 0) {
           let passedCount = 0;
           let failedCount = 0;
@@ -114,6 +135,8 @@ export default function Overview() {
             }
           });
 
+          console.log(`  - Passed: ${passedCount}, Failed: ${failedCount}`);
+
           const passingRate = Math.round((passedCount / totalTestCases) * 100);
           stats.push({
             projectId: projectData.projectId,
@@ -125,6 +148,9 @@ export default function Overview() {
           });
         }
       });
+
+      console.log('Final stats array length:', stats.length);
+      console.log('Stats:', stats);
 
       stats.sort((a, b) => a.passingRate - b.passingRate);
       setProjectStats(stats);

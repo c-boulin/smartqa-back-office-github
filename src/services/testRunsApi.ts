@@ -28,6 +28,7 @@ export interface ApiTestRun {
       id: number;
       test_case_id: number;
       test_run_id: number;
+      configuration_id?: number;
       result: number;
       created_at: string;
       updated_at: string;
@@ -181,7 +182,7 @@ class TestRunsApiService {
   }
 
   async getAllTestRuns(page: number = 1, itemsPerPage: number = 10000): Promise<TestRunsApiResponse> {
-    const response = await apiService.authenticatedRequest(`/test_runs?include=user&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`);
+    const response = await apiService.authenticatedRequest(`/test_runs?include=user,testExecutions&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`);
     return response || this.getDefaultTestRunsResponse();
   }
 
