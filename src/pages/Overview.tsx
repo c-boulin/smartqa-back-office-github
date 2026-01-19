@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { projectsApiService } from '../services/projectsApi';
 import { Project } from '../types';
-import DefectsChart from '../components/Charts/DefectsChart';
-import { Loader } from 'lucide-react';
+import { Loader, Activity, AlertTriangle } from 'lucide-react';
+import TestExecutionOverview from '../components/Overview/TestExecutionOverview';
+import DefectBreakdown from '../components/Overview/DefectBreakdown';
+
+type TabType = 'execution' | 'defects';
 
 const Overview: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabType>('execution');
 
   useEffect(() => {
     const fetchAllProjects = async () => {
@@ -39,20 +43,42 @@ const Overview: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Overview</h1>
-        <p className="text-slate-600 dark:text-gray-400 mt-2">Last week defects across all projects</p>
+        <p className="text-slate-600 dark:text-gray-400 mt-2">Test execution and defect analysis across all projects</p>
       </div>
 
-      {projects.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-8 text-center">
-          <p className="text-slate-500 dark:text-gray-400">No projects available</p>
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg">
+        <div className="border-b border-slate-200 dark:border-slate-700">
+          <nav className="flex -mb-px">
+            <button
+              onClick={() => setActiveTab('execution')}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'execution'
+                  ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
+                  : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              Test Execution Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('defects')}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'defects'
+                  ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
+                  : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
+              }`}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              Defect Breakdown
+            </button>
+          </nav>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {projects.map(project => (
-            <DefectsChart key={project.id} project={project} />
-          ))}
+
+        <div className="p-6">
+          {activeTab === 'execution' && <TestExecutionOverview projects={projects} />}
+          {activeTab === 'defects' && <DefectBreakdown projects={projects} />}
         </div>
-      )}
+      </div>
     </div>
   );
 };
