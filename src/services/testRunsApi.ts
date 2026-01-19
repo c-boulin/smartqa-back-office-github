@@ -148,7 +148,6 @@ export interface TestRun {
   };
   createdAt: Date;
   updatedAt: Date;
-  hasAutomatedTestCases?: boolean;
 }
 
 class TestRunsApiService {
@@ -241,29 +240,6 @@ class TestRunsApiService {
     const response = await apiService.authenticatedRequest(`/test_runs/${id}?include=user,configurations,testPlans,testCases,testCases.tags`);
 
     return response;
-  }
-
-  async checkTestRunHasAutomatedTestCases(id: string): Promise<boolean> {
-    try {
-      const response = await apiService.authenticatedRequest(`/test_runs/${id}?include=testCases`);
-
-      if (!response?.included) {
-        return false;
-      }
-
-      const hasAutomated = response.included.some((item: Record<string, unknown>) => {
-        if (item.type === 'TestCase') {
-          const automationStatus = (item.attributes as Record<string, unknown>)?.automationStatus;
-          return automationStatus === 2 || automationStatus === '2';
-        }
-        return false;
-      });
-
-      return hasAutomated;
-    } catch (error) {
-      console.error('Error checking automated test cases:', error);
-      return false;
-    }
   }
 
   async createTestRun(testRunData: {
