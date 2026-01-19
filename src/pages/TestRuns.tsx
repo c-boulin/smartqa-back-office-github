@@ -83,6 +83,8 @@ const TestRuns: React.FC = () => {
   const [automatedTestCases, setAutomatedTestCases] = useState<Array<{ id: string; code: string; title: string }>>([]);
   const [testRunConfigurations, setTestRunConfigurations] = useState<Array<{ id: string; label: string; userAgent?: string }>>([]);
   const [isLoadingRunModal, setIsLoadingRunModal] = useState(false);
+  const [testRunsWithAutomatedCases, setTestRunsWithAutomatedCases] = useState<Set<string>>(new Set());
+  const [testRunsWithoutAutomatedCases, setTestRunsWithoutAutomatedCases] = useState<Set<string>>(new Set());
 
   const handleSearch = useCallback(async (term: string) => {
     setCurrentSearchTerm(term);
@@ -289,6 +291,18 @@ const TestRuns: React.FC = () => {
     setIsRunModalOpen(true);
   }, []);
 
+  const shouldShowRunButton = useCallback((testRun: TestRun) => {
+    if (testRunsWithoutAutomatedCases.has(testRun.id)) {
+      return false;
+    }
+    return true;
+  }, [testRunsWithoutAutomatedCases]);
+
+  useEffect(() => {
+    setTestRunsWithAutomatedCases(new Set());
+    setTestRunsWithoutAutomatedCases(new Set());
+  }, [activeTab]);
+
   useEffect(() => {
     const fetchTestRunData = async () => {
       if (!isRunModalOpen || !testRunToRun) {
@@ -305,6 +319,7 @@ const TestRuns: React.FC = () => {
         if (!testRunResponse?.included) {
           setAutomatedTestCases([]);
           setTestRunConfigurations([]);
+          setTestRunsWithoutAutomatedCases(prev => new Set(prev).add(testRunToRun.id));
           return;
         }
 
@@ -328,6 +343,24 @@ const TestRuns: React.FC = () => {
 
         setAutomatedTestCases(testCases);
         setTestRunConfigurations(configurations);
+
+        if (testCases.length > 0) {
+          setTestRunsWithAutomatedCases(prev => new Set(prev).add(testRunToRun.id));
+          setTestRunsWithoutAutomatedCases(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(testRunToRun.id);
+            return newSet;
+          });
+        } else {
+          setTestRunsWithoutAutomatedCases(prev => new Set(prev).add(testRunToRun.id));
+          setTestRunsWithAutomatedCases(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(testRunToRun.id);
+            return newSet;
+          });
+          toast.error('This test run does not contain any automated test cases');
+          setIsRunModalOpen(false);
+        }
       } catch (error) {
         console.error('Error fetching test run data:', error);
         setAutomatedTestCases([]);
@@ -752,7 +785,7 @@ const TestRuns: React.FC = () => {
                                 <Copy className="w-4 h-4" />
                               </button>
                             )}
-                            {activeTab === 'active' && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
+                            {activeTab === 'active' && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && shouldShowRunButton(testRun) && (
                               <button
                                 onClick={() => openRunModal(testRun)}
                                 className="p-2 text-slate-600 dark:text-gray-400 hover:text-purple-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
