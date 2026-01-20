@@ -2,49 +2,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Project } from '../../types';
 import { ChevronRight } from 'lucide-react';
+import { automatedExecutionMockService } from '../../services/automatedExecutionMockService';
 
 interface AutomatedExecutionLogsProps {
   projects: Project[];
 }
-
-const generateMockExecutionData = (project: Project) => {
-  const runNumber = Math.floor(Math.random() * 1000) + 1;
-  const total = Math.floor(Math.random() * 5) + 3;
-  const passed = Math.floor(Math.random() * total);
-  const failed = total - passed;
-  const skipped = 0;
-
-  const defects = {
-    productBug: Math.random() > 0.7 ? Math.floor(Math.random() * 3) : 0,
-    autoBug: Math.random() > 0.7 ? Math.floor(Math.random() * 2) : 0,
-    systemIssue: Math.random() > 0.8 ? Math.floor(Math.random() * 2) : 0,
-    toInvestigate: Math.random() > 0.8 ? Math.floor(Math.random() * 2) : 0
-  };
-
-  const timeOptions = [
-    '52 minutes ago',
-    '1 hour ago',
-    '2 hours ago',
-    '3 hours ago',
-    '5 hours ago'
-  ];
-
-  const duration = `${Math.floor(Math.random() * 5) + 1}m ${Math.floor(Math.random() * 60)}s`;
-
-  return {
-    runNumber,
-    total,
-    passed,
-    failed,
-    skipped,
-    defects,
-    startTime: timeOptions[Math.floor(Math.random() * timeOptions.length)],
-    duration,
-    user: 'qa_staff',
-    browser: 'chrome',
-    device: 'android10_galaxys9'
-  };
-};
 
 const AutomatedExecutionLogs: React.FC<AutomatedExecutionLogsProps> = ({ projects }) => {
   const navigate = useNavigate();
@@ -105,7 +67,7 @@ const AutomatedExecutionLogs: React.FC<AutomatedExecutionLogsProps> = ({ project
               </thead>
               <tbody>
                 {projects.map(project => {
-                  const execution = generateMockExecutionData(project);
+                  const execution = automatedExecutionMockService.generateExecutionData(project.id);
                   return (
                     <tr
                       key={project.id}

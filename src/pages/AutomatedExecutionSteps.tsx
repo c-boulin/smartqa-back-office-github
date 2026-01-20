@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, ChevronDown, ChevronRight, Paperclip } from 'lucide-react';
 import { projectsApiService } from '../services/projectsApi';
 import { Project } from '../types';
+import { automatedExecutionMockService } from '../services/automatedExecutionMockService';
 
 interface LogEntry {
   message: string;
@@ -20,117 +21,17 @@ interface ExecutionStep {
   isExpanded: boolean;
 }
 
-const generateMockLogs = (stepType: string): LogEntry[] => {
-  const baseTime = new Date();
-  baseTime.setHours(8, 44, 11);
-
-  const logTemplates = {
-    SETUP: [
-      'Opening url https://www.playvod.com/',
-      'Element xpath //*[@id="didomi-notice-agree-button"] found. Click using javascript',
-      'Element xpath //*[@id="onesignal-slidedown-cancel-button"] found. Click using javascript'
-    ],
-    KEYWORD: [
-      'Wait until element "//*[@data-mipqa="link-useraccess-button"]" is located',
-      'scroll into view the xpath: //*[@data-mipqa="link-useraccess-button"]',
-      'Click element xpath //*[@data-mipqa="link-useraccess-button"] using javascript',
-      'Check sign in elements',
-      'Page contains element xpath //*[@data-mipqa="signin-title"]',
-      'Page contains element xpath //*[@data-mipqa="back-arrow-button"]',
-      'Page contains element xpath //*[@data-mipqa="login-user-input"]',
-      'Page contains element xpath //*[@data-mipqa="login-pwd-input"]',
-      'Page contains element xpath //*[@data-mipqa="login-confirm-button"]',
-      'Page contains element xpath //*[@data-mipqa="login-sub-btn-button"]'
-    ],
-    TEARDOWN: [
-      'Closing browser session',
-      'Cleanup completed successfully'
-    ]
-  };
-
-  const logs = logTemplates[stepType] || logTemplates.KEYWORD;
-
-  return logs.map((message, index) => {
-    const timestamp = new Date(baseTime);
-    timestamp.setSeconds(timestamp.getSeconds() + index * 2);
-    return {
-      message,
-      timestamp: timestamp.toISOString().replace('T', ' ').substring(0, 19)
-    };
-  });
-};
-
-const generateMockSteps = (): ExecutionStep[] => {
-  return [
-    {
-      id: 'step-1',
-      type: 'SETUP',
-      message: 'TestPlayvod.Page Setup ()',
-      status: 'PASSED',
-      duration: '10s',
-      logs: generateMockLogs('SETUP'),
-      isExpanded: false
-    },
-    {
-      id: 'step-2',
-      type: 'KEYWORD',
-      message: 'TestPlayvod.Check Sign In Page ()',
-      status: 'PASSED',
-      duration: '1s',
-      logs: generateMockLogs('KEYWORD'),
-      isExpanded: false
-    },
-    {
-      id: 'step-3',
-      type: 'KEYWORD',
-      message: 'TestPlayvod.Check Error Email Txt ()',
-      status: 'PASSED',
-      duration: '1s',
-      logs: generateMockLogs('KEYWORD'),
-      isExpanded: false
-    },
-    {
-      id: 'step-4',
-      type: 'KEYWORD',
-      message: 'TestPlayvod.Check Forgot Pwd Page ()',
-      status: 'PASSED',
-      duration: '0.92s',
-      logs: generateMockLogs('KEYWORD'),
-      isExpanded: false
-    },
-    {
-      id: 'step-5',
-      type: 'KEYWORD',
-      message: 'TestPlayvod.Check Signup Page ()',
-      status: 'PASSED',
-      duration: '1s',
-      logs: generateMockLogs('KEYWORD'),
-      isExpanded: false
-    },
-    {
-      id: 'step-6',
-      type: 'TEARDOWN',
-      message: 'TestPlayvod.Finish Test ()',
-      status: 'PASSED',
-      duration: '1s',
-      attachments: 1,
-      logs: generateMockLogs('TEARDOWN'),
-      isExpanded: false
-    }
-  ];
-};
-
 const AutomatedExecutionSteps: React.FC = () => {
   const { projectId, testCaseId } = useParams<{ projectId: string; testCaseId: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
-  const [steps, setSteps] = useState<ExecutionStep[]>(generateMockSteps());
+  const [steps, setSteps] = useState<ExecutionStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PASSED' | 'FAILED'>('ALL');
 
   useEffect(() => {
     const fetchProject = async () => {
-      if (!projectId) return;
+      if (!projectId || !testCaseId) return;
 
       try {
         setLoading(true);
@@ -141,6 +42,7 @@ const AutomatedExecutionSteps: React.FC = () => {
 
         if (foundProject) {
           setProject(foundProject);
+          setSteps(automatedExecutionMockService.generateExecutionSteps(projectId, testCaseId));
         }
       } catch (error) {
         console.error('Failed to fetch project:', error);
@@ -150,7 +52,7 @@ const AutomatedExecutionSteps: React.FC = () => {
     };
 
     fetchProject();
-  }, [projectId]);
+  }, [projectId, testCaseId]);
 
   const toggleStep = (stepId: string) => {
     setSteps(prevSteps =>

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, ChevronRight } from 'lucide-react';
 import { projectsApiService } from '../services/projectsApi';
 import { Project } from '../types';
+import { automatedExecutionMockService } from '../services/automatedExecutionMockService';
 
 interface TestCase {
   id: string;
@@ -13,28 +14,6 @@ interface TestCase {
   defectType?: string;
   duration: string;
 }
-
-const generateMockTestCases = (count: number): TestCase[] => {
-  const testNames = [
-    'Sign In Page Unlogged',
-    'Sign In Page Logged',
-    'Check Account Page No Subscribe',
-    'Home page Navigation',
-    'Check Included Content User As Subscribed',
-    'TEARDOWN TestPlayvod.Close All ()'
-  ];
-
-  const methodTypes = ['Test', 'Test', 'Test', 'Test', 'Test', 'After suite'];
-
-  return testNames.slice(0, count).map((name, index) => ({
-    id: `tc-${index}`,
-    methodType: methodTypes[index] || 'Test',
-    name,
-    status: Math.random() > 0.2 ? 'Passed' : 'Failed',
-    startTime: `${52 - index} minutes ago`,
-    duration: `${Math.floor(Math.random() * 30) + 10}s`
-  }));
-};
 
 const AutomatedExecutionTestCases: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -56,7 +35,7 @@ const AutomatedExecutionTestCases: React.FC = () => {
 
         if (foundProject) {
           setProject(foundProject);
-          setTestCases(generateMockTestCases(6));
+          setTestCases(automatedExecutionMockService.generateTestCases(foundProject.id));
         }
       } catch (error) {
         console.error('Failed to fetch project:', error);
