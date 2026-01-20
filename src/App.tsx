@@ -25,6 +25,8 @@ import TestPlans from './pages/TestPlans';
 import TestPlanDetails from './pages/TestPlanDetails';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import AutomatedExecutionTestCases from './pages/AutomatedExecutionTestCases';
+import AutomatedExecutionSteps from './pages/AutomatedExecutionSteps';
 
 const AppContent: React.FC = () => {
   const { loading } = useLoading();
@@ -54,6 +56,8 @@ const AppContent: React.FC = () => {
               <Route path="test-plans/:id" element={<TestPlanDetails />} />
               <Route path="reports" element={<Reports />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="automated-execution/:projectId" element={<AutomatedExecutionTestCases />} />
+              <Route path="automated-execution/:projectId/test-case/:testCaseId" element={<AutomatedExecutionSteps />} />
             </Route>
           </Routes>
           <Toaster
