@@ -34,25 +34,28 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   const fetchAllTestCasesAndExtractFolders = useCallback(async (targetProjectId?: string, initialFilters?: Record<string, unknown>) => {
     const useProjectId = targetProjectId || projectId;
 
-    if (!useProjectId || useProjectId === 'all') {
+    if (!useProjectId) {
       setTestCases([]);
       setAllTestCases([]);
       setLoading(false);
       return;
     }
 
+    // Convert 'all' to undefined for API call
+    const apiProjectId = useProjectId === 'all' ? undefined : useProjectId;
+
     try {
       setLoading(true);
       setError(null);
-      
+
       if (initialFilters) {
         // Initial filters provided
       } else {
         // No initial filters
       }
-      
+
       let response: TestCasesApiResponse;
-      
+
       if (initialFilters) {
         // Fetch test cases and folders in parallel
         const [filteredResponse, firstPageResponse, foldersResponse] = await Promise.all([
@@ -60,10 +63,10 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
             initialFilters,
             1,
             30,
-            useProjectId
+            apiProjectId
           ),
-          testCasesApiService.getTestCases(1, 30, useProjectId),
-          foldersApiService.getFolders(useProjectId)
+          testCasesApiService.getTestCases(1, 30, apiProjectId),
+          foldersApiService.getFolders(apiProjectId)
         ]);
 
         response = filteredResponse;
@@ -80,11 +83,11 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         for (let page = 2; page <= totalPages; page++) {
 
           const pageResponse = await testCasesApiService.getTestCases(
-            page, 
+            page,
             30,
-            useProjectId
+            apiProjectId
           );
-          
+
           allTestCasesData = [...allTestCasesData, ...pageResponse.data];
         }
 
@@ -152,7 +155,8 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         const allFolders: Array<Record<string, unknown>> = [];
         for (const apiFolder of foldersResponse.data) {
           const folderProjectId = apiFolder.relationships.project.data.id.split('/').pop();
-          if (folderProjectId !== useProjectId) {
+          // Skip folder filtering if fetching all projects
+          if (apiProjectId && folderProjectId !== useProjectId) {
             continue;
           }
 
@@ -163,7 +167,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
             id: folderId,
             name: apiFolder.attributes.name,
             parentFolderId: parentId || null,
-            projectId: useProjectId,
+            projectId: folderProjectId,
             testCasesCount: folderCountMap.get(folderId) || 0
           });
         }
@@ -189,8 +193,8 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       } else {
         // Normal load - fetch test cases and folders in parallel
         const [firstPageResponse, foldersResponse] = await Promise.all([
-          testCasesApiService.getTestCases(1, 30, useProjectId),
-          foldersApiService.getFolders(useProjectId)
+          testCasesApiService.getTestCases(1, 30, apiProjectId),
+          foldersApiService.getFolders(apiProjectId)
         ]);
 
         response = firstPageResponse;
@@ -210,7 +214,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
             const pageResponse = await testCasesApiService.getTestCases(
               page,
               30,
-              useProjectId
+              apiProjectId
             );
 
             allTestCasesData = [...allTestCasesData, ...pageResponse.data];
@@ -284,7 +288,8 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         const allFolders: Array<Record<string, unknown>> = [];
         for (const apiFolder of foldersResponse.data) {
           const folderProjectId = apiFolder.relationships.project.data.id.split('/').pop();
-          if (folderProjectId !== useProjectId) {
+          // Skip folder filtering if fetching all projects
+          if (apiProjectId && folderProjectId !== useProjectId) {
             continue;
           }
 
@@ -295,7 +300,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
             id: folderId,
             name: apiFolder.attributes.name,
             parentFolderId: parentId || null,
-            projectId: useProjectId,
+            projectId: folderProjectId,
             testCasesCount: allFolderCountMap.get(folderId) || 0
           });
         }
@@ -378,20 +383,22 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   const showFolderTestCases = useCallback(async (targetFolderId?: string | null, page: number = 1) => {
     const useFolderId = targetFolderId !== undefined ? targetFolderId : folderId;
 
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestCases([]);
       return;
     }
-    
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
+
     try {
       setLoading(true);
       setError(null);
-      
+
       // Make API call with pagination
       const response = await testCasesApiService.getTestCases(
-        page, 
-        30, 
-        projectId,
+        page,
+        30,
+        apiProjectId,
         useFolderId || undefined
       );
       
@@ -420,22 +427,24 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId, folderId]);
 
   const searchTestCases = useCallback(async (searchTerm: string, page: number = 1, _globalSearch: boolean = false) => {
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestCases([]);
       return;
     }
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
 
     setCurrentFilterMode('search');
 
     try {
       setLoading(true);
       setError(null);
-      
+
       let response: TestCasesApiResponse = await testCasesApiService.searchTestCases(
-        searchTerm, 
-        page, 
-        30, 
-        projectId,
+        searchTerm,
+        page,
+        30,
+        apiProjectId,
         undefined // Always omit folderId for search to search across all folders
       );
       
@@ -473,22 +482,24 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId]); // Remove folderId dependency
 
   const filterTestCasesByAutomation = useCallback(async (automationStatus: 1 | 2 | 3 | 4 | 5, page: number = 1) => {
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestCases([]);
       return;
     }
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
 
     setCurrentFilterMode('automation');
 
     try {
       setLoading(true);
       setError(null);
-      
+
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesByAutomation(
         automationStatus,
-        page, 
-        30, 
-        projectId,
+        page,
+        30,
+        apiProjectId,
         folderId
       );
       
@@ -526,22 +537,24 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId, folderId]);
 
   const filterTestCasesByTags = useCallback(async (tagIds: string[], page: number = 1) => {
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestCases([]);
       return;
     }
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
 
     setCurrentFilterMode('tags');
 
     try {
       setLoading(true);
       setError(null);
-      
+
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesByTags(
         tagIds,
-        page, 
-        30, 
-        projectId,
+        page,
+        30,
+        apiProjectId,
         folderId
       );
       
@@ -579,22 +592,24 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId, folderId]);
 
   const filterTestCasesByState = useCallback(async (state: 'draft' | 'active' | 'deprecated', page: number = 1) => {
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestCases([]);
       return;
     }
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
 
     setCurrentFilterMode('state');
 
     try {
       setLoading(true);
       setError(null);
-      
+
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesByState(
         state,
-        page, 
-        30, 
-        projectId,
+        page,
+        30,
+        apiProjectId,
         folderId
       );
       
@@ -632,22 +647,24 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId, folderId]);
 
   const filterTestCasesByPriority = useCallback(async (priority: number, page: number = 1) => {
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestCases([]);
       return;
     }
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
 
     setCurrentFilterMode('priority');
 
     try {
       setLoading(true);
       setError(null);
-      
+
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesByPriority(
         priority,
-        page, 
-        30, 
-        projectId,
+        page,
+        30,
+        apiProjectId,
         folderId
       );
       
@@ -685,22 +702,24 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId, folderId]);
 
   const filterTestCasesByType = useCallback(async (type: number, page: number = 1) => {
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestCases([]);
       return;
     }
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
 
     setCurrentFilterMode('type');
 
     try {
       setLoading(true);
       setError(null);
-      
+
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesByType(
         type,
-        page, 
-        30, 
-        projectId,
+        page,
+        30,
+        apiProjectId,
         folderId
       );
       
@@ -744,22 +763,24 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
     state?: number;
     tagIds?: string[];
   }, page: number = 1) => {
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestCases([]);
       return;
     }
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
 
     setCurrentFilterMode('multiple');
 
     try {
       setLoading(true);
       setError(null);
-      
+
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesWithMultipleFilters(
         filters,
-        page, 
-        30, 
-        projectId,
+        page,
+        30,
+        apiProjectId,
         folderId
       );
       
@@ -1344,13 +1365,13 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
 
     previousProjectId.current = projectId;
 
-    if (projectId && projectId !== 'all' && projectChanged && !skipInitialLoad) {
+    if (projectId && projectChanged && !skipInitialLoad) {
 
       hasInitialLoad.current = false;
       // Only do initial load if we don't have filters applied from navigation
       // The parent component will handle the initial load with filters if needed
       fetchAllTestCasesAndExtractFolders(projectId);
-    } else if (!projectId || projectId === 'all') {
+    } else if (!projectId) {
 
       setTestCases([]);
       setAllTestCases([]);

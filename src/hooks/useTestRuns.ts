@@ -20,7 +20,7 @@ export const useTestRuns = (projectId?: string | null) => {
   // Stable fetchTestRuns function
   const fetchTestRuns = useCallback(async (page: number = 1, targetProjectId?: string) => {
     const useProjectId = targetProjectId || projectId;
-    
+
     if (!useProjectId) {
 
       setTestRuns([]);
@@ -28,12 +28,14 @@ export const useTestRuns = (projectId?: string | null) => {
       return;
     }
 
+    const apiProjectId = useProjectId === 'all' ? undefined : useProjectId;
+
     try {
       setLoading(true);
       setError(null);
 
       let response: TestRunsApiResponse = await testRunsApiService.getTestRuns(
-        useProjectId,
+        apiProjectId,
         page,
         30
       );
@@ -78,10 +80,12 @@ export const useTestRuns = (projectId?: string | null) => {
   }, [projectId]);
 
   const searchTestRuns = useCallback(async (searchTerm: string, page: number = 1) => {
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestRuns([]);
       return;
     }
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
 
     try {
       setLoading(true);
@@ -89,7 +93,7 @@ export const useTestRuns = (projectId?: string | null) => {
 
       let response: TestRunsApiResponse = await testRunsApiService.searchTestRuns(
         searchTerm,
-        projectId,
+        apiProjectId,
         page,
         30
       );
@@ -129,10 +133,12 @@ export const useTestRuns = (projectId?: string | null) => {
   }, [projectId]);
 
   const filterTestRunsByAssignee = useCallback(async (assigneeId: string, page: number = 1) => {
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestRuns([]);
       return;
     }
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
 
     try {
       setLoading(true);
@@ -140,7 +146,7 @@ export const useTestRuns = (projectId?: string | null) => {
 
       let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsByAssignee(
         assigneeId,
-        projectId,
+        apiProjectId,
         page,
         30
       );
@@ -180,10 +186,12 @@ export const useTestRuns = (projectId?: string | null) => {
   }, [projectId]);
 
   const filterTestRunsByState = useCallback(async (state: string, page: number = 1) => {
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestRuns([]);
       return;
     }
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
 
     try {
       setLoading(true);
@@ -191,7 +199,7 @@ export const useTestRuns = (projectId?: string | null) => {
 
       let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsByState(
         state,
-        projectId,
+        apiProjectId,
         page,
         30
       );
@@ -234,10 +242,12 @@ export const useTestRuns = (projectId?: string | null) => {
     assignee?: string;
     state?: string;
   }, page: number = 1) => {
-    if (!projectId || projectId === 'all') {
+    if (!projectId) {
       setTestRuns([]);
       return;
     }
+
+    const apiProjectId = projectId === 'all' ? undefined : projectId;
 
     try {
       setLoading(true);
@@ -245,7 +255,7 @@ export const useTestRuns = (projectId?: string | null) => {
 
       let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsWithMultipleFilters(
         filters,
-        projectId,
+        apiProjectId,
         page,
         30
       );
@@ -410,11 +420,11 @@ export const useTestRuns = (projectId?: string | null) => {
     previousProjectId.current = projectId;
 
     // Load test runs ONLY if we have a project AND the project changed
-    if (projectId && projectId !== 'all' && projectChanged) {
+    if (projectId && projectChanged) {
 
       fetchTestRuns(1, projectId);
-    } else if (!projectId || projectId === 'all') {
-      // No project selected or all projects selected
+    } else if (!projectId) {
+      // No project selected
 
       setTestRuns([]);
       setLoading(false);

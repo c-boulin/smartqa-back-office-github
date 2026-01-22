@@ -20,7 +20,7 @@ export const useSharedSteps = (projectId?: string | null) => {
   // Stable fetchSharedSteps function
   const fetchSharedSteps = useCallback(async (page: number = 1, targetProjectId?: string) => {
     const useProjectId = targetProjectId || projectId;
-    
+
     if (!useProjectId) {
 
       setSharedSteps([]);
@@ -28,12 +28,14 @@ export const useSharedSteps = (projectId?: string | null) => {
       return;
     }
 
+    const apiProjectId = useProjectId === 'all' ? undefined : useProjectId;
+
     try {
       setLoading(true);
       setError(null);
 
       let response: SharedStepsApiResponse = await sharedStepsApiService.getSharedSteps(
-        useProjectId,
+        apiProjectId,
         page,
         30
       );
@@ -216,11 +218,11 @@ export const useSharedSteps = (projectId?: string | null) => {
     previousProjectId.current = projectId;
 
     // Load shared steps ONLY if we have a project AND the project changed
-    if (projectId && projectId !== 'all' && projectChanged) {
+    if (projectId && projectChanged) {
 
       fetchSharedSteps(1, projectId);
-    } else if (!projectId || projectId === 'all') {
-      // No project selected or all projects selected
+    } else if (!projectId) {
+      // No project selected
 
       setSharedSteps([]);
       setLoading(false);

@@ -22,12 +22,14 @@ export const useTestPlans = (projectId?: string | null) => {
   // Stable fetchTestPlans function
   const fetchTestPlans = useCallback(async (page: number = 1, targetProjectId?: string, userId?: string) => {
     const useProjectId = targetProjectId || projectId;
-    
+
     // Prevent multiple simultaneous requests
     if (isLoadingRef.current) {
 
       return;
     }
+
+    const apiProjectId = useProjectId === 'all' ? undefined : useProjectId;
 
     try {
       isLoadingRef.current = true;
@@ -35,7 +37,7 @@ export const useTestPlans = (projectId?: string | null) => {
       setError(null);
 
       let response: TestPlansApiResponse = await testPlansApiService.getTestPlans(
-        useProjectId, // Filter by project ID
+        apiProjectId, // Filter by project ID
         page,
         30,
         userId // Filter by user ID
@@ -253,9 +255,9 @@ export const useTestPlans = (projectId?: string | null) => {
     // Update refs BEFORE doing anything
     previousProjectId.current = projectId;
 
-    // Load test plans ONLY if the project changed and it's not 'all'
+    // Load test plans ONLY if the project changed
     if (projectChanged) {
-      if (projectId && projectId !== 'all') {
+      if (projectId) {
         fetchTestPlans(1, projectId);
       } else {
         setTestPlans([]);
