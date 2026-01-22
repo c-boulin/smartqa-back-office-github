@@ -427,19 +427,7 @@ const Sidebar: React.FC = () => {
 
                 {/* Dropdown Items */}
                 <div>
-                  {/* All Projects Option - Always on top */}
-                  <button
-                    onClick={() => handleProjectSelect('all-projects')}
-                    className={`w-full px-4 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-b border-slate-200 dark:border-slate-700 ${
-                      state.selectedProjectId === 'all'
-                        ? 'bg-slate-200 dark:bg-slate-700 text-cyan-600 dark:text-cyan-400'
-                        : 'text-slate-900 dark:text-white'
-                    }`}
-                  >
-                    {state.selectedProjectId === 'all' ? '✓ ' : '🌐 '}All Projects
-                  </button>
-
-                  {/* See all projects (navigate to projects page) */}
+                  {/* See all projects (navigate to projects page) - Always on top */}
                   <button
                     onClick={() => handleProjectSelect('see-all')}
                     className={`w-full px-4 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-b border-slate-200 dark:border-slate-700 ${
@@ -449,6 +437,21 @@ const Sidebar: React.FC = () => {
                     }`}
                   >
                     {location.pathname === '/projects' ? '✓ ' : '📋 '}See all projects
+                  </button>
+
+                  {/* Separator */}
+                  <div className="border-b-2 border-slate-300 dark:border-slate-600"></div>
+
+                  {/* All Projects Option */}
+                  <button
+                    onClick={() => handleProjectSelect('all-projects')}
+                    className={`w-full px-4 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-b border-slate-200 dark:border-slate-700 ${
+                      state.selectedProjectId === 'all'
+                        ? 'bg-slate-200 dark:bg-slate-700 text-cyan-600 dark:text-cyan-400'
+                        : 'text-slate-900 dark:text-white'
+                    }`}
+                  >
+                    {state.selectedProjectId === 'all' ? '✓ ' : '🌐 '}All Projects
                   </button>
 
                   {filteredProjects.length > 0 && (
