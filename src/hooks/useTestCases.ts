@@ -33,9 +33,8 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   // Initial load - fetch all test cases for project and extract folders
   const fetchAllTestCasesAndExtractFolders = useCallback(async (targetProjectId?: string, initialFilters?: Record<string, unknown>) => {
     const useProjectId = targetProjectId || projectId;
-    
-    if (!useProjectId) {
 
+    if (!useProjectId || useProjectId === 'all') {
       setTestCases([]);
       setAllTestCases([]);
       setLoading(false);
@@ -379,7 +378,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   const showFolderTestCases = useCallback(async (targetFolderId?: string | null, page: number = 1) => {
     const useFolderId = targetFolderId !== undefined ? targetFolderId : folderId;
 
-    if (!projectId) {
+    if (!projectId || projectId === 'all') {
       setTestCases([]);
       return;
     }
@@ -421,7 +420,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId, folderId]);
 
   const searchTestCases = useCallback(async (searchTerm: string, page: number = 1, _globalSearch: boolean = false) => {
-    if (!projectId) {
+    if (!projectId || projectId === 'all') {
       setTestCases([]);
       return;
     }
@@ -474,7 +473,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId]); // Remove folderId dependency
 
   const filterTestCasesByAutomation = useCallback(async (automationStatus: 1 | 2 | 3 | 4 | 5, page: number = 1) => {
-    if (!projectId) {
+    if (!projectId || projectId === 'all') {
       setTestCases([]);
       return;
     }
@@ -527,7 +526,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId, folderId]);
 
   const filterTestCasesByTags = useCallback(async (tagIds: string[], page: number = 1) => {
-    if (!projectId) {
+    if (!projectId || projectId === 'all') {
       setTestCases([]);
       return;
     }
@@ -580,7 +579,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId, folderId]);
 
   const filterTestCasesByState = useCallback(async (state: 'draft' | 'active' | 'deprecated', page: number = 1) => {
-    if (!projectId) {
+    if (!projectId || projectId === 'all') {
       setTestCases([]);
       return;
     }
@@ -633,7 +632,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId, folderId]);
 
   const filterTestCasesByPriority = useCallback(async (priority: number, page: number = 1) => {
-    if (!projectId) {
+    if (!projectId || projectId === 'all') {
       setTestCases([]);
       return;
     }
@@ -686,7 +685,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId, folderId]);
 
   const filterTestCasesByType = useCallback(async (type: number, page: number = 1) => {
-    if (!projectId) {
+    if (!projectId || projectId === 'all') {
       setTestCases([]);
       return;
     }
@@ -745,7 +744,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
     state?: number;
     tagIds?: string[];
   }, page: number = 1) => {
-    if (!projectId) {
+    if (!projectId || projectId === 'all') {
       setTestCases([]);
       return;
     }
@@ -1345,13 +1344,13 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
 
     previousProjectId.current = projectId;
 
-    if (projectId && projectChanged && !skipInitialLoad) {
+    if (projectId && projectId !== 'all' && projectChanged && !skipInitialLoad) {
 
       hasInitialLoad.current = false;
       // Only do initial load if we don't have filters applied from navigation
       // The parent component will handle the initial load with filters if needed
       fetchAllTestCasesAndExtractFolders(projectId);
-    } else if (!projectId) {
+    } else if (!projectId || projectId === 'all') {
 
       setTestCases([]);
       setAllTestCases([]);

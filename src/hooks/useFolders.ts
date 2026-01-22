@@ -19,7 +19,7 @@ export const useFolders = (projectId?: string | null) => {
   const updateFoldersFromTestCases = useCallback(async (extractedFolders: Array<Record<string, unknown>>, forceProjectId?: string) => {
     const targetProjectId = forceProjectId || projectId;
 
-    if (!targetProjectId) {
+    if (!targetProjectId || targetProjectId === 'all') {
 
       setFolders([]);
       setFolderTree([]);
@@ -77,8 +77,8 @@ export const useFolders = (projectId?: string | null) => {
   // Fonction fetchFolders stable qui ne change pas à chaque render
   const fetchFolders = useCallback(async (forceProjectId?: string) => {
     const targetProjectId = forceProjectId || projectId;
-    
-    if (!targetProjectId) {
+
+    if (!targetProjectId || targetProjectId === 'all') {
 
       setFolders([]);
       setFolderTree([]);

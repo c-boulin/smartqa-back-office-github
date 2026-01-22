@@ -253,10 +253,14 @@ export const useTestPlans = (projectId?: string | null) => {
     // Update refs BEFORE doing anything
     previousProjectId.current = projectId;
 
-    // Load test plans ONLY if the project changed
+    // Load test plans ONLY if the project changed and it's not 'all'
     if (projectChanged) {
-
-      fetchTestPlans(1, projectId || undefined);
+      if (projectId && projectId !== 'all') {
+        fetchTestPlans(1, projectId);
+      } else {
+        setTestPlans([]);
+        setLoading(false);
+      }
     } else {
       // Same project, do nothing
 

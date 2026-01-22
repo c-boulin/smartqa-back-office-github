@@ -18,7 +18,7 @@ import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
 
 const SharedSteps: React.FC = () => {
-  const { getSelectedProject } = useApp();
+  const { getSelectedProject, state: appState } = useApp();
   const { hasPermission } = usePermissions();
   const { state: authState } = useAuth();
   const selectedProject = getSelectedProject();
@@ -27,18 +27,18 @@ const SharedSteps: React.FC = () => {
                        hasPermission(PERMISSIONS.SHARED_STEP.DELETE);
 
   useRestoreLastProject();
-  
-  const { 
-    sharedSteps, 
-    loading, 
-    error, 
-    pagination, 
-    fetchSharedSteps, 
+
+  const {
+    sharedSteps,
+    loading,
+    error,
+    pagination,
+    fetchSharedSteps,
     searchSharedSteps,
-    createSharedStep, 
-    updateSharedStep, 
-    deleteSharedStep 
-  } = useSharedSteps(selectedProject?.id);
+    createSharedStep,
+    updateSharedStep,
+    deleteSharedStep
+  } = useSharedSteps(appState.selectedProjectId);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');

@@ -54,7 +54,7 @@ const TestRuns: React.FC = () => {
     updateTestRun, 
     deleteTestRun,
     closeTestRun
-  } = useTestRuns(selectedProject?.id);
+  } = useTestRuns(appState.selectedProjectId);
 
   const {
     filters,

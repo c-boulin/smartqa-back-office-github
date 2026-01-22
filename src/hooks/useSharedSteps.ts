@@ -216,11 +216,11 @@ export const useSharedSteps = (projectId?: string | null) => {
     previousProjectId.current = projectId;
 
     // Load shared steps ONLY if we have a project AND the project changed
-    if (projectId && projectChanged) {
+    if (projectId && projectId !== 'all' && projectChanged) {
 
       fetchSharedSteps(1, projectId);
-    } else if (!projectId) {
-      // No project selected
+    } else if (!projectId || projectId === 'all') {
+      // No project selected or all projects selected
 
       setSharedSteps([]);
       setLoading(false);

@@ -40,11 +40,11 @@ const TestCases: React.FC = () => {
   const selectedProject = getSelectedProject();
 
   useRestoreLastProject();
-  
+
   // Use tags from app context
   const tags = appState.tags;
   const tagsLoading = appState.isLoadingTags;
-  
+
   const {
     folderTree,
     loading: foldersLoading,
@@ -52,7 +52,7 @@ const TestCases: React.FC = () => {
     selectFolder,
     getSelectedFolder,
     updateFoldersFromTestCases
-  } = useFolders(selectedProject?.id);
+  } = useFolders(appState.selectedProjectId);
 
   const {
     filters,
@@ -104,7 +104,7 @@ const TestCases: React.FC = () => {
     createTestCase,
     updateTestCase,
     deleteTestCase
-  } = useTestCases(selectedProject?.id, selectedFolderId, updateFoldersFromTestCases, false, tags);
+  } = useTestCases(appState.selectedProjectId, selectedFolderId, updateFoldersFromTestCases, false, tags);
 
   const { hasPendingNavigationFilter, isApplyingNavigationFilter } = useTestCasesNavigation(
     selectedProject,
