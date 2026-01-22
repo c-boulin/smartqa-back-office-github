@@ -342,7 +342,7 @@ const SharedSteps: React.FC = () => {
       </div>
 
       {/* Show message if no project selected */}
-      {!selectedProject && (
+      {!appState.selectedProjectId && (
         <Card className="p-8 text-center">
           <div className="text-slate-600 dark:text-gray-400 mb-4">
             <Layers className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -353,7 +353,7 @@ const SharedSteps: React.FC = () => {
       )}
 
       {/* Only show content if project is selected */}
-      {selectedProject && (
+      {appState.selectedProjectId && (
         <>
           {/* Search */}
           <Card className="p-6">

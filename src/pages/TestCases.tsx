@@ -887,7 +887,7 @@ const TestCases: React.FC = () => {
       />
 
       {/* Show message if no project selected */}
-      {!selectedProject && (
+      {!appState.selectedProjectId && (
         <Card className="p-8 text-center">
           <div className="text-slate-600 dark:text-gray-400 mb-4">
             <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -898,7 +898,7 @@ const TestCases: React.FC = () => {
       )}
 
       {/* Only show content if project is selected */}
-      {selectedProject && (
+      {appState.selectedProjectId && (
         <div className="flex gap-4">
           <TestCasesFolderSidebar
             folderTree={folderTree}
