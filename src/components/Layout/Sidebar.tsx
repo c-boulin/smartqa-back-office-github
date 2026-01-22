@@ -50,7 +50,8 @@ const Sidebar: React.FC = () => {
       path: '/overview',
       icon: Activity,
       label: 'Overview',
-      permissions: []
+      permissions: [],
+      showOnlyForAllProjects: true
     },
     {
       path: '/test-cases',
@@ -94,8 +95,14 @@ const Sidebar: React.FC = () => {
     const hasAccess = item.permissions.length === 0 || hasAnyPermission(item.permissions);
     if (!hasAccess) {
       console.log(`🚫 Filtered out: ${item.label} (requires: ${item.permissions.join(', ')})`);
+      return false;
     }
-    return hasAccess;
+
+    if (item.showOnlyForAllProjects && state.selectedProjectId !== 'all') {
+      return false;
+    }
+
+    return true;
   });
 
   useEffect(() => {
@@ -196,7 +203,10 @@ const Sidebar: React.FC = () => {
     setIsDropdownOpen(false);
     setSearchTerm('');
 
-    if (value === 'all') {
+    if (value === 'all-projects') {
+      dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: 'all' });
+      navigate('/overview');
+    } else if (value === 'see-all') {
       dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: null });
       navigate('/projects');
     } else {
@@ -252,6 +262,10 @@ const Sidebar: React.FC = () => {
   
   const getSelectedProjectName = () => {
     if (location.pathname === '/projects') {
+      return 'Manage Projects';
+    }
+
+    if (state.selectedProjectId === 'all') {
       return 'All Projects';
     }
 
@@ -277,7 +291,7 @@ const Sidebar: React.FC = () => {
   };
 
   const getProjectFilterInfo = () => {
-    if (location.pathname === '/projects') {
+    if (location.pathname === '/projects' || state.selectedProjectId === 'all') {
       return null;
     }
 
@@ -358,12 +372,12 @@ const Sidebar: React.FC = () => {
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className={`w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 focus:border-transparent hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors text-left flex items-center justify-between ${
-                getSelectedProject() || location.pathname === '/projects' ? 'border-cyan-500 bg-slate-200 dark:border-cyan-500/50 dark:bg-slate-700/50' : ''
+                getSelectedProject() || state.selectedProjectId === 'all' || location.pathname === '/projects' ? 'border-cyan-500 bg-slate-200 dark:border-cyan-500/50 dark:bg-slate-700/50' : ''
               }`}
               disabled={state.isLoadingProjects}
             >
               <span className="truncate">
-                {getSelectedProject() || location.pathname === '/projects' ? (
+                {getSelectedProject() || state.selectedProjectId === 'all' || location.pathname === '/projects' ? (
                   <>
                     <span className="text-cyan-600 dark:text-cyan-400">📁 </span>
                     <span className="text-slate-900 dark:text-white">{getSelectedProjectName()}</span>
@@ -413,16 +427,28 @@ const Sidebar: React.FC = () => {
 
                 {/* Dropdown Items */}
                 <div>
-                  {/* View All Projects - Always on top */}
+                  {/* All Projects Option - Always on top */}
                   <button
-                    onClick={() => handleProjectSelect('all')}
+                    onClick={() => handleProjectSelect('all-projects')}
+                    className={`w-full px-4 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-b border-slate-200 dark:border-slate-700 ${
+                      state.selectedProjectId === 'all'
+                        ? 'bg-slate-200 dark:bg-slate-700 text-cyan-600 dark:text-cyan-400'
+                        : 'text-slate-900 dark:text-white'
+                    }`}
+                  >
+                    {state.selectedProjectId === 'all' ? '✓ ' : '🌐 '}All Projects
+                  </button>
+
+                  {/* See all projects (navigate to projects page) */}
+                  <button
+                    onClick={() => handleProjectSelect('see-all')}
                     className={`w-full px-4 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-b border-slate-200 dark:border-slate-700 ${
                       location.pathname === '/projects'
                         ? 'bg-slate-200 dark:bg-slate-700 text-cyan-600 dark:text-cyan-400'
                         : 'text-slate-900 dark:text-white'
                     }`}
                   >
-                    {location.pathname === '/projects' ? '✓ ' : '🌐 '}View all projects
+                    {location.pathname === '/projects' ? '✓ ' : '📋 '}See all projects
                   </button>
 
                   {filteredProjects.length > 0 && (
