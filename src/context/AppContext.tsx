@@ -324,13 +324,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const currentSelectedProjectId = stateRef.current.selectedProjectId;
       if (!currentSelectedProjectId && allProjects.length > 0) {
         const storedProjectId = getStoredSelectedProjectId();
-        if (storedProjectId && storedProjectId === 'all') {
-          dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: 'all' });
-        } else if (storedProjectId && allProjects.some(p => p.id === storedProjectId)) {
+        if (storedProjectId && allProjects.some(p => p.id === storedProjectId)) {
           dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: storedProjectId });
         } else {
-          // Auto-select "All Projects" by default
-          dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: 'all' });
+          // Auto-select the first project (most recently created since we order by createdAt desc)
+          dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: allProjects[0].id });
         }
       } else if (allProjects.length === 0) {
         // No projects exist, clear any selected project
@@ -351,22 +349,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Helper functions for filtered data
   const getFilteredTestCases = useCallback(() => {
-    if (!state.selectedProjectId || state.selectedProjectId === 'all') return state.testCases;
+    if (!state.selectedProjectId) return state.testCases;
     return state.testCases.filter(tc => tc.projectId === state.selectedProjectId);
   }, [state.selectedProjectId, state.testCases]);
 
   const getFilteredTestExecutions = useCallback(() => {
-    if (!state.selectedProjectId || state.selectedProjectId === 'all') return state.testExecutions;
+    if (!state.selectedProjectId) return state.testExecutions;
     return state.testExecutions.filter(te => te.projectId === state.selectedProjectId);
   }, [state.selectedProjectId, state.testExecutions]);
 
   const getFilteredTestPlans = useCallback(() => {
-    if (!state.selectedProjectId || state.selectedProjectId === 'all') return state.testPlans;
+    if (!state.selectedProjectId) return state.testPlans;
     return state.testPlans.filter(tp => tp.projectId === state.selectedProjectId);
   }, [state.selectedProjectId, state.testPlans]);
 
   const getSelectedProject = useCallback(() => {
-    if (!state.selectedProjectId || state.selectedProjectId === 'all') return null;
+    if (!state.selectedProjectId) return null;
     return state.projects.find(p => p.id === state.selectedProjectId) || null;
   }, [state.selectedProjectId, state.projects]);
 

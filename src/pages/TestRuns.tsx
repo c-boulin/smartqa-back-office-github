@@ -54,7 +54,7 @@ const TestRuns: React.FC = () => {
     updateTestRun, 
     deleteTestRun,
     closeTestRun
-  } = useTestRuns(appState.selectedProjectId);
+  } = useTestRuns(selectedProject?.id);
 
   const {
     filters,
@@ -577,7 +577,7 @@ const TestRuns: React.FC = () => {
       </div>
 
       {/* Show message if no project selected */}
-      {!appState.selectedProjectId && (
+      {!selectedProject && (
         <Card className="p-8 text-center">
           <div className="text-slate-600 dark:text-gray-400 mb-4">
             <Play className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -588,7 +588,7 @@ const TestRuns: React.FC = () => {
       )}
 
       {/* Only show content if project is selected */}
-      {appState.selectedProjectId && (
+      {selectedProject && (
         <>
           {/* Tabs */}
           <Card className="p-0 overflow-hidden">

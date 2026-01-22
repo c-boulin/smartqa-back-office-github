@@ -18,7 +18,7 @@ import PermissionGuard from '../components/PermissionGuard';
 import toast from 'react-hot-toast';
 
 const TestPlans: React.FC = () => {
-  const { getSelectedProject, state: appState } = useApp();
+  const { getSelectedProject } = useApp();
   // const { state: authState } = useAuth();
   const navigate = useNavigate();
   const { users } = useUsers();
@@ -29,7 +29,7 @@ const TestPlans: React.FC = () => {
                        hasPermission(PERMISSIONS.TEST_PLAN.DELETE);
 
   useRestoreLastProject();
-
+  
   const {
     testPlans,
     loading,
@@ -41,7 +41,7 @@ const TestPlans: React.FC = () => {
     updateTestPlan,
     updateTestPlanStatus,
     deleteTestPlan
-  } = useTestPlans(appState.selectedProjectId);
+  } = useTestPlans(selectedProject?.id);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');

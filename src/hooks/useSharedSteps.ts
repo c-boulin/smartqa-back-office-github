@@ -20,7 +20,7 @@ export const useSharedSteps = (projectId?: string | null) => {
   // Stable fetchSharedSteps function
   const fetchSharedSteps = useCallback(async (page: number = 1, targetProjectId?: string) => {
     const useProjectId = targetProjectId || projectId;
-
+    
     if (!useProjectId) {
 
       setSharedSteps([]);
@@ -28,14 +28,12 @@ export const useSharedSteps = (projectId?: string | null) => {
       return;
     }
 
-    const apiProjectId = useProjectId === 'all' ? undefined : useProjectId;
-
     try {
       setLoading(true);
       setError(null);
 
       let response: SharedStepsApiResponse = await sharedStepsApiService.getSharedSteps(
-        apiProjectId,
+        useProjectId,
         page,
         30
       );

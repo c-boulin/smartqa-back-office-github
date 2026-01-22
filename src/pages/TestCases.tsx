@@ -40,11 +40,11 @@ const TestCases: React.FC = () => {
   const selectedProject = getSelectedProject();
 
   useRestoreLastProject();
-
+  
   // Use tags from app context
   const tags = appState.tags;
   const tagsLoading = appState.isLoadingTags;
-
+  
   const {
     folderTree,
     loading: foldersLoading,
@@ -52,7 +52,7 @@ const TestCases: React.FC = () => {
     selectFolder,
     getSelectedFolder,
     updateFoldersFromTestCases
-  } = useFolders(appState.selectedProjectId);
+  } = useFolders(selectedProject?.id);
 
   const {
     filters,
@@ -104,7 +104,7 @@ const TestCases: React.FC = () => {
     createTestCase,
     updateTestCase,
     deleteTestCase
-  } = useTestCases(appState.selectedProjectId, selectedFolderId, updateFoldersFromTestCases, false, tags);
+  } = useTestCases(selectedProject?.id, selectedFolderId, updateFoldersFromTestCases, false, tags);
 
   const { hasPendingNavigationFilter, isApplyingNavigationFilter } = useTestCasesNavigation(
     selectedProject,
@@ -887,7 +887,7 @@ const TestCases: React.FC = () => {
       />
 
       {/* Show message if no project selected */}
-      {!appState.selectedProjectId && (
+      {!selectedProject && (
         <Card className="p-8 text-center">
           <div className="text-slate-600 dark:text-gray-400 mb-4">
             <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -898,7 +898,7 @@ const TestCases: React.FC = () => {
       )}
 
       {/* Only show content if project is selected */}
-      {appState.selectedProjectId && (
+      {selectedProject && (
         <div className="flex gap-4">
           <TestCasesFolderSidebar
             folderTree={folderTree}

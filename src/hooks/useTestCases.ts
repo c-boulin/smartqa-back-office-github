@@ -33,29 +33,27 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   // Initial load - fetch all test cases for project and extract folders
   const fetchAllTestCasesAndExtractFolders = useCallback(async (targetProjectId?: string, initialFilters?: Record<string, unknown>) => {
     const useProjectId = targetProjectId || projectId;
-
+    
     if (!useProjectId) {
+
       setTestCases([]);
       setAllTestCases([]);
       setLoading(false);
       return;
     }
 
-    // Convert 'all' to undefined for API call
-    const apiProjectId = useProjectId === 'all' ? undefined : useProjectId;
-
     try {
       setLoading(true);
       setError(null);
-
+      
       if (initialFilters) {
         // Initial filters provided
       } else {
         // No initial filters
       }
-
+      
       let response: TestCasesApiResponse;
-
+      
       if (initialFilters) {
         // Fetch test cases and folders in parallel
         const [filteredResponse, firstPageResponse, foldersResponse] = await Promise.all([
@@ -63,10 +61,10 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
             initialFilters,
             1,
             30,
-            apiProjectId
+            useProjectId
           ),
-          testCasesApiService.getTestCases(1, 30, apiProjectId),
-          foldersApiService.getFolders(apiProjectId)
+          testCasesApiService.getTestCases(1, 30, useProjectId),
+          foldersApiService.getFolders(useProjectId)
         ]);
 
         response = filteredResponse;
@@ -83,11 +81,11 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         for (let page = 2; page <= totalPages; page++) {
 
           const pageResponse = await testCasesApiService.getTestCases(
-            page,
+            page, 
             30,
-            apiProjectId
+            useProjectId
           );
-
+          
           allTestCasesData = [...allTestCasesData, ...pageResponse.data];
         }
 
@@ -155,8 +153,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         const allFolders: Array<Record<string, unknown>> = [];
         for (const apiFolder of foldersResponse.data) {
           const folderProjectId = apiFolder.relationships.project.data.id.split('/').pop();
-          // Skip folder filtering if fetching all projects
-          if (apiProjectId && folderProjectId !== useProjectId) {
+          if (folderProjectId !== useProjectId) {
             continue;
           }
 
@@ -167,7 +164,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
             id: folderId,
             name: apiFolder.attributes.name,
             parentFolderId: parentId || null,
-            projectId: folderProjectId,
+            projectId: useProjectId,
             testCasesCount: folderCountMap.get(folderId) || 0
           });
         }
@@ -193,8 +190,8 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       } else {
         // Normal load - fetch test cases and folders in parallel
         const [firstPageResponse, foldersResponse] = await Promise.all([
-          testCasesApiService.getTestCases(1, 30, apiProjectId),
-          foldersApiService.getFolders(apiProjectId)
+          testCasesApiService.getTestCases(1, 30, useProjectId),
+          foldersApiService.getFolders(useProjectId)
         ]);
 
         response = firstPageResponse;
@@ -214,7 +211,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
             const pageResponse = await testCasesApiService.getTestCases(
               page,
               30,
-              apiProjectId
+              useProjectId
             );
 
             allTestCasesData = [...allTestCasesData, ...pageResponse.data];
@@ -288,8 +285,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         const allFolders: Array<Record<string, unknown>> = [];
         for (const apiFolder of foldersResponse.data) {
           const folderProjectId = apiFolder.relationships.project.data.id.split('/').pop();
-          // Skip folder filtering if fetching all projects
-          if (apiProjectId && folderProjectId !== useProjectId) {
+          if (folderProjectId !== useProjectId) {
             continue;
           }
 
@@ -300,7 +296,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
             id: folderId,
             name: apiFolder.attributes.name,
             parentFolderId: parentId || null,
-            projectId: folderProjectId,
+            projectId: useProjectId,
             testCasesCount: allFolderCountMap.get(folderId) || 0
           });
         }
@@ -387,18 +383,16 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       setTestCases([]);
       return;
     }
-
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
+    
     try {
       setLoading(true);
       setError(null);
-
+      
       // Make API call with pagination
       const response = await testCasesApiService.getTestCases(
-        page,
-        30,
-        apiProjectId,
+        page, 
+        30, 
+        projectId,
         useFolderId || undefined
       );
       
@@ -432,19 +426,17 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       return;
     }
 
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
     setCurrentFilterMode('search');
 
     try {
       setLoading(true);
       setError(null);
-
+      
       let response: TestCasesApiResponse = await testCasesApiService.searchTestCases(
-        searchTerm,
-        page,
-        30,
-        apiProjectId,
+        searchTerm, 
+        page, 
+        30, 
+        projectId,
         undefined // Always omit folderId for search to search across all folders
       );
       
@@ -487,19 +479,17 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       return;
     }
 
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
     setCurrentFilterMode('automation');
 
     try {
       setLoading(true);
       setError(null);
-
+      
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesByAutomation(
         automationStatus,
-        page,
-        30,
-        apiProjectId,
+        page, 
+        30, 
+        projectId,
         folderId
       );
       
@@ -542,19 +532,17 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       return;
     }
 
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
     setCurrentFilterMode('tags');
 
     try {
       setLoading(true);
       setError(null);
-
+      
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesByTags(
         tagIds,
-        page,
-        30,
-        apiProjectId,
+        page, 
+        30, 
+        projectId,
         folderId
       );
       
@@ -597,19 +585,17 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       return;
     }
 
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
     setCurrentFilterMode('state');
 
     try {
       setLoading(true);
       setError(null);
-
+      
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesByState(
         state,
-        page,
-        30,
-        apiProjectId,
+        page, 
+        30, 
+        projectId,
         folderId
       );
       
@@ -652,19 +638,17 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       return;
     }
 
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
     setCurrentFilterMode('priority');
 
     try {
       setLoading(true);
       setError(null);
-
+      
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesByPriority(
         priority,
-        page,
-        30,
-        apiProjectId,
+        page, 
+        30, 
+        projectId,
         folderId
       );
       
@@ -707,19 +691,17 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       return;
     }
 
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
     setCurrentFilterMode('type');
 
     try {
       setLoading(true);
       setError(null);
-
+      
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesByType(
         type,
-        page,
-        30,
-        apiProjectId,
+        page, 
+        30, 
+        projectId,
         folderId
       );
       
@@ -768,19 +750,17 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
       return;
     }
 
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
     setCurrentFilterMode('multiple');
 
     try {
       setLoading(true);
       setError(null);
-
+      
       let response: TestCasesApiResponse = await testCasesApiService.filterTestCasesWithMultipleFilters(
         filters,
-        page,
-        30,
-        apiProjectId,
+        page, 
+        30, 
+        projectId,
         folderId
       );
       

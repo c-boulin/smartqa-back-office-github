@@ -20,7 +20,7 @@ export const useTestRuns = (projectId?: string | null) => {
   // Stable fetchTestRuns function
   const fetchTestRuns = useCallback(async (page: number = 1, targetProjectId?: string) => {
     const useProjectId = targetProjectId || projectId;
-
+    
     if (!useProjectId) {
 
       setTestRuns([]);
@@ -28,14 +28,12 @@ export const useTestRuns = (projectId?: string | null) => {
       return;
     }
 
-    const apiProjectId = useProjectId === 'all' ? undefined : useProjectId;
-
     try {
       setLoading(true);
       setError(null);
 
       let response: TestRunsApiResponse = await testRunsApiService.getTestRuns(
-        apiProjectId,
+        useProjectId,
         page,
         30
       );
@@ -85,15 +83,13 @@ export const useTestRuns = (projectId?: string | null) => {
       return;
     }
 
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
     try {
       setLoading(true);
       setError(null);
 
       let response: TestRunsApiResponse = await testRunsApiService.searchTestRuns(
         searchTerm,
-        apiProjectId,
+        projectId,
         page,
         30
       );
@@ -138,15 +134,13 @@ export const useTestRuns = (projectId?: string | null) => {
       return;
     }
 
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
     try {
       setLoading(true);
       setError(null);
 
       let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsByAssignee(
         assigneeId,
-        apiProjectId,
+        projectId,
         page,
         30
       );
@@ -191,15 +185,13 @@ export const useTestRuns = (projectId?: string | null) => {
       return;
     }
 
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
     try {
       setLoading(true);
       setError(null);
 
       let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsByState(
         state,
-        apiProjectId,
+        projectId,
         page,
         30
       );
@@ -247,15 +239,13 @@ export const useTestRuns = (projectId?: string | null) => {
       return;
     }
 
-    const apiProjectId = projectId === 'all' ? undefined : projectId;
-
     try {
       setLoading(true);
       setError(null);
 
       let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsWithMultipleFilters(
         filters,
-        apiProjectId,
+        projectId,
         page,
         30
       );

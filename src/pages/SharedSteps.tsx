@@ -18,7 +18,7 @@ import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
 
 const SharedSteps: React.FC = () => {
-  const { getSelectedProject, state: appState } = useApp();
+  const { getSelectedProject } = useApp();
   const { hasPermission } = usePermissions();
   const { state: authState } = useAuth();
   const selectedProject = getSelectedProject();
@@ -27,18 +27,18 @@ const SharedSteps: React.FC = () => {
                        hasPermission(PERMISSIONS.SHARED_STEP.DELETE);
 
   useRestoreLastProject();
-
-  const {
-    sharedSteps,
-    loading,
-    error,
-    pagination,
-    fetchSharedSteps,
+  
+  const { 
+    sharedSteps, 
+    loading, 
+    error, 
+    pagination, 
+    fetchSharedSteps, 
     searchSharedSteps,
-    createSharedStep,
-    updateSharedStep,
-    deleteSharedStep
-  } = useSharedSteps(appState.selectedProjectId);
+    createSharedStep, 
+    updateSharedStep, 
+    deleteSharedStep 
+  } = useSharedSteps(selectedProject?.id);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
@@ -342,7 +342,7 @@ const SharedSteps: React.FC = () => {
       </div>
 
       {/* Show message if no project selected */}
-      {!appState.selectedProjectId && (
+      {!selectedProject && (
         <Card className="p-8 text-center">
           <div className="text-slate-600 dark:text-gray-400 mb-4">
             <Layers className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -353,7 +353,7 @@ const SharedSteps: React.FC = () => {
       )}
 
       {/* Only show content if project is selected */}
-      {appState.selectedProjectId && (
+      {selectedProject && (
         <>
           {/* Search */}
           <Card className="p-6">
