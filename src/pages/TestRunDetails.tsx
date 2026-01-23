@@ -272,7 +272,7 @@ interface TestCaseWithExecution {
 }
 
 const TestRunDetails: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: testRunId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const testPlanIdFromUrl = searchParams.get('testPlanId') || undefined;
@@ -342,8 +342,8 @@ const TestRunDetails: React.FC = () => {
     let isCancelled = false;
 
     const loadData = async () => {
-      if (id && !isCancelled) {
-        await fetchTestRunDetails(id);
+      if (testRunId && !isCancelled) {
+        await fetchTestRunDetails(testRunId);
       }
     };
 
@@ -352,7 +352,7 @@ const TestRunDetails: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [id]);
+  }, [testRunId]);
 
   const fetchTestRunDetails = async (testRunId: string) => {
     // Prevent duplicate requests
@@ -543,7 +543,7 @@ const TestRunDetails: React.FC = () => {
   };
 
   const handleExecutionResultChange = async (testCaseId: string, newResultId: TestResultId, comment?: string, configurationId?: string) => {
-    if (!testRun || !id || isTestRunClosed) {
+    if (!testRun || !testRunId || isTestRunClosed) {
       if (isTestRunClosed) {
         toast.error('Cannot update execution results for closed test runs');
       }
@@ -551,7 +551,7 @@ const TestRunDetails: React.FC = () => {
     }
 
     const newResultLabel = TEST_RESULTS[newResultId];
-    const updateKey = `${testCaseId}-${configurationId || 'default'}-${id}`;
+    const updateKey = `${testCaseId}-${configurationId || 'default'}-${testRunId}`;
 
     try {
       // Add to updating set to show loading state
@@ -566,7 +566,7 @@ const TestRunDetails: React.FC = () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- API response needed for error handling
       const response = await testCaseExecutionsApiService.createTestCaseExecution({
         testCaseId,
-        testRunId: id,
+        testRunId: testRunId,
         result: newResultId,
         comment: comment || undefined,
         configurationId: configurationId
@@ -598,7 +598,7 @@ const TestRunDetails: React.FC = () => {
         // All test cases passed (including single test case), move test run to "Done" (state 5)
         // This will also update the test plan to "Done" via updateTestRunState
         try {
-          await testRunsApiService.updateTestRunState(id, 5, testRun.testPlanId || testPlanIdFromUrl);
+          await testRunsApiService.updateTestRunState(testRunId, 5, testRun.testPlanId || testPlanIdFromUrl);
           setTestRun({ ...testRun, state: 5 });
 
           toast.success(`Execution result updated to ${newResultLabel}`);
@@ -610,7 +610,7 @@ const TestRunDetails: React.FC = () => {
         // Test run was "Done" but now not all test cases are passed - move back to "In Progress" (state 2)
         // This will also update the test plan to "In Progress" via updateTestRunState
         try {
-          await testRunsApiService.updateTestRunState(id, 2, testRun.testPlanId || testPlanIdFromUrl);
+          await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId || testPlanIdFromUrl);
           setTestRun({ ...testRun, state: 2 });
           toast.success(`Execution result updated to ${newResultLabel}`);
         } catch (error) {
@@ -621,7 +621,7 @@ const TestRunDetails: React.FC = () => {
         // First execution created but not all passed - move to "In Progress" (state 2)
         // This will also update the test plan to "In Progress" via updateTestRunState
         try {
-          await testRunsApiService.updateTestRunState(id, 2, testRun.testPlanId || testPlanIdFromUrl);
+          await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId || testPlanIdFromUrl);
           setTestRun({ ...testRun, state: 2 });
           toast.success(`Execution result updated to ${newResultLabel}`);
         } catch (error) {
@@ -1158,7 +1158,9 @@ const TestRunDetails: React.FC = () => {
         })) || []}
         isLoading={loading}
         onExecutionComplete={() => {
-          fetchTestRun();
+          if (testRunId) {
+            fetchTestRunDetails(testRunId);
+          }
         }}
       />
     </div>
