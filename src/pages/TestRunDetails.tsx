@@ -1137,6 +1137,7 @@ const TestRunDetails: React.FC = () => {
           setSelectedTestCaseForRun(null);
         }}
         testRunName={testRun?.name || ''}
+        testRunId={testRunId}
         selectedTestCase={selectedTestCaseForRun ? {
           id: selectedTestCaseForRun.id,
           code: `TC-${selectedTestCaseForRun.fullTestCase?.projectRelativeId ?? selectedTestCaseForRun.id}`,
@@ -1156,6 +1157,9 @@ const TestRunDetails: React.FC = () => {
           userAgent: config.userAgent
         })) || []}
         isLoading={loading}
+        onExecutionComplete={() => {
+          fetchTestRun();
+        }}
       />
     </div>
   );

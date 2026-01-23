@@ -900,9 +900,13 @@ const TestRuns: React.FC = () => {
           setTestRunToRun(null);
         }}
         testRunName={testRunToRun?.name || ''}
+        testRunId={testRunToRun?.id}
         availableAutomatedTestCases={automatedTestCases}
         availableConfigurations={testRunConfigurations}
         isLoading={isLoadingRunModal}
+        onExecutionComplete={() => {
+          fetchTestRuns();
+        }}
       />
 
       <ConfirmDialog

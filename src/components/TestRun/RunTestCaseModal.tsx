@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
-import { Play, Loader } from 'lucide-react';
+import { Play, Loader, CheckCircle, XCircle } from 'lucide-react';
+import { testCaseExecutionsApiService } from '../../services/testCaseExecutionsApi';
+import toast from 'react-hot-toast';
 
 interface RunTestCaseModalProps {
   isOpen: boolean;
   onClose: () => void;
   testRunName: string;
+  testRunId?: string;
   selectedTestCase?: {
     id: string;
     code: string;
@@ -15,6 +18,7 @@ interface RunTestCaseModalProps {
   availableAutomatedTestCases?: TestCase[];
   availableConfigurations?: Configuration[];
   isLoading?: boolean;
+  onExecutionComplete?: () => void;
 }
 
 interface Service {
@@ -46,20 +50,33 @@ const mockServices: Service[] = [
   { id: '8', name: 'CH', url: 'https://www.fuzeforge.ch' },
 ];
 
+interface TestCaseProgress {
+  id: string;
+  code: string;
+  title: string;
+  progress: number;
+  status: 'pending' | 'running' | 'completed';
+  result?: 'passed' | 'failed';
+}
+
 const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
   isOpen,
   onClose,
   testRunName,
+  testRunId,
   selectedTestCase,
   availableAutomatedTestCases = [],
   availableConfigurations = [],
-  isLoading = false
+  isLoading = false,
+  onExecutionComplete
 }) => {
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const [selectedTestCases, setSelectedTestCases] = useState<Set<string>>(new Set());
   const [runLabel, setRunLabel] = useState('');
   const [selectAllTestCases, setSelectAllTestCases] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [testCasesProgress, setTestCasesProgress] = useState<TestCaseProgress[]>([]);
 
   // Initialize selected test case if provided and reset on close
   React.useEffect(() => {
@@ -70,12 +87,13 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
       setSelectedTestCases(new Set());
       setSelectAllTestCases(false);
     } else if (!isOpen) {
-      // Reset form when modal closes
       setSelectedService('');
       setSelectedDevice('');
       setSelectedTestCases(new Set());
       setRunLabel('');
       setSelectAllTestCases(false);
+      setIsExecuting(false);
+      setTestCasesProgress([]);
     }
   }, [isOpen, selectedTestCase]);
 
@@ -105,14 +123,111 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
     }
   };
 
-  const handleRunJob = () => {
-    console.log('Running job with:', {
-      service: selectedService,
-      device: selectedDevice,
-      testCases: Array.from(selectedTestCases),
-      runLabel
+  const simulateTestExecution = (
+    testCaseId: string,
+    onProgress: (progress: number) => void
+  ): Promise<void> => {
+    return new Promise((resolve) => {
+      const duration = Math.random() * 2000 + 3000;
+      const intervalTime = 50;
+      const totalSteps = duration / intervalTime;
+      let currentStep = 0;
+
+      const interval = setInterval(() => {
+        currentStep++;
+        const progress = Math.min((currentStep / totalSteps) * 100, 100);
+        onProgress(progress);
+
+        if (progress >= 100) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, intervalTime);
     });
-    onClose();
+  };
+
+  const handleRunJob = async () => {
+    if (!testRunId) {
+      toast.error('Test run ID is required');
+      return;
+    }
+
+    if (!selectedDevice) {
+      toast.error('Please select a device configuration');
+      return;
+    }
+
+    setIsExecuting(true);
+
+    const testCasesToRun = Array.from(selectedTestCases).map(id => {
+      const testCase = displayTestCases.find(tc => tc.id === id);
+      return {
+        id,
+        code: testCase?.code || id,
+        title: testCase?.title || 'Unknown',
+        progress: 0,
+        status: 'pending' as const,
+      };
+    });
+
+    setTestCasesProgress(testCasesToRun);
+
+    for (let i = 0; i < testCasesToRun.length; i++) {
+      const testCase = testCasesToRun[i];
+
+      setTestCasesProgress(prev =>
+        prev.map(tc =>
+          tc.id === testCase.id ? { ...tc, status: 'running' as const } : tc
+        )
+      );
+
+      await simulateTestExecution(testCase.id, (progress) => {
+        setTestCasesProgress(prev =>
+          prev.map(tc =>
+            tc.id === testCase.id ? { ...tc, progress } : tc
+          )
+        );
+      });
+
+      const randomResult = Math.random() < 0.5 ? 'passed' : 'failed';
+      const resultId = randomResult === 'passed' ? 1 : 2;
+
+      setTestCasesProgress(prev =>
+        prev.map(tc =>
+          tc.id === testCase.id
+            ? { ...tc, status: 'completed' as const, result: randomResult }
+            : tc
+        )
+      );
+
+      try {
+        await testCaseExecutionsApiService.createTestCaseExecution({
+          testCaseId: testCase.id,
+          testRunId: testRunId,
+          result: resultId,
+          configurationId: selectedDevice,
+          comment: runLabel || undefined,
+        });
+      } catch (error) {
+        console.error('Failed to create test case execution:', error);
+        toast.error(`Failed to save execution result for ${testCase.code}`);
+      }
+    }
+
+    const passedCount = testCasesProgress.filter(tc => tc.result === 'passed').length;
+    const failedCount = testCasesProgress.filter(tc => tc.result === 'failed').length;
+
+    toast.success(`Execution complete: ${passedCount} passed, ${failedCount} failed`);
+
+    if (onExecutionComplete) {
+      onExecutionComplete();
+    }
+
+    setTimeout(() => {
+      setIsExecuting(false);
+      setTestCasesProgress([]);
+      onClose();
+    }, 2000);
   };
 
   const isFormValid = !isLoading && selectedService && selectedDevice && selectedTestCases.size > 0;
@@ -122,8 +237,79 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
     : `Run Test Cases - ${testRunName}`;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
-      <div className="space-y-6">
+    <Modal isOpen={isOpen} onClose={isExecuting ? () => {} : onClose} title={modalTitle}>
+      {isExecuting ? (
+        <div className="space-y-4 py-4">
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+              Executing Test Cases
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-gray-400">
+              Running automated tests on selected device...
+            </p>
+          </div>
+
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {testCasesProgress.map((testCase) => (
+              <div
+                key={testCase.id}
+                className="border border-slate-300 dark:border-slate-600 rounded-lg p-4 bg-slate-50 dark:bg-slate-900"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900 dark:text-white">
+                      {testCase.code}
+                    </div>
+                    <div className="text-sm text-slate-600 dark:text-gray-400">
+                      {testCase.title}
+                    </div>
+                  </div>
+                  {testCase.status === 'completed' && testCase.result && (
+                    <div className="ml-4">
+                      {testCase.result === 'passed' ? (
+                        <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                          <CheckCircle className="w-5 h-5" />
+                          <span className="font-semibold">Passed</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                          <XCircle className="w-5 h-5" />
+                          <span className="font-semibold">Failed</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {testCase.status === 'running' && (
+                    <div className="ml-4">
+                      <Loader className="w-5 h-5 text-cyan-500 animate-spin" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className={`absolute top-0 left-0 h-full transition-all duration-200 rounded-full ${
+                      testCase.status === 'completed'
+                        ? testCase.result === 'passed'
+                          ? 'bg-green-500'
+                          : 'bg-red-500'
+                        : 'bg-cyan-500'
+                    }`}
+                    style={{ width: `${testCase.progress}%` }}
+                  />
+                </div>
+
+                {testCase.status === 'running' && (
+                  <div className="mt-2 text-xs text-slate-500 dark:text-gray-400 text-right">
+                    {Math.round(testCase.progress)}%
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
             Service <span className="text-cyan-500">*</span>
@@ -246,7 +432,8 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
             <span>Run Job Now</span>
           </Button>
         </div>
-      </div>
+        </div>
+      )}
     </Modal>
   );
 };
