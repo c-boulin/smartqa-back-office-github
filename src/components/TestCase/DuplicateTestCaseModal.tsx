@@ -115,14 +115,14 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!testCase || !selectedProjectId || !selectedFolderId) {
+    if (!testCase || !selectedProjectId) {
       return;
     }
 
     try {
       setIsSubmitting(true);
       await withLoading(
-        onDuplicate(testCase, selectedProjectId, selectedFolderId),
+        onDuplicate(testCase, selectedProjectId, selectedFolderId || ''),
         'Duplicating test case...'
       );
       onClose();
@@ -245,7 +245,7 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-sm font-medium text-slate-600 dark:text-gray-300">
-              Target Folder <span className="text-red-400">*</span>
+              Target Folder
             </label>
             <button
               type="button"
@@ -263,10 +263,23 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
             </div>
           ) : (
             <>
-              {selectedFolderId && selectedFolder && (
-                <div className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg p-3 mb-3">
+              {selectedFolderId && selectedFolder ? (
+                <div className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg p-3 mb-3 flex items-center justify-between">
                   <p className="text-sm text-slate-600 dark:text-gray-300">
                     Selected: <span className="text-slate-900 dark:text-white font-medium">{selectedFolder.name}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFolderId('')}
+                    className="text-xs text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg p-3 mb-3">
+                  <p className="text-sm text-slate-600 dark:text-gray-300">
+                    Selected: <span className="text-slate-900 dark:text-white font-medium">Project Root</span>
                   </p>
                 </div>
               )}
@@ -283,13 +296,13 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
                 </div>
               ) : (
                 <div className="text-center py-4 text-slate-500 dark:text-gray-400 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
-                  No folders available in this project. Please create a folder first.
+                  No folders available in this project.
                 </div>
               )}
             </>
           )}
           <p className="text-xs text-slate-500 dark:text-gray-400 mt-2">
-            A folder must be selected to duplicate the test case.
+            Select a folder or leave unselected to place at project root.
           </p>
         </div>
 
@@ -305,7 +318,7 @@ const DuplicateTestCaseModal: React.FC<DuplicateTestCaseModalProps> = ({
           <Button
             type="submit"
             variant="primary"
-            disabled={isSubmitting || !selectedProjectId || !selectedFolderId}
+            disabled={isSubmitting || !selectedProjectId}
             icon={isSubmitting ? Loader : Copy}
           >
             {isSubmitting ? 'Duplicating...' : 'Duplicate Test Case'}
