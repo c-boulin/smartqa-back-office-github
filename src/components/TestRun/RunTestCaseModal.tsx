@@ -197,14 +197,14 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
 
     toast.success(`Execution complete: ${passedCount} passed, ${failedCount} failed`);
 
-    if (onExecutionComplete) {
-      onExecutionComplete();
-    }
-
     setTimeout(() => {
       setIsExecuting(false);
       setTestCasesProgress([]);
       onClose();
+
+      if (onExecutionComplete) {
+        onExecutionComplete();
+      }
     }, 2000);
   };
 

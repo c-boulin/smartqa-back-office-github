@@ -1159,7 +1159,9 @@ const TestRunDetails: React.FC = () => {
         isLoading={loading}
         onExecutionComplete={() => {
           if (testRunId) {
-            fetchTestRunDetails(testRunId);
+            setTimeout(() => {
+              fetchTestRunDetails(testRunId);
+            }, 100);
           }
         }}
       />
