@@ -54,7 +54,6 @@ interface TestCaseProgress {
   id: string;
   code: string;
   title: string;
-  progress: number;
   status: 'pending' | 'running' | 'completed';
   result?: 'passed' | 'failed';
 }
@@ -123,26 +122,12 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
     }
   };
 
-  const simulateTestExecution = (
-    testCaseId: string,
-    onProgress: (progress: number) => void
-  ): Promise<void> => {
+  const simulateTestExecution = (): Promise<void> => {
     return new Promise((resolve) => {
       const duration = Math.random() * 2000 + 3000;
-      const intervalTime = 50;
-      const totalSteps = duration / intervalTime;
-      let currentStep = 0;
-
-      const interval = setInterval(() => {
-        currentStep++;
-        const progress = Math.min((currentStep / totalSteps) * 100, 100);
-        onProgress(progress);
-
-        if (progress >= 100) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, intervalTime);
+      setTimeout(() => {
+        resolve();
+      }, duration);
     });
   };
 
@@ -165,7 +150,6 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
         id,
         code: testCase?.code || id,
         title: testCase?.title || 'Unknown',
-        progress: 0,
         status: 'pending' as const,
       };
     });
@@ -181,13 +165,7 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
         )
       );
 
-      await simulateTestExecution(testCase.id, (progress) => {
-        setTestCasesProgress(prev =>
-          prev.map(tc =>
-            tc.id === testCase.id ? { ...tc, progress } : tc
-          )
-        );
-      });
+      await simulateTestExecution();
 
       const randomResult = Math.random() < 0.5 ? 'passed' : 'failed';
       const resultId = randomResult === 'passed' ? 1 : 2;
@@ -255,7 +233,7 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
                 key={testCase.id}
                 className="border border-slate-300 dark:border-slate-600 rounded-lg p-4 bg-slate-50 dark:bg-slate-900"
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="font-medium text-slate-900 dark:text-white">
                       {testCase.code}
@@ -264,46 +242,35 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
                       {testCase.title}
                     </div>
                   </div>
-                  {testCase.status === 'completed' && testCase.result && (
-                    <div className="ml-4">
-                      {testCase.result === 'passed' ? (
-                        <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                          <CheckCircle className="w-5 h-5" />
-                          <span className="font-semibold">Passed</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                          <XCircle className="w-5 h-5" />
-                          <span className="font-semibold">Failed</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {testCase.status === 'running' && (
-                    <div className="ml-4">
-                      <Loader className="w-5 h-5 text-cyan-500 animate-spin" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="relative w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    className={`absolute top-0 left-0 h-full transition-all duration-200 rounded-full ${
-                      testCase.status === 'completed'
-                        ? testCase.result === 'passed'
-                          ? 'bg-green-500'
-                          : 'bg-red-500'
-                        : 'bg-cyan-500'
-                    }`}
-                    style={{ width: `${testCase.progress}%` }}
-                  />
-                </div>
-
-                {testCase.status === 'running' && (
-                  <div className="mt-2 text-xs text-slate-500 dark:text-gray-400 text-right">
-                    {Math.round(testCase.progress)}%
+                  <div className="ml-4 flex items-center gap-3">
+                    {testCase.status === 'running' && (
+                      <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400">
+                        <Loader className="w-5 h-5 animate-spin" />
+                        <span className="font-medium">Running...</span>
+                      </div>
+                    )}
+                    {testCase.status === 'completed' && testCase.result && (
+                      <>
+                        {testCase.result === 'passed' ? (
+                          <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                            <CheckCircle className="w-5 h-5" />
+                            <span className="font-semibold">Passed</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                            <XCircle className="w-5 h-5" />
+                            <span className="font-semibold">Failed</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {testCase.status === 'pending' && (
+                      <div className="text-sm text-slate-500 dark:text-gray-400">
+                        Pending...
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             ))}
           </div>
