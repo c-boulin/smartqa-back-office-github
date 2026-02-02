@@ -94,7 +94,9 @@ class TestCaseExecutionsApiService {
             configuration: {
               data: {
                 type: "Configuration",
-                id: `/api/configurations/${data.configurationId}`
+                id: data.configurationId.startsWith('/api/configurations/')
+                  ? data.configurationId
+                  : `/api/configurations/${data.configurationId}`
               }
             }
           } : {})

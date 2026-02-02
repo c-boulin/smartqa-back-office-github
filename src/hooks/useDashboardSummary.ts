@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Project, TestCase } from '../types';
 import { testCasesApiService } from '../services/testCasesApi';
+import { AutomationFilter } from '../pages/Dashboard';
 
 const isDevelopment = import.meta.env.MODE === 'development';
 const devLog = (..._args: unknown[]) => {
@@ -57,7 +58,7 @@ interface DashboardSummary {
   trendsData: Array<Record<string, unknown>>;
 }
 
-export const useDashboardSummary = (selectedProject: Project | null, projects: Project[]) => {
+export const useDashboardSummary = (selectedProject: Project | null, projects: Project[], automationFilter: AutomationFilter = 'all') => {
   const [summaryData, setSummaryData] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +77,7 @@ export const useDashboardSummary = (selectedProject: Project | null, projects: P
 
       devLog('🔄 Dashboard summary fetch triggered at:', new Date().toISOString());
       devLog('📊 Selected project:', selectedProject?.name || 'All projects');
+      devLog('📊 Automation filter:', automationFilter);
 
       let totalTestCases = 0;
       let testCases: TestCase[] = [];
@@ -117,7 +119,20 @@ export const useDashboardSummary = (selectedProject: Project | null, projects: P
           testCasesApiService.transformApiTestCase(apiTestCase, firstPageResponse.included)
         );
 
-        totalTestCases = allTestCasesData.length;
+        if (automationFilter === 'automated') {
+          testCases = testCases.filter(tc => tc.automationStatus === 2 || tc.automationStatus === "2");
+          devLog(`🤖 Filtered to automated test cases: ${testCases.length}`);
+        } else if (automationFilter === 'not-automated') {
+          testCases = testCases.filter(tc =>
+            tc.automationStatus === 1 || tc.automationStatus === "1" ||
+            tc.automationStatus === 3 || tc.automationStatus === "3" ||
+            tc.automationStatus === 4 || tc.automationStatus === "4" ||
+            tc.automationStatus === 5 || tc.automationStatus === "5"
+          );
+          devLog(`🤖 Filtered to non-automated test cases: ${testCases.length}`);
+        }
+
+        totalTestCases = testCases.length;
         devLog(`🧪 Final test cases count: ${totalTestCases}`);
 
         trendsData = generateTrendData(testCases);
@@ -200,12 +215,12 @@ export const useDashboardSummary = (selectedProject: Project | null, projects: P
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [selectedProject, projects]);
+  }, [selectedProject, projects, automationFilter]);
 
   useEffect(() => {
     devLog('📊 Dashboard summary useEffect triggered for project:', selectedProject?.name || 'All projects');
     fetchSummaryData();
-  }, [fetchSummaryData, selectedProject?.name]);
+  }, [fetchSummaryData, selectedProject?.name, automationFilter]);
 
   return { summaryData, loading, error, refreshData: fetchSummaryData };
 };

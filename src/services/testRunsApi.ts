@@ -28,6 +28,7 @@ export interface ApiTestRun {
       id: number;
       test_case_id: number;
       test_run_id: number;
+      configuration_id?: number;
       result: number;
       created_at: string;
       updated_at: string;
@@ -178,6 +179,11 @@ class TestRunsApiService {
       data: [],
       included: []
     };
+  }
+
+  async getAllTestRuns(page: number = 1, itemsPerPage: number = 10000): Promise<TestRunsApiResponse> {
+    const response = await apiService.authenticatedRequest(`/test_runs?include=user,testExecutions&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`);
+    return response || this.getDefaultTestRunsResponse();
   }
 
   async getTestRuns(projectId: string, page: number = 1, itemsPerPage: number = 30): Promise<TestRunsApiResponse> {
@@ -564,7 +570,8 @@ class TestRunsApiService {
 
           configurations.push({
             id: configId,
-            label: includedConfig?.attributes.label || 'Unknown Configuration'
+            label: includedConfig?.attributes.label || 'Unknown Configuration',
+            userAgent: includedConfig?.attributes.userAgent
           });
         }
       }

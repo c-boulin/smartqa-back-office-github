@@ -10,6 +10,7 @@ import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSideba
 import TestRunDetailsFilters from '../components/TestRun/TestRunDetailsFilters';
 import TestRunDetailsFiltersSidebar from '../components/TestRun/TestRunDetailsFiltersSidebar';
 import AddExecutionCommentModal from '../components/TestRun/AddExecutionCommentModal';
+import RunTestCaseModal from '../components/TestRun/RunTestCaseModal';
 import { testRunsApiService, TestRun } from '../services/testRunsApi';
 import { testCasesApiService } from '../services/testCasesApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
@@ -271,7 +272,7 @@ interface TestCaseWithExecution {
 }
 
 const TestRunDetails: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: testRunId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const testPlanIdFromUrl = searchParams.get('testPlanId') || undefined;
@@ -291,9 +292,16 @@ const TestRunDetails: React.FC = () => {
   const [updatingResults, setUpdatingResults] = useState<Set<string>>(new Set());
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [selectedTestCaseForComment, setSelectedTestCaseForComment] = useState<TestCaseWithExecution | null>(null);
+  const [isRunModalOpen, setIsRunModalOpen] = useState(false);
+  const [selectedTestCaseForRun, setSelectedTestCaseForRun] = useState<TestCaseWithExecution | null>(null);
 
   // Ref to track if fetch is in progress to prevent duplicate requests
   const fetchInProgressRef = useRef(false);
+
+  // Check if a test case is automated based on its automation status
+  const isTestCaseAutomated = (testCase: TestCaseWithExecution): boolean => {
+    return testCase.fullTestCase?.automationStatus === 2;
+  };
 
   // Check if test run is closed (state 6)
   const isTestRunClosed = testRun?.state === 6;
@@ -334,8 +342,8 @@ const TestRunDetails: React.FC = () => {
     let isCancelled = false;
 
     const loadData = async () => {
-      if (id && !isCancelled) {
-        await fetchTestRunDetails(id);
+      if (testRunId && !isCancelled) {
+        await fetchTestRunDetails(testRunId);
       }
     };
 
@@ -344,7 +352,7 @@ const TestRunDetails: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [id]);
+  }, [testRunId]);
 
   const fetchTestRunDetails = async (testRunId: string) => {
     // Prevent duplicate requests
@@ -535,7 +543,7 @@ const TestRunDetails: React.FC = () => {
   };
 
   const handleExecutionResultChange = async (testCaseId: string, newResultId: TestResultId, comment?: string, configurationId?: string) => {
-    if (!testRun || !id || isTestRunClosed) {
+    if (!testRun || !testRunId || isTestRunClosed) {
       if (isTestRunClosed) {
         toast.error('Cannot update execution results for closed test runs');
       }
@@ -543,7 +551,7 @@ const TestRunDetails: React.FC = () => {
     }
 
     const newResultLabel = TEST_RESULTS[newResultId];
-    const updateKey = `${testCaseId}-${configurationId || 'default'}-${id}`;
+    const updateKey = `${testCaseId}-${configurationId || 'default'}-${testRunId}`;
 
     try {
       // Add to updating set to show loading state
@@ -558,7 +566,7 @@ const TestRunDetails: React.FC = () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- API response needed for error handling
       const response = await testCaseExecutionsApiService.createTestCaseExecution({
         testCaseId,
-        testRunId: id,
+        testRunId: testRunId,
         result: newResultId,
         comment: comment || undefined,
         configurationId: configurationId
@@ -590,7 +598,7 @@ const TestRunDetails: React.FC = () => {
         // All test cases passed (including single test case), move test run to "Done" (state 5)
         // This will also update the test plan to "Done" via updateTestRunState
         try {
-          await testRunsApiService.updateTestRunState(id, 5, testRun.testPlanId || testPlanIdFromUrl);
+          await testRunsApiService.updateTestRunState(testRunId, 5, testRun.testPlanId || testPlanIdFromUrl);
           setTestRun({ ...testRun, state: 5 });
 
           toast.success(`Execution result updated to ${newResultLabel}`);
@@ -602,7 +610,7 @@ const TestRunDetails: React.FC = () => {
         // Test run was "Done" but now not all test cases are passed - move back to "In Progress" (state 2)
         // This will also update the test plan to "In Progress" via updateTestRunState
         try {
-          await testRunsApiService.updateTestRunState(id, 2, testRun.testPlanId || testPlanIdFromUrl);
+          await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId || testPlanIdFromUrl);
           setTestRun({ ...testRun, state: 2 });
           toast.success(`Execution result updated to ${newResultLabel}`);
         } catch (error) {
@@ -613,7 +621,7 @@ const TestRunDetails: React.FC = () => {
         // First execution created but not all passed - move to "In Progress" (state 2)
         // This will also update the test plan to "In Progress" via updateTestRunState
         try {
-          await testRunsApiService.updateTestRunState(id, 2, testRun.testPlanId || testPlanIdFromUrl);
+          await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId || testPlanIdFromUrl);
           setTestRun({ ...testRun, state: 2 });
           toast.success(`Execution result updated to ${newResultLabel}`);
         } catch (error) {
@@ -960,7 +968,9 @@ const TestRunDetails: React.FC = () => {
                 {testRun && testRun.configurations && testRun.configurations.length > 0 && (
                   <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Configuration</th>
                 )}
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Automation</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Execution Result</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Actions</th>
               </tr>
             </thead>
             <tbody style={{ position: 'relative', overflow: 'visible' }}>
@@ -1004,12 +1014,28 @@ const TestRunDetails: React.FC = () => {
                       </span>
                     </td>
                   )}
+                  <td className="py-4 px-6">
+                    {isTestCaseAutomated(testCase) ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/50">
+                        Automated
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/50">
+                        Manual
+                      </span>
+                    )}
+                  </td>
                   <td className="py-4 px-6" style={{ position: 'relative', overflow: 'visible' }}>
                     <div className="space-y-2">
                       <TestResultDropdown
                         value={testCase.executionStatus}
                         onChange={(newResultId, comment) => handleExecutionResultChange(testCase.id, newResultId, comment, testCase.configurationId)}
-                        disabled={!hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE) || isTestRunClosed || updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testRun?.id}`)}
+                        disabled={
+                          !hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE) ||
+                          isTestRunClosed ||
+                          isTestCaseAutomated(testCase) ||
+                          updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testRun?.id}`)
+                        }
                         isUpdating={updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testRun?.id}`)}
                         testCaseTitle={testCase.title}
                         onOpenCommentModal={(selectedResultId) => {
@@ -1018,6 +1044,22 @@ const TestRunDetails: React.FC = () => {
                         }}
                       />
                     </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    {isTestCaseAutomated(testCase) && !isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) ? (
+                      <button
+                        onClick={() => {
+                          setSelectedTestCaseForRun(testCase);
+                          setIsRunModalOpen(true);
+                        }}
+                        className="p-2 text-slate-600 dark:text-gray-400 hover:text-purple-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                        title="Run Test Case"
+                      >
+                        <Play className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <span className="text-slate-400 dark:text-slate-600">-</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -1086,6 +1128,43 @@ const TestRunDetails: React.FC = () => {
           testCaseTitle={selectedTestCaseForComment.title}
         />
       )}
+
+      {/* Run Test Case Modal */}
+      <RunTestCaseModal
+        isOpen={isRunModalOpen}
+        onClose={() => {
+          setIsRunModalOpen(false);
+          setSelectedTestCaseForRun(null);
+        }}
+        testRunName={testRun?.name || ''}
+        testRunId={testRunId}
+        selectedTestCase={selectedTestCaseForRun ? {
+          id: selectedTestCaseForRun.id,
+          code: `TC-${selectedTestCaseForRun.fullTestCase?.projectRelativeId ?? selectedTestCaseForRun.id}`,
+          title: selectedTestCaseForRun.title
+        } : undefined}
+        availableAutomatedTestCases={testCases
+          .filter(tc => isTestCaseAutomated(tc))
+          .map(tc => ({
+            id: tc.id,
+            code: `TC-${tc.fullTestCase?.projectRelativeId ?? tc.id}`,
+            title: tc.title
+          }))
+        }
+        availableConfigurations={testRun?.configurations?.map(config => ({
+          id: config.id,
+          label: config.label,
+          userAgent: config.userAgent
+        })) || []}
+        isLoading={loading}
+        onExecutionComplete={() => {
+          if (testRunId) {
+            setTimeout(() => {
+              fetchTestRunDetails(testRunId);
+            }, 100);
+          }
+        }}
+      />
     </div>
   );
 };

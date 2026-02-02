@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Activity,
   CheckCircle,
@@ -18,18 +18,21 @@ import { useTestRunsData } from '../hooks/useTestRunsData';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { TEST_CASE_TYPES } from '../types';
 
+export type AutomationFilter = 'all' | 'automated' | 'not-automated';
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { getSelectedProject, state } = useApp();
   const { theme } = useTheme();
   const selectedProject = getSelectedProject();
+  const [automationFilter, setAutomationFilter] = useState<AutomationFilter>('all');
 
   useRestoreLastProject();
 
   const tickColor = theme === 'dark' ? '#94a3b8' : '#475569';
 
-  const { summaryData, loading: summaryLoading } = useDashboardSummary(selectedProject, state.projects);
-  const { data: testRunsData, loading: testRunsLoading } = useTestRunsData(selectedProject?.id);
+  const { summaryData, loading: summaryLoading } = useDashboardSummary(selectedProject, state.projects, automationFilter);
+  const { data: testRunsData, loading: testRunsLoading } = useTestRunsData(selectedProject?.id, automationFilter);
 
   const activeTestRunsChartData = testRunsData?.activeTestRunsChart;
   const closedTestRunsChartData = testRunsData?.closedTestRunsChart;
@@ -137,10 +140,99 @@ export default function Dashboard() {
 
   const trendOfTestCasesData = summaryData?.trendsData || [];
 
+  const getIssuesData = () => {
+    const baseData = {
+      all: [
+        { name: 'Product Bug', value: 13, color: '#6B7280' },
+        { name: 'Product Maintenance', value: 4, color: '#F97316' },
+        { name: 'Internal Components Bug', value: 5, color: '#8B5CF6' },
+        { name: 'Automation Bug', value: 1, color: '#F59E0B' },
+        { name: 'Update for new feature', value: 0, color: '#EF4444' },
+        { name: 'Missing specifications', value: 0, color: '#A855F7' },
+        { name: 'System Issue', value: 0, color: '#3B82F6' },
+        { name: 'Network', value: 0, color: '#93C5FD' },
+        { name: 'GitLab Issue', value: 1, color: '#22D3EE' },
+        { name: 'No Defect', value: 0, color: '#6B7280' },
+        { name: 'To Investigate', value: 0, color: '#FDE047' },
+        { name: 'Login', value: 0, color: '#FB923C' }
+      ],
+      automated: [
+        { name: 'Product Bug', value: 8, color: '#6B7280' },
+        { name: 'Product Maintenance', value: 3, color: '#F97316' },
+        { name: 'Internal Components Bug', value: 2, color: '#8B5CF6' },
+        { name: 'Automation Bug', value: 1, color: '#F59E0B' },
+        { name: 'Update for new feature', value: 0, color: '#EF4444' },
+        { name: 'Missing specifications', value: 0, color: '#A855F7' },
+        { name: 'System Issue', value: 0, color: '#3B82F6' },
+        { name: 'Network', value: 0, color: '#93C5FD' },
+        { name: 'GitLab Issue', value: 1, color: '#22D3EE' },
+        { name: 'No Defect', value: 0, color: '#6B7280' },
+        { name: 'To Investigate', value: 0, color: '#FDE047' },
+        { name: 'Login', value: 0, color: '#FB923C' }
+      ],
+      'not-automated': [
+        { name: 'Product Bug', value: 5, color: '#6B7280' },
+        { name: 'Product Maintenance', value: 1, color: '#F97316' },
+        { name: 'Internal Components Bug', value: 3, color: '#8B5CF6' },
+        { name: 'Automation Bug', value: 0, color: '#F59E0B' },
+        { name: 'Update for new feature', value: 0, color: '#EF4444' },
+        { name: 'Missing specifications', value: 0, color: '#A855F7' },
+        { name: 'System Issue', value: 0, color: '#3B82F6' },
+        { name: 'Network', value: 0, color: '#93C5FD' },
+        { name: 'GitLab Issue', value: 0, color: '#22D3EE' },
+        { name: 'No Defect', value: 0, color: '#6B7280' },
+        { name: 'To Investigate', value: 0, color: '#FDE047' },
+        { name: 'Login', value: 0, color: '#FB923C' }
+      ]
+    };
+
+    return baseData[automationFilter];
+  };
+
+  const issuesData = getIssuesData().filter(item => item.value > 0);
+  const totalIssues = issuesData.reduce((sum, item) => sum + item.value, 0);
+  const issuesPercentages = calculatePercentages(
+    issuesData.map(item => item.value),
+    totalIssues
+  );
+
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setAutomationFilter('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              automationFilter === 'all'
+                ? 'bg-cyan-500 text-white'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-gray-300 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            All Test Cases
+          </button>
+          <button
+            onClick={() => setAutomationFilter('automated')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              automationFilter === 'automated'
+                ? 'bg-green-500 text-white'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-gray-300 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            Automated
+          </button>
+          <button
+            onClick={() => setAutomationFilter('not-automated')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              automationFilter === 'not-automated'
+                ? 'bg-orange-500 text-white'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-gray-300 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            Not Automated
+          </button>
+        </div>
       </div>
 
       {selectedProject && (
@@ -256,55 +348,140 @@ export default function Dashboard() {
         ) : (
           <Card gradient className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Closed Test Runs</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Issues by Type</h3>
             </div>
 
             <div className="h-64 flex items-center justify-center relative">
-              {closedTestRunsChartData && closedTestRunsChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={closedTestRunsChartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-700" />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fill: tickColor }}
-                    fontSize={12}
-                  />
-                  <YAxis
-                    tick={{ fill: tickColor }}
-                    fontSize={12}
-                   allowDecimals={false}
-                    domain={[0, 'dataMax']}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgb(241 245 249)', border: '1px solid rgb(203 213 225)',
-                      borderRadius: '8px',
-                      color: 'rgb(15 23 42)'
-                    }}
-                    formatter={(value) => [`${value} test run${value !== 1 ? 's' : ''}`, 'Closed']}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#06B6D4"
-                    strokeWidth={3}
-                    dot={{ fill: '#06B6D4', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, fill: '#06B6D4' }}
-                    connectNulls={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {totalIssues > 0 ? (
+              <div className="h-full w-full flex items-center">
+                <ResponsiveContainer width="60%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={issuesData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      dataKey="value"
+                      startAngle={90}
+                      endAngle={450}
+                    >
+                      {issuesData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.color}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'rgb(241 245 249)', border: '1px solid rgb(203 213 225)',
+                        borderRadius: '8px',
+                        color: 'rgb(15 23 42)'
+                      }}
+                      labelStyle={{ color: 'rgb(15 23 42)' }}
+                      itemStyle={{ color: 'rgb(15 23 42)' }}
+                    />
+                    <text
+                      x="50%"
+                      y="45%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-slate-900 dark:fill-white text-2xl font-bold"
+                    >
+                      {totalIssues}
+                    </text>
+                    <text
+                      x="50%"
+                      y="55%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-slate-600 dark:fill-gray-400 text-sm"
+                    >
+                      ISSUES
+                    </text>
+                  </PieChart>
+                </ResponsiveContainer>
+
+                <div className="ml-6 space-y-3 flex-1">
+                  {issuesData.map((entry, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: entry.color }}></div>
+                        <span className="text-sm text-slate-700 dark:text-gray-300">{entry.name}</span>
+                      </div>
+                      <span className="text-sm text-slate-700 dark:text-gray-300">
+                        {entry.value} ({issuesPercentages[index]}%)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="text-center text-slate-500 dark:text-gray-400">
-                <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">No closed test runs</p>
-                <p className="text-sm">Complete test runs to see historical data</p>
+                <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">No issues reported</p>
+                <p className="text-sm">Issues will appear here as they are reported</p>
               </div>
               )}
             </div>
           </Card>
         )}
       </div>
+
+      {testRunsLoading ? (
+        <SkeletonCard />
+      ) : (
+        <Card gradient className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Closed Test Runs</h3>
+          </div>
+
+          <div className="h-64 flex items-center justify-center relative">
+            {closedTestRunsChartData && closedTestRunsChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={closedTestRunsChartData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-700" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fill: tickColor }}
+                  fontSize={12}
+                />
+                <YAxis
+                  tick={{ fill: tickColor }}
+                  fontSize={12}
+                 allowDecimals={false}
+                  domain={[0, 'dataMax']}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgb(241 245 249)', border: '1px solid rgb(203 213 225)',
+                    borderRadius: '8px',
+                    color: 'rgb(15 23 42)'
+                  }}
+                  formatter={(value) => [`${value} test run${value !== 1 ? 's' : ''}`, 'Closed']}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#06B6D4"
+                  strokeWidth={3}
+                  dot={{ fill: '#06B6D4', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, fill: '#06B6D4' }}
+                  connectNulls={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-center text-slate-500 dark:text-gray-400">
+              <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No closed test runs</p>
+              <p className="text-sm">Complete test runs to see historical data</p>
+            </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {testRunsLoading ? (
         <SkeletonCard height="h-80" />

@@ -1058,7 +1058,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                       <TestResultDropdown
                         value={currentExecutionResult}
                         onChange={handleExecutionResultChange}
-                        disabled={!hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE) || isUpdatingResult}
+                        disabled={!hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE) || isUpdatingResult || testCaseDetails?.automationStatus === 2}
                         isUpdating={isUpdatingResult}
                         testCaseTitle={testCase?.title || ''}
                         onOpenCommentModal={(selectedResultId) => {
@@ -1067,7 +1067,9 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                         }}
                       />
                       <p className="text-xs text-slate-600 dark:text-gray-400 mt-2">
-                        {hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE)
+                        {testCaseDetails?.automationStatus === 2
+                          ? 'Execution results for automated test cases cannot be manually edited'
+                          : hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE)
                           ? 'Update the execution result for this test case in the current test run'
                           : 'You do not have permission to update test execution results'}
                       </p>
