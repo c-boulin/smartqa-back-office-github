@@ -244,11 +244,19 @@ class TestRunExecutionsApiService {
 
           // Update current state and continue polling
           currentState = result.state;
-        } else if (result.timeout) {
-          // Timeout occurred, retry with the same state
-          retries++;
-          console.log(`Polling timeout (retry ${retries}/${maxRetries}), continuing...`);
+          continue;
         }
+
+        // If timeout occurred, immediately send another polling request
+        if (result.timeout) {
+          retries++;
+          console.log(`Long polling timeout (${retries}/${maxRetries}), restarting poll...`);
+          continue;
+        }
+
+        // If neither changed nor timeout, continue polling anyway
+        // This handles edge cases where the server response might be unexpected
+        continue;
       } catch (error) {
         console.error('Polling error:', error);
         throw error;
