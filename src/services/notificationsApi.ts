@@ -6,8 +6,8 @@ export interface NotificationAttributes {
   data: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
-  /** Set by API for the current user (null = unread). */
-  readAt: string | null;
+  /** Set by API for the current user (null/undefined = unread). */
+  readAt?: string | null;
 }
 
 export interface NotificationItem {
@@ -80,6 +80,21 @@ class NotificationsApiService {
     await apiService.authenticatedRequest(`/notifications/${segment}/read`, {
       method: 'PUT',
     });
+  }
+
+  /**
+   * Mark all notifications as read for the current user.
+   * Called when the user opens the notifications panel.
+   * No-op if the backend does not support this endpoint (404/405).
+   */
+  async markAllAsRead(): Promise<void> {
+    try {
+      await apiService.authenticatedRequest('/notifications/read', {
+        method: 'PUT',
+      });
+    } catch {
+      // Backend may not support bulk mark-as-read; ignore
+    }
   }
 }
 

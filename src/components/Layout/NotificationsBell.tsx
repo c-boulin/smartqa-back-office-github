@@ -43,6 +43,7 @@ const NotificationsBell: React.FC = () => {
       try {
         const res = await notificationsApiService.getNotifications({ itemsPerPage: 5, page: 1 });
         setNotifications(res.data ?? []);
+        await notificationsApiService.markAllAsRead();
       } catch {
         setNotifications([]);
       } finally {
