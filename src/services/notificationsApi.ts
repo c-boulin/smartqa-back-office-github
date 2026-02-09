@@ -6,6 +6,8 @@ export interface NotificationAttributes {
   data: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
+  /** Set by API for the current user (null = unread). */
+  readAt: string | null;
 }
 
 export interface NotificationItem {
@@ -23,15 +25,26 @@ export interface NotificationItem {
 }
 
 export interface NotificationsListResponse {
-  links: {
+  links?: {
     self: string;
   };
-  meta: {
+  meta?: {
     totalItems: number;
     itemsPerPage: number;
     currentPage: number;
   };
   data: NotificationItem[];
+}
+
+/** Extract numeric id from JSON:API id (string "123") or IRI ("/api/notifications/123"). */
+function parseNotificationId(value: string | number): string {
+  if (typeof value === 'number' && !Number.isNaN(value)) return String(value);
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    const lastSegment = trimmed.split('/').filter(Boolean).pop();
+    return lastSegment ?? trimmed;
+  }
+  return String(value);
 }
 
 class NotificationsApiService {
@@ -50,7 +63,23 @@ class NotificationsApiService {
         data: [],
       };
     }
-    return response as NotificationsListResponse;
+    const body = response as NotificationsListResponse;
+    return {
+      links: body.links ?? { self: '/api/notifications/' },
+      meta: body.meta ?? { totalItems: body.data?.length ?? 0, itemsPerPage, currentPage: page },
+      data: Array.isArray(body.data) ? body.data : [],
+    };
+  }
+
+  /**
+   * Mark a notification as read for the current user.
+   * @param id - Notification id (string or number, or IRI like "/api/notifications/1")
+   */
+  async markAsRead(id: string | number): Promise<void> {
+    const segment = parseNotificationId(id);
+    await apiService.authenticatedRequest(`/notifications/${segment}/read`, {
+      method: 'PUT',
+    });
   }
 }
 

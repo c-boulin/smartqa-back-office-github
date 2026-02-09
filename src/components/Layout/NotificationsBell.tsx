@@ -51,6 +51,14 @@ const NotificationsBell: React.FC = () => {
     }
   };
 
+  const handleNotificationClick = (item: NotificationItem) => {
+    const isUnread = item.attributes.readAt == null;
+    if (isUnread) {
+      notificationsApiService.markAsRead(item.id).catch(() => {});
+    }
+    setOpen(false);
+  };
+
   return (
     <div className="relative" ref={containerRef}>
       <button
@@ -87,36 +95,44 @@ const NotificationsBell: React.FC = () => {
               <ul className="divide-y divide-slate-200 dark:divide-slate-600">
                 {notifications.map((item) => {
                   const { message, link } = formatNotificationMessage(item);
+                  const isUnread = item.attributes.readAt == null;
                   const createdAt = item.attributes.createdAt
                     ? new Date(item.attributes.createdAt).toLocaleString(undefined, {
                         dateStyle: 'short',
                         timeStyle: 'short',
                       })
                     : '';
+                  const content = (
+                    <>
+                      {message}
+                      {createdAt && (
+                        <span className="block text-xs text-slate-500 dark:text-gray-400 mt-0.5">
+                          {createdAt}
+                        </span>
+                      )}
+                    </>
+                  );
                   return (
-                    <li key={item.id} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <li
+                      key={item.id}
+                      className={`p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 ${isUnread ? 'bg-slate-50/80 dark:bg-slate-700/30' : ''}`}
+                    >
                       {link ? (
                         <Link
                           to={link}
-                          onClick={() => setOpen(false)}
-                          className="block text-sm text-slate-700 dark:text-gray-200 hover:text-cyan-600 dark:hover:text-cyan-400"
+                          onClick={() => handleNotificationClick(item)}
+                          className={`block text-sm text-slate-700 dark:text-gray-200 hover:text-cyan-600 dark:hover:text-cyan-400 ${isUnread ? 'font-medium' : ''}`}
                         >
-                          {message}
-                          {createdAt && (
-                            <span className="block text-xs text-slate-500 dark:text-gray-400 mt-0.5">
-                              {createdAt}
-                            </span>
-                          )}
+                          {content}
                         </Link>
                       ) : (
-                        <div className="text-sm text-slate-700 dark:text-gray-200">
-                          {message}
-                          {createdAt && (
-                            <span className="block text-xs text-slate-500 dark:text-gray-400 mt-0.5">
-                              {createdAt}
-                            </span>
-                          )}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleNotificationClick(item)}
+                          className="w-full text-left text-sm text-slate-700 dark:text-gray-200"
+                        >
+                          {content}
+                        </button>
                       )}
                     </li>
                   );
