@@ -89,8 +89,17 @@ class NotificationsApiService {
    */
   async markAllAsRead(): Promise<void> {
     try {
+      const requestBody = {
+        data: {
+          type: 'Notification',
+          attributes: {
+            read: true,
+          },
+        },
+      };
       await apiService.authenticatedRequest('/notifications/read', {
-        method: 'PUT',
+        method: 'PATCH',
+        body: JSON.stringify(requestBody),
       });
     } catch {
       // Backend may not support bulk mark-as-read; ignore
