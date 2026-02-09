@@ -1,11 +1,13 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, ToastBar, toast } from 'react-hot-toast';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import { LoadingProvider } from './context/LoadingContext';
 import { UsersProvider } from './context/UsersContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { NotificationsProvider } from './context/NotificationsContext';
+import { TestRunExecutionPollingProvider } from './context/TestRunExecutionPollingContext';
 import GlobalLoader from './components/UI/GlobalLoader';
 import { useLoading } from './context/LoadingContext';
 import Layout from './components/Layout/Layout';
@@ -71,7 +73,28 @@ const AppContent: React.FC = () => {
                 border: '1px solid rgb(var(--color-border-primary))'
               }
             }}
-          />
+          >
+            {(t) => (
+              <ToastBar toast={t}>
+                {({ icon, message }) => (
+                  <>
+                    {icon}
+                    <span className="flex-1">{message}</span>
+                    {t.type !== 'loading' && (
+                      <button
+                        type="button"
+                        onClick={() => toast.dismiss(t.id)}
+                        className="ml-2 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                        aria-label="Dismiss"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </>
+                )}
+              </ToastBar>
+            )}
+          </Toaster>
         </div>
       </Router>
       <GlobalLoader isVisible={loading.isLoading} message={loading.message} />
@@ -86,7 +109,11 @@ function App() {
         <UsersProvider>
           <AppProvider>
             <LoadingProvider>
-              <AppContent />
+              <NotificationsProvider>
+                <TestRunExecutionPollingProvider>
+                  <AppContent />
+                </TestRunExecutionPollingProvider>
+              </NotificationsProvider>
             </LoadingProvider>
           </AppProvider>
         </UsersProvider>

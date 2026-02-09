@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import ActiveExecutionsIndicator from '../TestRun/ActiveExecutionsIndicator';
 import { useApp } from '../../context/AppContext';
 
 const Layout: React.FC = () => {
@@ -32,6 +33,7 @@ const Layout: React.FC = () => {
           <Outlet key={selectedProject?.id || 'no-project'} />
         </main>
       </div>
+      <ActiveExecutionsIndicator />
     </div>
   );
 };

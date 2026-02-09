@@ -3,6 +3,8 @@ import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import { Play, Loader, CheckCircle, XCircle } from 'lucide-react';
 import { testCaseExecutionsApiService } from '../../services/testCaseExecutionsApi';
+import { testRunExecutionsApiService, TestRunExecution } from '../../services/testRunExecutionsApi';
+import { useTestRunExecutionPolling } from '../../hooks/useTestRunExecutionPolling';
 import toast from 'react-hot-toast';
 
 interface RunTestCaseModalProps {
@@ -18,7 +20,7 @@ interface RunTestCaseModalProps {
   availableAutomatedTestCases?: TestCase[];
   availableConfigurations?: Configuration[];
   isLoading?: boolean;
-  onExecutionComplete?: () => void;
+  onExecutionComplete?: (testRunId?: string, executionState?: number) => void;
 }
 
 interface Service {
@@ -76,6 +78,7 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
   const [selectAllTestCases, setSelectAllTestCases] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [testCasesProgress, setTestCasesProgress] = useState<TestCaseProgress[]>([]);
+  const { startPolling } = useTestRunExecutionPolling();
 
   // Initialize selected test case if provided and reset on close
   React.useEffect(() => {
@@ -122,16 +125,6 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
     }
   };
 
-  const simulateTestExecution = (testCaseId: string): Promise<'passed' | 'failed'> => {
-    return new Promise((resolve) => {
-      const duration = Math.random() * 3000 + 2000;
-      const result = Math.random() < 0.6 ? 'passed' : 'failed';
-      setTimeout(() => {
-        resolve(result);
-      }, duration);
-    });
-  };
-
   const handleRunJob = async () => {
     if (!testRunId) {
       toast.error('Test run ID is required');
@@ -157,56 +150,80 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
 
     setTestCasesProgress(testCasesToRun);
 
-    const executionPromises = testCasesToRun.map(async (testCase) => {
+    try {
+      // Step 1: Create ONE test_run_execution for all selected test cases
       setTestCasesProgress(prev =>
-        prev.map(tc =>
-          tc.id === testCase.id ? { ...tc, status: 'running' as const } : tc
-        )
+        prev.map(tc => ({ ...tc, status: 'running' as const }))
       );
 
-      const randomResult = await simulateTestExecution(testCase.id);
-      const resultId = randomResult === 'passed' ? 1 : 2;
+      const testRunExecution = await testRunExecutionsApiService.createTestRunExecution({
+        test_run_id: parseInt(testRunId),
+        pipeline_id: runLabel || undefined,
+        state: 1, // "In Progress"
+      });
 
-      setTestCasesProgress(prev =>
-        prev.map(tc =>
-          tc.id === testCase.id
-            ? { ...tc, status: 'completed' as const, result: randomResult }
-            : tc
-        )
+      // Step 2: Create test_case_execution entries for each test case with result "In Progress" (7)
+      const testCaseExecutionPromises = testCasesToRun.map(async (testCase) => {
+        try {
+          await testCaseExecutionsApiService.createTestCaseExecution({
+            testCaseId: testCase.id,
+            testRunId: testRunId,
+            result: 7, // "In Progress"
+            configurationId: selectedDevice,
+            comment: runLabel || undefined,
+            testRunExecutionId: testRunExecution.id,
+          });
+          return { id: testCase.id, success: true };
+        } catch (error) {
+          console.error(`Failed to create test case execution for ${testCase.code}:`, error);
+          toast.error(`Failed to create execution for ${testCase.code}`);
+          return { id: testCase.id, success: false };
+        }
+      });
+
+      await Promise.all(testCaseExecutionPromises);
+
+      // Step 3: Start polling on the single test_run_execution
+      const testCasesSummary = testCasesToRun.map(tc => tc.code).join(', ');
+      
+      startPolling(
+        {
+          id: testRunExecution.id,
+          testCaseId: testRunExecution.test_case_id ?? 0,
+          testCaseCode: testCasesSummary,
+          testCaseTitle: `${testCasesToRun.length} test case(s)`,
+          testRunId: testRunExecution.test_run_id,
+          configurationId: selectedDevice ? parseInt(selectedDevice, 10) : undefined,
+          state: testRunExecution.state ?? 1,
+          stateLabel: testRunExecution.state_label ?? 'In Progress',
+          startedAt: new Date(),
+          linkedTestCaseIds: testCasesToRun.map((tc) => tc.id),
+          testRunIdForPayload: testRunId,
+          configurationIdForPayload: selectedDevice || undefined,
+        },
+        async (completedExecution: TestRunExecution) => {
+          if (onExecutionComplete) {
+            onExecutionComplete(testRunId, completedExecution.state);
+          }
+        }
       );
 
-      try {
-        await testCaseExecutionsApiService.createTestCaseExecution({
-          testCaseId: testCase.id,
-          testRunId: testRunId,
-          result: resultId,
-          configurationId: selectedDevice,
-          comment: runLabel || undefined,
-        });
-      } catch (error) {
-        console.error('Failed to create test case execution:', error);
-        toast.error(`Failed to save execution result for ${testCase.code}`);
-      }
+      toast.success(
+        `Started execution for ${testCasesToRun.length} test case(s). You can continue using the app while tests run in the background.`,
+        { duration: 5000 }
+      );
 
-      return { id: testCase.id, result: randomResult };
-    });
-
-    const results = await Promise.all(executionPromises);
-
-    const passedCount = results.filter(r => r.result === 'passed').length;
-    const failedCount = results.filter(r => r.result === 'failed').length;
-
-    toast.success(`Execution complete: ${passedCount} passed, ${failedCount} failed`);
-
-    setTimeout(() => {
+      // Reset modal state and close
+      setTimeout(() => {
+        setIsExecuting(false);
+        setTestCasesProgress([]);
+        onClose();
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to start test executions:', error);
+      toast.error('Failed to start test executions');
       setIsExecuting(false);
-      setTestCasesProgress([]);
-      onClose();
-
-      if (onExecutionComplete) {
-        onExecutionComplete();
-      }
-    }, 2000);
+    }
   };
 
   const isFormValid = !isLoading && selectedService && selectedDevice && selectedTestCases.size > 0;
@@ -221,10 +238,10 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
         <div className="space-y-4 py-4">
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-              Executing Test Cases
+              Starting Test Executions
             </h3>
             <p className="text-sm text-slate-600 dark:text-gray-400">
-              Running automated tests on selected device...
+              Creating test execution entries and starting automated tests...
             </p>
           </div>
 

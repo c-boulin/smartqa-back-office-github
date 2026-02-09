@@ -21,6 +21,8 @@ import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { useUsers } from '../context/UsersContext';
 import { TestRun, testRunsApiService } from '../services/testRunsApi';
 import { testCasesApiService } from '../services/testCasesApi';
+import { testRunExecutionsApiService } from '../services/testRunExecutionsApi';
+import { useTestRunExecutionPolling } from '../hooks/useTestRunExecutionPolling';
 import { usePermissions } from '../hooks/usePermissions';
 import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
@@ -83,6 +85,9 @@ const TestRuns: React.FC = () => {
   const [automatedTestCases, setAutomatedTestCases] = useState<Array<{ id: string; code: string; title: string }>>([]);
   const [testRunConfigurations, setTestRunConfigurations] = useState<Array<{ id: string; label: string; userAgent?: string }>>([]);
   const [isLoadingRunModal, setIsLoadingRunModal] = useState(false);
+  const [executionStateByTestRunId, setExecutionStateByTestRunId] = useState<Record<string, number>>({});
+
+  const { activeExecutions } = useTestRunExecutionPolling();
 
   const handleSearch = useCallback(async (term: string) => {
     setCurrentSearchTerm(term);
@@ -339,6 +344,34 @@ const TestRuns: React.FC = () => {
 
     fetchTestRunData();
   }, [isRunModalOpen, testRunToRun]);
+
+  useEffect(() => {
+    if (!filteredTestRuns.length) return;
+    const load = async () => {
+      const map: Record<string, number> = {};
+      await Promise.all(
+        filteredTestRuns.map(async (tr) => {
+          const state = await testRunExecutionsApiService.getLatestStateByTestRunId(tr.id);
+          if (state != null) map[tr.id] = state;
+        })
+      );
+      setExecutionStateByTestRunId((prev) => ({ ...prev, ...map }));
+    };
+    load();
+  }, [testRuns.length, activeTab]);
+
+  const getExecutionStateLabel = useCallback((state: number) => {
+    return state === 1 ? 'In progress' : state === 2 ? 'Done' : '—';
+  }, []);
+
+  const getExecutionStateForTestRun = useCallback(
+    (testRun: TestRun) => {
+      const active = activeExecutions.find((e) => String(e.testRunId) === String(testRun.id));
+      if (active) return active.state;
+      return executionStateByTestRunId[testRun.id];
+    },
+    [activeExecutions, executionStateByTestRunId]
+  );
 
   const handleCloseTestRun = useCallback(async () => {
     if (!testRunToClose) return;
@@ -654,6 +687,7 @@ const TestRuns: React.FC = () => {
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">ID</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Name</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">State</th>
+                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Execution</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Progress</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Test Cases</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Assignee</th>
@@ -687,6 +721,13 @@ const TestRuns: React.FC = () => {
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStateColor(testRun.state)}`}>
                           {getStateIcon(testRun.state)}
                           <span className="ml-1">{getStateLabel(testRun.state)}</span>
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="text-sm text-slate-700 dark:text-gray-300">
+                          {getExecutionStateForTestRun(testRun) != null
+                            ? getExecutionStateLabel(getExecutionStateForTestRun(testRun)!)
+                            : '—'}
                         </span>
                       </td>
                       <td className="py-4 px-6">
@@ -904,7 +945,16 @@ const TestRuns: React.FC = () => {
         availableAutomatedTestCases={automatedTestCases}
         availableConfigurations={testRunConfigurations}
         isLoading={isLoadingRunModal}
-        onExecutionComplete={() => {
+        onExecutionComplete={(testRunId, executionState) => {
+          if (testRunId != null && executionState != null) {
+            setExecutionStateByTestRunId((prev) => ({ ...prev, [testRunId]: executionState }));
+          } else if (testRunId) {
+            testRunExecutionsApiService.getLatestStateByTestRunId(testRunId).then((state) => {
+              if (state != null) {
+                setExecutionStateByTestRunId((prev) => ({ ...prev, [testRunId]: state }));
+              }
+            });
+          }
           fetchTestRuns();
         }}
       />

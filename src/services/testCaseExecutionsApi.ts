@@ -6,6 +6,7 @@ export interface CreateTestCaseExecutionRequest {
     attributes: {
       result: number;
       comment?: string;
+      test_run_execution_id?: number;
     };
     relationships: {
       test_run: {
@@ -17,6 +18,12 @@ export interface CreateTestCaseExecutionRequest {
       test_case: {
         data: {
           type: "test_cases";
+          id: string;
+        };
+      };
+      test_run_execution?: {
+        data: {
+          type: "TestRunExecution";
           id: string;
         };
       };
@@ -62,6 +69,15 @@ export interface TestCaseExecution {
   updatedAt: Date;
 }
 
+/** Extract numeric/id part from an IRI or raw id (e.g. "/api/configurations/1" -> "1", "1" -> "1") */
+function toResourceId(value: string): string {
+  if (value == null || value === '') return value;
+  const str = String(value).trim();
+  const parts = str.split('/').filter(Boolean);
+  const id = parts.length > 0 ? parts[parts.length - 1] : str;
+  return id;
+}
+
 class TestCaseExecutionsApiService {
   async createTestCaseExecution(data: {
     testCaseId: string;
@@ -69,34 +85,50 @@ class TestCaseExecutionsApiService {
     result: number;
     comment?: string;
     configurationId?: string;
+    testRunExecutionId?: number;
   }): Promise<CreateTestCaseExecutionResponse> {
+    const testRunIdNorm = toResourceId(data.testRunId);
+    const configurationIdNorm = data.configurationId ? toResourceId(data.configurationId) : '';
+    const hasValidConfig = configurationIdNorm !== '' && configurationIdNorm !== 'NaN' && !Number.isNaN(Number(configurationIdNorm));
+
+    if (!testRunIdNorm || testRunIdNorm === '0' || testRunIdNorm === 'NaN') {
+      throw new Error(`Invalid testRunId for test case execution: "${data.testRunId}"`);
+    }
+
     const requestBody: CreateTestCaseExecutionRequest = {
       data: {
         type: "TestCaseExecution",
         attributes: {
           result: data.result,
-          ...(data.comment && data.comment.trim() ? { comment: data.comment.trim() } : {})
+          ...(data.comment && data.comment.trim() ? { comment: data.comment.trim() } : {}),
+          ...(data.testRunExecutionId != null ? { test_run_execution_id: data.testRunExecutionId } : {})
         },
         relationships: {
           test_run: {
             data: {
               type: "test_runs",
-              id: `/api/test_runs/${data.testRunId}`
+              id: `/api/test_runs/${testRunIdNorm}`
             }
           },
           test_case: {
             data: {
               type: "test_cases",
-              id: `/api/test_cases/${data.testCaseId}`
+              id: `/api/test_cases/${toResourceId(data.testCaseId)}`
             }
           },
-          ...(data.configurationId ? {
+          ...(data.testRunExecutionId != null ? {
+            test_run_execution: {
+              data: {
+                type: "TestRunExecution",
+                id: `/api/test_run_executions/${data.testRunExecutionId}`
+              }
+            }
+          } : {}),
+          ...(hasValidConfig ? {
             configuration: {
               data: {
                 type: "Configuration",
-                id: data.configurationId.startsWith('/api/configurations/')
-                  ? data.configurationId
-                  : `/api/configurations/${data.configurationId}`
+                id: `/api/configurations/${configurationIdNorm}`
               }
             }
           } : {})

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../UI/ThemeToggle';
+import NotificationsBell from './NotificationsBell';
 
 interface HeaderProps {
   title: string;
@@ -43,6 +44,7 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-4">
               <ThemeToggle />
+              <NotificationsBell />
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-gradient-to-r from-cyan-600 to-purple-600 dark:from-cyan-400 dark:to-purple-500 rounded-full flex items-center justify-center">
                   <User className="w-4 h-4 text-slate-900 dark:text-white" />
