@@ -7,7 +7,9 @@ import { notificationsApiService, NotificationItem } from '../../services/notifi
 function formatNotificationMessage(item: NotificationItem): { message: string; link?: string } {
   const { type, data } = item.attributes;
   if (type === 'test_run_execution_ended' && data) {
-    const testRunId = (data as { test_run_id?: number }).test_run_id;
+    const rawData = data as { test_run_id?: number; testRunId?: number; id?: number };
+    const testRunId = rawData.test_run_id ?? rawData.testRunId ?? rawData.id;
+    console.log('Notification data:', data, 'Extracted testRunId:', testRunId);
     const message = 'Test run execution ended';
     const link = testRunId != null ? `/test-runs/${testRunId}` : undefined;
     return { message, link };
