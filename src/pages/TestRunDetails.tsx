@@ -813,10 +813,33 @@ const TestRunDetails: React.FC = () => {
 
     try {
       const selectedTestCaseIds = Array.from(selectedTestCasesForBulkRun);
-      const configurations = testRun.configurations;
 
-      // For each configuration, create a test run execution
-      for (const config of configurations) {
+      // Find unique configurations among selected test cases
+      const configurationsMap = new Map<string, { config: typeof testRun.configurations[0], testCaseIds: string[] }>();
+
+      selectedTestCaseIds.forEach(testCaseId => {
+        const testCaseEntries = filteredTestCases.filter(tc => tc.id === testCaseId && isTestCaseAutomated(tc));
+
+        testCaseEntries.forEach(tc => {
+          const configId = tc.configurationId || 'default';
+
+          if (!configurationsMap.has(configId)) {
+            const config = testRun.configurations?.find(c => c.id === tc.configurationId);
+            if (config) {
+              configurationsMap.set(configId, { config, testCaseIds: [testCaseId] });
+            }
+          } else {
+            const existing = configurationsMap.get(configId)!;
+            if (!existing.testCaseIds.includes(testCaseId)) {
+              existing.testCaseIds.push(testCaseId);
+            }
+          }
+        });
+      });
+
+      // For each unique configuration, create one test run execution
+      let executionCount = 0;
+      for (const [_configId, { config, testCaseIds }] of configurationsMap) {
         try {
           // Create test run execution
           const testRunExecution = await testRunExecutionsApiService.createTestRunExecution({
@@ -824,9 +847,9 @@ const TestRunDetails: React.FC = () => {
             state: 1, // "In Progress"
           });
 
-          // Create test case execution entries for all selected test cases with "In Progress" status
+          // Create test case execution entries for test cases with this configuration
           await Promise.all(
-            selectedTestCaseIds.map(testCaseId =>
+            testCaseIds.map(testCaseId =>
               testCaseExecutionsApiService.createTestCaseExecution({
                 testCaseId,
                 testRunId: testRunId,
@@ -838,7 +861,7 @@ const TestRunDetails: React.FC = () => {
           );
 
           // Start polling for this test run execution
-          const testCasesSummary = selectedTestCaseIds
+          const testCasesSummary = testCaseIds
             .map(id => {
               const tc = filteredTestCases.find(t => t.id === id);
               return tc ? `TC-${tc.fullTestCase?.projectRelativeId ?? tc.id}` : id;
@@ -850,13 +873,13 @@ const TestRunDetails: React.FC = () => {
               id: testRunExecution.id,
               testCaseId: testRunExecution.test_case_id ?? 0,
               testCaseCode: testCasesSummary,
-              testCaseTitle: `${selectedTestCaseIds.length} test case(s) on ${config.label}`,
+              testCaseTitle: `${testCaseIds.length} test case(s) on ${config.label}`,
               testRunId: testRunExecution.test_run_id,
               configurationId: parseInt(config.id, 10),
               state: testRunExecution.state ?? 1,
               stateLabel: testRunExecution.state_label ?? 'In Progress',
               startedAt: new Date(),
-              linkedTestCaseIds: selectedTestCaseIds,
+              linkedTestCaseIds: testCaseIds,
               testRunIdForPayload: testRunId,
               configurationIdForPayload: config.id,
             },
@@ -867,6 +890,8 @@ const TestRunDetails: React.FC = () => {
               }
             }
           );
+
+          executionCount++;
         } catch (error) {
           console.error(`Failed to start execution for configuration ${config.label}:`, error);
           toast.error(`Failed to start execution for ${config.label}`);
@@ -874,7 +899,7 @@ const TestRunDetails: React.FC = () => {
       }
 
       toast.success(
-        `Started ${configurations.length} execution(s) for ${selectedTestCaseIds.length} test case(s). You can continue using the app while tests run in the background.`,
+        `Started ${executionCount} execution(s) for ${selectedTestCaseIds.length} test case(s). You can continue using the app while tests run in the background.`,
         { duration: 5000 }
       );
 
