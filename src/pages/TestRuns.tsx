@@ -11,7 +11,6 @@ import CreateTestRunModal from '../components/TestRun/CreateTestRunModal';
 import EditTestRunModal from '../components/TestRun/EditTestRunModal';
 import CloneTestRunModal from '../components/TestRun/CloneTestRunModal';
 import CloseTestRunModal from '../components/TestRun/CloseTestRunModal';
-import RunTestCaseModal from '../components/TestRun/RunTestCaseModal';
 import TestRunsFilters from '../components/TestRun/TestRunsFilters';
 import TestRunsFiltersSidebar from '../components/TestRun/TestRunsFiltersSidebar';
 import { useApp } from '../context/AppContext';
@@ -19,8 +18,7 @@ import { useTestRuns } from '../hooks/useTestRuns';
 import { useTestRunsFilters } from '../hooks/useTestRunsFilters';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { useUsers } from '../context/UsersContext';
-import { TestRun, testRunsApiService } from '../services/testRunsApi';
-import { testCasesApiService } from '../services/testCasesApi';
+import { TestRun } from '../services/testRunsApi';
 import { testRunExecutionsApiService } from '../services/testRunExecutionsApi';
 import { useTestRunExecutionPolling } from '../hooks/useTestRunExecutionPolling';
 import { usePermissions } from '../hooks/usePermissions';
@@ -80,11 +78,6 @@ const TestRuns: React.FC = () => {
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [testRunToClose, setTestRunToClose] = useState<TestRun | null>(null);
   const [activeTab, setActiveTab] = useState<'active' | 'closed'>('active');
-  const [isRunModalOpen, setIsRunModalOpen] = useState(false);
-  const [testRunToRun, setTestRunToRun] = useState<TestRun | null>(null);
-  const [automatedTestCases, setAutomatedTestCases] = useState<Array<{ id: string; code: string; title: string }>>([]);
-  const [testRunConfigurations, setTestRunConfigurations] = useState<Array<{ id: string; label: string; userAgent?: string }>>([]);
-  const [isLoadingRunModal, setIsLoadingRunModal] = useState(false);
   const [executionStateByTestRunId, setExecutionStateByTestRunId] = useState<Record<string, number>>({});
 
   const { activeExecutions } = useTestRunExecutionPolling();
@@ -288,62 +281,6 @@ const TestRuns: React.FC = () => {
     setTestRunToClose(testRun);
     setIsCloseModalOpen(true);
   }, []);
-
-  const openRunModal = useCallback((testRun: TestRun) => {
-    setTestRunToRun(testRun);
-    setIsRunModalOpen(true);
-  }, []);
-
-  useEffect(() => {
-    const fetchTestRunData = async () => {
-      if (!isRunModalOpen || !testRunToRun) {
-        setAutomatedTestCases([]);
-        setTestRunConfigurations([]);
-        setIsLoadingRunModal(false);
-        return;
-      }
-
-      try {
-        setIsLoadingRunModal(true);
-        const testRunResponse = await testRunsApiService.getTestRun(testRunToRun.id);
-
-        if (!testRunResponse?.included) {
-          setAutomatedTestCases([]);
-          setTestRunConfigurations([]);
-          return;
-        }
-
-        const testCases = testRunResponse.included
-          .filter(item => item.type === 'TestCase')
-          .map(rawTestCase => testCasesApiService.transformApiTestCase(rawTestCase, testRunResponse.included))
-          .filter(tc => tc.automationStatus === 2)
-          .map(tc => ({
-            id: tc.id,
-            code: `TC-${tc.projectRelativeId ?? tc.id}`,
-            title: tc.title
-          }));
-
-        const configurations = testRunResponse.included
-          .filter(item => item.type === 'Configuration')
-          .map(config => ({
-            id: config.id,
-            label: (config.attributes as { label?: string }).label || `Configuration ${config.id}`,
-            userAgent: (config.attributes as { userAgent?: string }).userAgent
-          }));
-
-        setAutomatedTestCases(testCases);
-        setTestRunConfigurations(configurations);
-      } catch (error) {
-        console.error('Error fetching test run data:', error);
-        setAutomatedTestCases([]);
-        setTestRunConfigurations([]);
-      } finally {
-        setIsLoadingRunModal(false);
-      }
-    };
-
-    fetchTestRunData();
-  }, [isRunModalOpen, testRunToRun]);
 
   useEffect(() => {
     if (!filteredTestRuns.length) return;
@@ -793,16 +730,6 @@ const TestRuns: React.FC = () => {
                                 <Copy className="w-4 h-4" />
                               </button>
                             )}
-                            {activeTab === 'active' && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
-                              <button
-                                onClick={() => openRunModal(testRun)}
-                                className="p-2 text-slate-600 dark:text-gray-400 hover:text-purple-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                                title="Run Test Cases"
-                                disabled={isSubmitting}
-                              >
-                                <Play className="w-4 h-4" />
-                              </button>
-                            )}
                             {activeTab === 'active' && testRun.state !== 6 && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
                               <button
                                 onClick={() => openCloseModal(testRun)}
@@ -932,31 +859,6 @@ const TestRuns: React.FC = () => {
         onConfirm={handleCloseTestRun}
         testRun={testRunToClose}
         isSubmitting={isSubmitting}
-      />
-
-      <RunTestCaseModal
-        isOpen={isRunModalOpen}
-        onClose={() => {
-          setIsRunModalOpen(false);
-          setTestRunToRun(null);
-        }}
-        testRunName={testRunToRun?.name || ''}
-        testRunId={testRunToRun?.id}
-        availableAutomatedTestCases={automatedTestCases}
-        availableConfigurations={testRunConfigurations}
-        isLoading={isLoadingRunModal}
-        onExecutionComplete={(testRunId, executionState) => {
-          if (testRunId != null && executionState != null) {
-            setExecutionStateByTestRunId((prev) => ({ ...prev, [testRunId]: executionState }));
-          } else if (testRunId) {
-            testRunExecutionsApiService.getLatestStateByTestRunId(testRunId).then((state) => {
-              if (state != null) {
-                setExecutionStateByTestRunId((prev) => ({ ...prev, [testRunId]: state }));
-              }
-            });
-          }
-          fetchTestRuns();
-        }}
       />
 
       <ConfirmDialog

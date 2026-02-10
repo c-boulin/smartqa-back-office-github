@@ -14,7 +14,9 @@ import RunTestCaseModal from '../components/TestRun/RunTestCaseModal';
 import { testRunsApiService, TestRun } from '../services/testRunsApi';
 import { testCasesApiService } from '../services/testCasesApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
+import { testRunExecutionsApiService } from '../services/testRunExecutionsApi';
 import { useTestRunDetailsFilters } from '../hooks/useTestRunDetailsFilters';
+import { useTestRunExecutionPolling } from '../hooks/useTestRunExecutionPolling';
 import { useApp } from '../context/AppContext';
 import { TestCase, TEST_RESULTS, TestResultId, Tag } from '../types';
 import { getDeviceIcon, getDeviceColor } from '../utils/deviceIcons';
@@ -294,9 +296,13 @@ const TestRunDetails: React.FC = () => {
   const [selectedTestCaseForComment, setSelectedTestCaseForComment] = useState<TestCaseWithExecution | null>(null);
   const [isRunModalOpen, setIsRunModalOpen] = useState(false);
   const [selectedTestCaseForRun, setSelectedTestCaseForRun] = useState<TestCaseWithExecution | null>(null);
+  const [selectedTestCasesForBulkRun, setSelectedTestCasesForBulkRun] = useState<Set<string>>(new Set());
+  const [isBulkRunning, setIsBulkRunning] = useState(false);
 
   // Ref to track if fetch is in progress to prevent duplicate requests
   const fetchInProgressRef = useRef(false);
+
+  const { startPolling } = useTestRunExecutionPolling();
 
   // Check if a test case is automated based on its automation status
   const isTestCaseAutomated = (testCase: TestCaseWithExecution): boolean => {
@@ -761,6 +767,130 @@ const TestRunDetails: React.FC = () => {
     return await createTag(label);
   };
 
+  // Handle individual test case checkbox
+  const handleTestCaseCheckboxToggle = (testCaseId: string) => {
+    setSelectedTestCasesForBulkRun(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(testCaseId)) {
+        newSet.delete(testCaseId);
+      } else {
+        newSet.add(testCaseId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle select/unselect all
+  const handleSelectAllToggle = () => {
+    if (selectedTestCasesForBulkRun.size === automatedTestCasesForBulkRun.length) {
+      setSelectedTestCasesForBulkRun(new Set());
+    } else {
+      setSelectedTestCasesForBulkRun(new Set(automatedTestCasesForBulkRun.map(tc => tc.id)));
+    }
+  };
+
+  // Get automated test cases for bulk run (only include unique test cases, not per-configuration entries)
+  const automatedTestCasesForBulkRun = React.useMemo(() => {
+    const uniqueTestCases = new Map<string, TestCaseWithExecution>();
+    filteredTestCases.forEach(tc => {
+      if (isTestCaseAutomated(tc) && !uniqueTestCases.has(tc.id)) {
+        uniqueTestCases.set(tc.id, tc);
+      }
+    });
+    return Array.from(uniqueTestCases.values());
+  }, [filteredTestCases]);
+
+  // Handle bulk run
+  const handleBulkRun = async () => {
+    if (!testRun || !testRunId || selectedTestCasesForBulkRun.size === 0) {
+      toast.error('Please select at least one test case to run');
+      return;
+    }
+
+    if (!testRun.configurations || testRun.configurations.length === 0) {
+      toast.error('No configurations available for this test run');
+      return;
+    }
+
+    setIsBulkRunning(true);
+
+    try {
+      const selectedTestCaseIds = Array.from(selectedTestCasesForBulkRun);
+      const configurations = testRun.configurations;
+
+      // For each configuration, create a test run execution
+      for (const config of configurations) {
+        try {
+          // Create test run execution
+          const testRunExecution = await testRunExecutionsApiService.createTestRunExecution({
+            test_run_id: parseInt(testRunId),
+            state: 1, // "In Progress"
+          });
+
+          // Create test case execution entries for all selected test cases with "In Progress" status
+          await Promise.all(
+            selectedTestCaseIds.map(testCaseId =>
+              testCaseExecutionsApiService.createTestCaseExecution({
+                testCaseId,
+                testRunId: testRunId,
+                result: 7, // "In Progress"
+                configurationId: config.id,
+                testRunExecutionId: testRunExecution.id,
+              })
+            )
+          );
+
+          // Start polling for this test run execution
+          const testCasesSummary = selectedTestCaseIds
+            .map(id => {
+              const tc = filteredTestCases.find(t => t.id === id);
+              return tc ? `TC-${tc.fullTestCase?.projectRelativeId ?? tc.id}` : id;
+            })
+            .join(', ');
+
+          startPolling(
+            {
+              id: testRunExecution.id,
+              testCaseId: testRunExecution.test_case_id ?? 0,
+              testCaseCode: testCasesSummary,
+              testCaseTitle: `${selectedTestCaseIds.length} test case(s) on ${config.label}`,
+              testRunId: testRunExecution.test_run_id,
+              configurationId: parseInt(config.id, 10),
+              state: testRunExecution.state ?? 1,
+              stateLabel: testRunExecution.state_label ?? 'In Progress',
+              startedAt: new Date(),
+              linkedTestCaseIds: selectedTestCaseIds,
+              testRunIdForPayload: testRunId,
+              configurationIdForPayload: config.id,
+            },
+            async () => {
+              // Refresh test run details when execution completes
+              if (testRunId) {
+                await fetchTestRunDetails(testRunId);
+              }
+            }
+          );
+        } catch (error) {
+          console.error(`Failed to start execution for configuration ${config.label}:`, error);
+          toast.error(`Failed to start execution for ${config.label}`);
+        }
+      }
+
+      toast.success(
+        `Started ${configurations.length} execution(s) for ${selectedTestCaseIds.length} test case(s). You can continue using the app while tests run in the background.`,
+        { duration: 5000 }
+      );
+
+      // Clear selection
+      setSelectedTestCasesForBulkRun(new Set());
+    } catch (error) {
+      console.error('Failed to start bulk executions:', error);
+      toast.error('Failed to start bulk executions');
+    } finally {
+      setIsBulkRunning(false);
+    }
+  };
+
   // Apply filters whenever criteria change
   useEffect(() => {
     if (testCases.length > 0) {
@@ -950,10 +1080,36 @@ const TestRunDetails: React.FC = () => {
       />
 
       <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-lg backdrop-blur-sm transition-all duration-300 overflow-visible">
-        <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             Test Cases ({filteredTestCases.length}{filteredTestCases.length !== testCases.length ? ` of ${testCases.length}` : ''})
           </h3>
+          {automatedTestCasesForBulkRun.length > 0 && !isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleSelectAllToggle}
+                className="px-3 py-1.5 text-sm text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 transition-colors"
+                disabled={isBulkRunning}
+              >
+                {selectedTestCasesForBulkRun.size === automatedTestCasesForBulkRun.length ? 'Unselect All' : 'Select All'}
+              </button>
+              <Button
+                onClick={handleBulkRun}
+                disabled={selectedTestCasesForBulkRun.size === 0 || isBulkRunning}
+                className="flex items-center space-x-2"
+                icon={Play}
+              >
+                {isBulkRunning ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <span>Starting...</span>
+                  </>
+                ) : (
+                  <span>Run Selected ({selectedTestCasesForBulkRun.size})</span>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
         
         <div className="overflow-x-auto" style={{ overflow: 'visible' }}>
@@ -961,6 +1117,18 @@ const TestRunDetails: React.FC = () => {
             <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
               <tr>
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">ID</th>
+                {automatedTestCasesForBulkRun.length > 0 && !isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
+                  <th className="text-center py-4 px-4 text-sm font-medium text-slate-600 dark:text-gray-400 w-16">
+                    <input
+                      type="checkbox"
+                      checked={selectedTestCasesForBulkRun.size === automatedTestCasesForBulkRun.length && automatedTestCasesForBulkRun.length > 0}
+                      onChange={handleSelectAllToggle}
+                      disabled={isBulkRunning}
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-cyan-500 focus:ring-cyan-500 disabled:opacity-50"
+                      title="Select/Unselect All"
+                    />
+                  </th>
+                )}
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Title</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Priority</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Type</th>
@@ -974,12 +1142,33 @@ const TestRunDetails: React.FC = () => {
               </tr>
             </thead>
             <tbody style={{ position: 'relative', overflow: 'visible' }}>
-              {filteredTestCases.map((testCase, index) => (
-                <tr key={`${testCase.id}-${testCase.configurationId || 'default'}-${index}`} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors" style={{ position: 'relative', overflow: 'visible' }}>
-                  <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
-                    TC-{testCase.fullTestCase?.projectRelativeId ?? testCase.id}
-                  </td>
-                  <td className="py-4 px-6">
+              {filteredTestCases.map((testCase, index) => {
+                const isAutomated = isTestCaseAutomated(testCase);
+                const showCheckbox = isAutomated && !isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && automatedTestCasesForBulkRun.length > 0;
+                // Only show checkbox for first occurrence of each test case (not per configuration)
+                const isFirstOccurrence = filteredTestCases.findIndex(tc => tc.id === testCase.id) === index;
+
+                return (
+                  <tr key={`${testCase.id}-${testCase.configurationId || 'default'}-${index}`} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors" style={{ position: 'relative', overflow: 'visible' }}>
+                    <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
+                      TC-{testCase.fullTestCase?.projectRelativeId ?? testCase.id}
+                    </td>
+                    {showCheckbox && (
+                      <td className="py-4 px-4 text-center">
+                        {isFirstOccurrence ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedTestCasesForBulkRun.has(testCase.id)}
+                            onChange={() => handleTestCaseCheckboxToggle(testCase.id)}
+                            disabled={isBulkRunning}
+                            className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-cyan-500 focus:ring-cyan-500 disabled:opacity-50"
+                          />
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-600">—</span>
+                        )}
+                      </td>
+                    )}
+                    <td className="py-4 px-6">
                     <button
                       onClick={() => handleTestCaseTitleClick(testCase)}
                       className="text-left w-full group"
@@ -1062,7 +1251,8 @@ const TestRunDetails: React.FC = () => {
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
