@@ -764,14 +764,15 @@ const TestRunDetails: React.FC = () => {
     return await createTag(label);
   };
 
-  // Handle individual test case checkbox
-  const handleTestCaseCheckboxToggle = (testCaseId: string) => {
+  // Handle individual test case/configuration checkbox
+  const handleTestCaseCheckboxToggle = (testCaseId: string, configurationId: string | undefined) => {
+    const key = `${testCaseId}|${configurationId || 'default'}`;
     setSelectedTestCasesForBulkRun(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(testCaseId)) {
-        newSet.delete(testCaseId);
+      if (newSet.has(key)) {
+        newSet.delete(key);
       } else {
-        newSet.add(testCaseId);
+        newSet.add(key);
       }
       return newSet;
     });
@@ -782,19 +783,13 @@ const TestRunDetails: React.FC = () => {
     if (selectedTestCasesForBulkRun.size === automatedTestCasesForBulkRun.length) {
       setSelectedTestCasesForBulkRun(new Set());
     } else {
-      setSelectedTestCasesForBulkRun(new Set(automatedTestCasesForBulkRun.map(tc => tc.id)));
+      setSelectedTestCasesForBulkRun(new Set(automatedTestCasesForBulkRun.map(tc => `${tc.id}|${tc.configurationId || 'default'}`)));
     }
   };
 
-  // Get automated test cases for bulk run (only include unique test cases, not per-configuration entries)
+  // Get automated test cases for bulk run (include all test case/configuration pairs)
   const automatedTestCasesForBulkRun = React.useMemo(() => {
-    const uniqueTestCases = new Map<string, TestCaseWithExecution>();
-    filteredTestCases.forEach(tc => {
-      if (isTestCaseAutomated(tc) && !uniqueTestCases.has(tc.id)) {
-        uniqueTestCases.set(tc.id, tc);
-      }
-    });
-    return Array.from(uniqueTestCases.values());
+    return filteredTestCases.filter(tc => isTestCaseAutomated(tc));
   }, [filteredTestCases]);
 
   // Handle bulk run
@@ -812,29 +807,30 @@ const TestRunDetails: React.FC = () => {
     setIsBulkRunning(true);
 
     try {
-      const selectedTestCaseIds = Array.from(selectedTestCasesForBulkRun);
+      // Parse selected test case/configuration pairs
+      const selectedKeys = Array.from(selectedTestCasesForBulkRun);
+      const selectedPairs = selectedKeys.map(key => {
+        const [testCaseId, configId] = key.split('|');
+        return { testCaseId, configId: configId === 'default' ? undefined : configId };
+      });
 
-      // Find unique configurations among selected test cases
+      // Group by configuration
       const configurationsMap = new Map<string, { config: typeof testRun.configurations[0], testCaseIds: string[] }>();
 
-      selectedTestCaseIds.forEach(testCaseId => {
-        const testCaseEntries = filteredTestCases.filter(tc => tc.id === testCaseId && isTestCaseAutomated(tc));
+      selectedPairs.forEach(({ testCaseId, configId }) => {
+        const configKey = configId || 'default';
 
-        testCaseEntries.forEach(tc => {
-          const configId = tc.configurationId || 'default';
-
-          if (!configurationsMap.has(configId)) {
-            const config = testRun.configurations?.find(c => c.id === tc.configurationId);
-            if (config) {
-              configurationsMap.set(configId, { config, testCaseIds: [testCaseId] });
-            }
-          } else {
-            const existing = configurationsMap.get(configId)!;
-            if (!existing.testCaseIds.includes(testCaseId)) {
-              existing.testCaseIds.push(testCaseId);
-            }
+        if (!configurationsMap.has(configKey)) {
+          const config = testRun.configurations?.find(c => c.id === configId);
+          if (config) {
+            configurationsMap.set(configKey, { config, testCaseIds: [testCaseId] });
           }
-        });
+        } else {
+          const existing = configurationsMap.get(configKey)!;
+          if (!existing.testCaseIds.includes(testCaseId)) {
+            existing.testCaseIds.push(testCaseId);
+          }
+        }
       });
 
       // For each unique configuration, create one test run execution
@@ -899,7 +895,7 @@ const TestRunDetails: React.FC = () => {
       }
 
       toast.success(
-        `Started ${executionCount} execution(s) for ${selectedTestCaseIds.length} test case(s). You can continue using the app while tests run in the background.`,
+        `Started ${executionCount} execution(s) for ${selectedPairs.length} test case(s). You can continue using the app while tests run in the background.`,
         { duration: 5000 }
       );
 
@@ -1166,8 +1162,7 @@ const TestRunDetails: React.FC = () => {
               {filteredTestCases.map((testCase, index) => {
                 const isAutomated = isTestCaseAutomated(testCase);
                 const showCheckbox = isAutomated && !isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && automatedTestCasesForBulkRun.length > 0;
-                // Only show checkbox for first occurrence of each test case (not per configuration)
-                const isFirstOccurrence = filteredTestCases.findIndex(tc => tc.id === testCase.id) === index;
+                const checkboxKey = `${testCase.id}|${testCase.configurationId || 'default'}`;
 
                 return (
                   <tr key={`${testCase.id}-${testCase.configurationId || 'default'}-${index}`} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors" style={{ position: 'relative', overflow: 'visible' }}>
@@ -1176,17 +1171,13 @@ const TestRunDetails: React.FC = () => {
                     </td>
                     {showCheckbox && (
                       <td className="py-4 px-4 text-center">
-                        {isFirstOccurrence ? (
-                          <input
-                            type="checkbox"
-                            checked={selectedTestCasesForBulkRun.has(testCase.id)}
-                            onChange={() => handleTestCaseCheckboxToggle(testCase.id)}
-                            disabled={isBulkRunning}
-                            className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-cyan-500 focus:ring-cyan-500 disabled:opacity-50"
-                          />
-                        ) : (
-                          <span className="text-slate-400 dark:text-slate-600">—</span>
-                        )}
+                        <input
+                          type="checkbox"
+                          checked={selectedTestCasesForBulkRun.has(checkboxKey)}
+                          onChange={() => handleTestCaseCheckboxToggle(testCase.id, testCase.configurationId)}
+                          disabled={isBulkRunning}
+                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-cyan-500 focus:ring-cyan-500 disabled:opacity-50"
+                        />
                       </td>
                     )}
                     <td className="py-4 px-6">
