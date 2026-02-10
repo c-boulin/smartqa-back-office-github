@@ -10,7 +10,6 @@ import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSideba
 import TestRunDetailsFilters from '../components/TestRun/TestRunDetailsFilters';
 import TestRunDetailsFiltersSidebar from '../components/TestRun/TestRunDetailsFiltersSidebar';
 import AddExecutionCommentModal from '../components/TestRun/AddExecutionCommentModal';
-import RunTestCaseModal from '../components/TestRun/RunTestCaseModal';
 import { testRunsApiService, TestRun } from '../services/testRunsApi';
 import { testCasesApiService } from '../services/testCasesApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
@@ -294,8 +293,6 @@ const TestRunDetails: React.FC = () => {
   const [updatingResults, setUpdatingResults] = useState<Set<string>>(new Set());
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [selectedTestCaseForComment, setSelectedTestCaseForComment] = useState<TestCaseWithExecution | null>(null);
-  const [isRunModalOpen, setIsRunModalOpen] = useState(false);
-  const [selectedTestCaseForRun, setSelectedTestCaseForRun] = useState<TestCaseWithExecution | null>(null);
   const [selectedTestCasesForBulkRun, setSelectedTestCasesForBulkRun] = useState<Set<string>>(new Set());
   const [isBulkRunning, setIsBulkRunning] = useState(false);
 
@@ -1138,7 +1135,6 @@ const TestRunDetails: React.FC = () => {
                 )}
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Automation</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Execution Result</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Actions</th>
               </tr>
             </thead>
             <tbody style={{ position: 'relative', overflow: 'visible' }}>
@@ -1234,22 +1230,6 @@ const TestRunDetails: React.FC = () => {
                       />
                     </div>
                   </td>
-                  <td className="py-4 px-6">
-                    {isTestCaseAutomated(testCase) && !isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) ? (
-                      <button
-                        onClick={() => {
-                          setSelectedTestCaseForRun(testCase);
-                          setIsRunModalOpen(true);
-                        }}
-                        className="p-2 text-slate-600 dark:text-gray-400 hover:text-purple-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                        title="Run Test Case"
-                      >
-                        <Play className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      <span className="text-slate-400 dark:text-slate-600">-</span>
-                    )}
-                  </td>
                 </tr>
                 );
               })}
@@ -1318,43 +1298,6 @@ const TestRunDetails: React.FC = () => {
           testCaseTitle={selectedTestCaseForComment.title}
         />
       )}
-
-      {/* Run Test Case Modal */}
-      <RunTestCaseModal
-        isOpen={isRunModalOpen}
-        onClose={() => {
-          setIsRunModalOpen(false);
-          setSelectedTestCaseForRun(null);
-        }}
-        testRunName={testRun?.name || ''}
-        testRunId={testRunId}
-        selectedTestCase={selectedTestCaseForRun ? {
-          id: selectedTestCaseForRun.id,
-          code: `TC-${selectedTestCaseForRun.fullTestCase?.projectRelativeId ?? selectedTestCaseForRun.id}`,
-          title: selectedTestCaseForRun.title
-        } : undefined}
-        availableAutomatedTestCases={testCases
-          .filter(tc => isTestCaseAutomated(tc))
-          .map(tc => ({
-            id: tc.id,
-            code: `TC-${tc.fullTestCase?.projectRelativeId ?? tc.id}`,
-            title: tc.title
-          }))
-        }
-        availableConfigurations={testRun?.configurations?.map(config => ({
-          id: config.id,
-          label: config.label,
-          userAgent: config.userAgent
-        })) || []}
-        isLoading={loading}
-        onExecutionComplete={() => {
-          if (testRunId) {
-            setTimeout(() => {
-              fetchTestRunDetails(testRunId);
-            }, 100);
-          }
-        }}
-      />
     </div>
   );
 };
