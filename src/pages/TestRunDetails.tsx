@@ -595,32 +595,22 @@ const TestRunDetails: React.FC = () => {
       // Check if we need to update test run state
       // First, check if all test cases are now passed (result 1)
       const allTestCasesPassed = updatedTestCases.every(tc => tc.executionStatus === 1);
-      // Check if any test case has failed (result 2)
-      const anyTestCaseFailed = updatedTestCases.some(tc => tc.executionStatus === 2);
+      const totalTestCases = updatedTestCases.length;
 
-      if (anyTestCaseFailed && testRun.state !== 4 && testRun.state !== 6) {
-        // Any test case failed, move test run to "Rejected" (state 4)
-        try {
-          await testRunsApiService.updateTestRunState(testRunId, 4, testRun.testPlanId || testPlanIdFromUrl);
-          setTestRun({ ...testRun, state: 4 });
-          toast.success(`Execution result updated to ${newResultLabel}`);
-        } catch (error) {
-          console.error('❌ Failed to update test run state:', error);
-          toast.success(`Execution result updated to ${newResultLabel}`);
-        }
-      } else if (allTestCasesPassed && testRun.state !== 5 && testRun.state !== 6) {
+      if (allTestCasesPassed && testRun.state !== 5 && testRun.state !== 6) {
         // All test cases passed (including single test case), move test run to "Done" (state 5)
         // This will also update the test plan to "Done" via updateTestRunState
         try {
           await testRunsApiService.updateTestRunState(testRunId, 5, testRun.testPlanId || testPlanIdFromUrl);
           setTestRun({ ...testRun, state: 5 });
+
           toast.success(`Execution result updated to ${newResultLabel}`);
         } catch (error) {
           console.error('❌ Failed to update test run state:', error);
           toast.success(`Execution result updated to ${newResultLabel}`);
         }
-      } else if ((!allTestCasesPassed || !anyTestCaseFailed) && (testRun.state === 4 || testRun.state === 5)) {
-        // Test run was "Done" or "Rejected" but now the status changed - move back to "In Progress" (state 2)
+      } else if (!allTestCasesPassed && testRun.state === 5) {
+        // Test run was "Done" but now not all test cases are passed - move back to "In Progress" (state 2)
         // This will also update the test plan to "In Progress" via updateTestRunState
         try {
           await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId || testPlanIdFromUrl);
@@ -631,7 +621,7 @@ const TestRunDetails: React.FC = () => {
           toast.success(`Execution result updated to ${newResultLabel}`);
         }
       } else if (isFirstExecution && testRun.state === 1) {
-        // First execution created - move to "In Progress" (state 2)
+        // First execution created but not all passed - move to "In Progress" (state 2)
         // This will also update the test plan to "In Progress" via updateTestRunState
         try {
           await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId || testPlanIdFromUrl);

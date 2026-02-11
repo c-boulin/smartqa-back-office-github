@@ -109,64 +109,17 @@ export const TestRunExecutionPollingProvider: React.FC<{ children: ReactNode }> 
               toast.error('Execution completed but could not save results (missing test run id)');
             } else {
               try {
-                const executionResults: number[] = [];
-
                 await Promise.all(
-                  execution.linkedTestCaseIds.map(async (testCaseId) => {
-                    const result = Math.random() < 0.5 ? 1 : 2;
-                    executionResults.push(result);
-
-                    return testCaseExecutionsApiService.createTestCaseExecution({
+                  execution.linkedTestCaseIds.map((testCaseId) =>
+                    testCaseExecutionsApiService.createTestCaseExecution({
                       testCaseId,
                       testRunId: testRunIdStr,
-                      result,
+                      result: Math.random() < 0.5 ? 1 : 2, // 1 = Passed, 2 = Failed
                       configurationId: configurationIdStr,
                       testRunExecutionId: finalResult.id,
-                    });
-                  })
+                    })
+                  )
                 );
-
-                // Update test run state based on execution results
-                try {
-                  const { testRunsApiService } = await import('../services/testRunsApi');
-                  const testRunResponse = await testRunsApiService.getTestRun(testRunIdStr);
-
-                  if (testRunResponse?.data) {
-                    const testRunState = testRunResponse.data.attributes.state;
-
-                    // If test run is not closed
-                    if (testRunState !== 6) {
-                      // Check if any execution failed
-                      const anyFailed = executionResults.some(result => result === 2);
-
-                      if (anyFailed) {
-                        // Any test case failed, move test run to "Rejected" (state 4)
-                        await testRunsApiService.updateTestRunState(testRunIdStr, 4);
-                      } else {
-                        // All test cases passed, check if ALL test cases in the run are done
-                        // Get all test case IDs from the test run
-                        const testCaseIds = testRunResponse.data.relationships.testCases?.data?.map(tc =>
-                          tc.id.split('/').pop() || ''
-                        ) || [];
-
-                        // Check if we've executed all test cases
-                        const allTestCasesExecuted = testCaseIds.length === execution.linkedTestCaseIds.length;
-
-                        if (allTestCasesExecuted) {
-                          // All test cases passed, move test run to "Done" (state 5)
-                          await testRunsApiService.updateTestRunState(testRunIdStr, 5);
-                        } else {
-                          // Not all test cases executed yet, move to "In Progress" if needed
-                          if (testRunState === 1) {
-                            await testRunsApiService.updateTestRunState(testRunIdStr, 2);
-                          }
-                        }
-                      }
-                    }
-                  }
-                } catch (stateUpdateErr) {
-                  console.error('Failed to update test run state after automated execution:', stateUpdateErr);
-                }
               } catch (err) {
                 console.error('Failed to create test case executions after run completed:', err);
                 toast.error('Execution completed but failed to save some results');
