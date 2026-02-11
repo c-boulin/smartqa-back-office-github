@@ -22,7 +22,6 @@ const POLLING_INTERVAL = 30000;
 
 export const NotificationsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [hasUnread, setHasUnread] = useState(false);
-  const [isPolling, setIsPolling] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const setUnread = useCallback(() => {
@@ -33,7 +32,7 @@ export const NotificationsProvider: React.FC<{ children: ReactNode }> = ({ child
     setHasUnread(false);
   }, []);
 
-  const checkInitialUnread = useCallback(async () => {
+  const checkForUnread = async () => {
     try {
       const response = await notificationsApiService.getNotifications({ itemsPerPage: 5, page: 1 });
 
@@ -44,26 +43,29 @@ export const NotificationsProvider: React.FC<{ children: ReactNode }> = ({ child
     } catch (error) {
       console.error('Failed to check for unread notifications:', error);
     }
+  };
+
+  const checkInitialUnread = useCallback(async () => {
+    await checkForUnread();
   }, []);
 
   const startPolling = useCallback(() => {
-    if (isPolling) return;
+    if (pollingIntervalRef.current) {
+      return;
+    }
 
-    setIsPolling(true);
-
-    checkInitialUnread();
+    checkForUnread();
 
     pollingIntervalRef.current = setInterval(() => {
-      checkInitialUnread();
+      checkForUnread();
     }, POLLING_INTERVAL);
-  }, [isPolling, checkInitialUnread]);
+  }, []);
 
   const stopPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
-    setIsPolling(false);
   }, []);
 
   useEffect(() => {
