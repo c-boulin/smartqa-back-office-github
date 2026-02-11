@@ -5,11 +5,13 @@ import Button from '../components/UI/Button';
 import Card from '../components/UI/Card';
 import { apiService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationsContext';
 import toast from 'react-hot-toast';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { state, dispatch, login } = useAuth();
+  const { checkInitialUnread } = useNotifications();
   const [ssoUrl, setSsoUrl] = useState<string>('');
   const [isInitializing, setIsInitializing] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -149,6 +151,9 @@ const Login: React.FC = () => {
 
           // Clear the popup check interval since we're successful
           clearInterval(checkClosed);
+
+          // Check for unread notifications
+          checkInitialUnread();
 
           // Redirect to projects page
           setTimeout(() => {

@@ -1,14 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import ActiveExecutionsIndicator from '../TestRun/ActiveExecutionsIndicator';
 import { useApp } from '../../context/AppContext';
+import { useNotifications } from '../../context/NotificationsContext';
 
 const Layout: React.FC = () => {
   const location = useLocation();
   const { getSelectedProject } = useApp();
+  const { checkInitialUnread } = useNotifications();
   const selectedProject = getSelectedProject();
+
+  useEffect(() => {
+    checkInitialUnread();
+  }, [checkInitialUnread]);
   
   const getPageTitle = (pathname: string) => {
     const titles: Record<string, string> = {
