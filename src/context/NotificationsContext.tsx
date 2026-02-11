@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { notificationsApiService } from '../services/notificationsApi';
 
 interface NotificationsContextType {
@@ -10,12 +10,20 @@ interface NotificationsContextType {
   markAsSeen: () => void;
   /** Check for unread notifications on login/page load. */
   checkInitialUnread: () => Promise<void>;
+  /** Start polling for new notifications. */
+  startPolling: () => void;
+  /** Stop polling for new notifications. */
+  stopPolling: () => void;
 }
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
+const POLLING_INTERVAL = 30000;
+
 export const NotificationsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [hasUnread, setHasUnread] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const setUnread = useCallback(() => {
     setHasUnread(true);
@@ -38,8 +46,36 @@ export const NotificationsProvider: React.FC<{ children: ReactNode }> = ({ child
     }
   }, []);
 
+  const startPolling = useCallback(() => {
+    if (isPolling) return;
+
+    setIsPolling(true);
+
+    checkInitialUnread();
+
+    pollingIntervalRef.current = setInterval(() => {
+      checkInitialUnread();
+    }, POLLING_INTERVAL);
+  }, [isPolling, checkInitialUnread]);
+
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    setIsPolling(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <NotificationsContext.Provider value={{ hasUnread, setUnread, markAsSeen, checkInitialUnread }}>
+    <NotificationsContext.Provider value={{ hasUnread, setUnread, markAsSeen, checkInitialUnread, startPolling, stopPolling }}>
       {children}
     </NotificationsContext.Provider>
   );

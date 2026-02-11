@@ -9,12 +9,16 @@ import { useNotifications } from '../../context/NotificationsContext';
 const Layout: React.FC = () => {
   const location = useLocation();
   const { getSelectedProject } = useApp();
-  const { checkInitialUnread } = useNotifications();
+  const { startPolling, stopPolling } = useNotifications();
   const selectedProject = getSelectedProject();
 
   useEffect(() => {
-    checkInitialUnread();
-  }, [checkInitialUnread]);
+    startPolling();
+
+    return () => {
+      stopPolling();
+    };
+  }, [startPolling, stopPolling]);
   
   const getPageTitle = (pathname: string) => {
     const titles: Record<string, string> = {
