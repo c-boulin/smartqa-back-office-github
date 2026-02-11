@@ -54,7 +54,6 @@ class NotificationsApiService {
     const query = new URLSearchParams({
       itemsPerPage: String(itemsPerPage),
       page: String(page),
-      'order[createdAt]': 'desc',
     }).toString();
     const response = await apiService.authenticatedRequest(`/notifications?${query}`);
     if (!response) {
