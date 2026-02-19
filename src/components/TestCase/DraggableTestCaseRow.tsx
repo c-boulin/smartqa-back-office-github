@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SquarePen, Trash2, GripVertical, Copy } from 'lucide-react';
+import { SquarePen, Trash2, GripVertical, Copy, Link, Unlink } from 'lucide-react';
 import StatusBadge from '../UI/StatusBadge';
 import TagsWithTooltip from '../UI/TagsWithTooltip';
 import RunTestButton from '../UI/RunTestButton';
@@ -16,7 +16,13 @@ interface DraggableTestCaseRowProps {
   onRunTest: (testCase: TestCase) => void;
   isSubmitting: boolean;
   isDragging?: boolean;
+  /** When true and test case is automated, show GitLab link indicator */
+  showGitlabLinkIndicator?: boolean;
+  /** GitLab test name if linked; null/undefined = not linked */
+  gitlabLinkName?: string | null;
 }
+
+const AUTOMATION_STATUS_AUTOMATED = 2;
 
 const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
   testCase,
@@ -25,7 +31,9 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
   onDeleteTestCase,
   onDuplicateTestCase,
   onRunTest,
-  isSubmitting
+  isSubmitting,
+  showGitlabLinkIndicator = false,
+  gitlabLinkName = null
 }) => {
   const [dragStarted, setDragStarted] = useState(false);
   const { hasPermission } = usePermissions();
@@ -137,7 +145,21 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
         />
       </td>
       <td className="py-3 px-3 whitespace-nowrap">
-        <StatusBadge status={testCase.automationStatus} type="automation" />
+        <div className="flex items-center gap-1.5">
+          <StatusBadge status={testCase.automationStatus} type="automation" />
+          {showGitlabLinkIndicator && testCase.automationStatus === AUTOMATION_STATUS_AUTOMATED && (
+            <span
+              className="inline-flex shrink-0"
+              title={gitlabLinkName ? `Linked to GitLab: ${gitlabLinkName}` : 'Not linked to GitLab'}
+            >
+              {gitlabLinkName ? (
+                <Link className="w-3.5 h-3.5 text-green-500 dark:text-green-400" aria-hidden />
+              ) : (
+                <Unlink className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500" aria-hidden />
+              )}
+            </span>
+          )}
+        </div>
       </td>
       {hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && (
         <td className="py-3 px-3 whitespace-nowrap">

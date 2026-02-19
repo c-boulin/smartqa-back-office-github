@@ -564,14 +564,23 @@ class TestRunsApiService {
         const configId = configRef.id.split('/').pop();
 
         if (configId) {
-          const includedConfig = included?.find(item =>
-            item.type === 'Configuration' && item.attributes.id.toString() === configId
-          );
+          const includedConfig = included?.find((item: Record<string, unknown>) =>
+            item.type === 'Configuration' && (item.attributes as Record<string, unknown>)?.id?.toString() === configId
+          ) as Record<string, unknown> | undefined;
+
+          const rel = includedConfig?.relationships as Record<string, unknown> | undefined;
+          const projectData = rel?.project != null ? (rel.project as Record<string, unknown>)?.data : undefined;
+          let projectId: string | null = null;
+          if (projectData != null && !Array.isArray(projectData) && typeof (projectData as { id?: string }).id === 'string') {
+            const match = /\/api\/projects\/(\d+)$/.exec((projectData as { id: string }).id);
+            projectId = match ? match[1] : null;
+          }
 
           configurations.push({
             id: configId,
-            label: includedConfig?.attributes.label || 'Unknown Configuration',
-            userAgent: includedConfig?.attributes.userAgent
+            label: (includedConfig?.attributes as Record<string, unknown>)?.label as string || 'Unknown Configuration',
+            userAgent: (includedConfig?.attributes as Record<string, unknown>)?.userAgent as string | undefined,
+            projectId: projectId ?? undefined
           });
         }
       }

@@ -9,6 +9,14 @@ export interface Project {
   testsPassedCount: number;
   testsFailedCount: number;
   testRunsCount: number;
+  /** Automation: country code */
+  country?: string;
+  /** Automation: URL */
+  url?: string;
+  /** Automation: full GitLab project URL (e.g. https://gitlab.dvtech.io/qaautomation/QATEsmartbuilder) */
+  gitlab_project_name?: string;
+  /** Automation: test suite name (e.g. TplayvodSuite.robot) */
+  test_suite_name?: string;
 }
 
 export interface TestCase {

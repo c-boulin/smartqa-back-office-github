@@ -26,6 +26,7 @@ import TestRunsOverview from './pages/TestRunsOverview';
 import TestPlans from './pages/TestPlans';
 import TestPlanDetails from './pages/TestPlanDetails';
 import Reports from './pages/Reports';
+import AutomatedConfiguration from './pages/AutomatedConfiguration';
 import Settings from './pages/Settings';
 import AutomatedExecutionTestCases from './pages/AutomatedExecutionTestCases';
 import AutomatedExecutionSteps from './pages/AutomatedExecutionSteps';
@@ -57,6 +58,7 @@ const AppContent: React.FC = () => {
               <Route path="test-plans" element={<TestPlans />} />
               <Route path="test-plans/:id" element={<TestPlanDetails />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="automated-configuration" element={<AutomatedConfiguration />} />
               <Route path="settings" element={<Settings />} />
               <Route path="automated-execution/:projectId" element={<AutomatedExecutionTestCases />} />
               <Route path="automated-execution/:projectId/test-case/:testCaseId" element={<AutomatedExecutionSteps />} />

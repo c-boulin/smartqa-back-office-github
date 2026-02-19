@@ -291,7 +291,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Create configuration and add to context
   const createConfiguration = async (label: string): Promise<Configuration> => {
-    const response = await configurationsApiService.createConfiguration(label);
+    const response = await configurationsApiService.createConfiguration({ label });
     const newConfiguration = configurationsApiService.transformApiConfiguration(response.data);
     dispatch({ type: 'ADD_CONFIGURATION', payload: newConfiguration });
     return newConfiguration;

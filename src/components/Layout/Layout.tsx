@@ -29,6 +29,7 @@ const Layout: React.FC = () => {
       '/test-runs': 'Test Runs',
       '/test-plans': 'Test Plans',
       '/reports': 'Reports & Analytics',
+      '/automated-configuration': 'Automated Configuration',
       '/settings': 'Settings'
     };
     return titles[pathname] || 'SMARTQA';

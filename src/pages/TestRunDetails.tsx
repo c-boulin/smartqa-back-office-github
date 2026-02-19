@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, User, Play, CheckCircle, XCircle, Clock, AlertTriangle, Loader, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Play, CheckCircle, XCircle, Clock, AlertTriangle, Loader, MessageSquare, Link, Unlink } from 'lucide-react';
 import { format } from 'date-fns';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
@@ -10,6 +10,7 @@ import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSideba
 import TestRunDetailsFilters from '../components/TestRun/TestRunDetailsFilters';
 import TestRunDetailsFiltersSidebar from '../components/TestRun/TestRunDetailsFiltersSidebar';
 import AddExecutionCommentModal from '../components/TestRun/AddExecutionCommentModal';
+import { apiService } from '../services/api';
 import { testRunsApiService, TestRun } from '../services/testRunsApi';
 import { testCasesApiService } from '../services/testCasesApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
@@ -295,6 +296,8 @@ const TestRunDetails: React.FC = () => {
   const [selectedTestCaseForComment, setSelectedTestCaseForComment] = useState<TestCaseWithExecution | null>(null);
   const [selectedTestCasesForBulkRun, setSelectedTestCasesForBulkRun] = useState<Set<string>>(new Set());
   const [isBulkRunning, setIsBulkRunning] = useState(false);
+  const [gitlabLinksByTestCaseId, setGitlabLinksByTestCaseId] = useState<Record<string, string | null>>({});
+  const [gitlabLinksFetched, setGitlabLinksFetched] = useState(false);
 
   // Ref to track if fetch is in progress to prevent duplicate requests
   const fetchInProgressRef = useRef(false);
@@ -357,6 +360,43 @@ const TestRunDetails: React.FC = () => {
     };
   }, [testRunId]);
 
+  // Fetch GitLab test case links for the test run's project (for automated TC link indicator)
+  useEffect(() => {
+    const projectId = testRun?.projectId;
+    if (!projectId) {
+      setGitlabLinksFetched(false);
+      setGitlabLinksByTestCaseId({});
+      return;
+    }
+    let cancelled = false;
+    apiService
+      .authenticatedRequest(`/projects/${projectId}/test-case-gitlab-links`)
+      .then((response: { data?: { automatedTestCases?: Array<{ id: string; gitlab_test_name?: string | null }> } }) => {
+        if (cancelled) return;
+        const list = response?.data?.automatedTestCases;
+        const map: Record<string, string | null> = {};
+        if (Array.isArray(list)) {
+          list.forEach((tc) => {
+            map[String(tc.id)] = tc.gitlab_test_name ?? null;
+          });
+        }
+        setGitlabLinksByTestCaseId(map);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGitlabLinksByTestCaseId({});
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setGitlabLinksFetched(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [testRun?.projectId]);
+
   const fetchTestRunDetails = async (testRunId: string) => {
     // Prevent duplicate requests
     if (fetchInProgressRef.current) {
@@ -387,7 +427,7 @@ const TestRunDetails: React.FC = () => {
       const rawIncludedTestCases = (testRunResponse.included || [])
         .filter((item: Record<string, unknown>) => item.type === 'TestCase');
 
-      // Process test cases with executions for each configuration
+      // Process test cases with executions: pair only by type (automated config ↔ automated TC, global config ↔ non-automated TC)
       const testCasesWithExecution = transformedTestRun.testCaseIds.flatMap(testCaseId => {
         // Find the raw test case in included data - need to extract numeric ID from path
         const rawTestCase = rawIncludedTestCases.find((item: Record<string, unknown>) => {
@@ -397,28 +437,77 @@ const TestRunDetails: React.FC = () => {
 
         if (!rawTestCase) {
           console.warn(`🏃 ⚠️ Test case ${testCaseId} not found in included data`);
-          return configsToProcess.map(config => ({
-            id: testCaseId,
-            title: `Test Case ${testCaseId}`,
-            priority: 'medium',
-            type: 'functional',
-            executionStatus: 6 as TestResultId,
-            executionResult: TEST_RESULTS[6],
-            fullTestCase: null,
-            configurationId: config.id || undefined,
-            configurationLabel: config.label || undefined
-          }));
+          // Unknown test case: treat as non-automated, only pair with global configs
+          return configsToProcess
+            .filter(config => !config.projectId)
+            .map(config => ({
+              id: testCaseId,
+              title: `Test Case ${testCaseId}`,
+              priority: 'medium',
+              type: 'functional',
+              executionStatus: 6 as TestResultId,
+              executionResult: TEST_RESULTS[6],
+              fullTestCase: null,
+              configurationId: config.id || undefined,
+              configurationLabel: config.label || undefined
+            }));
         }
 
         // Transform the test case
         const testCase = testCasesApiService.transformApiTestCase(rawTestCase, testRunResponse.included);
+        const isTestCaseAutomated = testCase.automationStatus === 2;
+
+        // Only pair: automated config ↔ automated TC, global config ↔ non-automated TC
+        const configsForThisTestCase = configsToProcess.filter(config => {
+          const isConfigAutomated = Boolean(config.projectId);
+          return isConfigAutomated === isTestCaseAutomated;
+        });
 
         // Get executions from the test case attributes
         const rawAttrs = rawTestCase.attributes as Record<string, unknown>;
         const executionsData = rawAttrs.executions as Array<Record<string, unknown>> | undefined;
 
-        // Create entry for each configuration
-        return configsToProcess.map(config => {
+        // When no config of the right type: one row without configuration
+        if (configsForThisTestCase.length === 0) {
+          let executionResult: TestResultId = 6;
+          if (executionsData && Array.isArray(executionsData) && executionsData.length > 0) {
+            const testRunExecutions = executionsData.filter((execution: Record<string, unknown>) => {
+              const executionTestRunId = execution.test_run_id?.toString() || '';
+              const expectedTestRunId = testRunId?.toString() || '';
+              return executionTestRunId === expectedTestRunId && !execution.configuration_id;
+            });
+            if (testRunExecutions.length > 0) {
+              const latestExecution = [...testRunExecutions].sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+                const aDate = new Date(a.created_at as string).getTime();
+                const bDate = new Date(b.created_at as string).getTime();
+                return bDate - aDate;
+              })[0];
+              const rawResult = latestExecution.result;
+              if (typeof rawResult === 'number') {
+                executionResult = rawResult as TestResultId;
+              } else if (typeof rawResult === 'string') {
+                const parsedInt = parseInt(rawResult);
+                if (!isNaN(parsedInt) && TEST_RESULTS[parsedInt as TestResultId]) {
+                  executionResult = parsedInt as TestResultId;
+                }
+              }
+            }
+          }
+          return [{
+            id: testCase.id,
+            title: testCase.title,
+            priority: testCase.priority,
+            type: testCase.type,
+            executionStatus: executionResult,
+            executionResult: TEST_RESULTS[executionResult],
+            fullTestCase: testCase,
+            configurationId: undefined,
+            configurationLabel: undefined
+          }];
+        }
+
+        // Create entry for each matching configuration
+        return configsForThisTestCase.map(config => {
           let executionResult: TestResultId = 6; // Default to 'Untested'
 
           if (executionsData && Array.isArray(executionsData) && executionsData.length > 0) {
@@ -475,8 +564,8 @@ const TestRunDetails: React.FC = () => {
         });
       });
 
-      setTestCases(testCasesWithExecution);
-      setFilteredTestCases(testCasesWithExecution);
+      setTestCases(testCasesWithExecution as TestCaseWithExecution[]);
+      setFilteredTestCases(testCasesWithExecution as TestCaseWithExecution[]);
 
     } catch (err) {
       console.error('Failed to fetch test run details:', err);
@@ -787,10 +876,23 @@ const TestRunDetails: React.FC = () => {
     }
   };
 
-  // Get automated test cases for bulk run (include all test case/configuration pairs)
+  // Whether the row's configuration is automated (has projectId)
+  const hasAutomatedConfiguration = (configurationId: string | undefined) =>
+    Boolean(testRun?.configurations?.some(c => c.id === configurationId && c.projectId));
+
+  // Automated test cases that have a GitLab link and an automated configuration (selectable for bulk run)
   const automatedTestCasesForBulkRun = React.useMemo(() => {
-    return filteredTestCases.filter(tc => isTestCaseAutomated(tc));
-  }, [filteredTestCases]);
+    if (!gitlabLinksFetched) return [];
+    return filteredTestCases.filter(
+      tc =>
+        isTestCaseAutomated(tc) &&
+        Boolean(gitlabLinksByTestCaseId[String(tc.id)]) &&
+        hasAutomatedConfiguration(tc.configurationId)
+    );
+  }, [filteredTestCases, gitlabLinksFetched, gitlabLinksByTestCaseId, testRun?.configurations]);
+
+  // Show checkbox column when there is at least one automated test case (keeps column alignment)
+  const showCheckboxColumn = filteredTestCases.some(tc => isTestCaseAutomated(tc)) && !isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE);
 
   // Handle bulk run
   const handleBulkRun = async () => {
@@ -807,8 +909,14 @@ const TestRunDetails: React.FC = () => {
     setIsBulkRunning(true);
 
     try {
-      // Parse selected test case/configuration pairs
-      const selectedKeys = Array.from(selectedTestCasesForBulkRun);
+      // Only run test cases that have a GitLab link (still in selectable set)
+      const selectableKeys = new Set(automatedTestCasesForBulkRun.map(tc => `${tc.id}|${tc.configurationId || 'default'}`));
+      const selectedKeys = Array.from(selectedTestCasesForBulkRun).filter(k => selectableKeys.has(k));
+      if (selectedKeys.length === 0) {
+        toast.error('Please select at least one test case linked to GitLab to run');
+        setIsBulkRunning(false);
+        return;
+      }
       const selectedPairs = selectedKeys.map(key => {
         const [testCaseId, configId] = key.split('|');
         return { testCaseId, configId: configId === 'default' ? undefined : configId };
@@ -855,6 +963,21 @@ const TestRunDetails: React.FC = () => {
               })
             )
           );
+
+          // Trigger GitLab pipeline with selected test case ids and configuration id
+          try {
+            await apiService.authenticatedRequest('/gitlab/trigger-pipeline', {
+              method: 'POST',
+              body: JSON.stringify({
+                test_case_ids: testCaseIds,
+                configuration_id: config.id,
+                test_run_id: testRunId,
+                test_run_execution_id: testRunExecution.id,
+              }),
+            });
+          } catch (err) {
+            console.error('Failed to trigger GitLab pipeline:', err);
+          }
 
           // Start polling for this test run execution
           const testCasesSummary = testCaseIds
@@ -1135,7 +1258,7 @@ const TestRunDetails: React.FC = () => {
             <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
               <tr>
                 <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">ID</th>
-                {automatedTestCasesForBulkRun.length > 0 && !isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
+                {showCheckboxColumn && (
                   <th className="text-center py-4 px-4 text-sm font-medium text-slate-600 dark:text-gray-400 w-16">
                     <input
                       type="checkbox"
@@ -1161,7 +1284,9 @@ const TestRunDetails: React.FC = () => {
             <tbody style={{ position: 'relative', overflow: 'visible' }}>
               {filteredTestCases.map((testCase, index) => {
                 const isAutomated = isTestCaseAutomated(testCase);
-                const showCheckbox = isAutomated && !isTestRunClosed && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && automatedTestCasesForBulkRun.length > 0;
+                const hasGitlabLink = gitlabLinksFetched && Boolean(gitlabLinksByTestCaseId[String(testCase.id)]);
+                const hasAutomatedConfig = hasAutomatedConfiguration(testCase.configurationId);
+                const isSelectable = isAutomated && hasGitlabLink && hasAutomatedConfig;
                 const checkboxKey = `${testCase.id}|${testCase.configurationId || 'default'}`;
 
                 return (
@@ -1169,14 +1294,21 @@ const TestRunDetails: React.FC = () => {
                     <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
                       TC-{testCase.fullTestCase?.projectRelativeId ?? testCase.id}
                     </td>
-                    {showCheckbox && (
+                    {showCheckboxColumn && (
                       <td className="py-4 px-4 text-center">
                         <input
                           type="checkbox"
-                          checked={selectedTestCasesForBulkRun.has(checkboxKey)}
-                          onChange={() => handleTestCaseCheckboxToggle(testCase.id, testCase.configurationId)}
-                          disabled={isBulkRunning}
-                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-cyan-500 focus:ring-cyan-500 disabled:opacity-50"
+                          checked={isSelectable && selectedTestCasesForBulkRun.has(checkboxKey)}
+                          onChange={() => isSelectable && handleTestCaseCheckboxToggle(testCase.id, testCase.configurationId)}
+                          disabled={!isSelectable || isBulkRunning}
+                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-cyan-500 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={
+                            isAutomated && !hasGitlabLink
+                              ? 'Link to GitLab required to run'
+                              : isAutomated && !hasAutomatedConfig
+                                ? 'Automated configuration required to run'
+                                : undefined
+                          }
                         />
                       </td>
                     )}
@@ -1216,15 +1348,34 @@ const TestRunDetails: React.FC = () => {
                     </td>
                   )}
                   <td className="py-4 px-6">
-                    {isTestCaseAutomated(testCase) ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/50">
-                        Automated
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/50">
-                        Manual
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {isTestCaseAutomated(testCase) ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/50">
+                          Automated
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/50">
+                          Manual
+                        </span>
+                      )}
+                      {gitlabLinksFetched && isTestCaseAutomated(testCase) && (() => {
+                        const tcId = String(testCase.id);
+                        const gitlabName = gitlabLinksByTestCaseId[tcId];
+                        const isLinked = Boolean(gitlabName);
+                        return (
+                          <span
+                            className="inline-flex shrink-0"
+                            title={isLinked ? `Linked to GitLab: ${gitlabName}` : 'Not linked to GitLab'}
+                          >
+                            {isLinked ? (
+                              <Link className="w-3.5 h-3.5 text-green-500 dark:text-green-400" aria-hidden />
+                            ) : (
+                              <Unlink className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500" aria-hidden />
+                            )}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </td>
                   <td className="py-4 px-6" style={{ position: 'relative', overflow: 'visible' }}>
                     <div className="space-y-2">

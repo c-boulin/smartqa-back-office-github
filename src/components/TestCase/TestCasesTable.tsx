@@ -26,6 +26,8 @@ interface TestCasesTableProps {
   onRunTest: (testCase: TestCase) => void;
   onPageChange: (page: number) => void;
   isSubmitting: boolean;
+  gitlabLinksByTestCaseId?: Record<string, string | null>;
+  gitlabLinksFetched?: boolean;
 }
 
 const TestCasesTable: React.FC<TestCasesTableProps> = ({
@@ -41,7 +43,9 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
   onDuplicateTestCase,
   onRunTest,
   onPageChange,
-  isSubmitting
+  isSubmitting,
+  gitlabLinksByTestCaseId = {},
+  gitlabLinksFetched = false
 }) => {
   const { hasPermission } = usePermissions();
 
@@ -96,6 +100,8 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
                 onDuplicateTestCase={onDuplicateTestCase}
                 onRunTest={onRunTest}
                 isSubmitting={isSubmitting}
+                gitlabLinkName={gitlabLinksByTestCaseId[testCase.id] ?? undefined}
+                showGitlabLinkIndicator={gitlabLinksFetched}
               />
             ))}
           </tbody>

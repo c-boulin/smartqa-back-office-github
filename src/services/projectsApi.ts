@@ -10,6 +10,13 @@ export interface ApiProject {
     description: string;
     createdAt: string;
     updatedAt: string;
+    country?: string;
+    url?: string;
+    /** API may return camelCase */
+    gitlab_project_name?: string;
+    test_suite_name?: string;
+    gitlabProjectName?: string;
+    testSuiteName?: string;
   };
   relationships: {
     testCases: {
@@ -66,6 +73,10 @@ export interface UpdateProjectRequest {
     attributes: {
       title: string;
       description: string;
+      country?: string;
+      url?: string;
+      gitlab_project_name?: string;
+      test_suite_name?: string;
     };
   };
 }
@@ -114,7 +125,11 @@ class ProjectsApiService {
       testCasesCount: apiProject.relationships.testCases.data.length,
       testsPassedCount: 0, // Not provided by API, would need separate calculation
       testsFailedCount: 0, // Not provided by API, would need separate calculation
-      testRunsCount: apiProject.relationships.testRuns.data.length
+      testRunsCount: apiProject.relationships.testRuns.data.length,
+      country: apiProject.attributes.country,
+      url: apiProject.attributes.url,
+      gitlab_project_name: apiProject.attributes.gitlabProjectName ?? apiProject.attributes.gitlab_project_name,
+      test_suite_name: apiProject.attributes.testSuiteName ?? apiProject.attributes.test_suite_name,
     };
   }
 
@@ -278,15 +293,32 @@ class ProjectsApiService {
   async updateProject(id: string, projectData: {
     title: string;
     description: string;
+    country?: string;
+    url?: string;
+    gitlab_project_name?: string;
+    test_suite_name?: string;
   }): Promise<UpdateProjectResponse> {
+    const attributes: UpdateProjectRequest['data']['attributes'] = {
+      title: projectData.title,
+      description: projectData.description,
+    };
+    if (projectData.country !== undefined) {
+      attributes.country = projectData.country;
+    }
+    if (projectData.url !== undefined) {
+      attributes.url = projectData.url;
+    }
+    if (projectData.gitlab_project_name !== undefined) {
+      attributes.gitlab_project_name = projectData.gitlab_project_name;
+    }
+    if (projectData.test_suite_name !== undefined) {
+      attributes.test_suite_name = projectData.test_suite_name;
+    }
     const requestBody: UpdateProjectRequest = {
       data: {
         type: "Project",
-        attributes: {
-          title: projectData.title,
-          description: projectData.description
-        }
-      }
+        attributes,
+      },
     };
 
     const response = await apiService.authenticatedRequest(`/projects/${id}`, {

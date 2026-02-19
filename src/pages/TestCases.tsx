@@ -82,7 +82,9 @@ const TestCases: React.FC = () => {
   const [isDragDropInProgress, setIsDragDropInProgress] = useState(false);
   const [isCreateTestRunModalOpen, setIsCreateTestRunModalOpen] = useState(false);
   const [preselectedTestCaseId, setPreselectedTestCaseId] = useState<string | null>(null);
-  
+  const [gitlabLinksByTestCaseId, setGitlabLinksByTestCaseId] = useState<Record<string, string | null>>({});
+  const [gitlabLinksFetched, setGitlabLinksFetched] = useState(false);
+
   const {
     testCases,
     allTestCases,
@@ -117,6 +119,46 @@ const TestCases: React.FC = () => {
     scrollSpeed: 15,
     edgeSize: 150
   });
+
+  // Fetch GitLab test case links for the selected project (for automated TC link indicator)
+  React.useEffect(() => {
+    const project = selectedProject;
+    if (!project?.id) {
+      setGitlabLinksFetched(false);
+      setGitlabLinksByTestCaseId({});
+      return;
+    }
+    if (!project.gitlab_project_name || !project.test_suite_name) {
+      setGitlabLinksFetched(true);
+      setGitlabLinksByTestCaseId({});
+      return;
+    }
+    let cancelled = false;
+    setGitlabLinksFetched(false);
+    apiService
+      .authenticatedRequest(`/projects/${project.id}/test-case-gitlab-links`)
+      .then((response: { data?: { automatedTestCases?: Array<{ id: string; gitlab_test_name?: string | null }> } }) => {
+        if (cancelled) return;
+        const list = response?.data?.automatedTestCases;
+        const map: Record<string, string | null> = {};
+        if (Array.isArray(list)) {
+          list.forEach((tc) => {
+            map[tc.id] = tc.gitlab_test_name ?? null;
+          });
+        }
+        setGitlabLinksByTestCaseId(map);
+        setGitlabLinksFetched(true);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGitlabLinksByTestCaseId({});
+          setGitlabLinksFetched(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProject?.id, selectedProject?.gitlab_project_name, selectedProject?.test_suite_name]);
 
   const selectedFolder = getSelectedFolder();
 
@@ -943,6 +985,8 @@ const TestCases: React.FC = () => {
               onRunTest={handleRunTest}
               onPageChange={handlePageChange}
               isSubmitting={isSubmitting || isDragDropInProgress}
+              gitlabLinksByTestCaseId={gitlabLinksByTestCaseId}
+              gitlabLinksFetched={gitlabLinksFetched}
             />
           </div>
         </div>

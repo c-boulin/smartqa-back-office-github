@@ -13,7 +13,8 @@ import {
   Loader,
   Search,
   X,
-  Activity
+  Activity,
+  Bot
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -80,6 +81,12 @@ const Sidebar: React.FC = () => {
       path: '/reports',
       icon: BarChart3,
       label: 'Reports',
+      permissions: [PERMISSIONS.TEST_RUN.READ]
+    },
+    {
+      path: '/automated-configuration',
+      icon: Bot,
+      label: 'Automated Configuration',
       permissions: [PERMISSIONS.TEST_RUN.READ]
     },
     {
