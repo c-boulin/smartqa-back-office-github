@@ -88,6 +88,18 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
       {hasActiveFilters && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="text-sm text-slate-600 dark:text-gray-400">Active filters:</span>
+          {currentSearchTerm && (
+            <span className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-700 dark:text-cyan-400">
+              Search: "{currentSearchTerm}"
+              <button
+                onClick={() => onClearIndividualFilter('search')}
+                className="ml-2 text-cyan-400 hover:text-cyan-300 transition-colors"
+                title="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
           {filters.automationStatus !== 'all' && (
             <span className="inline-flex items-center px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-sm text-purple-400">
               Automation: {AUTOMATION_STATUS_LABELS[parseInt(filters.automationStatus) as keyof typeof AUTOMATION_STATUS_LABELS]}
