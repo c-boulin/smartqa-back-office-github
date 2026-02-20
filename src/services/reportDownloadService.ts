@@ -1168,7 +1168,7 @@ class ReportDownloadService {
         colX += colWidths[0];
         pdf.setFontSize(6);
         pdf.setTextColor(15, 23, 42);
-        pdf.text(`TC-${tc.testCaseId}`, colX, currentY + 4, { maxWidth: colWidths[1] - 4 });
+        pdf.text(`TC-${tc.testCaseProjectRelativeId || tc.testCaseId}`, colX, currentY + 4, { maxWidth: colWidths[1] - 4 });
         pdf.setFontSize(5);
         pdf.setTextColor(107, 114, 128);
         pdf.text(tc.testCaseTitle, colX, currentY + 7, { maxWidth: colWidths[1] - 4 });
@@ -1715,7 +1715,7 @@ class ReportDownloadService {
           `TR-${tc.testRunId}`,
           tc.testRunName,
           tc.testRunStatus,
-          `TC-${tc.testCaseId}`,
+          `TC-${tc.testCaseProjectRelativeId || tc.testCaseId}`,
           tc.testCaseTitle,
           tc.latestStatus,
           tc.priority,
@@ -1892,6 +1892,7 @@ export interface DetailedReportData extends ReportData {
     testRunName: string;
     testRunStatus: string;
     testCaseId: string;
+    testCaseProjectRelativeId?: number;
     testCaseTitle: string;
     latestStatus: string;
     priority: string;

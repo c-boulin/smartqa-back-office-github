@@ -1061,7 +1061,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                     </td>
                     <td className="py-4 px-6">
                       <div>
-                        <div className="text-sm font-medium text-slate-900 dark:text-white">TC-{testCase.testCaseProjectRelativeId ?? testCase.testCaseId}</div>
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">TC-{testCase.testCaseProjectRelativeId || testCase.testCaseId}</div>
                         <div className="text-sm text-slate-600 dark:text-gray-400">{testCase.testCaseTitle}</div>
                       </div>
                     </td>
