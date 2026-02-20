@@ -223,14 +223,9 @@ const Settings: React.FC = () => {
         usersApiService.getRoles()
       ]);
 
-      console.log('Users API Response:', usersResponse);
-      console.log('Roles API Response:', rolesResponse);
-
       const transformedUsers = usersResponse.data.map(apiUser =>
         usersApiService.transformApiUser(apiUser, usersResponse.included)
       );
-
-      console.log('Transformed Users:', transformedUsers);
 
       setUsers(transformedUsers);
       setRoles(rolesResponse);

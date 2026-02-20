@@ -197,9 +197,6 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
           state: testRunExecution.state ?? 1,
           stateLabel: testRunExecution.state_label ?? 'In Progress',
           startedAt: new Date(),
-          linkedTestCaseIds: testCasesToRun.map((tc) => tc.id),
-          testRunIdForPayload: testRunId,
-          configurationIdForPayload: selectedDevice || undefined,
         },
         async (completedExecution: TestRunExecution) => {
           if (onExecutionComplete) {

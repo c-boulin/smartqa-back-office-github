@@ -168,7 +168,7 @@ class TestCaseExecutionsApiService {
   private getResultLabel(resultId: number): string {
     const TEST_RESULTS = {
       1: 'Passed',
-      2: 'Failed', 
+      2: 'Failed',
       3: 'Blocked',
       4: 'Retest',
       5: 'Skipped',
@@ -176,7 +176,7 @@ class TestCaseExecutionsApiService {
       7: 'In Progress',
       8: 'Unknown'
     };
-    
+
     return TEST_RESULTS[resultId as keyof typeof TEST_RESULTS] || 'Unknown';
   }
 }

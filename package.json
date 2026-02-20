@@ -26,6 +26,7 @@
     "laravel-echo": "^2.3.0",
     "lucide-react": "^0.344.0",
     "pusher-js": "^8.4.0",
+    "qrcode.react": "^4.2.0",
     "quill": "^1.3.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -81,12 +81,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (token && userData) {
       try {
         const user = JSON.parse(userData);
-        console.log('🔐 Loaded user from localStorage:', {
-          name: user.name,
-          hasPermissions: !!user.permissions,
-          permissionsCount: user.permissions?.length || 0,
-          permissions: user.permissions
-        });
         dispatch({ type: 'SET_USER', payload: user });
       } catch {
         // Clear invalid data
@@ -95,16 +89,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
   }, []);
-
-  useEffect(() => {
-    if (state.user) {
-      console.log('👤 Current user permissions:', {
-        name: state.user.name,
-        permissionsCount: state.user.permissions?.length || 0,
-        permissions: state.user.permissions
-      });
-    }
-  }, [state.user]);
 
   const login = (user: User) => {
     localStorage.setItem('auth_token', user.token);

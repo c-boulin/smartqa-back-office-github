@@ -252,8 +252,6 @@ class TestCaseDataService {
       stepResults.sort((a, b) => a.order - b.order);
 
       // Process shared steps using the metadata from the separate endpoint
-      console.log('🔍 Raw shared step refs from /shared_steps:', JSON.stringify(sharedStepRefs, null, 2));
-
       // Fetch full details for each shared step
       const sharedStepsPromises = sharedStepRefs.map(async (sharedStepRef: { id: string; meta: { order: number; pivot_id: number } }) => {
         const sharedStepId = sharedStepRef.id.split('/').pop() || sharedStepRef.id;
@@ -273,8 +271,6 @@ class TestCaseDataService {
             sharedStepResponse.data,
             sharedStepResponse.included || []
           );
-
-          console.log(`📌 Shared step ${sharedStepId} - order: ${sharedStepRef.meta.order}, pivot_id: ${sharedStepRef.meta.pivot_id}`);
 
           return {
             ...transformedSharedStep,

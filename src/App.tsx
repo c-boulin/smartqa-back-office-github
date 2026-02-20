@@ -30,6 +30,7 @@ import AutomatedConfiguration from './pages/AutomatedConfiguration';
 import Settings from './pages/Settings';
 import AutomatedExecutionTestCases from './pages/AutomatedExecutionTestCases';
 import AutomatedExecutionSteps from './pages/AutomatedExecutionSteps';
+import UploadFromPhonePage from './pages/UploadFromPhonePage';
 
 const AppContent: React.FC = () => {
   const { loading } = useLoading();
@@ -42,6 +43,7 @@ const AppContent: React.FC = () => {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/callback" element={<Callback />} />
+            <Route path="/upload" element={<UploadFromPhonePage />} />
             <Route path="/" element={
               <ProtectedRoute>
                 <Layout />

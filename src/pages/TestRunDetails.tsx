@@ -964,6 +964,25 @@ const TestRunDetails: React.FC = () => {
             )
           );
 
+          // Update UI immediately with "In Progress" state
+          setTestCases(prevTestCases => {
+            return prevTestCases.map(tc => {
+              if (testCaseIds.includes(tc.id) && tc.configurationId === config.id) {
+                return {
+                  ...tc,
+                  executionStatus: 7 as TestResultId,
+                  executionResult: TEST_RESULTS[7],
+                  execution: {
+                    ...tc.execution,
+                    result: 7,
+                    resultLabel: 'In Progress',
+                  }
+                };
+              }
+              return tc;
+            });
+          });
+
           // Trigger GitLab pipeline with selected test case ids and configuration id
           try {
             await apiService.authenticatedRequest('/gitlab/trigger-pipeline', {
@@ -998,15 +1017,48 @@ const TestRunDetails: React.FC = () => {
               state: testRunExecution.state ?? 1,
               stateLabel: testRunExecution.state_label ?? 'In Progress',
               startedAt: new Date(),
-              linkedTestCaseIds: testCaseIds,
-              testRunIdForPayload: testRunId,
-              configurationIdForPayload: config.id,
             },
             async () => {
-              // Refresh test run details when execution completes
-              if (testRunId) {
-                await fetchTestRunDetails(testRunId);
-              }
+              // Execution completed - no need to refresh, real-time updates already applied
+            },
+            (testCaseExecutionUpdates) => {
+              console.log('🔄 Received test case execution updates:', testCaseExecutionUpdates);
+
+              // Update only test cases that are in this polling response
+              setTestCases(prevTestCases => {
+                return prevTestCases.map(tc => {
+                  // Find the execution update for this specific test case and config
+                  const update = testCaseExecutionUpdates.find(tce => {
+                    const testCaseIdFromUpdate = typeof tce.test_case_id === 'string'
+                      ? tce.test_case_id.split('/').pop()
+                      : String(tce.test_case_id);
+                    const configIdFromUpdate = tce.configuration_id
+                      ? (typeof tce.configuration_id === 'string'
+                          ? tce.configuration_id.split('/').pop()
+                          : String(tce.configuration_id))
+                      : undefined;
+
+                    return testCaseIdFromUpdate === tc.id && configIdFromUpdate === tc.configurationId;
+                  });
+
+                  if (update) {
+                    console.log('✅ Updating test case:', tc.id, 'with result:', update.result_label);
+
+                    return {
+                      ...tc,
+                      executionStatus: update.result as TestResultId,
+                      executionResult: TEST_RESULTS[update.result as TestResultId] || update.result_label,
+                      execution: {
+                        ...tc.execution,
+                        result: update.result,
+                        resultLabel: update.result_label,
+                        comment: update.comment,
+                      }
+                    };
+                  }
+                  return tc;
+                });
+              });
             }
           );
 

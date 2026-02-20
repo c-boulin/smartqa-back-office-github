@@ -1,5 +1,16 @@
 import { apiService } from './api';
 
+export interface TestCaseExecutionUpdate {
+  id: number;
+  test_case_id: string;
+  test_run_id: string;
+  configuration_id?: string;
+  result: number;
+  result_label: string;
+  comment?: string;
+  updated_at: string;
+}
+
 export interface TestRunExecution {
   id: number;
   test_run_id: number;
@@ -9,6 +20,7 @@ export interface TestRunExecution {
   state: number;
   state_label: string;
   updated_at?: string;
+  test_case_executions?: TestCaseExecutionUpdate[];
 }
 
 export interface CreateTestRunExecutionRequest {
@@ -32,6 +44,7 @@ export interface CreateTestRunExecutionRequest {
 export interface PollResponse extends TestRunExecution {
   changed: boolean;
   timeout?: boolean;
+  test_case_executions?: TestCaseExecutionUpdate[];
 }
 
 class TestRunExecutionsApiService {
@@ -75,7 +88,8 @@ class TestRunExecutionsApiService {
 
   private static readonly STATE_LABELS: Record<number, string> = {
     1: 'In Progress',
-    2: 'Done',
+    2: 'Passed',
+    3: 'Failed',
   };
 
   /** Extract numeric id from value: number, string "123", or IRI "/api/test_run_executions/123" */
@@ -220,7 +234,7 @@ class TestRunExecutionsApiService {
   async pollUntilDone(
     id: number,
     initialState?: number,
-    onStateChange?: (execution: TestRunExecution) => void,
+    onStateChange?: (execution: TestRunExecution) => void | Promise<void>,
     maxRetries: number = 100 // Maximum number of timeout retries (100 * 60s = 100 minutes max)
   ): Promise<TestRunExecution> {
     const initial = initialState != null && !Number.isNaN(Number(initialState)) ? Number(initialState) : 1;
@@ -234,11 +248,11 @@ class TestRunExecutionsApiService {
         // If state changed, notify callback and check if done
         if (result.changed) {
           if (onStateChange) {
-            onStateChange(result);
+            await onStateChange(result);
           }
 
-          // If state is 2 (Done), we're finished
-          if (result.state === 2) {
+          // If state is 2 (Passed) or 3 (Failed), we're finished
+          if (result.state === 2 || result.state === 3) {
             return result;
           }
 
@@ -250,7 +264,6 @@ class TestRunExecutionsApiService {
         // If timeout occurred, immediately send another polling request
         if (result.timeout) {
           retries++;
-          console.log(`Long polling timeout (${retries}/${maxRetries}), restarting poll...`);
           continue;
         }
 

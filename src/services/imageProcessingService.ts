@@ -1,3 +1,4 @@
+import { getAssetsCloudfrontDomain } from '../env';
 import { apiService } from './api';
 import { SignedUrlResponse } from './fileUploadService';
 
@@ -13,12 +14,7 @@ class ImageProcessingService {
   private readonly cloudFrontBaseUrl: string;
 
   constructor() {
-    const domain = import.meta.env.VITE_ASSETS_CLOUDFRONT_DOMAIN;
-    if (!domain || typeof domain !== 'string' || domain.trim() === '') {
-      console.error('VITE_ASSETS_CLOUDFRONT_DOMAIN is not defined or is empty. Please set it in your environment.');
-      throw new Error('VITE_ASSETS_CLOUDFRONT_DOMAIN is not configured. Please check your environment variables.');
-    }
-    this.cloudFrontBaseUrl = domain;
+    this.cloudFrontBaseUrl = getAssetsCloudfrontDomain();
   }
 
   /**

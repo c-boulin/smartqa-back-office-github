@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
-import { testRunExecutionsApiService, TestRunExecution } from '../services/testRunExecutionsApi';
-import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
+import { testRunExecutionsApiService, TestRunExecution, TestCaseExecutionUpdate } from '../services/testRunExecutionsApi';
 import { useNotifications } from './NotificationsContext';
 import toast from 'react-hot-toast';
 
@@ -14,12 +13,6 @@ export interface PollingExecution {
   state: number;
   stateLabel: string;
   startedAt: Date;
-  /** When polling returns Done (state 2), create test case executions for these with random Passed/Failed */
-  linkedTestCaseIds?: string[];
-  /** Test run id string for API (from modal), so payload is correct when creating test case executions */
-  testRunIdForPayload?: string;
-  /** Configuration id string for API (from modal, can be raw id or IRI) */
-  configurationIdForPayload?: string;
 }
 
 interface TestRunExecutionPollingContextType {
@@ -27,7 +20,8 @@ interface TestRunExecutionPollingContextType {
   activeExecutionsCount: number;
   startPolling: (
     execution: PollingExecution,
-    onComplete?: (execution: TestRunExecution) => void
+    onComplete?: (execution: TestRunExecution) => void,
+    onTestCaseExecutionUpdate?: (updates: TestCaseExecutionUpdate[]) => void
   ) => Promise<void>;
   cancelPolling: (executionId: number) => void;
   cancelAllPolling: () => void;
@@ -50,11 +44,11 @@ export const TestRunExecutionPollingProvider: React.FC<{ children: ReactNode }> 
   const startPolling = useCallback(
     async (
       execution: PollingExecution,
-      onComplete?: (execution: TestRunExecution) => void
+      onComplete?: (execution: TestRunExecution) => void,
+      onTestCaseExecutionUpdate?: (updates: TestCaseExecutionUpdate[]) => void
     ) => {
       // If already polling this execution, don't start again
       if (pollingPromisesRef.current.has(execution.id)) {
-        console.log(`Already polling execution ${execution.id}`);
         return;
       }
 
@@ -71,8 +65,17 @@ export const TestRunExecutionPollingProvider: React.FC<{ children: ReactNode }> 
           const finalResult = await testRunExecutionsApiService.pollUntilDone(
             execution.id,
             execution.state,
-            (updatedExecution) => {
+            async (updatedExecution) => {
               setNotificationUnread();
+
+              // Broadcast test case execution updates to subscribers
+              if (updatedExecution.test_case_executions && updatedExecution.test_case_executions.length > 0) {
+                console.log('📡 Broadcasting test case execution updates:', updatedExecution.test_case_executions);
+                if (onTestCaseExecutionUpdate) {
+                  onTestCaseExecutionUpdate(updatedExecution.test_case_executions);
+                }
+              }
+
               // Update the execution state in our map
               setActiveExecutions((prev) => {
                 const updated = new Map(prev);
@@ -90,6 +93,15 @@ export const TestRunExecutionPollingProvider: React.FC<{ children: ReactNode }> 
           );
 
           setNotificationUnread();
+
+          // Broadcast final test case execution updates to subscribers
+          if (finalResult.test_case_executions && finalResult.test_case_executions.length > 0) {
+            console.log('📡 Broadcasting final test case execution updates:', finalResult.test_case_executions);
+            if (onTestCaseExecutionUpdate) {
+              onTestCaseExecutionUpdate(finalResult.test_case_executions);
+            }
+          }
+
           // Polling complete
           setActiveExecutions((prev) => {
             const updated = new Map(prev);
@@ -99,33 +111,6 @@ export const TestRunExecutionPollingProvider: React.FC<{ children: ReactNode }> 
 
           abortControllersRef.current.delete(execution.id);
           pollingPromisesRef.current.delete(execution.id);
-
-          // When Done: create test case executions for linked test cases with random Passed (1) or Failed (2)
-          if (finalResult.state === 2 && execution.linkedTestCaseIds?.length && execution.linkedTestCaseIds.length > 0) {
-            const testRunIdStr = execution.testRunIdForPayload ?? String(execution.testRunId);
-            const configurationIdStr = execution.configurationIdForPayload ?? (execution.configurationId != null ? String(execution.configurationId) : undefined);
-            if (!testRunIdStr || testRunIdStr === '0') {
-              console.error('Cannot create test case executions: missing or invalid test run id', execution);
-              toast.error('Execution completed but could not save results (missing test run id)');
-            } else {
-              try {
-                await Promise.all(
-                  execution.linkedTestCaseIds.map((testCaseId) =>
-                    testCaseExecutionsApiService.createTestCaseExecution({
-                      testCaseId,
-                      testRunId: testRunIdStr,
-                      result: Math.random() < 0.5 ? 1 : 2, // 1 = Passed, 2 = Failed
-                      configurationId: configurationIdStr,
-                      testRunExecutionId: finalResult.id,
-                    })
-                  )
-                );
-              } catch (err) {
-                console.error('Failed to create test case executions after run completed:', err);
-                toast.error('Execution completed but failed to save some results');
-              }
-            }
-          }
 
           // Show success notification
           toast.success(
