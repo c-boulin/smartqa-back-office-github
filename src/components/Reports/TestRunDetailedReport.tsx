@@ -439,7 +439,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                          _testRun.state === 5 ? 'Done' :
                          _testRun.state === 6 ? 'Closed' : 'Active',
             testCaseId: testCaseId,
-            testCaseProjectRelativeId: testCase.attributes.project_relative_id,
+            testCaseProjectRelativeId: testCase.attributes.projectRelativeId || testCase.attributes.project_relative_id,
             testCaseTitle: testCase.attributes.title || `Test Case ${testCaseId}`,
             latestStatus: latestStatus,
             priority: priorityLabel,
