@@ -6,12 +6,23 @@ import { notificationsApiService, NotificationItem } from '../../services/notifi
 
 function formatNotificationMessage(item: NotificationItem): { message: string; link?: string } {
   const { type, data } = item.attributes;
+
   if (type === 'test_run_execution_ended' && data) {
-    const testRunId = (data as { test_run_id?: number }).test_run_id;
+    const testRunId = (data as { test_run_id?: string | number }).test_run_id;
     const message = 'Test run execution ended';
     const link = testRunId != null ? `/test-runs/${testRunId}` : undefined;
     return { message, link };
   }
+
+  if (type === 'test_case_created' && data) {
+    const typedData = data as { title?: string; test_case_id?: number; project_id?: number };
+    const title = typedData.title || 'New test case';
+    const testCaseId = typedData.test_case_id;
+    const message = `Test case created: ${title}`;
+    const link = testCaseId != null ? `/test-cases?id=${testCaseId}` : undefined;
+    return { message, link };
+  }
+
   return { message: type.replace(/_/g, ' ') };
 }
 
