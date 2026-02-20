@@ -6,6 +6,7 @@ import DraggableTestCaseRow from './DraggableTestCaseRow';
 import { TestCase } from '../../types';
 import { usePermissions } from '../../hooks/usePermissions';
 import { PERMISSIONS } from '../../utils/permissions';
+import { ColumnVisibility } from '../UI/ColumnVisibilityDropdown';
 
 interface TestCasesTableProps {
   testCases: TestCase[];
@@ -28,6 +29,8 @@ interface TestCasesTableProps {
   isSubmitting: boolean;
   gitlabLinksByTestCaseId?: Record<string, string | null>;
   gitlabLinksFetched?: boolean;
+  visibleColumns: ColumnVisibility;
+  folderMap?: Record<string, string>;
 }
 
 const TestCasesTable: React.FC<TestCasesTableProps> = ({
@@ -45,7 +48,9 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
   onPageChange,
   isSubmitting,
   gitlabLinksByTestCaseId = {},
-  gitlabLinksFetched = false
+  gitlabLinksFetched = false,
+  visibleColumns,
+  folderMap = {}
 }) => {
   const { hasPermission } = usePermissions();
 
@@ -74,13 +79,30 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
         <table className="w-full">
           <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
             <tr>
-              <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">ID</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Title</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Type</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">State</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Priority</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Tags</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Auto Status</th>
+              {visibleColumns.id && (
+                <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">ID</th>
+              )}
+              {visibleColumns.title && (
+                <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Title</th>
+              )}
+              {visibleColumns.folder && (
+                <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Folder</th>
+              )}
+              {visibleColumns.type && (
+                <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Type</th>
+              )}
+              {visibleColumns.state && (
+                <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">State</th>
+              )}
+              {visibleColumns.priority && (
+                <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Priority</th>
+              )}
+              {visibleColumns.tags && (
+                <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Tags</th>
+              )}
+              {visibleColumns.autoStatus && (
+                <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Auto Status</th>
+              )}
               {hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && (
                 <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Run</th>
               )}
@@ -102,6 +124,8 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
                 isSubmitting={isSubmitting}
                 gitlabLinkName={gitlabLinksByTestCaseId[testCase.id] ?? undefined}
                 showGitlabLinkIndicator={gitlabLinksFetched}
+                folderName={testCase.folderId ? folderMap[testCase.folderId] || 'Unknown' : 'No folder'}
+                visibleColumns={visibleColumns}
               />
             ))}
           </tbody>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, Filter, X } from 'lucide-react';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
+import ColumnVisibilityDropdown, { ColumnVisibility } from '../UI/ColumnVisibilityDropdown';
 import { AUTOMATION_STATUS_LABELS } from '../../types';
 import { Tag } from '../../services/tagsApi';
 
@@ -26,6 +27,8 @@ interface TestCasesFiltersProps {
   availableTags: Tag[];
   onCreateTag: (label: string) => Promise<Tag>;
   onClearIndividualFilter: (filterType: keyof FiltersState, value?: string) => void;
+  visibleColumns: ColumnVisibility;
+  onToggleColumn: (column: keyof ColumnVisibility) => void;
 }
 
 const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
@@ -37,7 +40,9 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
   // onApplyFilters,
   onClearAllFilters,
   onOpenFiltersSidebar,
-  onClearIndividualFilter
+  onClearIndividualFilter,
+  visibleColumns,
+  onToggleColumn
 }) => {
   const hasActiveFilters = currentSearchTerm || 
     filters.automationStatus !== 'all' || 
@@ -62,7 +67,11 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
             />
           </div>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          <ColumnVisibilityDropdown
+            visibleColumns={visibleColumns}
+            onToggleColumn={onToggleColumn}
+          />
           <Button
             variant="secondary"
             icon={Filter}

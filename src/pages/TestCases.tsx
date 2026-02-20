@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Search, Loader } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
+import { ColumnVisibility } from '../components/UI/ColumnVisibilityDropdown';
 import TestCasesHeader from '../components/TestCase/TestCasesHeader';
 import TestCasesFilters from '../components/TestCase/TestCasesFilters';
 import TestCasesTable from '../components/TestCase/TestCasesTable';
@@ -84,6 +85,16 @@ const TestCases: React.FC = () => {
   const [preselectedTestCaseId, setPreselectedTestCaseId] = useState<string | null>(null);
   const [gitlabLinksByTestCaseId, setGitlabLinksByTestCaseId] = useState<Record<string, string | null>>({});
   const [gitlabLinksFetched, setGitlabLinksFetched] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<ColumnVisibility>({
+    id: true,
+    title: true,
+    folder: true,
+    type: true,
+    state: true,
+    priority: true,
+    tags: true,
+    autoStatus: true,
+  });
 
   const {
     testCases,
@@ -161,6 +172,27 @@ const TestCases: React.FC = () => {
   }, [selectedProject?.id, selectedProject?.gitlab_project_name, selectedProject?.test_suite_name]);
 
   const selectedFolder = getSelectedFolder();
+
+  const handleToggleColumn = useCallback((column: keyof ColumnVisibility) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [column]: !prev[column]
+    }));
+  }, []);
+
+  const folderMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    const buildMap = (folders: typeof folderTree) => {
+      folders.forEach(folder => {
+        map[folder.id] = folder.name;
+        if (folder.children) {
+          buildMap(folder.children);
+        }
+      });
+    };
+    buildMap(folderTree);
+    return map;
+  }, [folderTree]);
 
   const handleSearch = useCallback(async (term: string) => {
     setCurrentSearchTerm(term);
@@ -969,6 +1001,8 @@ const TestCases: React.FC = () => {
               onOpenFiltersSidebar={() => setIsFiltersSidebarOpen(true)}
               availableTags={tags}
               onCreateTag={handleCreateTag}
+              visibleColumns={visibleColumns}
+              onToggleColumn={handleToggleColumn}
             />
 
             <TestCasesTable
@@ -987,6 +1021,8 @@ const TestCases: React.FC = () => {
               isSubmitting={isSubmitting || isDragDropInProgress}
               gitlabLinksByTestCaseId={gitlabLinksByTestCaseId}
               gitlabLinksFetched={gitlabLinksFetched}
+              visibleColumns={visibleColumns}
+              folderMap={folderMap}
             />
           </div>
         </div>
