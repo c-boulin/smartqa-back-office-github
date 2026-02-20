@@ -682,12 +682,12 @@ const TestRunDetails: React.FC = () => {
       );
 
       // Check if we need to update test run state
-      // First, check if all test cases are now passed (result 1)
-      const allTestCasesPassed = updatedTestCases.every(tc => tc.executionStatus === 1);
+      // Check if all test cases have results (not Untested - status 6)
+      const allTestCasesHaveResults = updatedTestCases.every(tc => tc.executionStatus !== 6);
       const totalTestCases = updatedTestCases.length;
 
-      if (allTestCasesPassed && testRun.state !== 5 && testRun.state !== 6) {
-        // All test cases passed (including single test case), move test run to "Done" (state 5)
+      if (allTestCasesHaveResults && testRun.state !== 5 && testRun.state !== 6) {
+        // All test cases have results, move test run to "Done" (state 5)
         // This will also update the test plan to "Done" via updateTestRunState
         try {
           await testRunsApiService.updateTestRunState(testRunId, 5, testRun.testPlanId || testPlanIdFromUrl);
@@ -698,8 +698,8 @@ const TestRunDetails: React.FC = () => {
           console.error('❌ Failed to update test run state:', error);
           toast.success(`Execution result updated to ${newResultLabel}`);
         }
-      } else if (!allTestCasesPassed && testRun.state === 5) {
-        // Test run was "Done" but now not all test cases are passed - move back to "In Progress" (state 2)
+      } else if (!allTestCasesHaveResults && testRun.state === 5) {
+        // Test run was "Done" but now some test cases are untested - move back to "In Progress" (state 2)
         // This will also update the test plan to "In Progress" via updateTestRunState
         try {
           await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId || testPlanIdFromUrl);
@@ -710,7 +710,7 @@ const TestRunDetails: React.FC = () => {
           toast.success(`Execution result updated to ${newResultLabel}`);
         }
       } else if (isFirstExecution && testRun.state === 1) {
-        // First execution created but not all passed - move to "In Progress" (state 2)
+        // First execution created but not all have results - move to "In Progress" (state 2)
         // This will also update the test plan to "In Progress" via updateTestRunState
         try {
           await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId || testPlanIdFromUrl);
