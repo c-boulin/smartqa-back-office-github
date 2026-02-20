@@ -64,7 +64,7 @@ const ColumnVisibilityDropdown: React.FC<ColumnVisibilityDropdownProps> = ({
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg z-[9999]">
           <div className="p-2">
             <div className="text-xs font-medium text-slate-600 dark:text-gray-400 px-3 py-2">
               Show/Hide Columns
