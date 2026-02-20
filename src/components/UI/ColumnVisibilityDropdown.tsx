@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Columns3, Check } from 'lucide-react';
 import Button from './Button';
 
@@ -95,12 +96,13 @@ const ColumnVisibilityDropdown: React.FC<ColumnVisibilityDropdownProps> = ({
         </Button>
       </div>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <div
-          className="fixed w-48 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg z-[9999]"
+          className="fixed w-48 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-xl"
           style={{
             top: `${dropdownPosition.top}px`,
             right: `${dropdownPosition.right}px`,
+            zIndex: 99999,
           }}
         >
           <div className="p-2">
@@ -120,7 +122,8 @@ const ColumnVisibilityDropdown: React.FC<ColumnVisibilityDropdownProps> = ({
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
