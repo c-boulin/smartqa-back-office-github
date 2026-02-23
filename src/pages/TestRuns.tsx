@@ -298,7 +298,10 @@ const TestRuns: React.FC = () => {
   }, [testRuns.length, activeTab]);
 
   const getExecutionStateLabel = useCallback((state: number) => {
-    return state === 1 ? 'In progress' : state === 2 ? 'Done' : '—';
+    return state === 1 ? 'In Progress' :
+           state === 2 ? 'Passed' :
+           state === 3 ? 'Failed' :
+           state === 4 ? 'Unknown' : '—';
   }, []);
 
   const getExecutionStateForTestRun = useCallback(

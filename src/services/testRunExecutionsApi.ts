@@ -90,6 +90,7 @@ class TestRunExecutionsApiService {
     1: 'In Progress',
     2: 'Passed',
     3: 'Failed',
+    4: 'Unknown',
   };
 
   /** Extract numeric id from value: number, string "123", or IRI "/api/test_run_executions/123" */
@@ -207,7 +208,7 @@ class TestRunExecutionsApiService {
 
   /**
    * Get the latest test run execution state for a test run.
-   * Returns 1 (In progress), 2 (Done), or undefined if none.
+   * Returns 1 (In Progress), 2 (Passed), 3 (Failed), 4 (Unknown), or undefined if none.
    */
   async getLatestStateByTestRunId(testRunId: string): Promise<number | undefined> {
     const id = testRunId.replace(/^\D+/, '');
@@ -251,8 +252,8 @@ class TestRunExecutionsApiService {
             await onStateChange(result);
           }
 
-          // If state is 2 (Passed) or 3 (Failed), we're finished
-          if (result.state === 2 || result.state === 3) {
+          // If state is 2 (Passed), 3 (Failed), or 4 (Unknown), we're finished
+          if (result.state === 2 || result.state === 3 || result.state === 4) {
             return result;
           }
 
