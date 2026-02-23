@@ -67,7 +67,6 @@ interface ReportData {
   activeTestRuns: number;
   closedTestRuns: number;
   totalTestCases: number;
-  totalLinkedIssues: number;
   testCaseBreakup: {
     passed: number;
     failed: number;
@@ -415,7 +414,6 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           activeTestRuns,
           closedTestRuns,
           totalTestCases,
-          totalLinkedIssues: 0,
           testCaseBreakup: {
             passed: totalPassed,
             failed: totalFailed,
@@ -438,8 +436,11 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
       }
 
       // Otherwise, fetch using the new test_cases endpoint with include=testRuns,user
-
-      const fetchedReportData = await fetchTestCasesForReport(projectId, filters);
+      // Pass scheduled report options so the API request matches the report config (creation date + specific test runs)
+      const fetchedReportData = await fetchTestCasesForReport(projectId, filters, {
+        creationDateFilter,
+        testRunIds,
+      });
 
       if (!fetchedReportData || !fetchedReportData.testCases) {
         throw new Error('No data received from API');
@@ -642,7 +643,6 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         activeTestRuns,
         closedTestRuns,
         totalTestCases,
-        totalLinkedIssues: 0,
         testCaseBreakup: {
           passed: totalPassed,
           failed: totalFailed,
@@ -906,12 +906,6 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           <Card gradient className="p-6 text-center">
             <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Total Test Cases</h3>
             <div className="text-4xl font-bold text-slate-900 dark:text-white">{reportData.totalTestCases}</div>
-          </Card>
-
-          {/* Total Linked Issues */}
-          <Card gradient className="p-6 text-center">
-            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Total Linked Issues</h3>
-            <div className="text-4xl font-bold text-slate-900 dark:text-white">{reportData.totalLinkedIssues}</div>
           </Card>
 
           {/* Placeholder for 4th card */}

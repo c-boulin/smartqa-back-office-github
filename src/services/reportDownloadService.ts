@@ -514,14 +514,13 @@ class ReportDownloadService {
         }
       };
 
-      // Top row - 3 summary cards
+      // Top row - 2 summary cards
       const cardHeight = 28;
-      const cardWidth = (contentWidth - 6) / 3;
+      const cardWidth = (contentWidth - 3) / 2;
 
       drawCard(margin, currentY, cardWidth, cardHeight, 'Total Test Runs', reportData.totalTestRuns.toString(),
         `Active: ${reportData.activeTestRuns} | Closed: ${reportData.closedTestRuns}`);
       drawCard(margin + cardWidth + 3, currentY, cardWidth, cardHeight, 'Total Test Cases', reportData.totalTestCases.toString());
-      drawCard(margin + (cardWidth + 3) * 2, currentY, cardWidth, cardHeight, 'Total Linked Issues', reportData.totalLinkedIssues.toString());
 
       currentY += cardHeight + 8;
 
@@ -1085,8 +1084,6 @@ class ReportDownloadService {
         `${reportData.closedTestRuns}/${reportData.totalTestRuns}`, '168,85,247');
       drawSummaryCard(summaryStartX, currentY + summaryCardHeight + 2, 'Total Test Cases',
         reportData.totalTestCases.toString(), '34,197,94');
-      drawSummaryCard(summaryStartX + summaryCardWidth + 2, currentY + summaryCardHeight + 2, 'Total Linked Issues',
-        reportData.totalLinkedIssues.toString(), '249,115,22');
 
       currentY += performanceChartHeight + 10;
 
@@ -1484,7 +1481,6 @@ class ReportDownloadService {
       addRow('Active Test Runs', reportData.activeTestRuns.toString());
       addRow('Closed Test Runs', reportData.closedTestRuns.toString());
       addRow('Total Test Cases', reportData.totalTestCases.toString());
-      addRow('Total Linked Issues', reportData.totalLinkedIssues.toString());
       addRow('');
 
       // Test Case Breakdown Section
@@ -1625,7 +1621,6 @@ class ReportDownloadService {
       addRow('Active Test Runs', reportData.activeTestRuns.toString());
       addRow('Closed Test Runs', reportData.closedTestRuns.toString());
       addRow('Total Test Cases', reportData.totalTestCases.toString());
-      addRow('Total Linked Issues', reportData.totalLinkedIssues.toString());
       addRow('');
 
       // Performance Trends Section
@@ -1859,7 +1854,6 @@ export interface ReportData {
   activeTestRuns: number;
   closedTestRuns: number;
   totalTestCases: number;
-  totalLinkedIssues: number;
   testCaseBreakup: {
     passed: number;
     failed: number;
