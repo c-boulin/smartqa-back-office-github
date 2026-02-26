@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, Filter, X } from 'lucide-react';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
+import ColumnVisibilityDropdown, { ColumnVisibility } from '../UI/ColumnVisibilityDropdown';
 import { AUTOMATION_STATUS_LABELS } from '../../types';
 import { Tag } from '../../services/tagsApi';
 
@@ -26,6 +27,8 @@ interface TestCasesFiltersProps {
   availableTags: Tag[];
   onCreateTag: (label: string) => Promise<Tag>;
   onClearIndividualFilter: (filterType: keyof FiltersState, value?: string) => void;
+  visibleColumns: ColumnVisibility;
+  onToggleColumn: (column: keyof ColumnVisibility) => void;
 }
 
 const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
@@ -37,7 +40,9 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
   // onApplyFilters,
   onClearAllFilters,
   onOpenFiltersSidebar,
-  onClearIndividualFilter
+  onClearIndividualFilter,
+  visibleColumns,
+  onToggleColumn
 }) => {
   const hasActiveFilters = currentSearchTerm || 
     filters.automationStatus !== 'all' || 
@@ -62,7 +67,11 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
             />
           </div>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          <ColumnVisibilityDropdown
+            visibleColumns={visibleColumns}
+            onToggleColumn={onToggleColumn}
+          />
           <Button
             variant="secondary"
             icon={Filter}
@@ -88,18 +97,6 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
       {hasActiveFilters && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="text-sm text-slate-600 dark:text-gray-400">Active filters:</span>
-          {currentSearchTerm && (
-            <span className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-700 dark:text-cyan-400">
-              Search: "{currentSearchTerm}"
-              <button
-                onClick={() => onClearIndividualFilter('search')}
-                className="ml-2 text-cyan-400 hover:text-cyan-300 transition-colors"
-                title="Clear search"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
           {filters.automationStatus !== 'all' && (
             <span className="inline-flex items-center px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-sm text-purple-400">
               Automation: {AUTOMATION_STATUS_LABELS[parseInt(filters.automationStatus) as keyof typeof AUTOMATION_STATUS_LABELS]}

@@ -22,6 +22,7 @@ interface UpdateTestCaseSidebarProps {
   availableTags: Tag[];
   onCreateTag: (label: string) => Promise<Tag>;
   isSubmitting: boolean;
+  isLoadingData?: boolean;
   onClose: () => void;
   onSubmit: () => void;
 }
@@ -36,9 +37,11 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
   availableTags,
   onCreateTag,
   isSubmitting,
+  isLoadingData = false,
   onClose,
   onSubmit
 }) => {
+  const isFormDisabled = isSubmitting || isLoadingData;
   return (
     <div className="w-80 border-l border-slate-300 dark:border-slate-700 pl-6 flex flex-col">
       <div className="flex-1 overflow-y-auto">
@@ -58,7 +61,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
                 value={formData.owner}
                 onChange={(e) => onInputChange('owner', e.target.value)}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 text-sm max-w-full"
-                disabled={isSubmitting}
+                disabled={isFormDisabled}
                 required
               >
                 <option value="">Select owner</option>
@@ -83,7 +86,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
                 onInputChange('state', value);
               }}
               options={STATES}
-              disabled={isSubmitting}
+              disabled={isFormDisabled}
               placeholder="Select state"
             />
           </div>
@@ -97,7 +100,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
               value={formData.priority}
               onChange={(value) => onInputChange('priority', value)}
               options={PRIORITIES}
-              disabled={isSubmitting}
+              disabled={isFormDisabled}
               placeholder="Select priority"
             />
           </div>
@@ -111,7 +114,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
               value={formData.testCaseType}
               onChange={(e) => onInputChange('testCaseType', parseInt(e.target.value))}
               className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 text-sm max-w-full"
-              disabled={isSubmitting}
+              disabled={isFormDisabled}
             >
               {Object.entries(TEST_CASE_TYPES).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
@@ -128,7 +131,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
               value={formData.automationStatus}
               onChange={(e) => onInputChange('automationStatus', parseInt(e.target.value))}
               className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 text-sm max-w-full"
-              disabled={isSubmitting}
+              disabled={isFormDisabled}
             >
               {Object.entries(AUTOMATION_STATUS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
@@ -147,7 +150,7 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
                 selectedTags={selectedTags}
                 onTagsChange={onTagsChange}
                 onCreateTag={onCreateTag}
-                disabled={isSubmitting}
+                disabled={isFormDisabled}
                 placeholder="Search or create tags..."
               />
             </div>
@@ -158,16 +161,21 @@ const UpdateTestCaseSidebar: React.FC<UpdateTestCaseSidebarProps> = ({
       {/* Footer - Moved inside sidebar */}
       <div className="border-t border-slate-300 dark:border-slate-700 pt-4 mt-4 flex-shrink-0">
         <div className="flex flex-col space-y-3">
-          <Button variant="secondary" onClick={onClose} disabled={isSubmitting} className="w-full">
+          <Button variant="secondary" onClick={onClose} disabled={isFormDisabled} className="w-full">
             Cancel
           </Button>
           <Button 
             type="submit"
-            disabled={isSubmitting}
+            disabled={isFormDisabled}
             className="w-full"
             onClick={onSubmit}
           >
-            {isSubmitting ? (
+            {isLoadingData ? (
+              <>
+                <Loader className="w-4 h-4 mr-2 animate-spin" />
+                Loading...
+              </>
+            ) : isSubmitting ? (
               <>
                 <Loader className="w-4 h-4 mr-2 animate-spin" />
                 Updating...

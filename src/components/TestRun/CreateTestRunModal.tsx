@@ -443,26 +443,6 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
                   </div>
                   Jira
                 </button>
-                <button
-                  type="button"
-                  className="flex items-center px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-slate-900 dark:text-white rounded-lg transition-colors text-sm font-medium"
-                  disabled={isSubmitting}
-                >
-                  <div className="w-4 h-4 mr-2 bg-white rounded-sm flex items-center justify-center">
-                    <span className="text-cyan-600 text-xs font-bold">A</span>
-                  </div>
-                  Azure
-                </button>
-                <button
-                  type="button"
-                  className="flex items-center px-3 py-2 bg-red-500 hover:bg-red-600 text-slate-900 dark:text-white rounded-lg transition-colors text-sm font-medium"
-                  disabled={isSubmitting}
-                >
-                  <div className="w-4 h-4 mr-2 bg-white rounded-sm flex items-center justify-center">
-                    <span className="text-red-500 text-xs font-bold">A</span>
-                  </div>
-                  Asana
-                </button>
               </div>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Type imports needed for proper typing
-import { testCaseDataService, ProcessedStepResult, ProcessedSharedStep, ProcessedAttachment } from '../services/testCaseDataService';
+import { testCaseDataService, ProcessedStepResult, ProcessedSharedStep, ProcessedAttachment, TestCaseCompleteData } from '../services/testCaseDataService';
+import { testCaseDataCache } from '../services/testCaseDataCache';
 import { TestCase } from '../types';
 import { Tag } from '../services/tagsApi';
 // import { SharedStep } from '../services/sharedStepsApi';
@@ -85,13 +86,64 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
   //   }
   // }, []);
 
+  const applyCompleteData = useCallback((
+    data: TestCaseCompleteData,
+    _testCase: TestCase,
+    availableTags: Tag[]
+  ) => {
+    const transformedTestSteps = data.stepResults.map(sr => ({
+      id: sr.id,
+      originalId: sr.originalId,
+      step: sr.step,
+      result: sr.result,
+      originalStep: sr.originalStep,
+      originalResult: sr.originalResult
+    }));
+    setTestSteps(transformedTestSteps);
+    setSharedSteps(data.sharedSteps);
+    setExistingAttachments(data.attachments);
+    setStepOrder(data.stepOrder.map(item => ({ type: item.type, id: item.id })));
+    setSelectedTags(
+      data.tags
+        .map(label => availableTags.find(t => t.label === label) || { id: label, label })
+        .filter((t): t is Tag => !!t.id)
+    );
+  }, []);
+
   const loadTestCaseData = useCallback(async (testCase: TestCase, availableTags: Tag[]) => {
     setIsLoadingData(true);
     
     try {
-
-      // Use the new service to fetch data from all three endpoints
-      const result = await testCaseDataService.fetchTestCaseDataForUpdate(testCase.id, availableTags);
+      // Use cache first - instant display for recently viewed or prefetched test cases
+      const cachedOrFetched = await testCaseDataCache.getOrWait(testCase.id, availableTags);
+      
+      if (cachedOrFetched) {
+        applyCompleteData(cachedOrFetched, testCase, availableTags);
+        setIsLoadingData(false);
+        return;
+      }
+      
+      // Fallback: fetch directly if cache missed and fetch failed
+      const result = await testCaseDataService.fetchTestCaseDataForUpdate(testCase.id, availableTags, {
+        onPartialData: (partial) => {
+          const transformedTestSteps = partial.stepResults.map(sr => ({
+            id: sr.id,
+            originalId: sr.originalId,
+            step: sr.step,
+            result: sr.result,
+            originalStep: sr.originalStep,
+            originalResult: sr.originalResult
+          }));
+          setTestSteps(transformedTestSteps);
+          setExistingAttachments(partial.attachments);
+          setStepOrder(partial.stepOrder.map(item => ({ type: item.type, id: item.id })));
+          setSelectedTags(
+            partial.tags
+              .map(label => availableTags.find(t => t.label === label) || { id: label, label })
+              .filter((t): t is Tag => !!t.id)
+          );
+        }
+      });
       
       if (!result.success) {
         console.error('❌ Failed to fetch complete test case data:', result.error);
@@ -129,44 +181,7 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
       }
       
       // Successfully fetched all data
-      const { stepResults, sharedSteps: fetchedSharedSteps, attachments, stepOrder } = result.data!;
-
-      // Transform step results to TestStep format
-      const transformedTestSteps = stepResults.map(sr => ({
-        id: sr.id,
-        originalId: sr.originalId,
-        step: sr.step,
-        result: sr.result,
-        originalStep: sr.originalStep,
-        originalResult: sr.originalResult
-      }));
-      
-      setTestSteps(transformedTestSteps);
-      setSharedSteps(fetchedSharedSteps);
-      setExistingAttachments(attachments);
-      
-      // Set step order (convert to the format expected by the UI)
-      const uiStepOrder = stepOrder.map(item => ({
-        type: item.type,
-        id: item.id
-      }));
-      setStepOrder(uiStepOrder);
-      
-      // Process tags
-      let existingTags: Tag[] = [];
-      if (testCase.tags && testCase.tags.length > 0) {
-        existingTags = testCase.tags
-          .filter(tagLabel => tagLabel && typeof tagLabel === 'string')
-          .map(tagLabel => {
-            const foundTag = availableTags.find(availableTag => availableTag.label === tagLabel);
-            return foundTag || {
-              id: tagLabel,
-              label: tagLabel
-            };
-          })
-          .filter(tag => tag !== null && tag !== undefined);
-      }
-      setSelectedTags(existingTags);
+      applyCompleteData(result.data!, testCase, availableTags);
       
     } catch (error) {
       console.error('❌ Failed to load test case data:', error);
@@ -178,7 +193,7 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
     } finally {
       setIsLoadingData(false);
     }
-  }, []);
+  }, [applyCompleteData]);
 
   const resetData = useCallback(() => {
     setTestSteps([]);

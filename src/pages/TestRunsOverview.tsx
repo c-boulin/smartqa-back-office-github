@@ -657,12 +657,12 @@ const TestRunsOverview: React.FC = () => {
             toast.success(`Execution result updated to ${newResultLabel}`);
           }
         } else {
-          // Check if all test cases for this test run now have results (not Untested - state 6)
+          // Check if all test cases for this test run now have final results (not Untested - state 6 or In Progress - state 7)
           const updatedTestRunTestCases = updatedAllTestCases.filter(tc => tc.testRunId === testRunId);
-          const allTestCasesHaveResults = updatedTestRunTestCases.every(tc => tc.executionStatus !== 6);
+          const allTestCasesHaveResults = updatedTestRunTestCases.every(tc => tc.executionStatus !== 6 && tc.executionStatus !== 7);
 
           if (allTestCasesHaveResults && testRun.state !== 5 && testRun.state !== 6) {
-            // All test cases have results, move test run to "Done" (state 5)
+            // All test cases have final results, move test run to "Done" (state 5)
 
             try {
               await testRunsApiService.updateTestRunState(testRunId, 5, testRun.testPlanId);

@@ -64,7 +64,6 @@ interface ReportData {
   activeTestRuns: number;
   closedTestRuns: number;
   totalTestCases: number;
-  totalLinkedIssues: number;
   testCaseBreakup: {
     passed: number;
     failed: number;
@@ -154,8 +153,8 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
     fetchTestRunsData().finally(() => {
       fetchInProgressRef.current = false;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTestRunsData is stable
-  }, [projectId, passedReportData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTestRunsData uses creationDateFilter, testRunIds
+  }, [projectId, passedReportData, creationDateFilter, testRunIds]);
 
   const fetchTestRunsData = async () => {
     try {
@@ -168,8 +167,11 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
 
         response = passedReportData;
       } else {
-
-        response = await fetchTestCasesForReport(projectId, filters);
+        // Pass scheduled report options so the API request matches the report config (creation date + specific test runs)
+        response = await fetchTestCasesForReport(projectId, filters, {
+          creationDateFilter,
+          testRunIds,
+        });
       }
 
       const { testCases, testRuns, testExecutions } = response;
@@ -439,7 +441,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                          _testRun.state === 5 ? 'Done' :
                          _testRun.state === 6 ? 'Closed' : 'Active',
             testCaseId: testCaseId,
-            testCaseProjectRelativeId: testCase.attributes.project_relative_id,
+            testCaseProjectRelativeId: testCase.attributes.projectRelativeId || testCase.attributes.project_relative_id,
             testCaseTitle: testCase.attributes.title || `Test Case ${testCaseId}`,
             latestStatus: latestStatus,
             priority: priorityLabel,
@@ -657,7 +659,6 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
         activeTestRuns,
         closedTestRuns,
         totalTestCases,
-        totalLinkedIssues: 0,
         testCaseBreakup: {
           passed: totalPassed,
           failed: totalFailed,
@@ -999,12 +1000,6 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Total Test Cases</h3>
               <div className="text-4xl font-bold text-green-400">{reportData.totalTestCases}</div>
             </Card>
-
-            {/* Total Linked Issues */}
-            <Card gradient className="p-6 text-center">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Total Linked Issues</h3>
-              <div className="text-4xl font-bold text-orange-400">{reportData.totalLinkedIssues}</div>
-            </Card>
             </div>
           </div>
         </div>
@@ -1061,7 +1056,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                     </td>
                     <td className="py-4 px-6">
                       <div>
-                        <div className="text-sm font-medium text-slate-900 dark:text-white">TC-{testCase.testCaseProjectRelativeId ?? testCase.testCaseId}</div>
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">TC-{testCase.testCaseProjectRelativeId || testCase.testCaseId}</div>
                         <div className="text-sm text-slate-600 dark:text-gray-400">{testCase.testCaseTitle}</div>
                       </div>
                     </td>

@@ -52,13 +52,29 @@ function calculateDateFromPeriod(period: string): string {
 }
 
 /**
- * Calculate start date from test run creation time period
+ * Normalize creation date filter from scheduled report format (last_24_hours, last_week, last_month)
+ * to the display/API format expected by calculateTestRunCreationDate.
+ */
+function normalizeCreationDateFilter(period: string | undefined): string {
+  if (!period) return '';
+  const m: Record<string, string> = {
+    last_24_hours: 'Last 24 hours',
+    last_week: 'Last 7 days',
+    last_month: 'Last 30 days',
+  };
+  return m[period] || period;
+}
+
+/**
+ * Calculate start date from test run creation time period.
+ * Accepts both UI format ('Last 24 hours', 'Last 7 days') and scheduled report format ('last_24_hours', 'last_week', 'last_month').
  */
 function calculateTestRunCreationDate(period: string): string {
+  const normalized = normalizeCreationDateFilter(period) || period;
   const now = new Date();
   const startDate = new Date();
 
-  switch (period) {
+  switch (normalized) {
     case 'Last 24 hours':
       startDate.setHours(now.getHours() - 24);
       break;
@@ -79,18 +95,39 @@ function calculateTestRunCreationDate(period: string): string {
   return startDate.toISOString().split('T')[0];
 }
 
+export interface ReportFetchOptions {
+  /** Test run creation date filter (e.g. 'Last 30 days' or scheduled report format 'last_month') */
+  creationDateFilter?: string;
+  /** When set, restrict results to test cases from these test run IDs (if API supports test_run_ids) */
+  testRunIds?: string[];
+}
+
 /**
- * Build query parameters for test cases report API call
+ * Build query parameters for test cases report API call.
+ * Uses scheduled report options (creationDateFilter, testRunIds) so "View" shows the same scope as the report.
  */
 function buildReportQueryParams(
   projectId: string,
-  filters?: ReportFilters | null
+  filters?: ReportFilters | null,
+  options?: ReportFetchOptions
 ): string {
   const params = new URLSearchParams();
 
   // Base parameters
   params.set('project', projectId);
   params.set('include', 'testRuns,user,configurations');
+
+  // Apply test run scope from scheduled report so the request matches the report config
+  const creationDateFilter = options?.creationDateFilter ?? filters?.testRunCreationDate;
+  if (creationDateFilter && creationDateFilter !== '') {
+    const testRunStartDate = calculateTestRunCreationDate(creationDateFilter);
+    if (testRunStartDate) {
+      params.set('test_run_created_at', `>=${testRunStartDate}`);
+    }
+  }
+  if (options?.testRunIds && options.testRunIds.length > 0) {
+    params.set('test_run_ids', options.testRunIds.join(','));
+  }
 
   if (!filters) {
     return params.toString();
@@ -146,23 +183,18 @@ function buildReportQueryParams(
     }
   }
 
-  // Test run creation date filter
-  if (filters.testRunCreationDate && filters.testRunCreationDate !== '') {
-    const testRunStartDate = calculateTestRunCreationDate(filters.testRunCreationDate);
-    if (testRunStartDate) {
-      params.set('test_run_created_at', `>=${testRunStartDate}`);
-    }
-  }
-
   return params.toString();
 }
 
 /**
- * Fetch test cases with related test runs for report generation
+ * Fetch test cases with related test runs for report generation.
+ * When viewing a scheduled report, pass options.creationDateFilter and options.testRunIds
+ * so the API request matches the report's stored config (avoids showing wrong/extra data).
  */
 export async function fetchTestCasesForReport(
   projectId: string,
-  filters?: ReportFilters | null
+  filters?: ReportFilters | null,
+  options?: ReportFetchOptions
 ): Promise<{
   testCases: JsonApiResource[];
   testRuns: JsonApiResource[];
@@ -171,7 +203,7 @@ export async function fetchTestCasesForReport(
   totalTestCases: number;
 }> {
   try {
-    const queryString = buildReportQueryParams(projectId, filters);
+    const queryString = buildReportQueryParams(projectId, filters, options);
     const url = `/test_cases?${queryString}`;
 
 
@@ -233,4 +265,4 @@ export async function fetchTestCasesForReport(
 /**
  * Export query builder for testing or external use
  */
-export { buildReportQueryParams, calculateDateFromPeriod, calculateTestRunCreationDate };
+export { buildReportQueryParams, calculateDateFromPeriod, calculateTestRunCreationDate, normalizeCreationDateFilter };

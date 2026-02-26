@@ -91,7 +91,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
     existingAttachments,
     setExistingAttachments,
     loadingAttachments,
-    isLoadingData, // eslint-disable-line @typescript-eslint/no-unused-vars -- Loading state needed
+    isLoadingData,
     loadTestCaseData,
     resetData,
     deleteSharedStepInstance
@@ -100,6 +100,8 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
   // Populate form when testCase changes
   useEffect(() => {
     if (isOpen && testCase) {
+      // Clear previous test case data immediately to avoid showing stale data
+      resetData();
       // Populate form with existing test case data
       setFormData({
         title: testCase.title,
@@ -250,6 +252,9 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Prevent submission while data is still loading (avoids sending incomplete payload)
+    if (isLoadingData) return;
+
     // Create NEW attachments via API
     const newlyCreatedAttachments: Array<{
       type: "Attachment";
@@ -352,7 +357,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
             <UpdateTestCaseForm
               formData={formData}
               onInputChange={handleInputChange}
-              isSubmitting={isSubmitting}
+              isSubmitting={isSubmitting || isLoadingData}
             />
 
             <div className="mt-6">
@@ -367,7 +372,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
                 onViewSharedStep={viewSharedStep}
                 onDragEnd={handleDragEnd}
                 onOpenSharedStepSelector={() => setIsSharedStepSelectorOpen(true)}
-                isSubmitting={isSubmitting}
+                isSubmitting={isSubmitting || isLoadingData}
               />
             </div>
 
@@ -379,7 +384,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
                 onFileUploaded={handleAttachmentUploaded}
                 onRemoveExistingAttachment={handleRemoveExistingAttachment}
                 loadingAttachments={loadingAttachments}
-                isSubmitting={isSubmitting}
+                isSubmitting={isSubmitting || isLoadingData}
                 fileNames={attachmentNames}
                 onFileNameChange={handleAttachmentNameChange}
                 onAttachmentNameUpdated={handleAttachmentNameUpdated}
@@ -398,6 +403,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
             availableTags={availableTags}
             onCreateTag={handleCreateTag}
             isSubmitting={isSubmitting}
+            isLoadingData={isLoadingData}
             onClose={onClose}
             onSubmit={handleSubmit}
           />

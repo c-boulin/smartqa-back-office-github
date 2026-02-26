@@ -1,11 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-// import AutoImageUploadButton from './AutoImageUploadButton';
+import { QRCodeSVG } from 'qrcode.react';
+import { X, QrCode } from 'lucide-react';
 import { UploadFieldType } from '../../services/fileUploadService';
 import { imageProcessingService } from '../../services/imageProcessingService';
+import { uploadFromPhoneService } from '../../services/uploadFromPhoneService';
 import toast from 'react-hot-toast';
 import { useTheme } from '../../context/ThemeContext';
+
+const UPLOAD_FROM_PHONE_LONG_POLL_TIMEOUT_SECONDS = 25;
 
 interface WysiwygEditorWithAutoUploadProps {
   value: string;
@@ -16,6 +20,7 @@ interface WysiwygEditorWithAutoUploadProps {
   className?: string;
   autoProcessImages?: boolean;
   accept?: string;
+  showUploadFromPhoneButton?: boolean;
 }
 
 const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = ({
@@ -26,10 +31,14 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
   disabled = false,
   className = '',
   autoProcessImages = true,
-  accept = 'image/*' // eslint-disable-line @typescript-eslint/no-unused-vars -- Prop definition with default value
+  accept = 'image/*', // eslint-disable-line @typescript-eslint/no-unused-vars -- Prop definition with default value
+  showUploadFromPhoneButton = true
 }) => {
   const quillRef = useRef<ReactQuill>(null);
   const { theme } = useTheme();
+  const [uploadFromPhoneModalOpen, setUploadFromPhoneModalOpen] = useState(false);
+  const [uploadFromPhoneToken, setUploadFromPhoneToken] = useState<string | null>(null);
+  const insertedRelayIdsRef = useRef<Set<string>>(new Set());
 
   const modules = {
     toolbar: [
@@ -49,6 +58,77 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
     'link',
     'image'
   ];
+
+  const openUploadFromPhoneModal = useCallback(async () => {
+    if (disabled) return;
+    try {
+      const token = await uploadFromPhoneService.createUploadToken();
+      setUploadFromPhoneToken(token);
+      setUploadFromPhoneModalOpen(true);
+      insertedRelayIdsRef.current = new Set();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create upload link');
+    }
+  }, [disabled]);
+
+  const closeUploadFromPhoneModal = useCallback(() => {
+    setUploadFromPhoneModalOpen(false);
+    // Keep token and polling alive so images sent after closing still appear in the WYSIWYG.
+    // The version counter prevents tight polling loops (server waits for new data).
+  }, []);
+
+  useEffect(() => {
+    if (!uploadFromPhoneToken) return;
+    const token = uploadFromPhoneToken;
+    const abortController = new AbortController();
+    const signal = abortController.signal;
+
+    const processPending = (relay: { id: string; name: string }[]) => {
+      for (const item of relay) {
+        if (insertedRelayIdsRef.current.has(item.id)) continue;
+        insertedRelayIdsRef.current.add(item.id);
+        (async () => {
+          try {
+            const blob = await uploadFromPhoneService.fetchRelayImage(token, item.id);
+            const file = new File([blob], item.name || 'image.jpg', { type: blob.type || 'image/jpeg' });
+            const result = await imageProcessingService.processImageOnUpload(file, fieldName);
+            const html = imageProcessingService.generateImageHtml(result, item.name || 'From phone');
+            handleFileUploaded(html);
+            toast.success('Image from phone added');
+          } catch (err) {
+            console.error('Relay image fetch/upload failed:', err);
+            toast.error(err instanceof Error ? err.message : 'Failed to add image from phone');
+          }
+        })();
+      }
+    };
+
+    const longPollLoop = async () => {
+      let sinceVersion = 0;
+      while (!signal.aborted) {
+        try {
+          const { relay, version } = await uploadFromPhoneService.getPendingUploadsLongPoll(
+            token,
+            sinceVersion,
+            UPLOAD_FROM_PHONE_LONG_POLL_TIMEOUT_SECONDS,
+            signal
+          );
+          if (signal.aborted) break;
+          sinceVersion = version;
+          processPending(relay);
+        } catch (err) {
+          if (signal.aborted) break;
+          // ignore other errors (e.g. network), will retry on next loop
+        }
+      }
+    };
+
+    longPollLoop();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [uploadFromPhoneToken, fieldName]);
 
   const handleFileUploaded = (fileHtml: string) => {
     if (quillRef.current) {
@@ -112,20 +192,6 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
       }
     }
   };
-
-  // const handleFileDeleted = () => {
-  //   if (quillRef.current) {
-  //     const quill = quillRef.current.getEditor();
-  //     const currentContent = quill.root.innerHTML;
-  //     
-  //     // Clean the content by removing image tags
-  //     const cleanedContent = imageProcessingService.cleanFieldContent(currentContent);
-  //     
-  //     // Update the editor content
-  //     quill.root.innerHTML = cleanedContent;
-  //     onChange(cleanedContent);
-  //   }
-  // };
 
   // Handle paste events for automatic image processing
   const handlePaste = async (event: ClipboardEvent) => {
@@ -351,8 +417,25 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
     };
   }, [theme]);
 
+  const uploadUrl = uploadFromPhoneToken
+    ? `${window.location.origin}/upload?t=${encodeURIComponent(uploadFromPhoneToken)}`
+    : '';
+
   return (
     <div className={className}>
+      <div className="flex items-center justify-end gap-2 mb-1">
+        {showUploadFromPhoneButton && (
+          <button
+            type="button"
+            onClick={openUploadFromPhoneModal}
+            disabled={disabled}
+            className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
+            title="Upload from phone"
+          >
+            <QrCode className="w-4 h-4" />
+          </button>
+        )}
+      </div>
       <ReactQuill
         ref={quillRef}
         theme="snow"
@@ -363,6 +446,40 @@ const WysiwygEditorWithAutoUpload: React.FC<WysiwygEditorWithAutoUploadProps> = 
         placeholder={placeholder}
         readOnly={disabled}
       />
+      {uploadFromPhoneModalOpen && (
+        <div className="fixed inset-0 z-[200] overflow-hidden">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={closeUploadFromPhoneModal}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-4 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-sm flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative w-full bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-600 shadow-2xl p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Upload from phone
+                </h3>
+                <button
+                  type="button"
+                  onClick={closeUploadFromPhoneModal}
+                  className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                Scan to upload an image into this field.
+              </p>
+              <div className="flex justify-center mb-4 bg-white dark:bg-slate-700 p-3 rounded-lg">
+                <QRCodeSVG value={uploadUrl} size={200} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

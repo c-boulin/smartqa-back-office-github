@@ -24,6 +24,7 @@ import TestPlans from './pages/TestPlans';
 import TestPlanDetails from './pages/TestPlanDetails';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import UploadFromPhonePage from './pages/UploadFromPhonePage';
 
 const AppContent: React.FC = () => {
   const { loading } = useLoading();
@@ -36,6 +37,7 @@ const AppContent: React.FC = () => {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/callback" element={<Callback />} />
+            <Route path="/upload" element={<UploadFromPhonePage />} />
             <Route path="/" element={
               <ProtectedRoute>
                 <Layout />

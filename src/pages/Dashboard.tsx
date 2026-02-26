@@ -326,7 +326,7 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card gradient className="p-6 text-center">
           <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Automation Coverage</h3>
           <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
@@ -340,15 +340,6 @@ export default function Dashboard() {
           </div>
           <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
             {summaryLoading ? <Loader className="w-6 h-6 animate-spin inline" /> : summaryData?.automatedTestCases || 0}
-          </div>
-        </Card>
-
-        <Card gradient className="p-6 text-center">
-          <div className="flex items-center justify-center mb-2">
-            <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mr-1">Manual Test Cases</h3>
-          </div>
-          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
-            {summaryLoading ? <Loader className="w-6 h-6 animate-spin inline" /> : summaryData?.manualTestCases || 0}
           </div>
         </Card>
 

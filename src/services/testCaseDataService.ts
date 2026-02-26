@@ -121,6 +121,18 @@ export interface TestCaseDataFetchResult {
   };
 }
 
+/** Partial data emitted for progressive loading - available before shared steps load */
+export interface TestCasePartialData {
+  stepResults: ProcessedStepResult[];
+  attachments: ProcessedAttachment[];
+  tags: string[];
+  stepOrder: Array<{ type: 'step' | 'shared'; id: string; order: number }>;
+}
+
+export interface FetchTestCaseDataOptions {
+  onPartialData?: (data: TestCasePartialData) => void;
+}
+
 class TestCaseDataService {
   /**
    * Build the combined step order array
@@ -161,27 +173,33 @@ class TestCaseDataService {
   }
 
   /**
-   * Fetch complete test case data in a single optimized request
+   * Fetch complete test case data with optional progressive loading.
+   * When onPartialData is provided, it's called as soon as step results, attachments, and tags are ready
+   * (before shared steps finish loading), so the UI can display content faster.
    */
-  async fetchCompleteTestCaseData(testCaseId: string, availableTags: Tag[] = []): Promise<TestCaseDataFetchResult> {
+  async fetchCompleteTestCaseData(
+    testCaseId: string,
+    availableTags: Tag[] = [],
+    options: FetchTestCaseDataOptions = {}
+  ): Promise<TestCaseDataFetchResult> {
+    const { onPartialData } = options;
 
     try {
-      // Request 1: Main test case data with attachments, stepResults, and tags
-      const response = await apiService.authenticatedRequest(
-        `/test_cases/${testCaseId}?include=attachments,stepResults,user`
-      );
+      // Run both requests in parallel - they are independent
+      const [response, sharedStepsResponse] = await Promise.all([
+        apiService.authenticatedRequest(
+          `/test_cases/${testCaseId}?include=attachments,stepResults,user`
+        ),
+        apiService.authenticatedRequest(
+          `/test_cases/${testCaseId}/shared_steps`
+        )
+      ]);
 
       if (!response?.data) {
         throw new Error('No data in response');
       }
 
       const included = response.included || [];
-
-      // Request 2: Get shared steps with order and pivot_id metadata
-      const sharedStepsResponse = await apiService.authenticatedRequest(
-        `/test_cases/${testCaseId}/shared_steps`
-      );
-
       const sharedStepRefs = sharedStepsResponse?.data?.relationships?.sharedSteps?.data || [];
 
       // Process tags
@@ -251,8 +269,16 @@ class TestCaseDataService {
 
       stepResults.sort((a, b) => a.order - b.order);
 
-      // Process shared steps using the metadata from the separate endpoint
-      console.log('🔍 Raw shared step refs from /shared_steps:', JSON.stringify(sharedStepRefs, null, 2));
+      // Emit partial data immediately so UI can display step results and attachments before shared steps load
+      if (onPartialData) {
+        const partialStepOrder = this.buildStepOrder(stepResults, []);
+        onPartialData({
+          stepResults,
+          attachments,
+          tags,
+          stepOrder: partialStepOrder
+        });
+      }
 
       // Fetch full details for each shared step
       const sharedStepsPromises = sharedStepRefs.map(async (sharedStepRef: { id: string; meta: { order: number; pivot_id: number } }) => {
@@ -273,8 +299,6 @@ class TestCaseDataService {
             sharedStepResponse.data,
             sharedStepResponse.included || []
           );
-
-          console.log(`📌 Shared step ${sharedStepId} - order: ${sharedStepRef.meta.order}, pivot_id: ${sharedStepRef.meta.pivot_id}`);
 
           return {
             ...transformedSharedStep,
@@ -338,11 +362,15 @@ class TestCaseDataService {
   }
 
   /**
-   * Fetch data specifically for the update modal (includes edit capabilities)
+   * Fetch data specifically for the update modal (includes edit capabilities).
+   * Supports progressive loading via onPartialData option.
    */
-  async fetchTestCaseDataForUpdate(testCaseId: string, availableTags: Tag[] = []): Promise<TestCaseDataFetchResult> {
-
-    return this.fetchCompleteTestCaseData(testCaseId, availableTags);
+  async fetchTestCaseDataForUpdate(
+    testCaseId: string,
+    availableTags: Tag[] = [],
+    options: FetchTestCaseDataOptions = {}
+  ): Promise<TestCaseDataFetchResult> {
+    return this.fetchCompleteTestCaseData(testCaseId, availableTags, options);
   }
 
   /**
