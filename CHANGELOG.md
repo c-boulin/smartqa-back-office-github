@@ -1,3 +1,9 @@
+## [1.5.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.4.0...1.5.0) (2026-03-05)
+
+### Features
+
+* fix report summary ([85b74ba](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/85b74ba273f18770075f439ec4b2e182d76b2dee))
+
 ## [1.4.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.3.0...1.4.0) (2026-03-05)
 
 ### Features
