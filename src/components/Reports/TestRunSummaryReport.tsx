@@ -266,34 +266,36 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         // Get the IDs of test runs we're interested in
         const relevantTestRunIds = new Set(testRuns.map(tr => tr.id));
 
+        const normalizeConfigId = (val: unknown): string => {
+          if (val === null || val === undefined || val === 'null' || val === 'undefined') return 'no-config';
+          const str = String(val);
+          return str.includes('/') ? str.split('/').pop() || 'no-config' : str || 'no-config';
+        };
+
         // STEP 1: Initialize ALL test cases in test runs with "Untested" status (result: 6)
         testRuns.forEach((testRun) => {
-          // Get configurations for this test run
           const apiTestRun = passedReportData.testRuns.find(tr => tr.attributes.id.toString() === testRun.id);
-          const configIds = apiTestRun?.relationships?.configurations?.data?.map((c: { id: string }) =>
-            c.id.split('/').pop()
-          ) || ['no-config'];
+          const rawConfigIds = apiTestRun?.relationships?.configurations?.data?.map((c: { id: string }) =>
+            normalizeConfigId(c.id)
+          );
+          const configIds = rawConfigIds && rawConfigIds.length > 0 ? rawConfigIds : ['no-config'];
 
-          // Get test cases for this test run
           const testCaseIds = apiTestRun?.relationships?.testCases?.data?.map((tc: { id: string }) =>
             tc.id.split('/').pop()
           ) || [];
 
-          // Initialize each test case + configuration combination as "Untested"
           testCaseIds.forEach((testCaseId: string) => {
-            // Only include if this test case is in our filtered set
             if (filteredTestCaseIds.has(testCaseId)) {
               configIds.forEach((configId: string) => {
                 const compositeKey = `${testRun.id}-${testCaseId}-${configId}`;
 
-                // Initialize with "Untested" (result: 6)
                 if (!latestExecutionPerTestCasePerRun.has(compositeKey)) {
                   latestExecutionPerTestCasePerRun.set(compositeKey, {
                     attributes: {
                       test_case_id: testCaseId,
                       test_run_id: testRun.id,
                       configuration_id: configId === 'no-config' ? null : configId,
-                      result: 6, // Untested
+                      result: 6,
                       created_at: new Date().toISOString(),
                       updated_at: new Date().toISOString()
                     }
@@ -309,12 +311,10 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
           passedReportData.testExecutions.forEach((execution) => {
             const testCaseId = execution.attributes.test_case_id?.toString();
             const testRunId = execution.attributes.test_run_id?.toString();
-            const configurationId = execution.attributes.configuration_id?.toString() || 'no-config';
+            const configurationId = normalizeConfigId(execution.attributes.configuration_id);
 
-            // Only process if this execution is for a filtered test case and relevant test run
             if (filteredTestCaseIds.has(testCaseId) && relevantTestRunIds.has(testRunId)) {
               const executionDate = new Date(execution.attributes.updated_at || execution.attributes.created_at);
-              // Include configuration in the composite key
               const compositeKey = `${testRunId}-${testCaseId}-${configurationId}`;
 
               const existing = latestExecutionPerTestCasePerRun.get(compositeKey);
@@ -560,34 +560,36 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
       );
       const relevantTestRunIds = new Set(testRuns.map(tr => tr.id));
 
+      const normalizeConfigId = (val: unknown): string => {
+        if (val === null || val === undefined || val === 'null' || val === 'undefined') return 'no-config';
+        const str = String(val);
+        return str.includes('/') ? str.split('/').pop() || 'no-config' : str || 'no-config';
+      };
+
       // STEP 1: Initialize ALL test cases in test runs with "Untested" status (result: 6)
       testRuns.forEach((testRun) => {
-        // Get configurations for this test run
         const apiTestRun = fetchedReportData.testRuns.find(tr => tr.attributes.id.toString() === testRun.id);
-        const configIds = apiTestRun?.relationships?.configurations?.data?.map((c: { id: string }) =>
-          c.id.split('/').pop()
-        ) || ['no-config'];
+        const rawConfigIds = apiTestRun?.relationships?.configurations?.data?.map((c: { id: string }) =>
+          normalizeConfigId(c.id)
+        );
+        const configIds = rawConfigIds && rawConfigIds.length > 0 ? rawConfigIds : ['no-config'];
 
-        // Get test cases for this test run
         const testCaseIds = apiTestRun?.relationships?.testCases?.data?.map((tc: { id: string }) =>
           tc.id.split('/').pop()
         ) || [];
 
-        // Initialize each test case + configuration combination as "Untested"
         testCaseIds.forEach((testCaseId: string) => {
-          // Only include if this test case is in our filtered set
           if (filteredTestCaseIds.has(testCaseId)) {
             configIds.forEach((configId: string) => {
               const compositeKey = `${testRun.id}-${testCaseId}-${configId}`;
 
-              // Initialize with "Untested" (result: 6)
               if (!latestExecutionPerTestCasePerRun.has(compositeKey)) {
                 latestExecutionPerTestCasePerRun.set(compositeKey, {
                   attributes: {
                     test_case_id: testCaseId,
                     test_run_id: testRun.id,
                     configuration_id: configId === 'no-config' ? null : configId,
-                    result: 6, // Untested
+                    result: 6,
                     created_at: '1970-01-01T00:00:00.000Z',
                     updated_at: '1970-01-01T00:00:00.000Z'
                   }
@@ -603,11 +605,10 @@ const TestRunSummaryReport: React.FC<TestRunSummaryReportProps> = ({
         fetchedReportData.testExecutions.forEach((execution) => {
           const testCaseId = execution.attributes.test_case_id?.toString();
           const testRunId = execution.attributes.test_run_id?.toString();
-          const configurationId = execution.attributes.configuration_id?.toString() || 'no-config';
+          const configurationId = normalizeConfigId(execution.attributes.configuration_id);
 
           if (filteredTestCaseIds.has(testCaseId) && relevantTestRunIds.has(testRunId)) {
             const executionDate = new Date(execution.attributes.updated_at || execution.attributes.created_at);
-            // Include configuration in the composite key
             const compositeKey = `${testRunId}-${testCaseId}-${configurationId}`;
 
             const existing = latestExecutionPerTestCasePerRun.get(compositeKey);
