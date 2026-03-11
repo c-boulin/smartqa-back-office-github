@@ -77,11 +77,10 @@ const Reports: React.FC = () => {
       // Store filters from the report creation form
       setReportFilters(data.filters || null);
 
-      // Store the fetched report data
-      if (data.reportData) {
-        setReportData(data.reportData);
-
-      }
+      // Do not pass the modal's pre-fetched report data to the report view.
+      // The summary/detailed component will fetch with the same filters and options
+      // (testRunIds, creationDateFilter), ensuring correct test case break-up on first display.
+      setReportData(null);
 
       // Store the report description and title
       if (data.description) {
