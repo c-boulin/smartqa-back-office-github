@@ -3,7 +3,7 @@ import { apiService } from './api';
 import { Configuration } from './configurationsApi';
 import { Tag } from './tagsApi';
 // import { tagsApiService } from './tagsApi';
-import { TEST_RESULTS, TestResultId } from '../types';
+import { TEST_RESULTS, TestResultId, TestCase } from '../types';
 
 export interface ApiTestRun {
   id: string;
@@ -120,6 +120,93 @@ export interface CreateTestRunRequest {
 export interface CreateTestRunResponse {
   data: ApiTestRun;
   included?: ApiCreator[];
+}
+
+/** Payload from GET /test_runs/{id}/details */
+export interface TestRunDetailsPayload {
+  id: string;
+  name: string;
+  description?: string;
+  status?: string;
+  state: number;
+  projectId: string;
+  testCaseIds?: string[];
+  configurations?: Configuration[];
+  testCasesCount?: number;
+  executionsCount?: number;
+  passedCount?: number;
+  failedCount?: number;
+  blockedCount?: number;
+  progress?: number;
+  passRate?: number;
+  startDate?: string;
+  endDate?: string | null;
+  closedDate?: string | null;
+  testPlanId?: string | null;
+  assignedTo?: { id: string; name: string; email: string };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** One row from testCases array in test run details response */
+export interface TestRunDetailsTestCaseRowPayload {
+  id: string;
+  title: string;
+  priority: string;
+  type: string;
+  executionStatus: number;
+  executionResult?: string;
+  fullTestCase: TestRunDetailsTestCasePayload | null;
+  configurationId?: string | null;
+  configurationLabel?: string | null;
+}
+
+/** One execution from the executions array in test run details (for sidebar history) */
+export interface TestRunDetailsExecutionPayload {
+  id: number;
+  test_case_id: number;
+  test_run_id: number;
+  configuration_id: number | null;
+  result: number;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** fullTestCase shape in test run details */
+export interface TestRunDetailsTestCasePayload {
+  id: string;
+  projectId: string;
+  projectRelativeId?: number;
+  folderId?: string | null;
+  ownerId?: string | null;
+  title: string;
+  description?: string;
+  preconditions?: string;
+  priority: string;
+  type: string;
+  typeId?: number;
+  status?: string;
+  automationStatus: number;
+  stepResults?: Array<{ id: string; step?: string; result?: string; order?: number }>;
+  sharedSteps?: Array<{ id: string; [key: string]: unknown }>;
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+  estimatedDuration?: number;
+}
+
+/** Row type for test run details table (matches TestCaseWithExecution) */
+export interface TestRunDetailsTestCaseRow {
+  id: string;
+  title: string;
+  priority: string;
+  type: string;
+  executionStatus: TestResultId;
+  executionResult: string;
+  fullTestCase: TestCase | null;
+  configurationId?: string;
+  configurationLabel?: string;
 }
 
 export interface TestRun {
@@ -239,6 +326,112 @@ class TestRunsApiService {
     const response = await apiService.authenticatedRequest(`/test_runs/${id}?include=user,configurations,configurations.project,testPlans,testCases,testCases.tags`);
 
     return response;
+  }
+
+  /**
+   * Optimized endpoint: returns test run + test cases + full execution history in one request (frontend-ready shape).
+   */
+  async getTestRunDetails(id: string): Promise<{
+    testRun: TestRun;
+    testCases: TestRunDetailsTestCaseRow[];
+    executions: TestRunDetailsExecutionPayload[];
+  }> {
+    const response = await apiService.authenticatedRequest<{
+      testRun: TestRunDetailsPayload;
+      testCases: TestRunDetailsTestCaseRowPayload[];
+      executions?: TestRunDetailsExecutionPayload[];
+    }>(`/test_runs/${id}/details`);
+
+    if (!response?.testRun || !Array.isArray(response.testCases)) {
+      throw new Error('Invalid test run details response');
+    }
+
+    const testRun = this.normalizeTestRunFromDetails(response.testRun);
+    const testCases = response.testCases.map(row => this.normalizeTestRunDetailsTestCaseRow(row));
+    const executions = Array.isArray(response.executions) ? response.executions : [];
+
+    return { testRun, testCases, executions };
+  }
+
+  private parseDate(s: string | undefined): Date {
+    if (!s || typeof s !== 'string') return new Date();
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? new Date() : d;
+  }
+
+  private parseOptionalDate(s: string | null | undefined): Date | undefined {
+    if (s == null || s === '') return undefined;
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? undefined : d;
+  }
+
+  private normalizeTestRunFromDetails(p: TestRunDetailsPayload): TestRun {
+    return {
+      id: p.id,
+      name: p.name,
+      description: p.description ?? '',
+      status: (p.status === 'closed' ? 'closed' : 'open') as 'open' | 'closed',
+      state: p.state,
+      projectId: p.projectId,
+      testCaseIds: p.testCaseIds ?? [],
+      configurations: p.configurations ?? [],
+      testCasesCount: p.testCasesCount ?? 0,
+      executionsCount: p.executionsCount ?? 0,
+      passedCount: p.passedCount ?? 0,
+      failedCount: p.failedCount ?? 0,
+      blockedCount: p.blockedCount ?? 0,
+      progress: p.progress ?? 0,
+      passRate: p.passRate ?? 0,
+      startDate: this.parseDate(p.startDate),
+      endDate: this.parseOptionalDate(p.endDate ?? undefined),
+      closedDate: this.parseOptionalDate(p.closedDate ?? undefined),
+      testPlanId: p.testPlanId ?? undefined,
+      assignedTo: p.assignedTo ?? { id: '', name: 'Unassigned', email: '' },
+      createdAt: this.parseDate(p.createdAt),
+      updatedAt: this.parseDate(p.updatedAt),
+    };
+  }
+
+  private normalizeTestRunDetailsTestCaseRow(row: TestRunDetailsTestCaseRowPayload): TestRunDetailsTestCaseRow {
+    const fullTestCase = row.fullTestCase
+      ? this.normalizeTestCaseFromDetails(row.fullTestCase)
+      : null;
+    return {
+      id: row.id,
+      title: row.title,
+      priority: row.priority,
+      type: row.type,
+      executionStatus: row.executionStatus as TestResultId,
+      executionResult: row.executionResult ?? 'Untested',
+      fullTestCase,
+      configurationId: row.configurationId ?? undefined,
+      configurationLabel: row.configurationLabel ?? undefined,
+    };
+  }
+
+  private normalizeTestCaseFromDetails(tc: TestRunDetailsTestCasePayload): TestCase {
+    return {
+      id: tc.id,
+      projectId: tc.projectId,
+      projectRelativeId: tc.projectRelativeId ?? undefined,
+      folderId: tc.folderId ?? undefined,
+      ownerId: tc.ownerId ?? undefined,
+      title: tc.title,
+      description: tc.description ?? '',
+      preconditions: tc.preconditions ?? '',
+      priority: tc.priority as 'low' | 'medium' | 'high' | 'critical',
+      type: tc.type as TestCase['type'],
+      typeId: tc.typeId,
+      status: (tc.status as TestCase['status']) ?? 'draft',
+      automationStatus: tc.automationStatus as 1 | 2 | 3 | 4 | 5,
+      steps: [],
+      stepResults: (tc.stepResults ?? []).map((s: { id: string }) => s.id),
+      sharedSteps: (tc.sharedSteps ?? []).map((s: { id: string }) => s.id),
+      tags: tc.tags ?? [],
+      createdAt: this.parseDate(tc.createdAt),
+      updatedAt: this.parseDate(tc.updatedAt),
+      estimatedDuration: tc.estimatedDuration ?? 5,
+    };
   }
 
   async createTestRun(testRunData: {

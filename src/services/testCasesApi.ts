@@ -32,6 +32,37 @@ export interface CreateStepResultResponse {
   };
 }
 
+/** Response from GET /test_cases/{id}/details */
+export interface TestCaseDetailsPayload {
+  id: string;
+  projectId: string;
+  projectRelativeId?: number;
+  folderId?: string | null;
+  ownerId?: string | null;
+  title: string;
+  description: string;
+  preconditions?: string;
+  priority: string;
+  type: string;
+  typeId: number;
+  status: string;
+  automationStatus: number;
+  stepResults: Array<{ id: string; step: string; result: string; order: number }>;
+  sharedSteps: Array<{
+    id: string;
+    pivotId?: number;
+    order: number;
+    title: string;
+    description?: string;
+    steps: Array<{ id: string; step: string; result: string; order: number }>;
+  }>;
+  tags: string[];
+  attachments: Array<{ id: string; url: string; name: string }>;
+  createdAt: string;
+  updatedAt: string;
+  estimatedDuration: number;
+}
+
 export interface ApiTestCase {
   id: string;
   type: string;
@@ -525,6 +556,17 @@ class TestCasesApiService {
     }>;
   }> {
     return apiService.authenticatedRequest(`/test_cases/${id}?include=stepResults,sharedSteps,attachments`);
+  }
+
+  /**
+   * Optimized endpoint: returns test case with stepResults, sharedSteps, attachments in one request (frontend-ready shape).
+   */
+  async getTestCaseDetails(id: string): Promise<TestCaseDetailsPayload> {
+    const response = await apiService.authenticatedRequest<TestCaseDetailsPayload>(`/test_cases/${id}/details`);
+    if (!response) {
+      throw new Error('No response from test case details');
+    }
+    return response;
   }
 
   async createTestCase(testCaseData: {

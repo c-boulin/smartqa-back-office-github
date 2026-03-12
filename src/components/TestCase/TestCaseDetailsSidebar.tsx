@@ -3,7 +3,7 @@ import { X, Loader, Calendar, Tag as TagIcon, Clock, CheckCircle, SquarePen, Eye
 import { format } from 'date-fns';
 import { sharedStepsApiService } from '../../services/sharedStepsApi';
 import { testCaseExecutionsApiService, TestCaseExecution } from '../../services/testCaseExecutionsApi';
-import { testRunsApiService } from '../../services/testRunsApi';
+import { testRunsApiService, type TestRunDetailsExecutionPayload } from '../../services/testRunsApi';
 import { testCaseDataService } from '../../services/testCaseDataService';
 import { testCasesApiService } from '../../services/testCasesApi';
 import { attachmentsApiService } from '../../services/attachmentsApi';
@@ -21,6 +21,8 @@ interface TestCaseDetailsSidebarProps {
   testCase: TestCase | null;
   context?: 'test-cases' | 'test-run-details' | 'test-runs-overview';
   testRunId?: string;
+  /** When provided (e.g. from Test Run Details page), sidebar uses this instead of calling the API */
+  executionsFromRun?: TestRunDetailsExecutionPayload[];
   isTestRunClosed?: boolean;
   currentExecutionResult?: TestResultId;
   configurationId?: string;
@@ -394,6 +396,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
   testCase,
   context = 'test-cases',
   testRunId,
+  executionsFromRun,
   isTestRunClosed = false,
   currentExecutionResult,
   configurationId,
@@ -536,40 +539,34 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
       // Process executions if this is from a test run context
       let executions: TestCaseExecution[] = [];
       if (testRunId) {
-        try {
-
-
-          const testRunResponse = await testRunsApiService.getTestRun(testRunId);
-
-          if (testRunResponse.data.attributes.executions && Array.isArray(testRunResponse.data.attributes.executions)) {
-            // Filter executions for this specific test case AND configuration
-            const testCaseExecutions = testRunResponse.data.attributes.executions.filter(
-              (execution: { test_case_id: number; configuration_id?: number; [key: string]: unknown }) => {
-                const matchesTestCase = execution.test_case_id.toString() === testCase.id;
-                const matchesConfig = configurationId
-                  ? (execution.configuration_id && execution.configuration_id.toString() === configurationId)
-                  : !execution.configuration_id;
-                return matchesTestCase && matchesConfig;
-              }
-            );
-
-            executions = testCaseExecutions.map((execution: { id: number; test_case_id: number; result: number; user_id?: number; created_at: string; updated_at: string; [key: string]: unknown }) => ({
-              id: execution.id.toString(),
-              testCaseId: execution.test_case_id.toString(),
-              testRunId: execution.test_run_id.toString(),
-              result: execution.result,
-              resultLabel: TEST_RESULTS[execution.result as TestResultId] || 'Unknown',
-              comment: execution.comment || undefined,
-              createdAt: new Date(execution.created_at),
-              updatedAt: new Date(execution.updated_at)
-            }));
-
-            // Sort by creation date (newest first)
-            executions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
+        const mapExecutions = (allExecutions: TestRunDetailsExecutionPayload[]) => {
+          const testCaseExecutions = allExecutions.filter(exec => {
+            const matchesTestCase = exec.test_case_id.toString() === testCase.id;
+            const matchesConfig = configurationId
+              ? (exec.configuration_id != null && exec.configuration_id.toString() === configurationId)
+              : (exec.configuration_id == null);
+            return matchesTestCase && matchesConfig;
+          });
+          return testCaseExecutions.map(exec => ({
+            id: exec.id.toString(),
+            testCaseId: exec.test_case_id.toString(),
+            testRunId: exec.test_run_id.toString(),
+            result: exec.result,
+            resultLabel: TEST_RESULTS[exec.result as TestResultId] || 'Unknown',
+            comment: exec.comment ?? undefined,
+            createdAt: new Date(exec.created_at),
+            updatedAt: new Date(exec.updated_at)
+          })).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        };
+        if (executionsFromRun !== undefined) {
+          executions = mapExecutions(executionsFromRun);
+        } else {
+          try {
+            const { executions: allExecutions } = await testRunsApiService.getTestRunDetails(testRunId);
+            executions = mapExecutions(allExecutions);
+          } catch (error) {
+            console.error('❌ Failed to load executions:', error);
           }
-        } catch (error) {
-          console.error('❌ Failed to load executions:', error);
         }
       }
       

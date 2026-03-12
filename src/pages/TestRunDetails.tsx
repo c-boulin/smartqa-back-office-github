@@ -11,8 +11,7 @@ import AddExecutionCommentModal from '../components/TestRun/AddExecutionCommentM
 import ConfigurationTabs, { ConfigTab } from '../components/TestRun/ConfigurationTabs';
 import TestRunDetailsTable, { TestCaseWithExecution } from '../components/TestRun/TestRunDetailsTable';
 import { apiService } from '../services/api';
-import { testRunsApiService, TestRun } from '../services/testRunsApi';
-import { testCasesApiService } from '../services/testCasesApi';
+import { testRunsApiService, TestRun, type TestRunDetailsExecutionPayload } from '../services/testRunsApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
 import { testRunExecutionsApiService } from '../services/testRunExecutionsApi';
 import { useTestRunDetailsFilters } from '../hooks/useTestRunDetailsFilters';
@@ -32,6 +31,7 @@ const TestRunDetails: React.FC = () => {
   const { hasPermission } = usePermissions();
   const [testRun, setTestRun] = useState<TestRun | null>(null);
   const [testCases, setTestCases] = useState<TestCaseWithExecution[]>([]);
+  const [runExecutions, setRunExecutions] = useState<TestRunDetailsExecutionPayload[]>([]);
   const [filteredTestCases, setFilteredTestCases] = useState<TestCaseWithExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -179,149 +179,11 @@ const TestRunDetails: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const testRunResponse = await testRunsApiService.getTestRun(testRunId);
-      const transformedTestRun = testRunsApiService.transformApiTestRun(
-        testRunResponse.data,
-        testRunResponse.included
-      );
-      setTestRun(transformedTestRun);
-
-      const configurations = transformedTestRun.configurations || [];
-      const configsToProcess = configurations.length > 0 ? configurations : [{ id: '', label: '' }];
-
-      const rawIncludedTestCases = (testRunResponse.included || [])
-        .filter((item: Record<string, unknown>) => item.type === 'TestCase');
-
-      const globalConfigs = configsToProcess.filter(c => !c.projectId);
-      const automatedConfigs = configsToProcess.filter(c => Boolean(c.projectId));
-
-      const testCasesWithExecution = transformedTestRun.testCaseIds.flatMap(testCaseId => {
-        const rawTestCase = rawIncludedTestCases.find((item: Record<string, unknown>) => {
-          const itemId = typeof item.id === 'string' ? item.id.split('/').pop() : item.id?.toString();
-          return itemId === testCaseId;
-        });
-
-        if (!rawTestCase) {
-          const manualOnly = globalConfigs.length > 0 ? globalConfigs : [{ id: '', label: '' }];
-          return manualOnly.map(config => ({
-            id: testCaseId,
-            title: `Test Case ${testCaseId}`,
-            priority: 'medium',
-            type: 'functional',
-            executionStatus: 6 as TestResultId,
-            executionResult: TEST_RESULTS[6],
-            fullTestCase: null,
-            configurationId: config.id || undefined,
-            configurationLabel: config.label || undefined
-          }));
-        }
-
-        const testCase = testCasesApiService.transformApiTestCase(rawTestCase, testRunResponse.included);
-        const isAutomated = testCase.automationStatus === 2;
-
-        let configsForThisTestCase: typeof configsToProcess;
-        if (isAutomated) {
-          configsForThisTestCase = [...globalConfigs, ...automatedConfigs];
-        } else {
-          configsForThisTestCase = globalConfigs.length > 0 ? globalConfigs : [];
-        }
-
-        const rawAttrs = rawTestCase.attributes as Record<string, unknown>;
-        const executionsData = rawAttrs.executions as Array<Record<string, unknown>> | undefined;
-
-        if (configsForThisTestCase.length === 0) {
-          let executionResult: TestResultId = 6;
-          if (executionsData && Array.isArray(executionsData) && executionsData.length > 0) {
-            const testRunExecutions = executionsData.filter((execution: Record<string, unknown>) => {
-              const executionTestRunId = execution.test_run_id?.toString() || '';
-              const expectedTestRunId = testRunId?.toString() || '';
-              return executionTestRunId === expectedTestRunId && !execution.configuration_id;
-            });
-            if (testRunExecutions.length > 0) {
-              const latestExecution = [...testRunExecutions].sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
-                const aDate = new Date(a.created_at as string).getTime();
-                const bDate = new Date(b.created_at as string).getTime();
-                return bDate - aDate;
-              })[0];
-              const rawResult = latestExecution.result;
-              if (typeof rawResult === 'number') {
-                executionResult = rawResult as TestResultId;
-              } else if (typeof rawResult === 'string') {
-                const parsedInt = parseInt(rawResult);
-                if (!isNaN(parsedInt) && TEST_RESULTS[parsedInt as TestResultId]) {
-                  executionResult = parsedInt as TestResultId;
-                }
-              }
-            }
-          }
-          return [{
-            id: testCase.id,
-            title: testCase.title,
-            priority: testCase.priority,
-            type: testCase.type,
-            executionStatus: executionResult,
-            executionResult: TEST_RESULTS[executionResult],
-            fullTestCase: testCase,
-            configurationId: undefined,
-            configurationLabel: undefined
-          }];
-        }
-
-        return configsForThisTestCase.map(config => {
-          let executionResult: TestResultId = 6;
-
-          if (executionsData && Array.isArray(executionsData) && executionsData.length > 0) {
-            const testRunExecutions = executionsData.filter((execution: Record<string, unknown>) => {
-              const executionTestRunId = execution.test_run_id?.toString() || '';
-              const executionConfigId = execution.configuration_id?.toString() || '';
-              const expectedTestRunId = testRunId?.toString() || '';
-              const expectedConfigId = config.id?.toString() || '';
-
-              const matchesTestRun = executionTestRunId === expectedTestRunId;
-              const matchesConfig = config.id ?
-                executionConfigId === expectedConfigId :
-                !execution.configuration_id;
-
-              return matchesTestRun && matchesConfig;
-            });
-
-            if (testRunExecutions.length > 0) {
-              const latestExecution = testRunExecutions.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
-                const aDate = new Date(a.created_at as string).getTime();
-                const bDate = new Date(b.created_at as string).getTime();
-                return bDate - aDate;
-              })[0];
-
-              const rawResult = latestExecution.result;
-
-              if (typeof rawResult === 'number') {
-                executionResult = rawResult as TestResultId;
-              } else if (typeof rawResult === 'string') {
-                const parsedInt = parseInt(rawResult);
-                if (!isNaN(parsedInt) && TEST_RESULTS[parsedInt as TestResultId]) {
-                  executionResult = parsedInt as TestResultId;
-                }
-              }
-            }
-          }
-
-          return {
-            id: testCase.id,
-            title: testCase.title,
-            priority: testCase.priority,
-            type: testCase.type,
-            executionStatus: executionResult,
-            executionResult: TEST_RESULTS[executionResult],
-            fullTestCase: testCase,
-            configurationId: config.id || undefined,
-            configurationLabel: config.label || undefined
-          };
-        });
-      });
-
-      setTestCases(testCasesWithExecution as TestCaseWithExecution[]);
-      setFilteredTestCases(testCasesWithExecution as TestCaseWithExecution[]);
-
+      const { testRun: run, testCases: runTestCases, executions: execs } = await testRunsApiService.getTestRunDetails(testRunId);
+      setTestRun(run);
+      setTestCases(runTestCases as TestCaseWithExecution[]);
+      setFilteredTestCases(runTestCases as TestCaseWithExecution[]);
+      setRunExecutions(execs);
     } catch (err) {
       console.error('Failed to fetch test run details:', err);
       setError(err instanceof Error ? err.message : 'Failed to load test run details');
@@ -1042,6 +904,7 @@ const TestRunDetails: React.FC = () => {
         testCase={selectedTestCaseForDetails}
         context="test-run-details"
         testRunId={testRun?.id}
+        executionsFromRun={runExecutions}
         isTestRunClosed={isTestRunClosed}
         configurationId={selectedConfigurationId}
         isConfigurationAutomated={hasAutomatedConfiguration(selectedConfigurationId)}
