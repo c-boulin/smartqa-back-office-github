@@ -1,4 +1,5 @@
 import { apiService } from './api';
+import { testCasesApiService, type TestCaseDetailsPayload } from './testCasesApi';
 import { sharedStepsApiService } from './sharedStepsApi';
 import { Tag } from './tagsApi';
 
@@ -375,11 +376,67 @@ class TestCaseDataService {
   }
 
   /**
-   * Fetch data specifically for the details sidebar (read-only view)
+   * Fetch data specifically for the details sidebar (read-only view).
+   * Uses optimized GET /test_cases/{id}/details when available.
    */
-  async fetchTestCaseDataForDetails(testCaseId: string, availableTags: Tag[] = []): Promise<TestCaseDataFetchResult> {
+  async fetchTestCaseDataForDetails(testCaseId: string, _availableTags: Tag[] = []): Promise<TestCaseDataFetchResult> {
+    try {
+      const details = await testCasesApiService.getTestCaseDetails(testCaseId);
 
-    return this.fetchCompleteTestCaseData(testCaseId, availableTags);
+      const stepResults: ProcessedStepResult[] = (details.stepResults ?? []).map(sr => ({
+        id: sr.id,
+        originalId: sr.id,
+        step: sr.step ?? '',
+        result: sr.result ?? '',
+        originalStep: sr.step ?? '',
+        originalResult: sr.result ?? '',
+        order: sr.order ?? 0,
+      }));
+
+      const sharedSteps: ProcessedSharedStep[] = (details.sharedSteps ?? []).map((ss, index) => ({
+        id: ss.id,
+        title: ss.title ?? '',
+        description: ss.description ?? '',
+        order: ss.order ?? index,
+        pivotId: ss.pivotId,
+        projectId: '',
+        stepsCount: ss.steps?.length ?? 0,
+        usedInCount: 0,
+        stepResults: (ss.steps ?? []).map(st => ({
+          id: st.id,
+          step: st.step ?? '',
+          result: st.result ?? '',
+          order: st.order ?? 0,
+        })),
+        createdBy: { id: '', name: '', email: '' },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+
+      const attachments: ProcessedAttachment[] = (details.attachments ?? []).map((att, index) => ({
+        id: att.id,
+        url: att.url ?? '',
+        fileName: att.url?.split('/').pop() ?? 'Unknown file',
+        name: att.name,
+        order: index + 1,
+      }));
+
+      const stepOrder = this.buildStepOrder(stepResults, sharedSteps);
+
+      return {
+        success: true,
+        data: {
+          stepResults,
+          sharedSteps,
+          attachments,
+          stepOrder,
+          tags: details.tags ?? [],
+        },
+      };
+    } catch (error) {
+      console.error('❌ Failed to fetch test case details (details endpoint):', error);
+      return this.fetchCompleteTestCaseData(testCaseId, _availableTags);
+    }
   }
 }
 
