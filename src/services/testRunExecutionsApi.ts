@@ -255,7 +255,7 @@ class TestRunExecutionsApiService {
           }
 
           // If state is 2 (Passed) or 3 (Failed), we're finished
-          if (result.state === 2 || result.state === 3) {
+          if (TestRunExecutionsApiService.TERMINAL_STATES.has(result.state)) {
             return result;
           }
 
