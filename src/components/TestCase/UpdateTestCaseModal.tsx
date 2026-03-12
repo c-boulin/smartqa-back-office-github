@@ -395,7 +395,6 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
           {/* Sidebar - 1/4 width */}
           <UpdateTestCaseSidebar
             formData={formData}
-            originalAutomationStatus={testCase?.automationStatus}
             onInputChange={handleInputChange}
             users={users}
             usersLoading={usersLoading}
