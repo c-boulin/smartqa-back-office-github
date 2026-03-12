@@ -90,7 +90,10 @@ class TestRunExecutionsApiService {
     1: 'In Progress',
     2: 'Passed',
     3: 'Failed',
+    4: 'Uknown'
   };
+
+  private static readonly TERMINAL_STATES = new Set([2, 3, 4]);
 
   /** Extract numeric id from value: number, string "123", or IRI "/api/test_run_executions/123" */
   private static parseId(value: unknown): number | null {
