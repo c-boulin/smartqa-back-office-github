@@ -254,7 +254,7 @@ class TestRunExecutionsApiService {
             await onStateChange(result);
           }
 
-          // If state is 2 (Passed) or 3 (Failed), we're finished
+          // If state is 2 (Passed), 3 (Failed) or 4 (Unknown), we're finished
           if (TestRunExecutionsApiService.TERMINAL_STATES.has(result.state)) {
             return result;
           }

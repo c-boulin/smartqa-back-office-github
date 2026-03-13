@@ -18,7 +18,7 @@ type AuthAction =
 const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: true,
   error: null
 };
 
@@ -51,6 +51,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
     case 'LOGOUT':
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user_data');
+      localStorage.removeItem('smartqa_selected_project_id');
+      localStorage.removeItem('smartqa_last_selected_project_id');
       return {
         ...initialState
       };
@@ -81,12 +83,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (token && userData) {
       try {
         const user = JSON.parse(userData);
-        dispatch({ type: 'SET_USER', payload: user });
+        dispatch({ type: 'SET_USER', payload: user }); // SET_USER sets isLoading: false
       } catch {
         // Clear invalid data
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
+    } else {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, []);
 
