@@ -44,11 +44,13 @@ export const useProjectRestoration = () => {
         let projectId: string | null = null;
 
         if (resourceType === 'test-run') {
-          const testRun = await testRunsApiService.getTestRunById(resourceId);
-          projectId = testRun.projectId;
+          const response = await testRunsApiService.getTestRun(resourceId);
+          const extractedProjectId = response.data.relationships.project.data.id.split('/').pop();
+          projectId = extractedProjectId || null;
         } else if (resourceType === 'test-plan') {
-          const testPlan = await testPlansApiService.getTestPlanById(resourceId);
-          projectId = testPlan.projectId;
+          const response = await testPlansApiService.getTestPlan(resourceId);
+          const extractedProjectId = response.data.relationships?.project?.data?.id?.split('/').pop();
+          projectId = extractedProjectId || null;
         }
 
         if (projectId && state.projects.some(p => p.id === projectId)) {
