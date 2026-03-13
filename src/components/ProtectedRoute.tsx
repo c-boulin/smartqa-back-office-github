@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useProjectRestoration } from '../hooks/useProjectRestoration';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -8,6 +9,8 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { state } = useAuth();
+
+  useProjectRestoration();
 
   if (!state.isAuthenticated) {
     return <Navigate to="/login" replace />;
