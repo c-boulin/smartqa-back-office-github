@@ -460,22 +460,22 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
                 <div className="space-y-2 max-h-40 overflow-y-auto" style={{ overflowAnchor: 'none' }}>
                   {selectedTestCases.map((testCase) => (
                     <div key={`selected-${testCase.id}`} className="flex items-center justify-between bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg p-3 min-w-0">
-                      <div className="flex items-center flex-1 min-w-0 pr-3 gap-2">
-                        {testCase.automationStatus === 2 && (
-                          <Cpu className="w-4 h-4 text-green-400 flex-shrink-0" title="Automated" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <span className="text-slate-900 dark:text-white text-sm font-medium">{testCase.title}</span>
-                          <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.projectRelativeId || testCase.id}</p>
-                        </div>
+                      <div className="flex-1 min-w-0 pr-3">
+                        <span className="text-slate-900 dark:text-white text-sm font-medium">{testCase.title}</span>
+                        <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.projectRelativeId || testCase.id}</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeTestCase(testCase.id)}
-                        className="text-slate-500 dark:text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {testCase.automationStatus === 2 && (
+                          <Cpu className="w-4 h-4 text-green-400" title="Automated" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeTestCase(testCase.id)}
+                          className="text-slate-500 dark:text-gray-400 hover:text-red-400 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -549,16 +549,16 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
                             className="w-full text-left bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg p-3 text-slate-900 dark:text-white hover:bg-slate-600 transition-colors min-w-0"
                           >
                             <div className="flex items-center justify-between min-w-0">
-                              <div className="flex items-center flex-1 min-w-0 pr-3 gap-2">
-                                {testCase.automationStatus === 2 && (
-                                  <Cpu className="w-4 h-4 text-green-400 flex-shrink-0" title="Automated" />
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-sm font-medium block truncate">{testCase.title}</span>
-                                  <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.projectRelativeId || testCase.id}</p>
-                                </div>
+                              <div className="flex-1 min-w-0 pr-3">
+                                <span className="text-sm font-medium block truncate">{testCase.title}</span>
+                                <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.projectRelativeId || testCase.id}</p>
                               </div>
-                              <Plus className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {testCase.automationStatus === 2 && (
+                                  <Cpu className="w-4 h-4 text-green-400" title="Automated" />
+                                )}
+                                <Plus className="w-4 h-4 text-cyan-400" />
+                              </div>
                             </div>
                           </button>
                         ))}
