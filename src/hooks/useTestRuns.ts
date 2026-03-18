@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { testRunsApiService, TestRunsApiResponse } from '../services/testRunsApi';
+import { testRunsApiService, TestRunsListResponse } from '../services/testRunsApi';
 import { TestRun } from '../services/testRunsApi';
 import toast from 'react-hot-toast';
 
@@ -17,12 +17,23 @@ export const useTestRuns = (projectId?: string | null) => {
   // Use ref to track changes without triggering re-renders
   const previousProjectId = useRef<string | null>(null);
 
-  // Stable fetchTestRuns function
+  const applyListResponse = useCallback((response: TestRunsListResponse) => {
+    const transformed = response.data.map(item =>
+      testRunsApiService.normalizeTestRunListItem(item)
+    );
+    setTestRuns(transformed);
+    setPagination({
+      currentPage: response.meta.currentPage,
+      totalItems: response.meta.totalItems,
+      itemsPerPage: response.meta.itemsPerPage,
+      totalPages: Math.ceil(response.meta.totalItems / response.meta.itemsPerPage),
+    });
+  }, []);
+
   const fetchTestRuns = useCallback(async (page: number = 1, targetProjectId?: string) => {
     const useProjectId = targetProjectId || projectId;
-    
-    if (!useProjectId) {
 
+    if (!useProjectId) {
       setTestRuns([]);
       setLoading(false);
       return;
@@ -31,42 +42,8 @@ export const useTestRuns = (projectId?: string | null) => {
     try {
       setLoading(true);
       setError(null);
-
-      let response: TestRunsApiResponse = await testRunsApiService.getTestRuns(
-        useProjectId,
-        page,
-        30
-      );
-      
-      if (!response) {
-        response = testRunsApiService.getDefaultTestRunsResponse();
-      }
-      
-      const responseData = response?.data || [];
-      const responseMeta = response?.meta || {
-        currentPage: 1,
-        totalItems: 0,
-        itemsPerPage: 30
-      };
-      const included = response?.included || [];
-      
-      const transformedTestRuns = responseData.map(apiTestRun => 
-        testRunsApiService.transformApiTestRun(apiTestRun, included)
-      );
-
-
-      // Count active vs closed
-      const _activeCount = transformedTestRuns.filter(tr => tr.state !== 6).length;
-      const _closedCount = transformedTestRuns.filter(tr => tr.state === 6).length;
-
-      setTestRuns(transformedTestRuns);
-      setPagination({
-        currentPage: responseMeta.currentPage,
-        totalItems: responseMeta.totalItems,
-        itemsPerPage: responseMeta.itemsPerPage,
-        totalPages: Math.ceil(responseMeta.totalItems / responseMeta.itemsPerPage)
-      });
-      
+      const response = await testRunsApiService.getTestRunsList(useProjectId, page, 30);
+      applyListResponse(response);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch test runs';
       setError(errorMessage);
@@ -75,49 +52,20 @@ export const useTestRuns = (projectId?: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, applyListResponse]);
 
   const searchTestRuns = useCallback(async (searchTerm: string, page: number = 1) => {
-    if (!projectId) {
-      setTestRuns([]);
-      return;
-    }
+    if (!projectId) { setTestRuns([]); return; }
 
     try {
       setLoading(true);
       setError(null);
-
-      let response: TestRunsApiResponse = await testRunsApiService.searchTestRuns(
-        searchTerm,
-        projectId,
-        page,
-        30
-      );
-      
-      if (!response) {
-        response = testRunsApiService.getDefaultTestRunsResponse();
-      }
-      
-      const responseData = response?.data || [];
-      const responseMeta = response?.meta || {
-        currentPage: 1,
-        totalItems: 0,
-        itemsPerPage: 30
-      };
-      const included = response?.included || [];
-      
-      const transformedTestRuns = responseData.map(apiTestRun => 
-        testRunsApiService.transformApiTestRun(apiTestRun, included)
-      );
-      
-      setTestRuns(transformedTestRuns);
-      setPagination({
-        currentPage: responseMeta.currentPage,
-        totalItems: responseMeta.totalItems,
-        itemsPerPage: responseMeta.itemsPerPage,
-        totalPages: Math.ceil(responseMeta.totalItems / responseMeta.itemsPerPage)
-      });
-      
+      const isNumeric = /^\d+$/.test(searchTerm.trim());
+      const filters = isNumeric
+        ? { id: searchTerm.trim() }
+        : { name: searchTerm };
+      const response = await testRunsApiService.getTestRunsList(projectId, page, 30, filters);
+      applyListResponse(response);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to search test runs';
       setError(errorMessage);
@@ -126,49 +74,16 @@ export const useTestRuns = (projectId?: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, applyListResponse]);
 
   const filterTestRunsByAssignee = useCallback(async (assigneeId: string, page: number = 1) => {
-    if (!projectId) {
-      setTestRuns([]);
-      return;
-    }
+    if (!projectId) { setTestRuns([]); return; }
 
     try {
       setLoading(true);
       setError(null);
-
-      let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsByAssignee(
-        assigneeId,
-        projectId,
-        page,
-        30
-      );
-      
-      if (!response) {
-        response = testRunsApiService.getDefaultTestRunsResponse();
-      }
-      
-      const responseData = response?.data || [];
-      const responseMeta = response?.meta || {
-        currentPage: 1,
-        totalItems: 0,
-        itemsPerPage: 30
-      };
-      const included = response?.included || [];
-      
-      const transformedTestRuns = responseData.map(apiTestRun => 
-        testRunsApiService.transformApiTestRun(apiTestRun, included)
-      );
-      
-      setTestRuns(transformedTestRuns);
-      setPagination({
-        currentPage: responseMeta.currentPage,
-        totalItems: responseMeta.totalItems,
-        itemsPerPage: responseMeta.itemsPerPage,
-        totalPages: Math.ceil(responseMeta.totalItems / responseMeta.itemsPerPage)
-      });
-      
+      const response = await testRunsApiService.getTestRunsList(projectId, page, 30, { user: assigneeId });
+      applyListResponse(response);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to filter test runs by assignee';
       setError(errorMessage);
@@ -177,49 +92,16 @@ export const useTestRuns = (projectId?: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, applyListResponse]);
 
   const filterTestRunsByState = useCallback(async (state: string, page: number = 1) => {
-    if (!projectId) {
-      setTestRuns([]);
-      return;
-    }
+    if (!projectId) { setTestRuns([]); return; }
 
     try {
       setLoading(true);
       setError(null);
-
-      let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsByState(
-        state,
-        projectId,
-        page,
-        30
-      );
-      
-      if (!response) {
-        response = testRunsApiService.getDefaultTestRunsResponse();
-      }
-      
-      const responseData = response?.data || [];
-      const responseMeta = response?.meta || {
-        currentPage: 1,
-        totalItems: 0,
-        itemsPerPage: 30
-      };
-      const included = response?.included || [];
-      
-      const transformedTestRuns = responseData.map(apiTestRun => 
-        testRunsApiService.transformApiTestRun(apiTestRun, included)
-      );
-      
-      setTestRuns(transformedTestRuns);
-      setPagination({
-        currentPage: responseMeta.currentPage,
-        totalItems: responseMeta.totalItems,
-        itemsPerPage: responseMeta.itemsPerPage,
-        totalPages: Math.ceil(responseMeta.totalItems / responseMeta.itemsPerPage)
-      });
-      
+      const response = await testRunsApiService.getTestRunsList(projectId, page, 30, { state });
+      applyListResponse(response);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to filter test runs by state';
       setError(errorMessage);
@@ -228,52 +110,22 @@ export const useTestRuns = (projectId?: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, applyListResponse]);
 
   const filterTestRunsWithMultipleFilters = useCallback(async (filters: {
     assignee?: string;
     state?: string;
   }, page: number = 1) => {
-    if (!projectId) {
-      setTestRuns([]);
-      return;
-    }
+    if (!projectId) { setTestRuns([]); return; }
 
     try {
       setLoading(true);
       setError(null);
-
-      let response: TestRunsApiResponse = await testRunsApiService.filterTestRunsWithMultipleFilters(
-        filters,
-        projectId,
-        page,
-        30
-      );
-      
-      if (!response) {
-        response = testRunsApiService.getDefaultTestRunsResponse();
-      }
-      
-      const responseData = response?.data || [];
-      const responseMeta = response?.meta || {
-        currentPage: 1,
-        totalItems: 0,
-        itemsPerPage: 30
-      };
-      const included = response?.included || [];
-      
-      const transformedTestRuns = responseData.map(apiTestRun => 
-        testRunsApiService.transformApiTestRun(apiTestRun, included)
-      );
-      
-      setTestRuns(transformedTestRuns);
-      setPagination({
-        currentPage: responseMeta.currentPage,
-        totalItems: responseMeta.totalItems,
-        itemsPerPage: responseMeta.itemsPerPage,
-        totalPages: Math.ceil(responseMeta.totalItems / responseMeta.itemsPerPage)
-      });
-      
+      const apiFilters: { user?: string; state?: string } = {};
+      if (filters.assignee && filters.assignee !== 'all') apiFilters.user = filters.assignee;
+      if (filters.state && filters.state !== 'all') apiFilters.state = filters.state;
+      const response = await testRunsApiService.getTestRunsList(projectId, page, 30, apiFilters);
+      applyListResponse(response);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to filter test runs with multiple filters';
       setError(errorMessage);
@@ -282,7 +134,7 @@ export const useTestRuns = (projectId?: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, applyListResponse]);
 
   const createTestRun = useCallback(async (testRunData: {
     name: string;

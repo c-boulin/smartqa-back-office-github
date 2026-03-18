@@ -208,7 +208,7 @@ const TestRunDetails: React.FC = () => {
         return <Clock className="w-4 h-4 text-purple-400" />;
       case 'Untested':
       case 'In Progress':
-      case 'Unknown':
+      case 'System Issue':
         return <Clock className="w-4 h-4 text-slate-600 dark:text-gray-400" />;
       default:
         return <Clock className="w-4 h-4 text-slate-600 dark:text-gray-400" />;
@@ -230,7 +230,7 @@ const TestRunDetails: React.FC = () => {
         return 'text-purple-400 bg-purple-500/20 border-purple-500/50';
       case 'Untested':
       case 'In Progress':
-      case 'Unknown':
+      case 'System Issue':
         return 'text-slate-600 dark:text-gray-400 bg-gray-500/20 border-gray-500/50';
       default:
         return 'text-slate-600 dark:text-gray-400 bg-gray-500/20 border-gray-500/50';
@@ -481,6 +481,7 @@ const TestRunDetails: React.FC = () => {
     setIsBulkRunning(true);
 
     try {
+      let startedAnyExecution = false;
       const selectableKeys = new Set(automatedTestCasesForBulkRun.map(tc => `${tc.id}|${tc.configurationId || 'default'}`));
       const selectedKeys = Array.from(selectedTestCasesForBulkRun).filter(k => selectableKeys.has(k));
       if (selectedKeys.length === 0) {
@@ -530,6 +531,8 @@ const TestRunDetails: React.FC = () => {
               })
             )
           );
+
+          startedAnyExecution = true;
 
           setTestCases(prevTestCases => {
             return prevTestCases.map(tc => {
@@ -622,6 +625,15 @@ const TestRunDetails: React.FC = () => {
         } catch (error) {
           console.error(`Failed to start execution for configuration ${config.label}:`, error);
           toast.error(`Failed to start execution for ${config.label}`);
+        }
+      }
+
+      if (startedAnyExecution && testRun.state === 1) {
+        try {
+          await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId || testPlanIdFromUrl);
+          setTestRun(prev => (prev ? { ...prev, state: 2 } : prev));
+        } catch (error) {
+          console.error('Failed to update test run state to in progress:', error);
         }
       }
 
@@ -800,8 +812,10 @@ const TestRunDetails: React.FC = () => {
 
             return (
               <Card key={resultId} className="p-4 text-center">
-                <div className={`text-2xl font-bold mb-1 ${color}`}>{count}</div>
-                <div className="text-sm text-slate-600 dark:text-gray-400">{label}</div>
+                <span title={id === 8 ? 'Retry the run' : undefined} className="block">
+                  <div className={`text-2xl font-bold mb-1 ${color}`}>{count}</div>
+                  <div className="text-sm text-slate-600 dark:text-gray-400">{label}</div>
+                </span>
               </Card>
             );
           });

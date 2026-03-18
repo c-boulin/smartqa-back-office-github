@@ -12,8 +12,7 @@ import SkeletonCard from '../components/UI/SkeletonCard';
 import ClosedRunsCaseResultsStackedChart from '../components/Charts/ClosedRunsCaseResultsStackedChart';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
-import { useDashboardSummary } from '../hooks/useDashboardSummary';
-import { useTestRunsData } from '../hooks/useTestRunsData';
+import { useDashboardData } from '../hooks/useDashboardData';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { TEST_CASE_TYPES } from '../types';
 
@@ -30,11 +29,14 @@ export default function Dashboard() {
 
   const tickColor = theme === 'dark' ? '#94a3b8' : '#475569';
 
-  const { summaryData, loading: summaryLoading } = useDashboardSummary(selectedProject, state.projects, automationFilter);
-  const { data: testRunsData, loading: testRunsLoading } = useTestRunsData(selectedProject?.id, automationFilter);
+  const { data: dashboardData, loading: dashboardLoading } = useDashboardData(selectedProject, state.projects, automationFilter);
 
-  const activeTestRunsChartData = testRunsData?.activeTestRunsChart;
-  const closedTestRunsResultsData = testRunsData?.closedTestRunsRawData;
+  const summaryData = dashboardData?.summary ?? null;
+  const summaryLoading = dashboardLoading;
+  const testRunsLoading = dashboardLoading;
+
+  const activeTestRunsChartData = dashboardData?.testRunsData?.activeTestRunsChart ?? null;
+  const closedTestRunsStackedChart = dashboardData?.testRunsData?.closedTestRunsStackedChart ?? null;
 
   const getTypeColor = (typeId: number): string => {
     const colors = {
@@ -110,7 +112,7 @@ export default function Dashboard() {
     { name: 'Skipped', value: activeTestRunsChartData.actualSkipped, color: '#8B5CF6' },
     { name: 'Untested', value: activeTestRunsChartData.actualUntested, color: '#6B7280' },
     { name: 'In Progress', value: activeTestRunsChartData.actualInProgress, color: '#3B82F6' },
-    { name: 'Unknown', value: activeTestRunsChartData.actualUnknown, color: '#4B5563' }
+    { name: 'System Issue', value: activeTestRunsChartData.actualUnknown, color: '#4B5563' }
   ] : [];
 
   const totalActiveTestCases = activeTestRunsChartData?.totalTestCasesInActiveRuns || 0;
@@ -282,7 +284,8 @@ export default function Dashboard() {
             <div className="w-full h-full">
               <ClosedRunsCaseResultsStackedChart
                 projectId={selectedProject?.id}
-                closedTestRunsData={closedTestRunsResultsData}
+                precomputedChartData={closedTestRunsStackedChart?.chartData}
+                precomputedChartLabels={closedTestRunsStackedChart?.resultLabels}
                 className="h-80"
               />
             </div>

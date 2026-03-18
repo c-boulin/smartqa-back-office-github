@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Loader, MessageSquare } from 'lucide-react';
 import { TEST_RESULTS, TestResultId } from '../../types';
+import Tooltip from '../UI/Tooltip';
 
 interface TestResultDropdownProps {
   value: TestResultId;
@@ -105,29 +106,39 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
     };
   }, [isOpen]);
 
+  const resultButton = (
+    <button
+      ref={buttonRef}
+      type="button"
+      onClick={handleToggle}
+      disabled={disabled || isUpdating}
+      className={`w-full px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between ${getStatusColor()} ${
+        disabled || isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'
+      }`}
+    >
+      <div className="flex items-center">
+        <div className={`w-2 h-2 rounded-full mr-2 ${getResultColor(value)}`}></div>
+        <span>{currentResultLabel}</span>
+      </div>
+      {isUpdating ? (
+        <Loader className="w-3 h-3 animate-spin text-slate-600 dark:text-gray-400" />
+      ) : (
+        <svg className="w-3 h-3 text-slate-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      )}
+    </button>
+  );
+
   return (
     <div className="relative">
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={handleToggle}
-        disabled={disabled || isUpdating}
-        className={`w-full px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between ${getStatusColor()} ${
-          disabled || isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'
-        }`}
-      >
-        <div className="flex items-center">
-          <div className={`w-2 h-2 rounded-full mr-2 ${getResultColor(value)}`}></div>
-          <span>{currentResultLabel}</span>
-        </div>
-        {isUpdating ? (
-          <Loader className="w-3 h-3 animate-spin text-slate-600 dark:text-gray-400" />
-        ) : (
-          <svg className="w-3 h-3 text-slate-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        )}
-      </button>
+      {value === 8 ? (
+        <Tooltip content="Retry the run">
+          {resultButton}
+        </Tooltip>
+      ) : (
+        resultButton
+      )}
 
       {isOpen && !disabled && !isUpdating && (
         <>

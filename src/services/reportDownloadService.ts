@@ -546,7 +546,7 @@ class ReportDownloadService {
           { name: 'Skipped', value: reportData.testCaseBreakup.skipped || 0, color: '#8B5CF6' },
           { name: 'Untested', value: reportData.testCaseBreakup.untested || 0, color: '#6B7280' },
           { name: 'In Progress', value: reportData.testCaseBreakup.inProgress || 0, color: '#3B82F6' },
-          { name: 'Unknown', value: reportData.testCaseBreakup.unknown || 0, color: '#4B5563' }
+          { name: 'System Issue', value: reportData.testCaseBreakup.unknown || 0, color: '#4B5563' }
         ].filter(item => item.value > 0);
 
         if (pieData.length > 0) {
@@ -1505,7 +1505,7 @@ class ReportDownloadService {
       addTestCaseRow('Skipped', reportData.testCaseBreakup.skipped);
       addTestCaseRow('Untested', reportData.testCaseBreakup.untested);
       addTestCaseRow('In Progress', reportData.testCaseBreakup.inProgress);
-      addTestCaseRow('Unknown', reportData.testCaseBreakup.unknown);
+      addTestCaseRow('System Issue', reportData.testCaseBreakup.unknown);
       addRow('');
 
       // Test Runs Breakdown Section
@@ -1886,9 +1886,13 @@ export interface DetailedReportData extends ReportData {
     latestStatus: string;
     priority: string;
     assignee: string;
+    configurationId?: string | null;
+    configurationName?: string | null;
   }>;
   performanceData: Array<{
     date: string;
-    value: number;
+    passed: number;
+    failed: number;
+    other: number;
   }>;
 }

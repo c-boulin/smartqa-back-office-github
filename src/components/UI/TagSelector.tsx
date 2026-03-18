@@ -1,18 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Plus, Tag as TagIcon } from 'lucide-react';
-import { Tag } from '../../services/tagsApi';
+import { X, Plus, Tag as TagIcon, Loader2 } from 'lucide-react';
+import { Tag, tagsApiService } from '../../services/tagsApi';
 
 interface TagSelectorProps {
-  availableTags: Tag[];
+  availableTags?: Tag[];
   selectedTags: Tag[];
   onTagsChange: (tags: Tag[]) => void;
-  // onCreateTag: (label: string) => Promise<Tag>;
   disabled?: boolean;
   placeholder?: string;
 }
 
 const TagSelector: React.FC<TagSelectorProps> = ({
-  availableTags,
   selectedTags,
   onTagsChange,
   disabled = false,
@@ -20,19 +18,37 @@ const TagSelector: React.FC<TagSelectorProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  // const [isCreating, setIsCreating] = useState(false);
+  const [fetchedTags, setFetchedTags] = useState<Tag[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const hasFetched = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    setIsLoading(true);
+    tagsApiService.getTags().then((response) => {
+      setFetchedTags(response.data.map(t => tagsApiService.transformApiTag(t)));
+    }).catch((err) => {
+      console.error('Failed to fetch tags:', err);
+      hasFetched.current = false;
+    }).finally(() => {
+      setIsLoading(false);
+    });
+  }, []);
+
+  const allTags = fetchedTags;
+
   // Filter available tags based on search term and exclude already selected
-  const filteredTags = (availableTags || []).filter(tag => 
+  const filteredTags = allTags.filter(tag => 
     tag.label.toLowerCase().includes(searchTerm.toLowerCase()) &&
     !selectedTags.some(selected => selected.id === tag.id)
   );
 
   // Check if search term would create a new tag
   const canCreateNew = searchTerm.trim() && 
-    !(availableTags || []).some(tag => tag.label.toLowerCase() === searchTerm.toLowerCase()) &&
+    !allTags.some(tag => tag.label.toLowerCase() === searchTerm.toLowerCase()) &&
     !selectedTags.some(tag => tag.label.toLowerCase() === searchTerm.toLowerCase());
 
   const handleTagSelect = (tag: Tag) => {
@@ -172,10 +188,15 @@ const TagSelector: React.FC<TagSelectorProps> = ({
             </button>
           )}
 
-          {/* No results */}
-          {filteredTags.length === 0 && !canCreateNew && (
+          {/* Loading / No results */}
+          {isLoading && (
+            <div className="px-4 py-2 text-slate-500 dark:text-gray-400 text-sm flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading tags...
+            </div>
+          )}
+          {!isLoading && filteredTags.length === 0 && !canCreateNew && (
             <div className="px-4 py-2 text-slate-500 dark:text-gray-400 text-sm">
-              {searchTerm ? 'No tags found' : 'Start typing to search tags'}
+              {searchTerm ? 'No tags found' : 'No tags available'}
             </div>
           )}
         </div>

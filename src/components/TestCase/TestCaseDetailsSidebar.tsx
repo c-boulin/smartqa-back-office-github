@@ -552,7 +552,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
             testCaseId: exec.test_case_id.toString(),
             testRunId: exec.test_run_id.toString(),
             result: exec.result,
-            resultLabel: TEST_RESULTS[exec.result as TestResultId] || 'Unknown',
+            resultLabel: TEST_RESULTS[exec.result as TestResultId] || 'System Issue',
             comment: exec.comment ?? undefined,
             createdAt: new Date(exec.created_at),
             updatedAt: new Date(exec.updated_at)
@@ -1079,7 +1079,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                           <h4 className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-3">Execution History</h4>
                           <div className="space-y-2 max-h-48 overflow-y-auto">
                             {testCaseDetails.executions.map((execution, index) => (
-                              <div key={execution.id} className="bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg p-3">
+                              <div key={execution.id} className="bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg p-3" title={execution.result === 8 ? 'Retry the run' : undefined}>
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center">
                                     <div
@@ -1093,7 +1093,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                           execution.result === 5 ? '#8B5CF6' : // Skipped - Purple
                                           execution.result === 6 ? '#6B7280' : // Untested - Gray
                                           execution.result === 7 ? '#3B82F6' : // In Progress - Blue
-                                          execution.result === 8 ? '#4B5563' : // Unknown - Dark Gray
+                                          execution.result === 8 ? '#4B5563' : // System Issue - Dark Gray
                                           '#6B7280' // Default - Gray
                                       }}
                                       data-result={execution.result}

@@ -263,6 +263,67 @@ export async function fetchTestCasesForReport(
 }
 
 /**
+ * Optimised endpoint: fetches fully-computed report data from the API.
+ * The backend does all aggregation, so the front-end can use the response directly.
+ *
+ * template 1 → summary, template 2 → detailed (adds testCasesIncluded + performanceData)
+ */
+export async function fetchReportData(
+  projectId: string,
+  template: 1 | 2,
+  filters?: ReportFilters | null,
+  options?: ReportFetchOptions
+): Promise<Record<string, unknown>> {
+  const params = new URLSearchParams();
+  params.set('template', String(template));
+
+  const creationDateFilter = options?.creationDateFilter ?? filters?.testRunCreationDate;
+  if (creationDateFilter) {
+    const normalized = normalizeCreationDateFilter(creationDateFilter) || creationDateFilter;
+    params.set('creation_date_filter', normalized);
+  }
+
+  if (options?.testRunIds && options.testRunIds.length > 0) {
+    params.set('test_run_ids', options.testRunIds.join(','));
+  }
+
+  if (filters) {
+    if (filters.statusOfTestCase?.length) {
+      params.set('execution_result', filters.statusOfTestCase.join(','));
+    }
+    if (filters.testCaseType?.length) {
+      params.set('type', filters.testCaseType.join(','));
+    }
+    if (filters.testCasePriority?.length) {
+      params.set('priority', filters.testCasePriority.join(','));
+    }
+    if (filters.testCaseAssignee?.length) {
+      params.set('user', filters.testCaseAssignee.join(','));
+    }
+    if (filters.testCaseTags?.length) {
+      params.set('tags', filters.testCaseTags.join(','));
+    }
+    if (filters.automationStatus?.length) {
+      params.set('automation', filters.automationStatus.join(','));
+    }
+    if (filters.createdDateRange) {
+      const d = calculateDateFromPeriod(filters.createdDateRange);
+      if (d) params.set('created_at', `>=${d}`);
+    }
+    if (filters.lastUpdatedDateRange) {
+      const d = calculateDateFromPeriod(filters.lastUpdatedDateRange);
+      if (d) params.set('updated_at', `>=${d}`);
+    }
+  }
+
+  const url = `/projects/${projectId}/report-data?${params.toString()}`;
+  const response = await apiService.authenticatedRequest(url, {
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+  });
+  return response;
+}
+
+/**
  * Export query builder for testing or external use
  */
 export { buildReportQueryParams, calculateDateFromPeriod, calculateTestRunCreationDate, normalizeCreationDateFilter };

@@ -191,7 +191,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         sharedSteps: state.sharedSteps.map(ss => ss.id === action.payload.id ? action.payload : ss)
       };
     case 'CLEAR_DATA':
-      setStoredSelectedProjectId(null);
       return {
         ...state,
         projects: [],
@@ -320,18 +319,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'SET_PROJECTS', payload: allProjects });
       hasLoadedRef.current = true;
 
-      // Only auto-select if no project is currently selected AND projects exist
-      const currentSelectedProjectId = stateRef.current.selectedProjectId;
-      if (!currentSelectedProjectId && allProjects.length > 0) {
-        const storedProjectId = getStoredSelectedProjectId();
-        if (storedProjectId && allProjects.some(p => p.id === storedProjectId)) {
-          dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: storedProjectId });
-        } else {
-          // Auto-select the first project (most recently created since we order by createdAt desc)
-          dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: allProjects[0].id });
+      // Restore or auto-select a project
+      const storedProjectId = getStoredSelectedProjectId();
+      if (storedProjectId) {
+        dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: storedProjectId });
+        // If the stored project isn't in the first page, fetch it individually so the UI can display its name
+        if (!allProjects.some(p => p.id === storedProjectId)) {
+          try {
+            const response = await projectsApiService.getProject(storedProjectId);
+            const project = projectsApiService.transformApiProject(response.data);
+            dispatch({ type: 'UPDATE_PROJECT', payload: project });
+          } catch {
+            // Project may have been deleted — fall back to first available
+            if (allProjects.length > 0) {
+              dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: allProjects[0].id });
+            } else {
+              dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: null });
+            }
+          }
         }
-      } else if (allProjects.length === 0) {
-        // No projects exist, clear any selected project
+      } else if (allProjects.length > 0) {
+        dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: allProjects[0].id });
+      } else {
         dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: null });
       }
 
@@ -374,6 +383,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Effect to handle authentication state changes
   useEffect(() => {
+    // Wait until auth has finished checking localStorage before acting
+    if (authState.isLoading) {
+      return;
+    }
+
     // Prevent multiple initializations
     if (isInitializing.current) {
       return;
@@ -399,7 +413,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'CLEAR_DATA' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadConfigurations, loadProjects, loadTags are stable
-  }, [authState.isAuthenticated]);
+  }, [authState.isAuthenticated, authState.isLoading]);
 
   return (
     <AppContext.Provider value={{

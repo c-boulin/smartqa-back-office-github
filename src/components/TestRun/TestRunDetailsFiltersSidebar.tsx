@@ -73,7 +73,7 @@ const TestRunDetailsFiltersSidebar: React.FC<TestRunDetailsFiltersSidebarProps> 
                 <option value="skipped">Skipped</option>
                 <option value="untested">Untested</option>
                 <option value="in_progress">In Progress</option>
-                <option value="unknown">Unknown</option>
+                <option value="unknown">System Issue</option>
               </select>
             </div>
 

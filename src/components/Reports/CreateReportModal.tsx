@@ -7,7 +7,6 @@ import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useUsers } from '../../context/UsersContext';
 import { testRunsApiService } from '../../services/testRunsApi';
-import { fetchTestCasesForReport } from '../../services/reportsDataService';
 import { buildScheduledReportPayload } from '../../services/scheduledReportPayloadBuilder';
 import { PRIORITIES, TEST_CASE_TYPES, AUTOMATION_STATUS } from '../../constants/testCaseConstants';
 import { TEST_RESULTS } from '../../types';
@@ -198,31 +197,8 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
       const payload = buildScheduledReportPayload(formData, users, authState.user.id);
 
-      // Fetch report data using the new API endpoint
-      // Add test run creation date to filters if using creation_time mode
-      const filtersWithTestRunDate = {
-        ...formData.filters,
-        testRunCreationDate: formData.testRunSelection === 'creation_time'
-          ? formData.includeTestRuns
-          : undefined
-      };
-
-      const reportData = await fetchTestCasesForReport(
-        formData.project,
-        filtersWithTestRunDate
-      );
-
-      // Log test runs extracted from included node
-
-      // Log test executions
-      if (reportData.testExecutions && reportData.testExecutions.length > 0) {
-        // Test executions available
-      }
-
-      // Pass the form data, report data, AND scheduled report payload to parent component
       await onSubmit({
         ...formData,
-        reportData,
         scheduledReportPayload: payload
       });
 

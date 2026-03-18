@@ -4,6 +4,7 @@ import Button from '../UI/Button';
 import { Play, Loader, CheckCircle, XCircle } from 'lucide-react';
 import { testCaseExecutionsApiService } from '../../services/testCaseExecutionsApi';
 import { testRunExecutionsApiService, TestRunExecution } from '../../services/testRunExecutionsApi';
+import { testRunsApiService } from '../../services/testRunsApi';
 import { useTestRunExecutionPolling } from '../../hooks/useTestRunExecutionPolling';
 import toast from 'react-hot-toast';
 
@@ -181,7 +182,15 @@ const RunTestCaseModal: React.FC<RunTestCaseModalProps> = ({
         }
       });
 
-      await Promise.all(testCaseExecutionPromises);
+      const testCaseExecutionResults = await Promise.all(testCaseExecutionPromises);
+
+      if (testCaseExecutionResults.some(result => result.success)) {
+        try {
+          await testRunsApiService.updateTestRunState(testRunId, 2);
+        } catch (error) {
+          console.error('Failed to update test run state to in progress:', error);
+        }
+      }
 
       // Step 3: Start polling on the single test_run_execution
       const testCasesSummary = testCasesToRun.map(tc => tc.code).join(', ');

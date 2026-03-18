@@ -195,7 +195,7 @@ export const TEST_RESULTS = {
   5: 'Skipped',
   6: 'Untested',
   7: 'In Progress',
-  8: 'Unknown'
+  8: 'System Issue'
 } as const;
 
 export type TestResultId = keyof typeof TEST_RESULTS;

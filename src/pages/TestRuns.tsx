@@ -127,8 +127,6 @@ const TestRuns: React.FC = () => {
 
   // Filter test runs based on active tab
   const getFilteredTestRuns = () => {
-
-
     if (activeTab === 'active') {
       const activeRuns = testRuns.filter(testRun => testRun.state !== 6); // Not closed
 

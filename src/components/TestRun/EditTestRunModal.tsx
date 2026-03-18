@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Loader, Save, X, Search, Plus } from 'lucide-react';
+import { Loader, Save, X, Search, Plus, Cpu } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import ConfigurationSelector from '../UI/ConfigurationSelector';
+import Tooltip from '../UI/Tooltip';
 import TestPlanSelector from '../UI/TestPlanSelector';
 import { useUsers } from '../../context/UsersContext';
 import { useTestCases } from '../../hooks/useTestCases';
@@ -464,13 +465,22 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
                         <span className="text-slate-900 dark:text-white text-sm font-medium">{testCase.title}</span>
                         <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.projectRelativeId || testCase.id}</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeTestCase(testCase.id)}
-                        className="text-slate-500 dark:text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {testCase.automationStatus === 2 && (
+                          <Tooltip content="Automated">
+                            <span className="inline-flex flex-shrink-0">
+                              <Cpu className="w-4 h-4 text-green-400" />
+                            </span>
+                          </Tooltip>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeTestCase(testCase.id)}
+                          className="text-slate-500 dark:text-gray-400 hover:text-red-400 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -548,7 +558,16 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
                                 <span className="text-sm font-medium block truncate">{testCase.title}</span>
                                 <p className="text-xs text-slate-500 dark:text-gray-400">TC{testCase.projectRelativeId || testCase.id}</p>
                               </div>
-                              <Plus className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {testCase.automationStatus === 2 && (
+                                  <Tooltip content="Automated">
+                                    <span className="inline-flex flex-shrink-0">
+                                      <Cpu className="w-4 h-4 text-green-400" />
+                                    </span>
+                                  </Tooltip>
+                                )}
+                                <Plus className="w-4 h-4 text-cyan-400" />
+                              </div>
                             </div>
                           </button>
                         ))}

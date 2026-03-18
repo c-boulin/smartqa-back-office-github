@@ -177,7 +177,7 @@ const TestRunDetailsFilters: React.FC<TestRunDetailsFiltersProps> = ({
                   'skipped': 'Skipped',
                   'untested': 'Untested',
                   'in_progress': 'In Progress',
-                  'unknown': 'Unknown'
+                  'unknown': 'System Issue'
                 };
                 return resultLabels[filters.result] || filters.result;
               })()}

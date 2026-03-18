@@ -128,7 +128,7 @@ export interface TestRunDetailsPayload {
   name: string;
   description?: string;
   status?: string;
-  state: number;
+  state: number | string;
   projectId: string;
   testCaseIds?: string[];
   configurations?: Configuration[];
@@ -207,6 +207,97 @@ export interface TestRunDetailsTestCaseRow {
   fullTestCase: TestCase | null;
   configurationId?: string;
   configurationLabel?: string;
+}
+
+/** Shape of one test-run item from GET /projects/:id/test-runs-list */
+export interface TestRunListItem {
+  id: string;
+  name: string;
+  description: string;
+  status: 'open' | 'closed';
+  state: number;
+  projectId: string;
+  testCaseIds: string[];
+  configurations: Configuration[];
+  testCasesCount: number;
+  executionsCount: number;
+  passedCount: number;
+  failedCount: number;
+  blockedCount: number;
+  retestCount?: number;
+  skippedCount?: number;
+  untestedCount?: number;
+  inProgressCount?: number;
+  unknownCount?: number;
+  progress: number;
+  passRate: number;
+  startDate: string;
+  endDate?: string | null;
+  closedDate?: string | null;
+  testPlanId?: string | null;
+  assignedTo: { id: string; name: string; email: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TestRunsListResponse {
+  data: TestRunListItem[];
+  meta: {
+    totalItems: number;
+    itemsPerPage: number;
+    currentPage: number;
+  };
+}
+
+/** Shape returned by GET /projects/:id/test-runs-overview */
+export interface OverviewTestRunInfo {
+  id: string;
+  name: string;
+  state: number;
+  testPlanId: string | null;
+  configurations: Configuration[];
+}
+
+export interface OverviewFullTestCase {
+  id: string;
+  projectId: string;
+  projectRelativeId: number | null;
+  folderId: string | null;
+  ownerId: string | null;
+  title: string;
+  description: string;
+  preconditions: string;
+  priority: string;
+  type: string;
+  typeId: number;
+  status: string;
+  automationStatus: number;
+  steps: unknown[];
+  stepResults: string[];
+  sharedSteps: string[];
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  estimatedDuration: number;
+}
+
+export interface OverviewTestCaseWithExecution {
+  id: string;
+  title: string;
+  priority: string;
+  type: string;
+  executionStatus: number;
+  executionResult: string;
+  testRunId: string;
+  testRunName: string;
+  configurationId: string | null;
+  configurationLabel: string | null;
+  fullTestCase: OverviewFullTestCase | null;
+}
+
+export interface TestRunsOverviewResponse {
+  testRuns: OverviewTestRunInfo[];
+  testCasesWithExecution: OverviewTestCaseWithExecution[];
 }
 
 export interface TestRun {
@@ -329,6 +420,91 @@ class TestRunsApiService {
   }
 
   /**
+   * Optimized paginated list endpoint. Replaces the JSON:API collection call
+   * which suffers from N+1 on the appended executions attribute.
+   */
+  async getTestRunsList(
+    projectId: string,
+    page: number = 1,
+    itemsPerPage: number = 30,
+    filters?: { name?: string; id?: string; user?: string; state?: string },
+  ): Promise<TestRunsListResponse> {
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    params.set('itemsPerPage', itemsPerPage.toString());
+
+    if (filters?.name) params.set('name', filters.name);
+    if (filters?.id) params.set('id', filters.id);
+    if (filters?.user) params.set('user', filters.user);
+    if (filters?.state) params.set('state', filters.state);
+
+    const response = await apiService.authenticatedRequest<TestRunsListResponse>(
+      `/projects/${projectId}/test-runs-list?${params.toString()}`
+    );
+
+    if (!response?.data || !Array.isArray(response.data)) {
+      throw new Error('Invalid test runs list response');
+    }
+
+    return response;
+  }
+
+  async getTestRunsOverview(projectId: string): Promise<TestRunsOverviewResponse> {
+    const response = await apiService.authenticatedRequest(
+      `/projects/${projectId}/test-runs-overview`,
+    );
+
+    if (!response?.testRuns || !Array.isArray(response.testCasesWithExecution)) {
+      throw new Error('Invalid test runs overview response');
+    }
+
+    return response as TestRunsOverviewResponse;
+  }
+
+  normalizeTestRunListItem(item: TestRunListItem): TestRun {
+    const parseDate = (s: string | undefined): Date => {
+      if (!s) return new Date();
+      const d = new Date(s);
+      return Number.isNaN(d.getTime()) ? new Date() : d;
+    };
+    const parseOptional = (s: string | null | undefined): Date | undefined => {
+      if (!s) return undefined;
+      const d = new Date(s);
+      return Number.isNaN(d.getTime()) ? undefined : d;
+    };
+
+    return {
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      status: item.status,
+      state: item.state,
+      projectId: item.projectId,
+      testCaseIds: item.testCaseIds,
+      configurations: item.configurations,
+      testCasesCount: item.testCasesCount,
+      executionsCount: item.executionsCount,
+      passedCount: item.passedCount,
+      failedCount: item.failedCount,
+      blockedCount: item.blockedCount,
+      retestCount: item.retestCount ?? 0,
+      skippedCount: item.skippedCount ?? 0,
+      untestedCount: item.untestedCount ?? 0,
+      inProgressCount: item.inProgressCount ?? 0,
+      unknownCount: item.unknownCount ?? 0,
+      progress: item.progress,
+      passRate: item.passRate,
+      startDate: parseDate(item.startDate),
+      endDate: parseOptional(item.endDate),
+      closedDate: parseOptional(item.closedDate),
+      testPlanId: item.testPlanId ?? undefined,
+      assignedTo: item.assignedTo,
+      createdAt: parseDate(item.createdAt),
+      updatedAt: parseDate(item.updatedAt),
+    };
+  }
+
+  /**
    * Optimized endpoint: returns test run + test cases + full execution history in one request (frontend-ready shape).
    */
   async getTestRunDetails(id: string): Promise<{
@@ -366,12 +542,17 @@ class TestRunsApiService {
   }
 
   private normalizeTestRunFromDetails(p: TestRunDetailsPayload): TestRun {
+    console.log('normalizeTestRunFromDetails - received state:', p.state, 'type:', typeof p.state);
+    const parsedState = typeof p.state === 'string' ? parseInt(p.state, 10) : p.state;
+    const state = (typeof parsedState === 'number' && parsedState >= 1 && parsedState <= 6) ? parsedState : 1;
+    console.log('normalizeTestRunFromDetails - normalized state:', state);
+
     return {
       id: p.id,
       name: p.name,
       description: p.description ?? '',
       status: (p.status === 'closed' ? 'closed' : 'open') as 'open' | 'closed',
-      state: p.state,
+      state: state,
       projectId: p.projectId,
       testCaseIds: p.testCaseIds ?? [],
       configurations: p.configurations ?? [],
@@ -961,12 +1142,15 @@ class TestRunsApiService {
       }
     }
 
+    const rawState = parseInt(apiTestRun.attributes.state?.toString() || '1');
+    const state = rawState >= 1 && rawState <= 6 ? rawState : 1;
+
     return {
       id: apiTestRun.attributes.id.toString(),
       name: apiTestRun.attributes.name,
       description: apiTestRun.attributes.description,
       status: apiTestRun.attributes.status,
-      state: parseInt(apiTestRun.attributes.state?.toString() || '1'), // Convert string to number
+      state: state,
       projectId: projectId,
       testCaseIds: testCaseIds,
       configurations: configurations,

@@ -90,7 +90,10 @@ class TestRunExecutionsApiService {
     1: 'In Progress',
     2: 'Passed',
     3: 'Failed',
+    4: 'System Issue'
   };
+
+  private static readonly TERMINAL_STATES = new Set([2, 3, 4]);
 
   /** Extract numeric id from value: number, string "123", or IRI "/api/test_run_executions/123" */
   private static parseId(value: unknown): number | null {
@@ -244,19 +247,23 @@ class TestRunExecutionsApiService {
     while (retries < maxRetries) {
       try {
         const result = await this.pollTestRunExecution(id, currentState);
+        const hasExecutionUpdates = Array.isArray(result.test_case_executions) && result.test_case_executions.length > 0;
+        const hasMeaningfulUpdate = result.changed || hasExecutionUpdates;
 
-        // If state changed, notify callback and check if done
-        if (result.changed) {
+        // Notify subscribers both when the execution state changes and when
+        // the server returns related test case execution updates.
+        if (hasMeaningfulUpdate) {
           if (onStateChange) {
             await onStateChange(result);
           }
 
-          // If state is 2 (Passed) or 3 (Failed), we're finished
-          if (result.state === 2 || result.state === 3) {
+          // If state is 2 (Passed), 3 (Failed) or 4 (System Issue), we're finished
+          if (TestRunExecutionsApiService.TERMINAL_STATES.has(result.state)) {
             return result;
           }
 
-          // Update current state and continue polling
+          // Keep polling from the latest known state, even if only nested
+          // test case execution updates changed in this response.
           currentState = result.state;
           continue;
         }

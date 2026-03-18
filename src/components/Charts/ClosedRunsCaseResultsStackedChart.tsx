@@ -65,6 +65,8 @@ interface ClosedRunsCaseResultsStackedChartProps {
   toDate?: string;
   className?: string;
   closedTestRunsData?: Array<Record<string, unknown>>;
+  precomputedChartData?: Array<Record<string, number | string>>;
+  precomputedChartLabels?: string[];
 }
 
 // Color utility for stable colors based on result labels
@@ -276,7 +278,9 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
   fromDate,
   toDate,
   className = '',
-  closedTestRunsData: propsClosedTestRunsData
+  closedTestRunsData: propsClosedTestRunsData,
+  precomputedChartData,
+  precomputedChartLabels,
 }) => {
   const { theme } = useTheme();
   const [data, setData] = useState<ChartRow[]>([]);
@@ -376,7 +380,12 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
   };
 
   useEffect(() => {
-    if (propsClosedTestRunsData !== undefined) {
+    if (precomputedChartData !== undefined && precomputedChartLabels !== undefined) {
+      setData(precomputedChartData as ChartRow[]);
+      setResultLabels(precomputedChartLabels);
+      setError(null);
+      setLoading(false);
+    } else if (propsClosedTestRunsData !== undefined) {
       try {
         setLoading(true);
         const { chartData, resultLabels: labels } = transformDataToChartFormat(propsClosedTestRunsData as ApiTestRun[]);
@@ -393,7 +402,7 @@ const ClosedRunsCaseResultsStackedChart: React.FC<ClosedRunsCaseResultsStackedCh
       fetchClosedTestRuns();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchClosedTestRuns is stable
-  }, [projectId, fromDate, toDate, propsClosedTestRunsData]);
+  }, [projectId, fromDate, toDate, propsClosedTestRunsData, precomputedChartData, precomputedChartLabels]);
 
   if (loading) {
     return (

@@ -7,10 +7,12 @@ import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
 import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSidebar';
 import AddExecutionCommentModal from '../components/TestRun/AddExecutionCommentModal';
-import { testRunsApiService, TestRun } from '../services/testRunsApi';
-import { testCasesApiService } from '../services/testCasesApi';
+import {
+  testRunsApiService,
+  OverviewTestRunInfo,
+  OverviewTestCaseWithExecution,
+} from '../services/testRunsApi';
 import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi';
-import { configurationsApiService } from '../services/configurationsApi';
 import { useApp } from '../context/AppContext';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { usePermissions } from '../hooks/usePermissions';
@@ -89,7 +91,7 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
         return 'bg-gray-400';
       case 7: // In Progress
         return 'bg-blue-400';
-      case 8: // Unknown
+      case 8: // System Issue
         return 'bg-gray-500';
       default:
         return 'bg-gray-400';
@@ -110,7 +112,7 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
         return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       case 'Untested':
       case 'In Progress':
-      case 'Unknown':
+      case 'System Issue':
         return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
       default:
         return 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600';
@@ -282,7 +284,7 @@ const TestRunsOverview: React.FC = () => {
   // Get filter from URL params
   const resultFilter = searchParams.get('result'); // 'passed', 'failed', 'blocked', or null for all
   
-  const [testRuns, setTestRuns] = useState<TestRun[]>([]);
+  const [testRuns, setTestRuns] = useState<OverviewTestRunInfo[]>([]);
   const [allTestCasesWithExecution, setAllTestCasesWithExecution] = useState<TestCaseWithExecution[]>([]);
   const [filteredTestCases, setFilteredTestCases] = useState<TestCaseWithExecution[]>([]);
   const [loading, setLoading] = useState(true);
@@ -299,12 +301,71 @@ const TestRunsOverview: React.FC = () => {
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [selectedTestCaseForComment, setSelectedTestCaseForComment] = useState<TestCaseWithExecution | null>(null);
 
+  const hasAutomatedConfiguration = (testRunId: string, configurationId?: string): boolean =>
+    Boolean(
+      configurationId &&
+      testRuns.find(tr => tr.id === testRunId)?.configurations?.some(
+        config => config.id === configurationId && config.projectId
+      )
+    );
+
+  const isExecutionResultManuallyLocked = (testCase: TestCaseWithExecution): boolean =>
+    testCase.fullTestCase?.automationStatus === 2 &&
+    hasAutomatedConfiguration(testCase.testRunId, testCase.configurationId);
+
   useEffect(() => {
     if (selectedProject) {
       fetchTestRunsOverview();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTestRunsOverview is stable
   }, [selectedProject]);
+
+  const normalizeOverviewItem = (item: OverviewTestCaseWithExecution): TestCaseWithExecution => {
+    const parseDate = (s: string | undefined | null): Date => {
+      if (!s) return new Date();
+      const d = new Date(s);
+      return Number.isNaN(d.getTime()) ? new Date() : d;
+    };
+
+    const fc = item.fullTestCase;
+
+    return {
+      id: item.id,
+      title: item.title,
+      priority: item.priority,
+      type: item.type,
+      executionStatus: item.executionStatus as TestResultId,
+      executionResult: item.executionResult,
+      testRunId: item.testRunId,
+      testRunName: item.testRunName,
+      configurationId: item.configurationId ?? undefined,
+      configurationLabel: item.configurationLabel ?? undefined,
+      fullTestCase: fc
+        ? {
+            id: fc.id,
+            projectId: fc.projectId,
+            projectRelativeId: fc.projectRelativeId ?? undefined,
+            folderId: fc.folderId ?? undefined,
+            ownerId: fc.ownerId ?? undefined,
+            title: fc.title,
+            description: fc.description,
+            preconditions: fc.preconditions,
+            priority: fc.priority as TestCase['priority'],
+            type: fc.type as TestCase['type'],
+            typeId: fc.typeId,
+            status: fc.status as TestCase['status'],
+            automationStatus: fc.automationStatus as 1 | 2 | 3 | 4 | 5,
+            steps: [],
+            stepResults: fc.stepResults,
+            sharedSteps: fc.sharedSteps,
+            tags: fc.tags,
+            createdAt: parseDate(fc.createdAt),
+            updatedAt: parseDate(fc.updatedAt),
+            estimatedDuration: fc.estimatedDuration,
+          }
+        : null,
+    };
+  };
 
   const fetchTestRunsOverview = async () => {
     if (!selectedProject) return;
@@ -313,171 +374,18 @@ const TestRunsOverview: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // STEP 1: Fetch all test runs
-      const testRunsResponse = await testRunsApiService.getTestRuns(selectedProject.id, 1, 1000);
+      const response = await testRunsApiService.getTestRunsOverview(selectedProject.id);
 
-      // STEP 2: Filter for active test runs only (all states except closed state 6)
-      const activeApiTestRuns = testRunsResponse.data.filter(apiTestRun => {
-        const state = apiTestRun.attributes.state;
-        return state !== 6 && state !== "6";
-      });
+      setTestRuns(response.testRuns);
 
-      // Transform active test runs
-      const activeTestRuns = activeApiTestRuns.map(apiTestRun =>
-        testRunsApiService.transformApiTestRun(apiTestRun, testRunsResponse.included)
-      );
+      const items = response.testCasesWithExecution.map(normalizeOverviewItem);
 
-      setTestRuns(activeTestRuns);
+      setAllTestCasesWithExecution(items);
+      setFilteredTestCases(items);
 
-      // STEP 3: Collect all unique test case IDs from executions
-      const testCaseIdsSet = new Set<string>();
-      for (const apiTestRun of activeApiTestRuns) {
-        if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
-          apiTestRun.attributes.executions.forEach((execution: { test_case_id?: number; [key: string]: unknown }) => {
-            if (execution.test_case_id) {
-              testCaseIdsSet.add(execution.test_case_id.toString());
-            }
-          });
-        }
-      }
-
-      // STEP 4: Fetch all test cases for this project
-      const testCasesMap = new Map<string, TestCase>();
-      if (testCaseIdsSet.size > 0) {
-        const itemsPerPage = 100;
-        const testCasesResponse = await testCasesApiService.getTestCases(1, itemsPerPage, selectedProject.id);
-        const totalPages = Math.ceil(testCasesResponse.meta.totalItems / itemsPerPage);
-
-        let allTestCasesData = [...testCasesResponse.data];
-
-        if (totalPages > 1) {
-          const pagePromises = [];
-          for (let page = 2; page <= totalPages; page++) {
-            pagePromises.push(testCasesApiService.getTestCases(page, itemsPerPage, selectedProject.id));
-          }
-          const pageResponses = await Promise.all(pagePromises);
-          pageResponses.forEach(response => {
-            allTestCasesData = [...allTestCasesData, ...response.data];
-          });
-        }
-
-        allTestCasesData.forEach(apiTestCase => {
-          try {
-            const testCase = testCasesApiService.transformApiTestCase(apiTestCase, testCasesResponse.included);
-            testCasesMap.set(testCase.id, testCase);
-          } catch (error) {
-            console.error(`Failed to transform test case ${apiTestCase.attributes.id}:`, error);
-          }
-        });
-      }
-
-      // STEP 5: Fetch all configurations
-      const configurationsMap = new Map<string, string>();
-      try {
-        const configurationsResponse = await configurationsApiService.getConfigurations();
-        configurationsResponse.data.forEach(apiConfig => {
-          const config = configurationsApiService.transformApiConfiguration(apiConfig);
-          configurationsMap.set(config.id, config.label);
-        });
-      } catch (error) {
-        console.error('Failed to fetch configurations:', error);
-      }
-
-      // STEP 6: Process executions from all active test runs
-      const allTestCasesWithExecution: TestCaseWithExecution[] = [];
-
-      for (const apiTestRun of activeApiTestRuns) {
-        const testRunId = apiTestRun.attributes.id.toString();
-        const testRunName = apiTestRun.attributes.name;
-
-        // Get default config ID if there's only one configuration
-        const testRunConfigs = new Set<string>();
-        if (apiTestRun.relationships.configurations?.data) {
-          apiTestRun.relationships.configurations.data.forEach(configRef => {
-            const configId = configRef.id.split('/').pop();
-            if (configId) testRunConfigs.add(configId);
-          });
-        }
-        const defaultConfigId = testRunConfigs.size === 1 ? Array.from(testRunConfigs)[0] : undefined;
-
-        // Process executions for this test run
-        if (apiTestRun.attributes.executions && Array.isArray(apiTestRun.attributes.executions)) {
-          // Group by test case + configuration and keep only the latest execution per combination
-          const latestExecutionPerCombo = new Map<string, { test_case_id?: number; result?: number; configuration_id?: number; created_at: string; [key: string]: unknown }>();
-
-          apiTestRun.attributes.executions.forEach((execution: { test_case_id?: number; result?: number; configuration_id?: number; created_at: string; [key: string]: unknown }) => {
-            const testCaseId = execution.test_case_id ? execution.test_case_id.toString() : null;
-            const configId = execution.configuration_id ? execution.configuration_id.toString() : 'no-config';
-            const comboKey = `${testCaseId}-${configId}`;
-            const executionDate = new Date(execution.created_at);
-
-            const existing = latestExecutionPerCombo.get(comboKey);
-            if (!existing || new Date(existing.created_at) < executionDate) {
-              latestExecutionPerCombo.set(comboKey, execution);
-            }
-          });
-
-          // Create test case instances from latest executions
-          Array.from(latestExecutionPerCombo.values()).forEach((execution: { test_case_id?: number; result?: number; configuration_id?: number; created_at: string; [key: string]: unknown }) => {
-            const testCaseId = execution.test_case_id ? execution.test_case_id.toString() : null;
-            if (!testCaseId) return;
-
-            // Resolve configuration ID - check both configuration_id and configurationId
-            let configId = execution.configuration_id ? execution.configuration_id.toString() :
-                          (execution as Record<string, unknown>).configurationId ? ((execution as Record<string, unknown>).configurationId as string | number).toString() : undefined;
-            if (!configId && defaultConfigId) {
-              configId = defaultConfigId;
-            }
-
-            const configLabel = configId && configId !== 'no-config' ? configurationsMap.get(configId) : undefined;
-            const rawResult = execution.result;
-
-            // Convert result to TestResultId
-            let resultId: TestResultId;
-            if (typeof rawResult === 'number') {
-              resultId = rawResult as TestResultId;
-            } else if (typeof rawResult === 'string') {
-              const parsedInt = parseInt(rawResult);
-              if (!isNaN(parsedInt) && TEST_RESULTS[parsedInt as TestResultId]) {
-                resultId = parsedInt as TestResultId;
-              } else {
-                const foundEntry = Object.entries(TEST_RESULTS).find(([_id, label]) =>
-                  label.toLowerCase() === rawResult.toLowerCase()
-                );
-                resultId = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6;
-              }
-            } else {
-              resultId = 6;
-            }
-
-            // Get test case from map or create fallback
-            const testCase = testCasesMap.get(testCaseId);
-
-            allTestCasesWithExecution.push({
-              id: testCaseId,
-              title: testCase?.title || `Test Case ${testCaseId}`,
-              priority: testCase?.priority || 'medium',
-              type: testCase?.type || 'functional',
-              executionStatus: resultId,
-              executionResult: TEST_RESULTS[resultId],
-              testRunId: testRunId,
-              testRunName: testRunName,
-              fullTestCase: testCase || null,
-              configurationId: configId,
-              configurationLabel: configLabel
-            });
-          });
-        }
-      }
-
-      setAllTestCasesWithExecution(allTestCasesWithExecution);
-      setFilteredTestCases(allTestCasesWithExecution);
-
-      // Apply initial filter if provided in URL
       if (resultFilter && resultFilter !== 'all') {
-        applyResultFilter(resultFilter, allTestCasesWithExecution);
+        applyResultFilter(resultFilter, items);
       }
-
     } catch (err) {
       console.error('Failed to fetch test runs overview:', err);
       setError(err instanceof Error ? err.message : 'Failed to load test runs overview');
@@ -596,6 +504,17 @@ const TestRunsOverview: React.FC = () => {
   };
 
   const handleExecutionResultChange = async (testCaseId: string, testRunId: string, newResultId: TestResultId, comment?: string, configurationId?: string) => {
+    const currentTestCase = allTestCasesWithExecution.find(tc =>
+      tc.id === testCaseId &&
+      tc.testRunId === testRunId &&
+      tc.configurationId === configurationId
+    );
+
+    if (currentTestCase && isExecutionResultManuallyLocked(currentTestCase)) {
+      toast.error('Execution results for automated test cases with automated configurations cannot be manually edited');
+      return;
+    }
+
     // Find the test run to check if it's closed
     const testRun = testRuns.find(tr => tr.id === testRunId);
     if (testRun?.state === 6) {
@@ -649,7 +568,7 @@ const TestRunsOverview: React.FC = () => {
           // First execution created, move test run to "In Progress" (state 2)
 
           try {
-            await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId);
+            await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId ?? undefined);
             setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 2 } : tr));
             toast.success(`Execution result updated to ${newResultLabel}`);
           } catch (error) {
@@ -665,7 +584,7 @@ const TestRunsOverview: React.FC = () => {
             // All test cases have results, move test run to "Done" (state 5)
 
             try {
-              await testRunsApiService.updateTestRunState(testRunId, 5, testRun.testPlanId);
+              await testRunsApiService.updateTestRunState(testRunId, 5, testRun.testPlanId ?? undefined);
               setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 5 } : tr));
               toast.success(`Execution result updated to ${newResultLabel}`);
             } catch (error) {
@@ -709,7 +628,7 @@ const TestRunsOverview: React.FC = () => {
         return <Clock className="w-4 h-4 text-purple-400" />;
       case 'Untested':
       case 'In Progress':
-      case 'Unknown':
+      case 'System Issue':
         return <Clock className="w-4 h-4 text-slate-600 dark:text-gray-400" />;
       default:
         return <Clock className="w-4 h-4 text-slate-600 dark:text-gray-400" />;
@@ -731,7 +650,7 @@ const TestRunsOverview: React.FC = () => {
         return 'text-purple-400 bg-purple-500/20 border-purple-500/50';
       case 'Untested':
       case 'In Progress':
-      case 'Unknown':
+      case 'System Issue':
         return 'text-slate-600 dark:text-gray-400 bg-gray-500/20 border-gray-500/50';
       default:
         return 'text-slate-600 dark:text-gray-400 bg-gray-500/20 border-gray-500/50';
@@ -747,7 +666,7 @@ const TestRunsOverview: React.FC = () => {
   const skippedCount = allTestCasesWithExecution.filter(tc => tc.executionStatus === 5).length; // Skipped
   const untestedCount = allTestCasesWithExecution.filter(tc => tc.executionStatus === 6).length; // Untested
   const inProgressCount = allTestCasesWithExecution.filter(tc => tc.executionStatus === 7).length; // In Progress
-  const unknownCount = allTestCasesWithExecution.filter(tc => tc.executionStatus === 8).length; // Unknown
+  const unknownCount = allTestCasesWithExecution.filter(tc => tc.executionStatus === 8).length; // System Issue
 
   if (loading) {
     return (
@@ -828,8 +747,10 @@ const TestRunsOverview: React.FC = () => {
           <div className="text-sm text-slate-600 dark:text-gray-400">In Progress</div>
         </Card>
         <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-slate-500 dark:text-gray-500 mb-1">{unknownCount}</div>
-          <div className="text-sm text-slate-600 dark:text-gray-400">Unknown</div>
+          <span title="Retry the run" className="block">
+            <div className="text-2xl font-bold text-slate-500 dark:text-gray-500 mb-1">{unknownCount}</div>
+            <div className="text-sm text-slate-600 dark:text-gray-400">System Issue</div>
+          </span>
         </Card>
       </div>
 
@@ -865,7 +786,7 @@ const TestRunsOverview: React.FC = () => {
                 <option value="Skipped">Skipped</option>
                 <option value="Untested">Untested</option>
                 <option value="In Progress">In Progress</option>
-                <option value="Unknown">Unknown</option>
+                <option value="System Issue">System Issue</option>
               </select>
             </div>
           </div>
@@ -986,6 +907,7 @@ const TestRunsOverview: React.FC = () => {
                         !hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) ||
                         !hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.UPDATE) ||
                         testRuns.find(tr => tr.id === testCase.testRunId)?.state === 6 ||
+                        isExecutionResultManuallyLocked(testCase) ||
                         updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testCase.testRunId}`)
                       }
                       isUpdating={updatingResults.has(`${testCase.id}-${testCase.configurationId || 'default'}-${testCase.testRunId}`)}

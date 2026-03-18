@@ -7,11 +7,7 @@ import DownloadModal from './DownloadModal';
 import ShareModal from './ShareModal';
 import { reportDownloadService } from '../../services/reportDownloadService';
 import { reportEmailService, ReportFormat } from '../../services/reportEmailService';
-import { fetchTestCasesForReport } from '../../services/reportsDataService';
-import { testRunsApiService } from '../../services/testRunsApi';
-import { configurationsApiService } from '../../services/configurationsApi';
-import { TEST_RESULTS, TestResultId } from '../../types';
-import { PRIORITIES } from '../../constants/testCaseConstants';
+import { fetchReportData } from '../../services/reportsDataService';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -33,13 +29,7 @@ interface TestRunDetailedReportProps {
   testRunIds?: string[];
   filters?: ReportFilters | null;
   creationDateFilter?: string;
-  reportData?: {
-    testCases: Array<{ attributes: { id: number; [key: string]: unknown } }>;
-    testRuns: Array<{ attributes: { id: number; [key: string]: unknown } }>;
-    testExecutions?: Array<{ attributes: { test_case_id?: number; result?: number; [key: string]: unknown } }>;
-    included?: Array<Record<string, unknown>>;
-    totalTestCases: number;
-  } | null;
+  reportData?: unknown;
   description?: string;
   title?: string;
 }
@@ -98,7 +88,6 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
   testRunIds,
   filters,
   creationDateFilter,
-  reportData: passedReportData,
   description,
   title
 }) => {
@@ -110,577 +99,37 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Helper function to calculate date threshold from creation date filter
-  const calculateDateThreshold = (filter: string | undefined): Date | null => {
-    if (!filter) return null;
-
-    const now = new Date();
-    const threshold = new Date();
-
-    switch (filter) {
-      case 'Last 24 hours':
-        threshold.setHours(now.getHours() - 24);
-        break;
-      case 'Last 48 hours':
-        threshold.setHours(now.getHours() - 48);
-        break;
-      case 'Last 7 days':
-        threshold.setDate(now.getDate() - 7);
-        break;
-      case 'Last 30 days':
-        threshold.setDate(now.getDate() - 30);
-        break;
-      default:
-        return null;
-    }
-
-    return threshold;
-  };
-  const fetchInProgressRef = React.useRef(false);
-
-  // Log description for debugging
-  React.useEffect(() => {
-
-  }, [description]);
-
   useEffect(() => {
-    // Prevent duplicate fetches (React Strict Mode calls effects twice)
-    if (fetchInProgressRef.current) {
-      return;
-    }
+    let cancelled = false;
 
-    fetchInProgressRef.current = true;
-    fetchTestRunsData().finally(() => {
-      fetchInProgressRef.current = false;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTestRunsData uses creationDateFilter, testRunIds
-  }, [projectId, passedReportData, creationDateFilter, testRunIds]);
+    const loadReport = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const fetchTestRunsData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Use pre-fetched data if available, otherwise fetch
-      let response;
-      if (passedReportData !== null && passedReportData !== undefined) {
-
-        response = passedReportData;
-      } else {
-        // Pass scheduled report options so the API request matches the report config (creation date + specific test runs)
-        response = await fetchTestCasesForReport(projectId, filters, {
+        const data = await fetchReportData(projectId, 2, filters, {
           creationDateFilter,
           testRunIds,
         });
-      }
 
-      const { testCases, testRuns, testExecutions } = response;
-
-      if (!testCases || testCases.length === 0) {
-        console.warn('No test cases received from API');
-      }
-
-      // STEP 2: Fetch all configurations for the project
-
-      const configurationsResponse = await configurationsApiService.getConfigurations();
-      const configurationsMap = new Map<string, { id: string; name: string }>();
-
-      if (configurationsResponse.data && Array.isArray(configurationsResponse.data)) {
-        configurationsResponse.data.forEach((config) => {
-          const configId = config.attributes.id.toString();
-          configurationsMap.set(configId, {
-            id: configId,
-            name: config.attributes.label || `Configuration ${configId}`
-          });
-        });
-      }
-
-      // STEP 3: Build users map from included data
-      const usersMap = new Map<string, { id: string; name: string; email: string }>();
-
-      if (response.included && Array.isArray(response.included)) {
-        response.included.forEach((item: Record<string, unknown>) => {
-          if (item.type === 'User' && item.attributes) {
-            const userId = item.attributes.id.toString();
-            usersMap.set(userId, {
-              id: userId,
-              name: item.attributes.name || item.attributes.email || `User ${userId}`,
-              email: item.attributes.email || ''
-            });
-          }
-        });
-      }
-
-      // STEP 4: Build test runs map from included test runs
-      // Use the SAME transformation service as Summary report for consistency
-      const testRunsMap = new Map<string, Record<string, unknown>>();
-      testRuns.forEach((apiTestRun) => {
-        // Transform using the standardized service - same as Summary report
-        const transformed = testRunsApiService.transformApiTestRun(apiTestRun, response.included || []);
-
-        testRunsMap.set(transformed.id, {
-          id: transformed.id,
-          name: transformed.name,
-          state: transformed.state,
-          status: transformed.status,
-          createdAt: transformed.createdAt,
-          assignedTo: transformed.assignedTo,
-          testCaseIds: new Set<string>(),
-          testCasesCount: transformed.testCasesCount,
-          passedCount: transformed.passedCount,
-          failedCount: transformed.failedCount,
-          blockedCount: transformed.blockedCount
-        });
-
-      });
-
-      // STEP 5: APPLY ALL FILTERS FIRST (Test Run IDs + Creation Date)
-      // This is CRITICAL - we must filter test runs BEFORE building the executions map
-
-
-      // Start with all test run IDs
-      let filteredTestRunIds = new Set<string>(testRunsMap.keys());
-
-      // FILTER 1: Apply specific test run IDs filter if provided
-      if (testRunIds && testRunIds.length > 0) {
-
-        filteredTestRunIds = new Set(testRunIds.filter(id => testRunsMap.has(id)));
-
-      }
-
-      // FILTER 2: Apply creation date filter if provided
-      const dateThreshold = calculateDateThreshold(creationDateFilter);
-      if (dateThreshold) {
-
-
-        const testRunsBeforeFilter = Array.from(filteredTestRunIds).map(id => testRunsMap.get(id)).filter(Boolean);
-
-        testRunsBeforeFilter.forEach(tr => {
-          const _trCreatedAt = new Date(tr.createdAt);
-
-        });
-
-        const testRunsAfterDateFilter = testRunsBeforeFilter.filter(tr => {
-          const _trCreatedAt = new Date(tr.createdAt);
-          const isWithinPeriod = _trCreatedAt >= dateThreshold;
-          return isWithinPeriod;
-        });
-
-        filteredTestRunIds = new Set(testRunsAfterDateFilter.map(tr => tr.id));
-
-
-      }
-
-
-      // STEP 6: Build test executions map ONLY from filtered test runs
-      // IMPORTANT: The API's execution_result filter returns test cases based on their
-      // ABSOLUTE latest execution across ALL test runs. We need to filter executions
-      // to only include those from the filtered test runs.
-      const executionsMap = new Map<string, Map<string, Record<string, unknown>>>();
-
-      // Create a set of filtered test case IDs for quick lookup
-      const filteredTestCaseIds = new Set(
-        testCases.map((tc) => tc.attributes.id.toString())
-      );
-
-      if (testExecutions && Array.isArray(testExecutions)) {
-
-        testExecutions.forEach((execution) => {
-          const testCaseId = execution.attributes.test_case_id?.toString();
-          const testRunId = execution.attributes.test_run_id?.toString();
-          const configurationId = execution.attributes.configuration_id?.toString() || 'no-config';
-          const userId = execution.attributes.user_id?.toString();
-
-          // CRITICAL: Only process executions that belong to:
-          // 1. Filtered test runs (by date/ID filters)
-          // 2. Filtered test cases (by type/priority/status filters)
-          if (testCaseId && testRunId && filteredTestRunIds.has(testRunId) && filteredTestCaseIds.has(testCaseId)) {
-            // Create unique key for test case + configuration combination
-            const testCaseConfigKey = `${testCaseId}-${configurationId}`;
-
-            if (!executionsMap.has(testCaseConfigKey)) {
-              executionsMap.set(testCaseConfigKey, new Map());
-            }
-
-            const testRunExecutions = executionsMap.get(testCaseConfigKey)!;
-
-            // Keep only the latest execution per test case + configuration per test run
-            const existingExecution = testRunExecutions.get(testRunId);
-            const currentDate = new Date(execution.attributes.updated_at || execution.attributes.created_at || 0);
-
-            if (!existingExecution || currentDate > new Date(existingExecution.updated_at || existingExecution.created_at || 0)) {
-              testRunExecutions.set(testRunId, {
-                ...execution.attributes,
-                userId: userId,
-                configurationId: configurationId
-              });
-            }
-          }
-        });
-      }
-
-      // STEP 7: Build test cases included list ONLY from filtered test runs
-      const testCasesIncluded: TestCaseWithExecution[] = [];
-      const testRunStats = new Map<string, { passed: number; failed: number; blocked: number; untested: number; total: number }>();
-
-      // Build set of allowed status IDs if filter is applied
-      const statusFilterApplied = filters?.statusOfTestCase && filters.statusOfTestCase.length > 0;
-      const allowedStatusIds = statusFilterApplied ? new Set(filters!.statusOfTestCase.map(s => parseInt(s, 10))) : null;
-
-
-      if (statusFilterApplied) {
-        // Status filter applied
-      }
-
-      // Iterate over all test case + configuration combinations in the executions map
-      executionsMap.forEach((testRunExecutions, testCaseConfigKey) => {
-        // Extract testCaseId and configurationId from the key
-        const [testCaseId, configurationId] = testCaseConfigKey.split('-');
-
-        // Find the test case in the testCases array
-        const testCase = testCases.find(tc => tc.attributes.id.toString() === testCaseId);
-
-        if (!testCase) {
-          return;
+        if (!cancelled) {
+          setReportData(data as unknown as ReportData);
         }
-
-        testRunExecutions.forEach((execution, testRunId: string) => {
-          // CRITICAL: Only process executions from filtered test runs
-          if (!filteredTestRunIds.has(testRunId)) {
-
-            return;
-          }
-
-          const _testRun = testRunsMap.get(testRunId);
-          if (!_testRun) {
-
-            return;
-          }
-
-          // Get latest execution result
-          const rawResult = execution.result;
-          let resultId: TestResultId;
-
-          if (typeof rawResult === 'number') {
-            resultId = rawResult as TestResultId;
-          } else if (typeof rawResult === 'string') {
-            const parsedInt = parseInt(rawResult);
-            if (!isNaN(parsedInt) && TEST_RESULTS[parsedInt as TestResultId]) {
-              resultId = parsedInt as TestResultId;
-            } else {
-              const foundEntry = Object.entries(TEST_RESULTS).find(([, label]) =>
-                label.toLowerCase() === rawResult.toLowerCase()
-              );
-              resultId = foundEntry ? parseInt(foundEntry[0]) as TestResultId : 6;
-            }
-          } else {
-            resultId = 6;
-          }
-
-          // If status filter is applied, skip executions that don't match
-          if (allowedStatusIds && !allowedStatusIds.has(resultId)) {
-
-            return;
-          }
-
-          // Track that this test case belongs to this test run
-          _testRun.testCaseIds.add(testCaseId);
-
-          const latestStatus = TEST_RESULTS[resultId] || 'Untested';
-
-          // Update test run stats
-          if (!testRunStats.has(testRunId)) {
-            testRunStats.set(testRunId, { passed: 0, failed: 0, blocked: 0, untested: 0, total: 0 });
-          }
-          const stats = testRunStats.get(testRunId)!;
-          stats.total++;
-
-          switch (latestStatus.toLowerCase()) {
-            case 'passed':
-              stats.passed++;
-              break;
-            case 'failed':
-              stats.failed++;
-              break;
-            case 'blocked':
-              stats.blocked++;
-              break;
-            default:
-              stats.untested++;
-              break;
-          }
-
-          // Get priority label from priority number
-          const priorityNum = testCase.attributes.priority || 2;
-          const priorityLabel = PRIORITIES[priorityNum as keyof typeof PRIORITIES]?.label || 'Medium';
-
-          // Get test case owner from relationships.user
-          let testCaseOwner = 'Unassigned';
-          if (testCase.relationships?.user?.data?.id) {
-            const userIdPath = testCase.relationships.user.data.id.toString();
-            const userId = userIdPath.split('/').pop() || userIdPath;
-            const user = usersMap.get(userId);
-            testCaseOwner = user ? user.name : 'Unassigned';
-          }
-
-          // Get configuration name from configurations map
-          let configName: string | undefined = undefined;
-          if (configurationId && configurationId !== 'no-config') {
-            const config = configurationsMap.get(configurationId);
-            configName = config ? config.name : `Configuration ${configurationId}`;
-          }
-
-          // Add to test cases included list
-          testCasesIncluded.push({
-            testRunId: _testRun.id,
-            testRunName: _testRun.name,
-            testRunStatus: _testRun.state === 1 ? 'New' :
-                         _testRun.state === 2 ? 'In Progress' :
-                         _testRun.state === 3 ? 'Under Review' :
-                         _testRun.state === 4 ? 'Rejected' :
-                         _testRun.state === 5 ? 'Done' :
-                         _testRun.state === 6 ? 'Closed' : 'Active',
-            testCaseId: testCaseId,
-            testCaseProjectRelativeId: testCase.attributes.projectRelativeId || testCase.attributes.project_relative_id,
-            testCaseTitle: testCase.attributes.title || `Test Case ${testCaseId}`,
-            latestStatus: latestStatus,
-            priority: priorityLabel,
-            assignee: testCaseOwner,
-            typeId: testCase.attributes.typeId || testCase.attributes.type,
-            configurationId: configurationId !== 'no-config' ? configurationId : undefined,
-            configurationName: configName
-          });
-        });
-      });
-
-
-      // Log breakdown by test run
-      const testCasesByTestRun = new Map<string, number>();
-      testCasesIncluded.forEach(tc => {
-        testCasesByTestRun.set(tc.testRunId, (testCasesByTestRun.get(tc.testRunId) || 0) + 1);
-      });
-      testCasesByTestRun.forEach((count, testRunId) => {
-        const _testRun = testRunsMap.get(testRunId);
-
-      });
-
-      // STEP 8: Calculate ALL report metrics from filtered test runs
-      const filteredTestRuns = Array.from(filteredTestRunIds).map(id => testRunsMap.get(id)!).filter(Boolean);
-      const totalTestRuns = filteredTestRuns.length;
-      const activeTestRuns = filteredTestRuns.filter(tr => tr.state !== 6).length;
-      const closedTestRuns = filteredTestRuns.filter(tr => tr.state === 6).length;
-
-
-      // Calculate aggregate stats directly from testCasesIncluded
-      // This ensures stats match the actual filtered data
-      const totalTestCases = testCasesIncluded.length;
-      let totalPassed = 0;
-      let totalFailed = 0;
-      let totalBlocked = 0;
-      let totalUntested = 0;
-
-      testCasesIncluded.forEach(tc => {
-        const status = tc.latestStatus.toLowerCase();
-        switch (status) {
-          case 'passed':
-            totalPassed++;
-            break;
-          case 'failed':
-            totalFailed++;
-            break;
-          case 'blocked':
-            totalBlocked++;
-            break;
-          default:
-            totalUntested++;
-            break;
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to fetch detailed report data:', err);
+          setError(err instanceof Error ? err.message : 'Failed to load report data');
         }
-      });
-
-
-      // Count test runs by state
-      const testRunsBreakup = {
-        new: filteredTestRuns.filter(tr => tr.state === 1).length,
-        inProgress: filteredTestRuns.filter(tr => tr.state === 2).length,
-        underReview: filteredTestRuns.filter(tr => tr.state === 3).length,
-        rejected: filteredTestRuns.filter(tr => tr.state === 4).length,
-        done: filteredTestRuns.filter(tr => tr.state === 5).length,
-        closed: filteredTestRuns.filter(tr => tr.state === 6).length
-      };
-
-      // Count results by assignee (using testCasesIncluded which is already filtered)
-      const assigneeMap = new Map<string, number>();
-      testCasesIncluded.forEach(tc => {
-        const assigneeName = tc.assignee;
-        assigneeMap.set(assigneeName, (assigneeMap.get(assigneeName) || 0) + 1);
-      });
-
-      const assigneeResults = Array.from(assigneeMap.entries()).map(([assignee, count]) => ({
-        assignee,
-        count
-      })).sort((a, b) => b.count - a.count);
-
-      // STEP 9: Generate performance data (trend based on creation date filter)
-      // Performance chart shows executions over time from FILTERED test runs only
-
-      let dataPoints = 7; // default to 7 days
-      let timeUnit: 'hours' | 'days' = 'days';
-
-      if (creationDateFilter && !testRunIds) {
-        // Only use the creation date filter if not using specific test runs
-        switch (creationDateFilter) {
-          case 'Last 24 hours':
-            dataPoints = 24;
-            timeUnit = 'hours';
-            break;
-          case 'Last 48 hours':
-            dataPoints = 48;
-            timeUnit = 'hours';
-            break;
-          case 'Last 7 days':
-            dataPoints = 7;
-            timeUnit = 'days';
-            break;
-          case 'Last 30 days':
-            dataPoints = 30;
-            timeUnit = 'days';
-            break;
-          default:
-            dataPoints = 7;
-            timeUnit = 'days';
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
         }
       }
+    };
 
-      const performanceData = [];
-      for (let i = dataPoints - 1; i >= 0; i--) {
-        const date = new Date();
-        if (timeUnit === 'hours') {
-          date.setHours(date.getHours() - i);
-          date.setMinutes(0, 0, 0);
-        } else {
-          date.setDate(date.getDate() - i);
-          date.setHours(0, 0, 0, 0);
-        }
-
-        let passed = 0;
-        let failed = 0;
-        let other = 0;
-
-        // Count executions by date/hour - ONLY from filtered test runs
-        if (testExecutions && Array.isArray(testExecutions)) {
-          const dayExecutions = new Map<string, Record<string, number>>();
-
-          testExecutions.forEach((execution) => {
-            const executionDate = new Date(execution.attributes.created_at || 0);
-
-            // Normalize execution date based on time unit
-            if (timeUnit === 'hours') {
-              executionDate.setMinutes(0, 0, 0);
-            } else {
-              executionDate.setHours(0, 0, 0, 0);
-            }
-
-            if (executionDate.getTime() !== date.getTime()) return;
-
-            const testRunId = execution.attributes.test_run_id?.toString();
-            const testCaseId = execution.attributes.test_case_id?.toString();
-            const configurationId = execution.attributes.configuration_id?.toString() || 'no-config';
-
-            // CRITICAL: Only include executions from filtered test runs AND filtered test cases
-            if (!testRunId || !testCaseId || !filteredTestRunIds.has(testRunId) || !filteredTestCaseIds.has(testCaseId)) return;
-
-            // Apply status filter if present
-            const rawResult = execution.attributes.result;
-            const resultNum = typeof rawResult === 'string' ? parseInt(rawResult, 10) : rawResult;
-            if (allowedStatusIds && !allowedStatusIds.has(resultNum)) {
-              return;
-            }
-
-            // Include configuration in composite key to count each test case × configuration combination
-            const compositeKey = `${testRunId}-${testCaseId}-${configurationId}`;
-            const existing = dayExecutions.get(compositeKey);
-            const currentDate = new Date(execution.attributes.updated_at || execution.attributes.created_at || 0);
-
-            if (!existing || currentDate > new Date(existing.updated_at || existing.created_at || 0)) {
-              dayExecutions.set(compositeKey, execution.attributes);
-            }
-          });
-
-          dayExecutions.forEach((execution) => {
-            const rawResult = execution.result;
-            let resultLabel: string;
-
-            if (typeof rawResult === 'number') {
-              resultLabel = TEST_RESULTS[rawResult as TestResultId]?.toLowerCase() || 'unknown';
-            } else if (typeof rawResult === 'string') {
-              const numericResult = parseInt(rawResult);
-              if (!isNaN(numericResult) && TEST_RESULTS[numericResult as TestResultId]) {
-                resultLabel = TEST_RESULTS[numericResult as TestResultId]?.toLowerCase() || 'unknown';
-              } else {
-                resultLabel = rawResult.toLowerCase();
-              }
-            } else {
-              resultLabel = 'unknown';
-            }
-
-            switch (resultLabel) {
-              case 'passed':
-                passed++;
-                break;
-              case 'failed':
-                failed++;
-                break;
-              default:
-                other++;
-                break;
-            }
-          });
-        }
-
-        // Format date label based on time unit
-        let dateLabel: string;
-        if (timeUnit === 'hours') {
-          dateLabel = date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', hour12: true });
-        } else {
-          dateLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        }
-
-        performanceData.push({
-          date: dateLabel,
-          passed,
-          failed,
-          other
-        });
-      }
-
-
-      const reportData: ReportData = {
-        totalTestRuns,
-        activeTestRuns,
-        closedTestRuns,
-        totalTestCases,
-        testCaseBreakup: {
-          passed: totalPassed,
-          failed: totalFailed,
-          blocked: totalBlocked,
-          untested: totalUntested
-        },
-        testRunsBreakup,
-        assigneeResults,
-        testCasesIncluded: testCasesIncluded,
-        performanceData
-      };
-
-      setReportData(reportData);
-
-
-    } catch (err) {
-      console.error('❌ Failed to fetch test runs data for detailed report:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load report data');
-    } finally {
-      setLoading(false);
-    }
-  };
+    loadReport();
+    return () => { cancelled = true; };
+  }, [projectId, testRunIds, creationDateFilter, filters]);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -722,7 +171,6 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
   };
 
   const handleDownloadPDF = async () => {
-
     if (!reportData) {
       toast.error('No report data available');
       return;
@@ -742,7 +190,6 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
   };
 
   const handleDownloadCSV = () => {
-
     if (!reportData) {
       toast.error('No report data available');
       return;
@@ -762,8 +209,6 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
   };
 
   const handleSendEmail = async (emails: string[], message: string, format: ReportFormat) => {
-
-
     if (!reportData) {
       toast.error('No report data available');
       return;

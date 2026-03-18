@@ -174,10 +174,10 @@ class TestCaseExecutionsApiService {
       5: 'Skipped',
       6: 'Untested',
       7: 'In Progress',
-      8: 'Unknown'
+      8: 'System Issue'
     };
 
-    return TEST_RESULTS[resultId as keyof typeof TEST_RESULTS] || 'Unknown';
+    return TEST_RESULTS[resultId as keyof typeof TEST_RESULTS] || 'System Issue';
   }
 }
 
