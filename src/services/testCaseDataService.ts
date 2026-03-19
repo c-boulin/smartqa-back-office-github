@@ -107,7 +107,8 @@ export interface TestCaseCompleteData {
     id: string;
     order: number;
   }>;
-  tags: string[];
+  /** Tag objects with id and label - ensures API receives id not label */
+  tags: Array<{ id: string; label: string }>;
 }
 
 export interface TestCaseDataFetchResult {
@@ -365,14 +366,48 @@ class TestCaseDataService {
 
   /**
    * Fetch data specifically for the update modal (includes edit capabilities).
-   * Supports progressive loading via onPartialData option.
+   * Uses optimized GET /test_cases/{id}/update-modal which returns TestCaseCompleteData directly.
    */
   async fetchTestCaseDataForUpdate(
     testCaseId: string,
-    availableTags: Tag[] = [],
-    options: FetchTestCaseDataOptions = {}
+    _availableTags: Tag[] = [],
+    _options: FetchTestCaseDataOptions = {}
   ): Promise<TestCaseDataFetchResult> {
-    return this.fetchCompleteTestCaseData(testCaseId, availableTags, options);
+    try {
+      const data = await apiService.authenticatedRequest<TestCaseCompleteData>(
+        `/test_cases/${testCaseId}/update-modal`
+      );
+      if (!data) {
+        throw new Error('No data in response');
+      }
+      return {
+        success: true,
+        data: {
+          stepResults: data.stepResults ?? [],
+          sharedSteps: data.sharedSteps ?? [],
+          attachments: (data.attachments ?? []).map(att => ({
+            id: att.id,
+            url: att.url ?? '',
+            fileName: att.fileName ?? att.url?.split('/').pop() ?? 'Unknown file',
+            name: att.name,
+            order: att.order,
+          })),
+          stepOrder: (data.stepOrder ?? []).map(item => ({
+            type: item.type as 'step' | 'shared',
+            id: item.id,
+            order: item.order ?? 0,
+          })),
+          tags: (data.tags ?? []).map(t => typeof t === 'string' ? { id: t, label: t } : t),
+        },
+      };
+    } catch (error) {
+      console.error('❌ Failed to fetch test case update modal data:', error);
+      return {
+        success: false,
+        error: `Failed to fetch test case data: ${error instanceof Error ? error.message : 'Unknown'}`,
+        partialData: { stepResults: [], sharedSteps: [], attachments: [], tags: [] },
+      };
+    }
   }
 
   /**

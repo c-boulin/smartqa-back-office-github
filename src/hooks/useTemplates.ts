@@ -21,7 +21,7 @@ export const useTemplates = () => {
       setLoading(true);
       setError(null);
 
-      let response: ProjectsApiResponse = await projectsApiService.getTemplates(page);
+      let response: ProjectsApiResponse = await projectsApiService.getTemplatesList(page, 30);
 
       if (!response) {
         response = projectsApiService.getDefaultProjectsResponse();
@@ -61,7 +61,7 @@ export const useTemplates = () => {
       setLoading(true);
       setError(null);
 
-      let response: ProjectsApiResponse = await projectsApiService.searchTemplates(searchTerm, page, 30, sortParam);
+      let response: ProjectsApiResponse = await projectsApiService.searchTemplatesList(searchTerm, page, 30, sortParam);
 
       if (!response) {
         response = projectsApiService.getDefaultProjectsResponse();
@@ -100,7 +100,7 @@ export const useTemplates = () => {
       setLoading(true);
       setError(null);
 
-      let response: ProjectsApiResponse = await projectsApiService.getTemplatesCreatedByUser(userId, page, 30, sortParam);
+      let response: ProjectsApiResponse = await projectsApiService.getTemplatesList(page, 30, sortParam, userId);
 
       if (!response) {
         response = projectsApiService.getDefaultProjectsResponse();
@@ -139,7 +139,7 @@ export const useTemplates = () => {
       setLoading(true);
       setError(null);
 
-      let response: ProjectsApiResponse = await projectsApiService.searchTemplatesCreatedByUser(searchTerm, userId, page, 30, sortParam);
+      let response: ProjectsApiResponse = await projectsApiService.searchTemplatesList(searchTerm, page, 30, sortParam, userId);
 
       if (!response) {
         response = projectsApiService.getDefaultProjectsResponse();
@@ -178,7 +178,7 @@ export const useTemplates = () => {
       setLoading(true);
       setError(null);
 
-      let response: ProjectsApiResponse = await projectsApiService.getTemplatesWithSort(page, 30, sortParam);
+      let response: ProjectsApiResponse = await projectsApiService.getTemplatesList(page, 30, sortParam);
 
       if (!response) {
         response = projectsApiService.getDefaultProjectsResponse();

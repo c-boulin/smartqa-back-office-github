@@ -714,23 +714,13 @@ const TestCases: React.FC = () => {
             return;
           }
         } else if (tag && tag.id && tag.label) {
-          const actualTag = tags.find(t => t.label === tag.label);
+          // Only use existing tags - never POST for already-linked tags (avoids duplicates)
+          const actualTag = tags.find(t => t.label === tag.label) ?? tags.find(t => t.id === tag.id);
           if (actualTag) {
             processedTags.push(actualTag);
           } else {
-            const tagById = tags.find(t => t.id === tag.id);
-            if (tagById) {
-              processedTags.push(tagById);
-            } else {
-              try {
-                const newTag = await createTag(tag.label);
-                processedTags.push(newTag);
-              } catch {
-                console.error('Failed to create tag:', error);
-                toast.error(`Failed to create tag: ${tag.label}`);
-                return;
-              }
-            }
+            // Tag exists on test case but not in appState.tags - use as-is (has id from API)
+            processedTags.push(tag as Tag);
           }
         }
       }

@@ -40,10 +40,10 @@ const TagSelector: React.FC<TagSelectorProps> = ({
 
   const allTags = fetchedTags;
 
-  // Filter available tags based on search term and exclude already selected
-  const filteredTags = allTags.filter(tag => 
+  // Filter available tags based on search term and exclude already selected (by id or label)
+  const filteredTags = allTags.filter(tag =>
     tag.label.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    !selectedTags.some(selected => selected.id === tag.id)
+    !selectedTags.some(selected => selected.id === tag.id || selected.label.toLowerCase() === tag.label.toLowerCase())
   );
 
   // Check if search term would create a new tag

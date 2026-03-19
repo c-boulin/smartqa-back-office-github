@@ -155,21 +155,40 @@ class SharedStepsApiService {
     };
   }
 
+  private buildSharedStepsListUrl(projectId: string, params: Record<string, string>): string {
+    const search = new URLSearchParams({ page: '1', itemsPerPage: '30', ...params });
+    return `/projects/${projectId}/shared-steps-list?${search.toString()}`;
+  }
+
   async getSharedSteps(projectId: string, page: number = 1, itemsPerPage: number = 30): Promise<SharedStepsApiResponse> {
-    const response = await apiService.authenticatedRequest(`/shared_steps?project=${projectId}&page=${page}&itemsPerPage=${itemsPerPage}&include=creator,stepResults&order[createdAt]=desc`);
+    const params: Record<string, string> = { page: String(page), itemsPerPage: String(itemsPerPage) };
+    const response = await apiService.authenticatedRequest(this.buildSharedStepsListUrl(projectId, params));
     return response || this.getDefaultSharedStepsResponse();
   }
 
   async searchSharedSteps(searchTerm: string, projectId: string, page: number = 1, itemsPerPage: number = 30): Promise<SharedStepsApiResponse> {
     const isNumeric = /^\d+$/.test(searchTerm.trim());
-    const searchParam = isNumeric ? `id=${encodeURIComponent(searchTerm)}` : `title=${encodeURIComponent(searchTerm)}`;
-
-    const response = await apiService.authenticatedRequest(`/shared_steps?project=${projectId}&${searchParam}&page=${page}&itemsPerPage=${itemsPerPage}&include=creator,stepResults&order[createdAt]=desc`);
+    const params: Record<string, string> = { page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (isNumeric) params.id = searchTerm.trim(); else params.title = searchTerm.trim();
+    const response = await apiService.authenticatedRequest(this.buildSharedStepsListUrl(projectId, params));
     return response || this.getDefaultSharedStepsResponse();
   }
 
   async getSharedStep(id: string): Promise<{ data: ApiSharedStep; included?: (ApiCreator | { type: string; id: string; attributes: { step: string; result: string; order: number; [key: string]: unknown } })[] }> {
     return apiService.authenticatedRequest(`/shared_steps/${id}?include=creator,stepResults`);
+  }
+
+  /** Optimized endpoint: returns SharedStep format directly for edit modal (no transform needed) */
+  async getSharedStepForEditModal(id: string): Promise<SharedStep> {
+    const response = await apiService.authenticatedRequest<SharedStep>(`/shared_steps/${id}/edit-modal`);
+    if (!response) {
+      throw new Error('No response from shared step edit modal');
+    }
+    return {
+      ...response,
+      createdAt: new Date(response.createdAt),
+      updatedAt: new Date(response.updatedAt)
+    };
   }
 
 
@@ -402,7 +421,7 @@ class SharedStepsApiService {
       });
 
       // If we have full details, return an object with details
-      if (includedStepResult && 'attributes' in includedStepResult && includedStepResult.attributes.step) {
+      if (includedStepResult && 'attributes' in includedStepResult && 'step' in includedStepResult.attributes) {
         return {
           id: stepResultId,
           step: includedStepResult.attributes.step,

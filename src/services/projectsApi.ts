@@ -138,6 +138,56 @@ class ProjectsApiService {
     return response || this.getDefaultProjectsResponse();
   }
 
+  /** Optimized endpoint for Projects page - returns ProjectsApiResponse format */
+  private buildProjectsListUrl(params: Record<string, string>, sortParam?: string): string {
+    const search = new URLSearchParams(params);
+    const qs = search.toString();
+    const extra = sortParam ? (qs ? `&${sortParam}` : sortParam) : '';
+    return `/projects-list?${qs}${extra}`;
+  }
+
+  async getProjectsList(page: number = 1, itemsPerPage: number = 30, sortParam?: string, createdBy?: string): Promise<ProjectsApiResponse> {
+    const params: Record<string, string> = { page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (createdBy) params.created_by = createdBy;
+    const response = await apiService.authenticatedRequest(this.buildProjectsListUrl(params, sortParam));
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  async searchProjectsList(searchTerm: string, page: number = 1, itemsPerPage: number = 30, sortParam?: string, createdBy?: string): Promise<ProjectsApiResponse> {
+    const trimmedTerm = searchTerm.trim();
+    const isNumeric = /^\d+$/.test(trimmedTerm);
+    const params: Record<string, string> = { page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (trimmedTerm) params[isNumeric ? 'id' : 'title'] = trimmedTerm;
+    if (createdBy) params.created_by = createdBy;
+    const response = await apiService.authenticatedRequest(this.buildProjectsListUrl(params, sortParam));
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  /** Optimized endpoint for Templates tab on Projects page */
+  private buildTemplatesListUrl(params: Record<string, string>, sortParam?: string): string {
+    const search = new URLSearchParams(params);
+    const qs = search.toString();
+    const extra = sortParam ? (qs ? `&${sortParam}` : sortParam) : '';
+    return `/templates-list?${qs}${extra}`;
+  }
+
+  async getTemplatesList(page: number = 1, itemsPerPage: number = 30, sortParam?: string, createdBy?: string): Promise<ProjectsApiResponse> {
+    const params: Record<string, string> = { page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (createdBy) params.created_by = createdBy;
+    const response = await apiService.authenticatedRequest(this.buildTemplatesListUrl(params, sortParam));
+    return response || this.getDefaultProjectsResponse();
+  }
+
+  async searchTemplatesList(searchTerm: string, page: number = 1, itemsPerPage: number = 30, sortParam?: string, createdBy?: string): Promise<ProjectsApiResponse> {
+    const trimmedTerm = searchTerm.trim();
+    const isNumeric = /^\d+$/.test(trimmedTerm);
+    const params: Record<string, string> = { page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (trimmedTerm) params[isNumeric ? 'id' : 'title'] = trimmedTerm;
+    if (createdBy) params.created_by = createdBy;
+    const response = await apiService.authenticatedRequest(this.buildTemplatesListUrl(params, sortParam));
+    return response || this.getDefaultProjectsResponse();
+  }
+
   async getProjectsWithSort(page: number = 1, itemsPerPage: number = 30, sortParam?: string): Promise<ProjectsApiResponse> {
     let url = `/projects?page=${page}&itemsPerPage=${itemsPerPage}`;
     if (sortParam) {

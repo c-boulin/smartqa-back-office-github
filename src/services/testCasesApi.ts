@@ -343,113 +343,67 @@ class TestCasesApiService {
     };
   }
 
+  private buildTestCasesListUrl(projectId: string, params: Record<string, string>): string {
+    const search = new URLSearchParams({ page: '1', itemsPerPage: '30', ...params });
+    return `/projects/${projectId}/test-cases-list?${search.toString()}`;
+  }
+
   async getTestCases(page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    // Keep folder include for sidebar but drop tag include (handled via /tags)
-    let url = `/test_cases?page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc&include=folder`;
-
-    if (projectId) {
-      url += `&project=${projectId}`;
+    if (!projectId) {
+      return this.getDefaultTestCasesResponse();
     }
-
-    if (folderId) {
-      url += `&folder=${folderId}`;
-    }
-
-    const response = await apiService.authenticatedRequest(url);
-
+    const params: Record<string, string> = { page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (folderId) params.folder = folderId;
+    const response = await apiService.authenticatedRequest(this.buildTestCasesListUrl(projectId, params));
     return response || this.getDefaultTestCasesResponse();
   }
 
   async searchTestCases(searchTerm: string, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
+    if (!projectId) return this.getDefaultTestCasesResponse();
     const isNumeric = /^\d+$/.test(searchTerm.trim());
-    const searchParam = isNumeric ? `id=${encodeURIComponent(searchTerm)}` : `title=${encodeURIComponent(searchTerm)}`;
-    
-    let url = `/test_cases?${searchParam}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
-    
-    if (projectId) {
-      url += `&project=${projectId}`;
-    }
-    
-    if (folderId) {
-      url += `&folder=${folderId}`;
-    }
-    
-    const response = await apiService.authenticatedRequest(url);
+    const params: Record<string, string> = { page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (isNumeric) params.id = searchTerm.trim(); else params.title = searchTerm.trim();
+    if (folderId) params.folder = folderId;
+    const response = await apiService.authenticatedRequest(this.buildTestCasesListUrl(projectId, params));
     return response || this.getDefaultTestCasesResponse();
   }
 
   async filterTestCasesByAutomation(automationStatus: 1 | 2 | 3 | 4 | 5, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    let url = `/test_cases?automation=${automationStatus}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
-    
-    if (projectId) {
-      url += `&project=${projectId}`;
-    }
-    
-    if (folderId) {
-      url += `&folder=${folderId}`;
-    }
-    
-    const response = await apiService.authenticatedRequest(url);
+    if (!projectId) return this.getDefaultTestCasesResponse();
+    const params: Record<string, string> = { automation: String(automationStatus), page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (folderId) params.folder = folderId;
+    const response = await apiService.authenticatedRequest(this.buildTestCasesListUrl(projectId, params));
     return response || this.getDefaultTestCasesResponse();
   }
 
   async filterTestCasesByPriority(priority: number, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    let url = `/test_cases?priority=${priority}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
-    
-    if (projectId) {
-      url += `&project=${projectId}`;
-    }
-    
-    if (folderId) {
-      url += `&folder=${folderId}`;
-    }
-    
-    const response = await apiService.authenticatedRequest(url);
+    if (!projectId) return this.getDefaultTestCasesResponse();
+    const params: Record<string, string> = { priority: String(priority), page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (folderId) params.folder = folderId;
+    const response = await apiService.authenticatedRequest(this.buildTestCasesListUrl(projectId, params));
     return response || this.getDefaultTestCasesResponse();
   }
 
   async filterTestCasesByType(type: number, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    let url = `/test_cases?type=${type}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
-    
-    if (projectId) {
-      url += `&project=${projectId}`;
-    }
-    
-    if (folderId) {
-      url += `&folder=${folderId}`;
-    }
-    
-    const response = await apiService.authenticatedRequest(url);
+    if (!projectId) return this.getDefaultTestCasesResponse();
+    const params: Record<string, string> = { type: String(type), page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (folderId) params.folder = folderId;
+    const response = await apiService.authenticatedRequest(this.buildTestCasesListUrl(projectId, params));
     return response || this.getDefaultTestCasesResponse();
   }
 
   async filterTestCasesByState(state: number, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    let url = `/test_cases?state=${state}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
-    
-    if (projectId) {
-      url += `&project=${projectId}`;
-    }
-    
-    if (folderId) {
-      url += `&folder=${folderId}`;
-    }
-    
-    const response = await apiService.authenticatedRequest(url);
+    if (!projectId) return this.getDefaultTestCasesResponse();
+    const params: Record<string, string> = { state: String(state), page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (folderId) params.folder = folderId;
+    const response = await apiService.authenticatedRequest(this.buildTestCasesListUrl(projectId, params));
     return response || this.getDefaultTestCasesResponse();
   }
   async filterTestCasesByTags(tagIds: string[], page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    const tagsParam = tagIds.join(',');
-    let url = `/test_cases?tags=${tagsParam}&page=${page}&itemsPerPage=${itemsPerPage}&order[createdAt]=desc`;
-    
-    if (projectId) {
-      url += `&project=${projectId}`;
-    }
-    
-    if (folderId) {
-      url += `&folder=${folderId}`;
-    }
-    
-    const response = await apiService.authenticatedRequest(url);
+    if (!projectId) return this.getDefaultTestCasesResponse();
+    const params: Record<string, string> = { tags: tagIds.join(','), page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (folderId) params.folder = folderId;
+    const response = await apiService.authenticatedRequest(this.buildTestCasesListUrl(projectId, params));
     return response || this.getDefaultTestCasesResponse();
   }
 
@@ -460,41 +414,15 @@ class TestCasesApiService {
     state?: number;
     tagIds?: string[];
   }, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
-    const params = new URLSearchParams();
-    params.set('page', page.toString());
-    params.set('itemsPerPage', itemsPerPage.toString());
-    params.set('order[createdAt]', 'desc');
-    
-    if (projectId) {
-      params.set('project', projectId);
-    }
-    
-    if (folderId) {
-      params.set('folder', folderId);
-    }
-    
-    if (filters.automationStatus) {
-      params.set('automation', filters.automationStatus.toString());
-    }
-    
-    if (filters.priority) {
-      params.set('priority', filters.priority.toString());
-    }
-    
-    if (filters.type) {
-      params.set('type', filters.type.toString());
-    }
-    
-    if (filters.state) {
-      params.set('state', filters.state.toString());
-    }
-    
-    if (filters.tagIds && filters.tagIds.length > 0) {
-      params.set('tags', filters.tagIds.join(','));
-    }
-    
-    const url = `/test_cases?${params.toString()}`;
-    const response = await apiService.authenticatedRequest(url);
+    if (!projectId) return this.getDefaultTestCasesResponse();
+    const params: Record<string, string> = { page: String(page), itemsPerPage: String(itemsPerPage) };
+    if (folderId) params.folder = folderId;
+    if (filters.automationStatus) params.automation = String(filters.automationStatus);
+    if (filters.priority) params.priority = String(filters.priority);
+    if (filters.type) params.type = String(filters.type);
+    if (filters.state) params.state = String(filters.state);
+    if (filters.tagIds?.length) params.tags = filters.tagIds.join(',');
+    const response = await apiService.authenticatedRequest(this.buildTestCasesListUrl(projectId, params));
     return response || this.getDefaultTestCasesResponse();
   }
 

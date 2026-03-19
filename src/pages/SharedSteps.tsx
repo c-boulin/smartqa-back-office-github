@@ -246,14 +246,20 @@ const SharedSteps: React.FC = () => {
 
   const openEditModal = useCallback(async (sharedStep: SharedStep) => {
     try {
-
-      const response = await sharedStepsApiService.getSharedStep(sharedStep.id);
-      const included = response.included || [];
-
-      const fullSharedStep = sharedStepsApiService.transformApiSharedStep(response.data, included);
-
+      const fullSharedStep = await sharedStepsApiService.getSharedStepForEditModal(sharedStep.id);
       setSelectedSharedStep(fullSharedStep);
       setIsEditModalOpen(true);
+    } catch (error) {
+      console.error('❌ Failed to fetch shared step details:', error);
+      toast.error('Failed to load shared step details');
+    }
+  }, []);
+
+  const openViewModal = useCallback(async (sharedStep: SharedStep) => {
+    try {
+      const fullSharedStep = await sharedStepsApiService.getSharedStepForEditModal(sharedStep.id);
+      setSelectedSharedStep(fullSharedStep);
+      setIsViewModalOpen(true);
     } catch (error) {
       console.error('❌ Failed to fetch shared step details:', error);
       toast.error('Failed to load shared step details');
@@ -445,10 +451,7 @@ const SharedSteps: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           {hasPermission(PERMISSIONS.SHARED_STEP.READ) && (
                             <button
-                              onClick={() => {
-                                setSelectedSharedStep(sharedStep);
-                                setIsViewModalOpen(true);
-                              }}
+                              onClick={() => openViewModal(sharedStep)}
                               className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                               title="View"
                               disabled={isSubmitting}

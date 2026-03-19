@@ -32,7 +32,7 @@ export const useProjects = () => {
       setLoading(true);
       setError(null);
       
-      let response: ProjectsApiResponse = await projectsApiService.getProjects(page);
+      let response: ProjectsApiResponse = await projectsApiService.getProjectsList(page, 30);
       
       // Ensure response is defined, if not use default
       if (!response) {
@@ -80,7 +80,7 @@ export const useProjects = () => {
       setLoading(true);
       setError(null);
       
-      let response: ProjectsApiResponse = await projectsApiService.searchProjects(searchTerm, page, 30, sortParam);
+      let response: ProjectsApiResponse = await projectsApiService.searchProjectsList(searchTerm, page, 30, sortParam);
       
       // Ensure response is defined, if not use default
       if (!response) {
@@ -128,7 +128,7 @@ export const useProjects = () => {
       setLoading(true);
       setError(null);
       
-      let response: ProjectsApiResponse = await projectsApiService.getProjectsCreatedByUser(userId, page, 30, sortParam);
+      let response: ProjectsApiResponse = await projectsApiService.getProjectsList(page, 30, sortParam, userId);
       
       // Ensure response is defined, if not use default
       if (!response) {
@@ -176,7 +176,7 @@ export const useProjects = () => {
       setLoading(true);
       setError(null);
       
-      let response: ProjectsApiResponse = await projectsApiService.searchProjectsCreatedByUser(searchTerm, userId, page, 30, sortParam);
+      let response: ProjectsApiResponse = await projectsApiService.searchProjectsList(searchTerm, page, 30, sortParam, userId);
       
       // Ensure response is defined, if not use default
       if (!response) {
@@ -223,7 +223,7 @@ export const useProjects = () => {
       setLoading(true);
       setError(null);
 
-      let response: ProjectsApiResponse = await projectsApiService.getProjectsWithSort(page, 30, sortParam);
+      let response: ProjectsApiResponse = await projectsApiService.getProjectsList(page, 30, sortParam);
       
       // Ensure response is defined, if not use default
       if (!response) {

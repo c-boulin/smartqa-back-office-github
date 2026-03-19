@@ -104,9 +104,11 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
     setExistingAttachments(data.attachments);
     setStepOrder(data.stepOrder.map(item => ({ type: item.type, id: item.id })));
     setSelectedTags(
-      data.tags
-        .map(label => availableTags.find(t => t.label === label) || { id: label, label })
-        .filter((t): t is Tag => !!t.id)
+      data.tags.map(tag =>
+        typeof tag === 'string'
+          ? (availableTags.find(t => t.label === tag) || { id: tag, label: tag })
+          : { id: tag.id, label: tag.label }
+      ).filter((t): t is Tag => !!t.id)
     );
   }, []);
 
@@ -138,9 +140,11 @@ export const useUpdateTestCaseData = (): UseUpdateTestCaseDataReturn => {
           setExistingAttachments(partial.attachments);
           setStepOrder(partial.stepOrder.map(item => ({ type: item.type, id: item.id })));
           setSelectedTags(
-            partial.tags
-              .map(label => availableTags.find(t => t.label === label) || { id: label, label })
-              .filter((t): t is Tag => !!t.id)
+            (partial.tags ?? []).map(tag =>
+              typeof tag === 'string'
+                ? (availableTags.find(t => t.label === tag) || { id: tag, label: tag })
+                : { id: tag.id, label: tag.label }
+            ).filter((t): t is Tag => !!t.id)
           );
         }
       });
