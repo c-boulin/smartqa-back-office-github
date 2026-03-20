@@ -6,11 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../UI/ThemeToggle';
 import NotificationsBell from './NotificationsBell';
 
-interface HeaderProps {
-  title: string;
-}
-
-const Header: React.FC<HeaderProps> = ({ title }) => {
+const Header: React.FC = () => {
   const { state, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -23,11 +19,11 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
     <header className="bg-gradient-to-r from-slate-200 via-purple-100 to-slate-200 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 border-b border-purple-300/30 dark:border-purple-500/20 shadow-2xl">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 min-w-0">
             <Link
               to="/projects"
-              className="flex items-center space-x-3 hover:opacity-80 transition-opacity group"
-              title="Aller aux projets"
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity group shrink-0"
+              title="Project management"
             >
               <div className="relative">
                 <Hexagon className="w-8 h-8 text-cyan-600 dark:text-cyan-400 fill-cyan-600/20 dark:fill-cyan-400/20 group-hover:text-cyan-500 dark:group-hover:text-cyan-300 transition-colors" />
@@ -37,11 +33,9 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
                 SMARTQA
               </span>
             </Link>
-            <div className="h-8 w-px bg-gradient-to-b from-transparent via-purple-400 dark:via-purple-500 to-transparent"></div>
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h1>
           </div>
 
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-6 shrink-0">
             <div className="flex items-center space-x-4">
               <ThemeToggle />
               <NotificationsBell />

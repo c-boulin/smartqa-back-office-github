@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, ChevronRight } from 'lucide-react';
+import EntityBreadcrumb from '../components/Layout/EntityBreadcrumb';
 import { projectsApiService } from '../services/projectsApi';
 import { Project } from '../types';
 import { automatedExecutionMockService } from '../services/automatedExecutionMockService';
@@ -65,6 +66,13 @@ const AutomatedExecutionTestCases: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <EntityBreadcrumb
+        section="Automated execution"
+        detailSegment="Test cases"
+        projectNameOverride={project.name}
+        isTemplateOverride={project.isTemplate ?? false}
+        projectEntityId={project.id}
+      />
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate('/overview')}

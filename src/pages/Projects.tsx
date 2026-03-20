@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Plus, Search, Filter, SquarePen, Trash2, Copy, ChevronLeft, ChevronRight, Loader, FolderOpen, Globe } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import Modal from '../components/UI/Modal';
@@ -15,6 +15,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
 import { projectsApiService } from '../services/projectsApi';
+import EntityBreadcrumb from '../components/Layout/EntityBreadcrumb';
 
 const ProjectModal: React.FC<{
   isOpen: boolean;
@@ -222,9 +223,17 @@ const CloneModal: React.FC<{
 const Projects: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { getSelectedProject, state: appState } = useApp();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab: 'projects' | 'templates' = searchParams.get('tab') === 'templates' ? 'templates' : 'projects';
+  const { getSelectedProject, state: appState, dispatch, loadProjects } = useApp();
+
+  useEffect(() => {
+    dispatch({
+      type: 'SET_SIDEBAR_ENTITY_MODE',
+      payload: activeTab === 'templates' ? 'templates' : 'projects'
+    });
+  }, [activeTab, dispatch]);
   const { state: authState } = useAuth();
-  const { dispatch, loadProjects } = useApp();
   const { hasPermission } = usePermissions();
   const _selectedProject = getSelectedProject();
   const hasFetchedRef = useRef(false);
@@ -232,8 +241,6 @@ const Projects: React.FC = () => {
   const hasAnyAction = hasPermission(PERMISSIONS.PROJECT.UPDATE) ||
                        hasPermission(PERMISSIONS.PROJECT.DELETE) ||
                        hasPermission(PERMISSIONS.PROJECT.CREATE);
-
-  const [activeTab, setActiveTab] = useState<'projects' | 'templates'>('projects');
 
   const {
     projects,
@@ -301,6 +308,47 @@ const Projects: React.FC = () => {
     { value: 'title-asc', label: 'Title (A-Z)', param: 'order[title]=asc' },
     { value: 'title-desc', label: 'Title (Z-A)', param: 'order[title]=desc' }
   ], []);
+
+  /** If the selected entity does not match the active tab (project vs template), pick the first row in the current list. */
+  useEffect(() => {
+    if (location.pathname !== '/projects') return;
+    if (loading) return;
+
+    const wantsTemplates = activeTab === 'templates';
+    const id = appState.selectedProjectId;
+
+    const fromContext = getSelectedProject();
+    const fromItems = id ? items.find(p => p.id === id) : undefined;
+    const resolved = fromContext ?? fromItems ?? null;
+
+    const matches =
+      resolved &&
+      (wantsTemplates ? resolved.isTemplate === true : resolved.isTemplate !== true);
+
+    if (matches) return;
+
+    // "View all projects/templates" clears selection — do not auto-pick the first row, or both would look selected in the sidebar.
+    if (!id) {
+      return;
+    }
+
+    if (items.length > 0) {
+      const first = items[0];
+      const payload: Project = { ...first, isTemplate: wantsTemplates };
+      dispatch({ type: 'UPDATE_PROJECT', payload });
+      dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: first.id });
+    } else {
+      dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: null });
+    }
+  }, [
+    activeTab,
+    appState.selectedProjectId,
+    dispatch,
+    getSelectedProject,
+    items,
+    loading,
+    location.pathname
+  ]);
 
   const handleSearch = useCallback(async (term: string) => {
     setCurrentSearchTerm(term);
@@ -471,7 +519,7 @@ const Projects: React.FC = () => {
             description: newProject.description
           });
           await loadProjects(true);
-          setActiveTab('projects');
+          setSearchParams({}, { replace: true });
           const sortOption = SORT_OPTIONS.find(option => option.value === sortBy);
           if (filterMode === 'my-projects') {
             await fetchProjectsCreatedByUser(authState.user?.id?.toString() || '', 1, sortOption?.param);
@@ -501,7 +549,7 @@ const Projects: React.FC = () => {
       setCloneType('template');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProjects, authState.user are stable
-  }, [cloneProject, cloneTemplate, cloneTemplateToProject, projectToManage, newProject, activeTab, cloneType, sortBy, fetchProjectsWithSort, fetchProjectsCreatedByUser, filterMode]);
+  }, [cloneProject, cloneTemplate, cloneTemplateToProject, projectToManage, newProject, activeTab, cloneType, sortBy, fetchProjectsWithSort, fetchProjectsCreatedByUser, filterMode, setSearchParams]);
 
   const handleDeleteProject = useCallback(async () => {
     if (!projectToManage) return;
@@ -601,32 +649,35 @@ const Projects: React.FC = () => {
   const handleProjectClick = useCallback((project: Project) => {
     dispatch({ type: 'SET_NAVIGATING_TO_PROJECT', payload: true });
 
-    // CRITICAL: Ensure the project exists in App context state
-    // If it doesn't exist, add it to the context
-    const contextProject = getSelectedProject();
-    if (!contextProject || contextProject.id !== project.id) {
+    const isTemplate = activeTab === 'templates';
+    const payload: Project = { ...project, isTemplate };
 
-      dispatch({ type: 'UPDATE_PROJECT', payload: project });
-    }
-
-    // Set the selected project ID
+    dispatch({ type: 'UPDATE_PROJECT', payload });
     dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: project.id });
 
-    // Use a small delay to ensure state is updated before navigation
     setTimeout(() => {
-      toast.success(`Selected project: ${project.name}`);
-      navigate('/dashboard');
+      if (isTemplate) {
+        toast.success(`Selected template: ${project.name}`);
+        navigate('/test-cases');
+      } else {
+        toast.success(`Selected project: ${project.name}`);
+        navigate('/dashboard');
+      }
     }, 50);
-  }, [dispatch, navigate, getSelectedProject]);
+  }, [dispatch, navigate, activeTab]);
 
   const handleTabChange = useCallback((tab: 'projects' | 'templates') => {
-    setActiveTab(tab);
+    if (tab === 'templates') {
+      setSearchParams({ tab: 'templates' }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
     setSearchTerm('');
     setCurrentSearchTerm('');
     setFilterMode('all');
     setSortBy('createdAt-desc');
     hasFetchedRef.current = false;
-  }, []);
+  }, [setSearchParams]);
 
   useEffect(() => {
     if (location.pathname !== '/projects') {
@@ -710,6 +761,7 @@ const Projects: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
+          <EntityBreadcrumb variant="list" section="All" />
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
             {activeTab === 'projects' ? 'Projects' : 'Templates'}
           </h2>
@@ -882,11 +934,9 @@ const Projects: React.FC = () => {
                         onClick={(e) => {
                           e.stopPropagation();
 
-                          // Set the selected project
+                          const payload: Project = { ...project, isTemplate: activeTab === 'templates' };
                           dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: project.id });
-                          
-                          // Ensure the project exists in App context state
-                          dispatch({ type: 'UPDATE_PROJECT', payload: project });
+                          dispatch({ type: 'UPDATE_PROJECT', payload });
                           
                           // Navigate to test cases page
                           navigate('/test-cases');

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { PERMISSIONS } from '../utils/permissions';
 import Pagination from '../components/UI/Pagination';
 import toast from 'react-hot-toast';
+import EntityBreadcrumb from '../components/Layout/EntityBreadcrumb';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import Modal from '../components/UI/Modal';
@@ -186,6 +187,7 @@ const Settings: React.FC = () => {
           <Shield className="w-6 h-6 text-white" />
         </div>
         <div>
+          <EntityBreadcrumb section="Settings" />
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Settings</h1>
           <p className="text-slate-600 dark:text-gray-400">Manage users and permissions</p>
         </div>

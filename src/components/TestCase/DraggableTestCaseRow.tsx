@@ -17,6 +17,8 @@ interface DraggableTestCaseRowProps {
   onDeleteTestCase: (testCase: TestCase) => void;
   onDuplicateTestCase: (testCase: TestCase) => void;
   onRunTest: (testCase: TestCase) => void;
+  /** When false (template context), hide the Run cell to match the table header. */
+  showRunColumn?: boolean;
   onPrefetchTestCase?: (testCase: TestCase) => void;
   isSubmitting: boolean;
   isDragging?: boolean;
@@ -44,6 +46,7 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
   onDeleteTestCase,
   onDuplicateTestCase,
   onRunTest,
+  showRunColumn = true,
   onPrefetchTestCase,
   isSubmitting,
   showGitlabLinkIndicator = false,
@@ -82,7 +85,7 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
   const hasAnyAction = hasPermission(PERMISSIONS.TEST_CASE.UPDATE) ||
                        hasPermission(PERMISSIONS.TEST_CASE.DELETE) ||
                        hasPermission(PERMISSIONS.TEST_CASE.CREATE) ||
-                       hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE);
+                       (showRunColumn && hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE));
 
   const handleDragStart = (e: React.DragEvent) => {
     setDragStarted(true);
@@ -225,7 +228,7 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
           </div>
         </td>
       )}
-      {hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && (
+      {showRunColumn && hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && (
         <td className="py-3 px-3 whitespace-nowrap">
           <RunTestButton
             onClick={() => onRunTest(testCase)}

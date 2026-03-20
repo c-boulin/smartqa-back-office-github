@@ -32,6 +32,8 @@ interface TestCasesTableProps {
   gitlabLinksFetched?: boolean;
   visibleColumns: ColumnVisibility;
   folderMap?: Record<string, string>;
+  /** When false (e.g. template context), the Run column is hidden. */
+  showRunColumn?: boolean;
 }
 
 const TestCasesTable: React.FC<TestCasesTableProps> = ({
@@ -52,14 +54,15 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
   gitlabLinksByTestCaseId = {},
   gitlabLinksFetched = false,
   visibleColumns,
-  folderMap = {}
+  folderMap = {},
+  showRunColumn = true
 }) => {
   const { hasPermission } = usePermissions();
 
   const hasAnyAction = hasPermission(PERMISSIONS.TEST_CASE.UPDATE) ||
                        hasPermission(PERMISSIONS.TEST_CASE.DELETE) ||
                        hasPermission(PERMISSIONS.TEST_CASE.CREATE) ||
-                       hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE);
+                       (showRunColumn && hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE));
   return (
     <Card className="overflow-hidden">
       {/* Loader overlay - positioned at top of card for visibility */}
@@ -105,7 +108,7 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
               {visibleColumns.autoStatus && (
                 <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Auto Status</th>
               )}
-              {hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && (
+              {showRunColumn && hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && (
                 <th className="text-left py-3 px-3 text-xs font-medium text-slate-600 dark:text-gray-400 whitespace-nowrap">Run</th>
               )}
               {hasAnyAction && (
@@ -124,6 +127,7 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
                 onDeleteTestCase={onDeleteTestCase}
                 onDuplicateTestCase={onDuplicateTestCase}
                 onRunTest={onRunTest}
+                showRunColumn={showRunColumn}
                 isSubmitting={isSubmitting}
                 gitlabLinkName={gitlabLinksByTestCaseId[testCase.id] ?? undefined}
                 showGitlabLinkIndicator={gitlabLinksFetched}

@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, FileText, CreditCard as Edit2, Trash2, BarChart, Search, X, Loader, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { useLocation } from 'react-router-dom';
+import EntityBreadcrumb from '../components/Layout/EntityBreadcrumb';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
@@ -331,6 +332,7 @@ const Reports: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
+            <EntityBreadcrumb section="Reports" />
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Reports</h1>
             <p className="text-slate-600 dark:text-gray-400">Generate and manage test reports</p>
           </div>

@@ -20,6 +20,8 @@ interface AppState {
   isLoadingTags: boolean;
   isLoadingConfigurations: boolean;
   isNavigatingToProject: boolean;
+  /** Drives sidebar/header "Projects vs Templates" UI; set from Projects page tabs only. */
+  sidebarEntityMode: 'projects' | 'templates';
 }
 
 type AppAction =
@@ -35,6 +37,7 @@ type AppAction =
   | { type: 'SET_CURRENT_PROJECT'; payload: Project | null }
   | { type: 'SET_SELECTED_PROJECT_ID'; payload: string | null }
   | { type: 'SET_NAVIGATING_TO_PROJECT'; payload: boolean }
+  | { type: 'SET_SIDEBAR_ENTITY_MODE'; payload: 'projects' | 'templates' }
   | { type: 'ADD_TAG'; payload: Tag }
   | { type: 'ADD_CONFIGURATION'; payload: Configuration }
   | { type: 'ADD_TEST_CASE'; payload: TestCase }
@@ -50,6 +53,24 @@ type AppAction =
 
 const SELECTED_PROJECT_KEY = 'smartqa_selected_project_id';
 const LAST_SELECTED_PROJECT_KEY = 'smartqa_last_selected_project_id';
+const SIDEBAR_ENTITY_MODE_KEY = 'smartqa_sidebar_entity_mode';
+
+const getStoredSidebarEntityMode = (): 'projects' | 'templates' => {
+  try {
+    const v = localStorage.getItem(SIDEBAR_ENTITY_MODE_KEY);
+    return v === 'templates' ? 'templates' : 'projects';
+  } catch {
+    return 'projects';
+  }
+};
+
+const setStoredSidebarEntityMode = (mode: 'projects' | 'templates'): void => {
+  try {
+    localStorage.setItem(SIDEBAR_ENTITY_MODE_KEY, mode);
+  } catch {
+    // ignore
+  }
+};
 
 const getStoredSelectedProjectId = (): string | null => {
   try {
@@ -91,6 +112,7 @@ const initialState: AppState = {
   currentProject: null,
   selectedProjectId: getStoredSelectedProjectId(),
   isNavigatingToProject: false,
+  sidebarEntityMode: getStoredSidebarEntityMode(),
   isLoadingProjects: false,
   isLoadingTags: false,
   isLoadingConfigurations: false
@@ -157,6 +179,9 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, selectedProjectId: action.payload };
     case 'SET_NAVIGATING_TO_PROJECT':
       return { ...state, isNavigatingToProject: action.payload };
+    case 'SET_SIDEBAR_ENTITY_MODE':
+      setStoredSidebarEntityMode(action.payload);
+      return { ...state, sidebarEntityMode: action.payload };
     case 'ADD_TEST_CASE':
       return { ...state, testCases: [...state.testCases, action.payload] };
     case 'UPDATE_TEST_CASE':
@@ -191,6 +216,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         sharedSteps: state.sharedSteps.map(ss => ss.id === action.payload.id ? action.payload : ss)
       };
     case 'CLEAR_DATA':
+      setStoredSidebarEntityMode('projects');
       return {
         ...state,
         projects: [],
@@ -198,6 +224,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         configurations: [],
         selectedProjectId: null,
         currentProject: null,
+        sidebarEntityMode: 'projects',
         isLoadingProjects: false,
         isLoadingTags: false,
         isLoadingConfigurations: false

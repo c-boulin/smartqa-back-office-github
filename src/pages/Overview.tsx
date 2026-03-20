@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { projectsApiService } from '../services/projectsApi';
 import { Project } from '../types';
 import { Loader, Activity, AlertTriangle, FileText } from 'lucide-react';
+import EntityBreadcrumb from '../components/Layout/EntityBreadcrumb';
 import TestExecutionOverview from '../components/Overview/TestExecutionOverview';
 import DefectBreakdown from '../components/Overview/DefectBreakdown';
 import AutomatedExecutionLogs from '../components/Overview/AutomatedExecutionLogs';
@@ -43,6 +44,7 @@ const Overview: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
+        <EntityBreadcrumb section="Overview" />
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Overview</h1>
         <p className="text-slate-600 dark:text-gray-400 mt-2">Test execution and defect analysis across all projects</p>
       </div>

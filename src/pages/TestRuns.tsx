@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Play, Clock, CheckCircle, User, Copy, Activity, Archive } from 'lucide-react';
 // import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import EntityBreadcrumb from '../components/Layout/EntityBreadcrumb';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 // import StatusBadge from '../components/UI/StatusBadge';
@@ -478,6 +479,7 @@ const TestRuns: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
+          <EntityBreadcrumb section="Test Runs" />
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Test Runs</h2>
           <p className="text-slate-600 dark:text-gray-400">
             {selectedProject 

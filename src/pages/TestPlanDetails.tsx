@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Play, CheckCircle, Clock, Loader } from 'lucide-react';
 import { format } from 'date-fns';
+import EntityBreadcrumb from '../components/Layout/EntityBreadcrumb';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import { testPlansApiService } from '../services/testPlansApi';
@@ -217,6 +218,13 @@ const TestPlanDetails: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <EntityBreadcrumb
+        section="Test Plans"
+        detailSegment={testPlan.title}
+        projectNameOverride={project?.name ?? `Project ${testPlan.projectId}`}
+        isTemplateOverride={project?.isTemplate ?? false}
+        projectEntityId={testPlan.projectId}
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">

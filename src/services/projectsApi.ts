@@ -1,4 +1,5 @@
 import { apiService } from './api';
+import type { Project } from '../types';
 
 // API Response interfaces matching the actual API structure
 export interface ApiProject {
@@ -17,6 +18,8 @@ export interface ApiProject {
     test_suite_name?: string;
     gitlabProjectName?: string;
     testSuiteName?: string;
+    isTemplate?: boolean;
+    is_template?: boolean;
   };
   relationships: {
     testCases: {
@@ -130,6 +133,10 @@ class ProjectsApiService {
       url: apiProject.attributes.url,
       gitlab_project_name: apiProject.attributes.gitlabProjectName ?? apiProject.attributes.gitlab_project_name,
       test_suite_name: apiProject.attributes.testSuiteName ?? apiProject.attributes.test_suite_name,
+      isTemplate: Boolean(
+        (apiProject.attributes as { isTemplate?: boolean; is_template?: boolean }).isTemplate ??
+          (apiProject.attributes as { isTemplate?: boolean; is_template?: boolean }).is_template
+      ),
     };
   }
 
@@ -198,13 +205,15 @@ class ProjectsApiService {
   }
   async getProjectsForSidebar(searchTerm?: string): Promise<{ projects: Project[]; meta: { totalItems: number; currentPage: number; itemsPerPage: number } }> {
     try {
-      let url = '/projects?itemsPerPage=30&page=1';
-
-      if (searchTerm && searchTerm.trim()) {
-        url += `&title=${encodeURIComponent(searchTerm.trim())}`;
+      const params: Record<string, string> = { page: '1', itemsPerPage: '30' };
+      const trimmed = searchTerm?.trim();
+      if (trimmed) {
+        params.title = trimmed;
       }
 
-      const response: ProjectsApiResponse = await apiService.authenticatedRequest(url);
+      const response: ProjectsApiResponse = await apiService.authenticatedRequest(
+        this.buildProjectsListUrl(params)
+      );
 
       if (!response || !response.data) {
         return {
@@ -226,19 +235,66 @@ class ProjectsApiService {
     }
   }
 
-  async getProjectsForSidebarPage(page: number, searchTerm?: string): Promise<ProjectsApiResponse> {
+  async getTemplatesForSidebar(searchTerm?: string): Promise<{ projects: Project[]; meta: { totalItems: number; currentPage: number; itemsPerPage: number } }> {
     try {
-      let url = `/projects?itemsPerPage=30&page=${page}`;
-
-      // Add search if provided
-      if (searchTerm && searchTerm.trim()) {
-        url += `&title=${encodeURIComponent(searchTerm.trim())}`;
+      const params: Record<string, string> = { page: '1', itemsPerPage: '30' };
+      const trimmed = searchTerm?.trim();
+      if (trimmed) {
+        params.title = trimmed;
       }
 
-      const response = await apiService.authenticatedRequest(url);
+      const response: ProjectsApiResponse = await apiService.authenticatedRequest(
+        this.buildTemplatesListUrl(params)
+      );
+
+      if (!response || !response.data) {
+        return {
+          projects: [],
+          meta: { totalItems: 0, currentPage: 1, itemsPerPage: 30 }
+        };
+      }
+
+      return {
+        projects: response.data.map((project: ApiProject) => this.transformApiProject(project)),
+        meta: response.meta
+      };
+    } catch (error) {
+      console.error('Error fetching templates for sidebar:', error);
+      return {
+        projects: [],
+        meta: { totalItems: 0, currentPage: 1, itemsPerPage: 30 }
+      };
+    }
+  }
+
+  async getProjectsForSidebarPage(page: number, searchTerm?: string): Promise<ProjectsApiResponse> {
+    try {
+      const params: Record<string, string> = { page: String(page), itemsPerPage: '30' };
+      const trimmed = searchTerm?.trim();
+      if (trimmed) {
+        params.title = trimmed;
+      }
+
+      const response = await apiService.authenticatedRequest(this.buildProjectsListUrl(params));
       return response || this.getDefaultProjectsResponse();
     } catch (error) {
       console.error('Error fetching projects page for sidebar:', error);
+      return this.getDefaultProjectsResponse();
+    }
+  }
+
+  async getTemplatesForSidebarPage(page: number, searchTerm?: string): Promise<ProjectsApiResponse> {
+    try {
+      const params: Record<string, string> = { page: String(page), itemsPerPage: '30' };
+      const trimmed = searchTerm?.trim();
+      if (trimmed) {
+        params.title = trimmed;
+      }
+
+      const response = await apiService.authenticatedRequest(this.buildTemplatesListUrl(params));
+      return response || this.getDefaultProjectsResponse();
+    } catch (error) {
+      console.error('Error fetching templates page for sidebar:', error);
       return this.getDefaultProjectsResponse();
     }
   }

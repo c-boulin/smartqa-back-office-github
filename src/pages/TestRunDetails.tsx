@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Play, CheckCircle, XCircle, Clock, AlertTriangle, Loader } from 'lucide-react';
 import { format } from 'date-fns';
+import EntityBreadcrumb from '../components/Layout/EntityBreadcrumb';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSidebar';
@@ -27,7 +28,7 @@ const TestRunDetails: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const testPlanIdFromUrl = searchParams.get('testPlanId') || undefined;
-  const { state: appState, createTag } = useApp();
+  const { state: appState, createTag, getSelectedProject } = useApp();
   const { hasPermission } = usePermissions();
   const [testRun, setTestRun] = useState<TestRun | null>(null);
   const [testCases, setTestCases] = useState<TestCaseWithExecution[]>([]);
@@ -663,6 +664,15 @@ const TestRunDetails: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testCases, currentSearchTerm, filters]);
 
+  const breadcrumbProject = useMemo(() => {
+    if (!testRun?.projectId) return { name: null as string | null, isTemplate: undefined as boolean | undefined };
+    const fromList = appState.projects.find(p => p.id === testRun.projectId);
+    if (fromList) return { name: fromList.name, isTemplate: fromList.isTemplate };
+    const sel = getSelectedProject();
+    if (sel?.id === testRun.projectId) return { name: sel.name, isTemplate: sel.isTemplate };
+    return { name: `Project ${testRun.projectId}`, isTemplate: undefined as boolean | undefined };
+  }, [testRun, appState.projects, getSelectedProject]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -692,6 +702,13 @@ const TestRunDetails: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <EntityBreadcrumb
+        section="Test Runs"
+        detailSegment={testRun.name}
+        projectNameOverride={breadcrumbProject.name}
+        isTemplateOverride={breadcrumbProject.isTemplate ?? false}
+        projectEntityId={testRun.projectId}
+      />
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button

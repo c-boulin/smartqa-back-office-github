@@ -24,6 +24,7 @@ import { useTestCasesFilters } from '../hooks/useTestCasesFilters';
 import { useTestCasesNavigation } from '../hooks/useTestCasesNavigation';
 import { useDragAutoScroll } from '../hooks/useDragAutoScroll';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
+import { useTemplateContext } from '../hooks/useTemplateContext';
 import { foldersApiService } from '../services/foldersApi';
 import { testCasesApiService } from '../services/testCasesApi';
 import { testRunsApiService } from '../services/testRunsApi';
@@ -42,6 +43,7 @@ const TestCases: React.FC = () => {
   const selectedProject = getSelectedProject();
 
   useRestoreLastProject();
+  const { isTemplateContext } = useTemplateContext();
   
   // Use tags from app context
   const tags = appState.tags;
@@ -1021,6 +1023,7 @@ const TestCases: React.FC = () => {
               gitlabLinksFetched={gitlabLinksFetched}
               visibleColumns={visibleColumns}
               folderMap={folderMap}
+              showRunColumn={!isTemplateContext}
             />
           </div>
         </div>

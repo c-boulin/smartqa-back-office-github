@@ -17,6 +17,8 @@ export interface Project {
   gitlab_project_name?: string;
   /** Automation: test suite name (e.g. TplayvodSuite.robot) */
   test_suite_name?: string;
+  /** True when this record is a reusable template (not an executable project). */
+  isTemplate?: boolean;
 }
 
 export interface TestCase {
