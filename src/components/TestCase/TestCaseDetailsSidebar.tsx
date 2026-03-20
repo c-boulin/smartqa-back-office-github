@@ -11,6 +11,7 @@ import { TestCase } from '../../types';
 import { TEST_RESULTS, TestResultId } from '../../types';
 import { getDeviceIcon, getDeviceColor } from '../../utils/deviceIcons';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useTemplateContext } from '../../hooks/useTemplateContext';
 import { PERMISSIONS } from '../../utils/permissions';
 import toast from 'react-hot-toast';
 import AddExecutionCommentModal from '../TestRun/AddExecutionCommentModal';
@@ -408,6 +409,7 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
   availableTags = []
 }) => {
   const { hasPermission } = usePermissions();
+  const { isTemplateContext } = useTemplateContext();
   const [testCaseDetails, setTestCaseDetails] = useState<TestCaseDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1258,8 +1260,12 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                       )
                     )}
 
-                    {/* Run Test Button - Only show in test-cases context */}
-                    {context === 'test-cases' && onRunTest && testCase && hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && (
+                    {/* Run Test Button - test-cases page only, not template context */}
+                    {context === 'test-cases' &&
+                      !isTemplateContext &&
+                      onRunTest &&
+                      testCase &&
+                      hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && (
                       <div className="pt-3 flex justify-end">
                         <button
                           onClick={() => onRunTest(testCase)}
