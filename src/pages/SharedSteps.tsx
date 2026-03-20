@@ -324,18 +324,10 @@ const SharedSteps: React.FC = () => {
           <EntityBreadcrumb section="Shared Steps" />
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Shared Steps</h2>
           <p className="text-slate-600 dark:text-gray-400">
-            {selectedProject 
-              ? `Manage reusable test steps for ${selectedProject.name} (${pagination.totalItems} total)` 
-              : `Please select a project to view shared steps`
-            }
+            {selectedProject
+              ? `Manage reusable test steps (${pagination.totalItems} total)`
+              : 'Please select a project or template to view shared steps'}
           </p>
-          {selectedProject && (
-            <div className="mt-2">
-              <div className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-700 dark:text-cyan-400">
-                📁 Project: {selectedProject.name}
-              </div>
-            </div>
-          )}
         </div>
         <PermissionGuard permission={PERMISSIONS.SHARED_STEP.CREATE}>
           <Button
