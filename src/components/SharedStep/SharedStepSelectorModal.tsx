@@ -37,6 +37,7 @@ interface SharedStepSelectorModalProps {
   onSelectSharedStep: (sharedStep: SharedStep) => void;
   projectId: string | null;
   disabled?: boolean;
+  zIndex?: number;
 }
 
 const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
@@ -44,7 +45,8 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
   onClose,
   onSelectSharedStep,
   projectId,
-  disabled = false
+  disabled = false,
+  zIndex = 200
 }) => {
   const { state: authState } = useAuth();
   const { 
@@ -230,11 +232,12 @@ const SharedStepSelectorModal: React.FC<SharedStepSelectorModalProps> = ({
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
       title={showCreateForm ? "Create New Shared Step" : "Select Shared Step"}
       size={showCreateForm ? "custom" : "lg"}
+      zIndex={zIndex}
     >
       <div className={showCreateForm ? "h-[calc(95vh-8rem)] flex flex-col" : "space-y-6"}>
         {!showCreateForm ? (

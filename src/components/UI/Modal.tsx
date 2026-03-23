@@ -7,14 +7,16 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'custom';
+  zIndex?: number;
 }
 
-const Modal: React.FC<ModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  title, 
-  children, 
-  size = 'md' 
+const Modal: React.FC<ModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+  size = 'md',
+  zIndex = 100
 }) => {
   if (!isOpen) return null;
 
@@ -29,7 +31,7 @@ const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto">
+    <div className="fixed inset-0 overflow-y-auto" style={{ zIndex }}>
       <div className="flex items-center justify-center min-h-screen px-4 py-6 text-center">
         <div className="fixed inset-0 transition-opacity bg-black/60 dark:bg-black/75 backdrop-blur-sm" onClick={onClose}></div>
 

@@ -9,6 +9,7 @@ interface SharedStepViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   sharedStep: SharedStep | null;
+  zIndex?: number;
 }
 
 interface StepResult {
@@ -21,7 +22,8 @@ interface StepResult {
 const SharedStepViewModal: React.FC<SharedStepViewModalProps> = ({
   isOpen,
   onClose,
-  sharedStep
+  sharedStep,
+  zIndex = 200
 }) => {
   const [stepResults, setStepResults] = useState<StepResult[]>([]);
 
@@ -45,11 +47,12 @@ const SharedStepViewModal: React.FC<SharedStepViewModalProps> = ({
   if (!sharedStep) return null;
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
       title="Shared Step Details"
       size="lg"
+      zIndex={zIndex}
     >
       <div className="space-y-6">
         {/* Header Info */}

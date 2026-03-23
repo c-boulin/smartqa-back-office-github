@@ -417,14 +417,18 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
         onSelectSharedStep={addSharedStep}
         projectId={testCase?.projectId || null}
         disabled={isSubmitting}
+        zIndex={200}
       />
 
       {/* Shared Step View Modal */}
-      <SharedStepViewModal
-        isOpen={isSharedStepViewOpen}
-        onClose={() => setIsSharedStepViewOpen(false)}
-        sharedStep={selectedSharedStepForView}
-      />
+      {isSharedStepViewOpen && (
+        <SharedStepViewModal
+          isOpen={isSharedStepViewOpen}
+          onClose={() => setIsSharedStepViewOpen(false)}
+          sharedStep={selectedSharedStepForView}
+          zIndex={200}
+        />
+      )}
     </Modal>
   );
 };
