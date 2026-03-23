@@ -95,58 +95,12 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         );
         setAllTestCases(allTransformedTestCases);
 
-        // Extract folders from included data
-        const extractedFolders: Array<Record<string, unknown>> = [];
-        if (firstPageResponse.included && Array.isArray(firstPageResponse.included)) {
-          const folderCountMap = new Map<string, number>();
-
-          // Count test cases per folder
-          allTransformedTestCases.forEach(testCase => {
-            if (testCase.folderId) {
-              folderCountMap.set(testCase.folderId, (folderCountMap.get(testCase.folderId) || 0) + 1);
-            }
-          });
-
-          // Filter and transform folder data from included array
-          firstPageResponse.included
-            .filter((item: unknown) => {
-              const itemData = item as Record<string, unknown>;
-              return itemData.type === 'Folder';
-            })
-            .forEach((folder: unknown) => {
-              const folderData = folder as Record<string, unknown>;
-              const folderIdPath = String(folderData.id || '');
-              const folderId = folderIdPath.split('/').pop() || '';
-              const folderAttributes = folderData.attributes as Record<string, unknown> || {};
-              const folderRelationships = folderData.relationships as Record<string, unknown> || {};
-
-              // Extract parent folder ID from relationships
-              let parentFolderId: string | null = null;
-              if (folderRelationships.parent) {
-                const parentData = folderRelationships.parent as Record<string, unknown>;
-                const parentDataArray = parentData.data as Record<string, unknown> | Array<unknown>;
-                if (parentDataArray && !Array.isArray(parentDataArray)) {
-                  const parentId = String(parentDataArray.id || '');
-                  parentFolderId = parentId.split('/').pop() || null;
-                }
-              }
-
-              extractedFolders.push({
-                id: folderId,
-                name: folderAttributes.name || `Folder ${folderId}`,
-                parentFolderId: parentFolderId,
-                projectId: useProjectId,
-                testCasesCount: folderCountMap.get(folderId) || 0
-              });
-            });
-        }
-
-        // Merge with ALL folders from API (including empty ones)
+        // Counts must reflect every fetched test case — not only folders present in page 1 `included`
         const folderCountMap = new Map<string, number>();
-
-        // Build count map from extracted folders
-        extractedFolders.forEach(folder => {
-          folderCountMap.set(String(folder.id), Number(folder.testCasesCount || 0));
+        allTransformedTestCases.forEach(testCase => {
+          if (testCase.folderId) {
+            folderCountMap.set(testCase.folderId, (folderCountMap.get(testCase.folderId) || 0) + 1);
+          }
         });
 
         // Build complete folder list from folders API
@@ -227,58 +181,12 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         );
         setAllTestCases(allTransformedTestCases);
 
-        // Count test cases per folder
+        // Count test cases per folder (all pages — do not rely on `included` Folder entries from page 1 only)
         const folderCountMap = new Map<string, number>();
         allTransformedTestCases.forEach(testCase => {
           if (testCase.folderId) {
             folderCountMap.set(testCase.folderId, (folderCountMap.get(testCase.folderId) || 0) + 1);
           }
-        });
-
-        // Extract folders from included data
-        const extractedFolders: Array<Record<string, unknown>> = [];
-        if (response.included && Array.isArray(response.included)) {
-
-          // Filter and transform folder data from included array
-          response.included
-            .filter((item: unknown) => {
-              const itemData = item as Record<string, unknown>;
-              return itemData.type === 'Folder';
-            })
-            .forEach((folder: unknown) => {
-              const folderData = folder as Record<string, unknown>;
-              const folderIdPath = String(folderData.id || '');
-              const folderId = folderIdPath.split('/').pop() || '';
-              const folderAttributes = folderData.attributes as Record<string, unknown> || {};
-              const folderRelationships = folderData.relationships as Record<string, unknown> || {};
-
-              // Extract parent folder ID from relationships
-              let parentFolderId: string | null = null;
-              if (folderRelationships.parent) {
-                const parentData = folderRelationships.parent as Record<string, unknown>;
-                const parentDataArray = parentData.data as Record<string, unknown> | Array<unknown>;
-                if (parentDataArray && !Array.isArray(parentDataArray)) {
-                  const parentId = String(parentDataArray.id || '');
-                  parentFolderId = parentId.split('/').pop() || null;
-                }
-              }
-
-              extractedFolders.push({
-                id: folderId,
-                name: folderAttributes.name || `Folder ${folderId}`,
-                parentFolderId: parentFolderId,
-                projectId: useProjectId,
-                testCasesCount: folderCountMap.get(folderId) || 0
-              });
-            });
-        }
-
-        // Merge with ALL folders from API (including empty ones)
-        const allFolderCountMap = new Map<string, number>();
-
-        // Build count map from extracted folders
-        extractedFolders.forEach(folder => {
-          allFolderCountMap.set(String(folder.id), Number(folder.testCasesCount || 0));
         });
 
         // Build complete folder list from folders API
@@ -297,7 +205,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
             name: apiFolder.attributes.name,
             parentFolderId: parentId || null,
             projectId: useProjectId,
-            testCasesCount: allFolderCountMap.get(folderId) || 0
+            testCasesCount: folderCountMap.get(folderId) || 0
           });
         }
 

@@ -3,7 +3,15 @@ import { Layers, User, Calendar } from 'lucide-react';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import { SharedStep } from '../../services/sharedStepsApi';
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
+
+function formatSharedStepDate(value: Date | string | undefined): string {
+  if (value === undefined || value === '') {
+    return '—';
+  }
+  const date = value instanceof Date ? value : parseISO(value);
+  return isValid(date) ? format(date, 'MMM dd, yyyy') : '—';
+}
 
 interface SharedStepViewModalProps {
   isOpen: boolean;
@@ -73,7 +81,7 @@ const SharedStepViewModal: React.FC<SharedStepViewModalProps> = ({
                 </div>
                 <div className="flex items-center">
                   <Calendar className="w-4 h-4 mr-1" />
-                  <span>Created {format(sharedStep.createdAt, 'MMM dd, yyyy')}</span>
+                  <span>Created {formatSharedStepDate(sharedStep.createdAt)}</span>
                 </div>
                 <span>{sharedStep.stepsCount} step{sharedStep.stepsCount !== 1 ? 's' : ''}</span>
                 <span>Used in {sharedStep.usedInCount} test case{sharedStep.usedInCount !== 1 ? 's' : ''}</span>
