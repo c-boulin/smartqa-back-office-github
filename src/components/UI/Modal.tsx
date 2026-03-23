@@ -33,9 +33,18 @@ const Modal: React.FC<ModalProps> = ({
   return (
     <div className="fixed inset-0 overflow-y-auto" style={{ zIndex }}>
       <div className="flex items-center justify-center min-h-screen px-4 py-6 text-center">
-        <div className="fixed inset-0 transition-opacity bg-black/60 dark:bg-black/75 backdrop-blur-sm" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 transition-opacity bg-black/60 dark:bg-black/75 backdrop-blur-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+        ></div>
 
-        <div className={`inline-block ${sizeClasses[size]} max-h-[90vh] flex flex-col p-6 text-left align-middle transition-all transform bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-2xl rounded-xl border border-slate-300 dark:border-purple-500/30 my-4`}>
+        <div
+          className={`inline-block ${sizeClasses[size]} max-h-[90vh] flex flex-col p-6 text-left align-middle transition-all transform bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-2xl rounded-xl border border-slate-300 dark:border-purple-500/30 my-4`}
+          onClick={(e) => e.stopPropagation()}
+        >
           {title && (
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
             <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h3>

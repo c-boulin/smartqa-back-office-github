@@ -344,73 +344,75 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
-      title="Update Test Case"
-      size="full"
-    >
-      <div className="h-[calc(95vh-8rem)] flex flex-col">
-        <form onSubmit={handleSubmit} className="flex-1 flex overflow-hidden">
-          {/* Main Content - 3/4 width */}
-          <div className="flex-1 pr-6 overflow-y-auto">
-            <UpdateTestCaseForm
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Update Test Case"
+        size="full"
+      >
+        <div className="h-[calc(95vh-8rem)] flex flex-col">
+          <form onSubmit={handleSubmit} className="flex-1 flex overflow-hidden">
+            {/* Main Content - 3/4 width */}
+            <div className="flex-1 pr-6 overflow-y-auto">
+              <UpdateTestCaseForm
+                formData={formData}
+                onInputChange={handleInputChange}
+                isSubmitting={isSubmitting || isLoadingData}
+              />
+
+              <div className="mt-6">
+                <UpdateTestCaseSteps
+                  testSteps={testSteps}
+                  sharedSteps={sharedSteps}
+                  stepOrder={stepOrder}
+                  onAddTestStep={addTestStep}
+                  onUpdateTestStep={updateTestStep}
+                  onRemoveTestStep={removeTestStep}
+                  onRemoveSharedStep={removeSharedStep}
+                  onViewSharedStep={viewSharedStep}
+                  onDragEnd={handleDragEnd}
+                  onOpenSharedStepSelector={() => setIsSharedStepSelectorOpen(true)}
+                  isSubmitting={isSubmitting || isLoadingData}
+                />
+              </div>
+
+              <div className="mt-6">
+                <UpdateTestCaseAttachments
+                  existingAttachments={existingAttachments}
+                  attachments={attachments}
+                  onFilesChange={setAttachments}
+                  onFileUploaded={handleAttachmentUploaded}
+                  onRemoveExistingAttachment={handleRemoveExistingAttachment}
+                  loadingAttachments={loadingAttachments}
+                  isSubmitting={isSubmitting || isLoadingData}
+                  fileNames={attachmentNames}
+                  onFileNameChange={handleAttachmentNameChange}
+                  onAttachmentNameUpdated={handleAttachmentNameUpdated}
+                />
+              </div>
+            </div>
+
+            {/* Sidebar - 1/4 width */}
+            <UpdateTestCaseSidebar
               formData={formData}
               onInputChange={handleInputChange}
-              isSubmitting={isSubmitting || isLoadingData}
+              users={users}
+              usersLoading={usersLoading}
+              selectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
+              availableTags={availableTags}
+              onCreateTag={handleCreateTag}
+              isSubmitting={isSubmitting}
+              isLoadingData={isLoadingData}
+              onClose={onClose}
+              onSubmit={handleSubmit}
             />
+          </form>
+        </div>
+      </Modal>
 
-            <div className="mt-6">
-              <UpdateTestCaseSteps
-                testSteps={testSteps}
-                sharedSteps={sharedSteps}
-                stepOrder={stepOrder}
-                onAddTestStep={addTestStep}
-                onUpdateTestStep={updateTestStep}
-                onRemoveTestStep={removeTestStep}
-                onRemoveSharedStep={removeSharedStep}
-                onViewSharedStep={viewSharedStep}
-                onDragEnd={handleDragEnd}
-                onOpenSharedStepSelector={() => setIsSharedStepSelectorOpen(true)}
-                isSubmitting={isSubmitting || isLoadingData}
-              />
-            </div>
-
-            <div className="mt-6">
-              <UpdateTestCaseAttachments
-                existingAttachments={existingAttachments}
-                attachments={attachments}
-                onFilesChange={setAttachments}
-                onFileUploaded={handleAttachmentUploaded}
-                onRemoveExistingAttachment={handleRemoveExistingAttachment}
-                loadingAttachments={loadingAttachments}
-                isSubmitting={isSubmitting || isLoadingData}
-                fileNames={attachmentNames}
-                onFileNameChange={handleAttachmentNameChange}
-                onAttachmentNameUpdated={handleAttachmentNameUpdated}
-              />
-            </div>
-          </div>
-
-          {/* Sidebar - 1/4 width */}
-          <UpdateTestCaseSidebar
-            formData={formData}
-            onInputChange={handleInputChange}
-            users={users}
-            usersLoading={usersLoading}
-            selectedTags={selectedTags}
-            onTagsChange={setSelectedTags}
-            availableTags={availableTags}
-            onCreateTag={handleCreateTag}
-            isSubmitting={isSubmitting}
-            isLoadingData={isLoadingData}
-            onClose={onClose}
-            onSubmit={handleSubmit}
-          />
-        </form>
-      </div>
-
-      {/* Shared Step Selector Modal */}
+      {/* Shared Step Selector Modal - Rendered outside parent modal */}
       <SharedStepSelectorModal
         isOpen={isSharedStepSelectorOpen}
         onClose={() => setIsSharedStepSelectorOpen(false)}
@@ -420,7 +422,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
         zIndex={200}
       />
 
-      {/* Shared Step View Modal */}
+      {/* Shared Step View Modal - Rendered outside parent modal */}
       {isSharedStepViewOpen && (
         <SharedStepViewModal
           isOpen={isSharedStepViewOpen}
@@ -429,7 +431,7 @@ const UpdateTestCaseModal: React.FC<UpdateTestCaseModalProps> = ({
           zIndex={200}
         />
       )}
-    </Modal>
+    </>
   );
 };
 
