@@ -1,3 +1,9 @@
+## [1.14.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.13.0...1.14.0) (2026-03-31)
+
+### Features
+
+* **TestCaseDetailsSidebar:** enhance execution result handling and add comment support ([a7d20a2](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/a7d20a2e7667cb901cb9207393847c105324d805))
+
 ## [1.13.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.12.0...1.13.0) (2026-03-23)
 
 ### Features
