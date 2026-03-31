@@ -17,7 +17,7 @@ import { testRunExecutionsApiService } from '../services/testRunExecutionsApi';
 import { useTestRunDetailsFilters } from '../hooks/useTestRunDetailsFilters';
 import { useTestRunExecutionPolling } from '../hooks/useTestRunExecutionPolling';
 import { useApp } from '../context/AppContext';
-import { TestCase, TEST_RESULTS, TestResultId, Tag } from '../types';
+import { TestCase, TEST_RESULTS, TestResultId, Tag, coerceTestResultId } from '../types';
 import { usePermissions } from '../hooks/usePermissions';
 import { PERMISSIONS } from '../utils/permissions';
 import toast from 'react-hot-toast';
@@ -265,13 +265,45 @@ const TestRunDetails: React.FC = () => {
     try {
       setUpdatingResults(prev => new Set([...prev, updateKey]));
 
-      await testCaseExecutionsApiService.createTestCaseExecution({
+      const createResponse = await testCaseExecutionsApiService.createTestCaseExecution({
         testCaseId,
         testRunId: testRunId,
         result: newResultId,
         comment: comment || undefined,
         configurationId: configurationId
       });
+
+      const parseResourceNumericId = (iriOrId: string | undefined): number => {
+        if (iriOrId == null || iriOrId === '') return NaN;
+        const last = String(iriOrId).split('/').filter(Boolean).pop() ?? String(iriOrId);
+        return Number(last);
+      };
+      const attrs = createResponse.data.attributes;
+      const relTc = createResponse.data.relationships?.test_case?.data?.id;
+      const relTr = createResponse.data.relationships?.test_run?.data?.id;
+      const cfgParsed =
+        configurationId != null && configurationId !== ''
+          ? parseResourceNumericId(configurationId)
+          : null;
+      const nowIso = new Date().toISOString();
+      const createdAt =
+        typeof attrs.created_at === 'string' && attrs.created_at !== '' ? attrs.created_at : nowIso;
+      const updatedAt =
+        typeof attrs.updated_at === 'string' && attrs.updated_at !== '' ? attrs.updated_at : createdAt;
+      const newExecutionRow: TestRunDetailsExecutionPayload = {
+        id: attrs.id,
+        test_case_id: parseResourceNumericId(relTc) || parseResourceNumericId(testCaseId),
+        test_run_id: parseResourceNumericId(relTr) || parseResourceNumericId(testRunId),
+        configuration_id:
+          cfgParsed != null && !Number.isNaN(cfgParsed) ? cfgParsed : null,
+        result: coerceTestResultId(attrs.result),
+        comment: comment?.trim() ? comment : null,
+        created_at: createdAt,
+        updated_at: updatedAt
+      };
+      if (!Number.isNaN(newExecutionRow.test_case_id) && !Number.isNaN(newExecutionRow.test_run_id)) {
+        setRunExecutions(prev => [newExecutionRow, ...prev]);
+      }
 
       const updatedTestCases = testCases.map(tc =>
         tc.id === testCaseId && tc.configurationId === configurationId
@@ -928,8 +960,8 @@ const TestRunDetails: React.FC = () => {
         currentExecutionResult={selectedTestCaseForDetails ?
           testCases.find(tc => tc.id === selectedTestCaseForDetails.id && tc.configurationId === selectedConfigurationId)?.executionStatus : undefined
         }
-        onExecutionResultChange={(testCaseId, testRunId, newResultId) => {
-          handleExecutionResultChange(testCaseId, newResultId, undefined, selectedConfigurationId);
+        onExecutionResultChange={(testCaseId, _testRunId, newResultId, comment) => {
+          handleExecutionResultChange(testCaseId, newResultId, comment, selectedConfigurationId);
         }}
       />
 

@@ -8,7 +8,7 @@ import { testCaseDataService } from '../../services/testCaseDataService';
 import { testCasesApiService } from '../../services/testCasesApi';
 import { attachmentsApiService } from '../../services/attachmentsApi';
 import { TestCase } from '../../types';
-import { TEST_RESULTS, TestResultId } from '../../types';
+import { TEST_RESULTS, TestResultId, coerceTestResultId } from '../../types';
 import { getDeviceIcon, getDeviceColor } from '../../utils/deviceIcons';
 import { usePermissions } from '../../hooks/usePermissions';
 import { PERMISSIONS } from '../../utils/permissions';
@@ -28,10 +28,53 @@ interface TestCaseDetailsSidebarProps {
   configurationId?: string;
   isConfigurationAutomated?: boolean;
   configurationLabel?: string;
-  onExecutionResultChange?: (testCaseId: string, testRunId: string, newResultId: TestResultId) => void;
+  /** When set, execution updates are delegated to the parent (single POST). Parent should update `executionsFromRun` or the sidebar refetches when it is omitted. */
+  onExecutionResultChange?: (
+    testCaseId: string,
+    testRunId: string,
+    newResultId: TestResultId,
+    comment?: string
+  ) => void | Promise<void>;
   onAttachmentRemoved?: () => void;
   onRunTest?: (testCase: TestCase) => void;
   availableTags?: Array<{ id: string; label: string }>;
+}
+
+function parseExecutionTimestamp(value: string | null | undefined): Date {
+  if (value == null || value === '') {
+    return new Date();
+  }
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? new Date() : d;
+}
+
+function mapRunExecutionsForSidebar(
+  allExecutions: TestRunDetailsExecutionPayload[],
+  testCaseId: string,
+  configurationId: string | undefined
+): TestCaseExecution[] {
+  const filtered = allExecutions.filter(exec => {
+    const matchesTestCase = exec.test_case_id.toString() === testCaseId;
+    const matchesConfig = configurationId
+      ? exec.configuration_id != null && exec.configuration_id.toString() === configurationId
+      : exec.configuration_id == null;
+    return matchesTestCase && matchesConfig;
+  });
+  return filtered
+    .map(exec => {
+      const resultId = coerceTestResultId(exec.result);
+      return {
+        id: exec.id.toString(),
+        testCaseId: exec.test_case_id.toString(),
+        testRunId: exec.test_run_id.toString(),
+        result: resultId,
+        resultLabel: TEST_RESULTS[resultId] || 'System Issue',
+        comment: exec.comment ?? undefined,
+        createdAt: parseExecutionTimestamp(exec.created_at),
+        updatedAt: parseExecutionTimestamp(exec.updated_at)
+      };
+    })
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 interface StepResult {
@@ -455,9 +498,22 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTestCaseDetails is stable
   }, [isOpen, testCase]);
 
-  const fetchTestCaseDetails = async (testCaseId: string) => {
+  useEffect(() => {
+    if (!isOpen || !testCase?.id || !testRunId || executionsFromRun === undefined) return;
+    setTestCaseDetails(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        executions: mapRunExecutionsForSidebar(executionsFromRun, testCase.id, configurationId)
+      };
+    });
+  }, [executionsFromRun, isOpen, testCase?.id, testRunId, configurationId]);
+
+  const fetchTestCaseDetails = async (testCaseId: string, opts?: { quiet?: boolean }) => {
     try {
-      setLoading(true);
+      if (!opts?.quiet) {
+        setLoading(true);
+      }
       setError(null);
 
       // Use the new service to fetch data from all three endpoints
@@ -539,31 +595,12 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
       // Process executions if this is from a test run context
       let executions: TestCaseExecution[] = [];
       if (testRunId) {
-        const mapExecutions = (allExecutions: TestRunDetailsExecutionPayload[]) => {
-          const testCaseExecutions = allExecutions.filter(exec => {
-            const matchesTestCase = exec.test_case_id.toString() === testCase.id;
-            const matchesConfig = configurationId
-              ? (exec.configuration_id != null && exec.configuration_id.toString() === configurationId)
-              : (exec.configuration_id == null);
-            return matchesTestCase && matchesConfig;
-          });
-          return testCaseExecutions.map(exec => ({
-            id: exec.id.toString(),
-            testCaseId: exec.test_case_id.toString(),
-            testRunId: exec.test_run_id.toString(),
-            result: exec.result,
-            resultLabel: TEST_RESULTS[exec.result as TestResultId] || 'System Issue',
-            comment: exec.comment ?? undefined,
-            createdAt: new Date(exec.created_at),
-            updatedAt: new Date(exec.updated_at)
-          })).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        };
         if (executionsFromRun !== undefined) {
-          executions = mapExecutions(executionsFromRun);
+          executions = mapRunExecutionsForSidebar(executionsFromRun, testCase.id, configurationId);
         } else {
           try {
             const { executions: allExecutions } = await testRunsApiService.getTestRunDetails(testRunId);
-            executions = mapExecutions(allExecutions);
+            executions = mapRunExecutionsForSidebar(allExecutions, testCase.id, configurationId);
           } catch (error) {
             console.error('❌ Failed to load executions:', error);
           }
@@ -602,7 +639,9 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
       console.error('❌ Failed to fetch test case details:', err);
       setError(err instanceof Error ? err.message : 'Failed to load test case details');
     } finally {
-      setLoading(false);
+      if (!opts?.quiet) {
+        setLoading(false);
+      }
     }
   };
 
@@ -733,42 +772,40 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
     try {
       setIsUpdatingResult(true);
 
-      // Create the new execution via API
-      const response = await testCaseExecutionsApiService.createTestCaseExecution({
-        testCaseId: testCase.id,
-        testRunId: testRunId,
-        result: newResultId,
-        comment: comment,
-        configurationId: configurationId
-      });
-
-      // Add the new execution to the local history immediately
-      if (testCaseDetails) {
-        const newExecution = {
-          id: response.data.attributes.id.toString(),
+      if (onExecutionResultChange) {
+        await onExecutionResultChange(testCase.id, testRunId, newResultId, comment);
+        if (executionsFromRun === undefined) {
+          await fetchTestCaseDetails(testCase.id, { quiet: true });
+        }
+      } else {
+        const response = await testCaseExecutionsApiService.createTestCaseExecution({
           testCaseId: testCase.id,
           testRunId: testRunId,
           result: newResultId,
-          resultLabel: newResultLabel,
           comment: comment,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
+          configurationId: configurationId
+        });
 
-        // Add to the beginning of the executions array (most recent first)
-        setTestCaseDetails(prev => prev ? {
-          ...prev,
-          executions: [newExecution, ...prev.executions]
-        } : prev);
+        if (testCaseDetails) {
+          const newExecution = {
+            id: response.data.attributes.id.toString(),
+            testCaseId: testCase.id,
+            testRunId: testRunId,
+            result: newResultId,
+            resultLabel: newResultLabel,
+            comment: comment,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+
+          setTestCaseDetails(prev => prev ? {
+            ...prev,
+            executions: [newExecution, ...prev.executions]
+          } : prev);
+        }
+
+        toast.success(`Execution result updated to ${newResultLabel}`);
       }
-
-      // Notify parent component about the change
-      if (onExecutionResultChange) {
-        onExecutionResultChange(testCase.id, testRunId, newResultId);
-      }
-
-      toast.success(`Execution result updated to ${newResultLabel}`);
-
     } catch (error) {
       console.error('❌ Failed to update execution result:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to update execution result';
@@ -1078,25 +1115,27 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                         <div>
                           <h4 className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-3">Execution History</h4>
                           <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {testCaseDetails.executions.map((execution, index) => (
-                              <div key={execution.id} className="bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg p-3" title={execution.result === 8 ? 'Retry the run' : undefined}>
+                            {testCaseDetails.executions.map((execution, index) => {
+                              const resultNum = coerceTestResultId(execution.result);
+                              return (
+                              <div key={execution.id} className="bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg p-3" title={resultNum === 8 ? 'Retry the run' : undefined}>
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center">
                                     <div
                                       className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
                                       style={{
                                         backgroundColor:
-                                          execution.result === 1 ? '#10B981' : // Passed - Green
-                                          execution.result === 2 ? '#EF4444' : // Failed - Red
-                                          execution.result === 3 ? '#F59E0B' : // Blocked - Yellow
-                                          execution.result === 4 ? '#F97316' : // Retest - Orange
-                                          execution.result === 5 ? '#8B5CF6' : // Skipped - Purple
-                                          execution.result === 6 ? '#6B7280' : // Untested - Gray
-                                          execution.result === 7 ? '#3B82F6' : // In Progress - Blue
-                                          execution.result === 8 ? '#4B5563' : // System Issue - Dark Gray
+                                          resultNum === 1 ? '#10B981' : // Passed - Green
+                                          resultNum === 2 ? '#EF4444' : // Failed - Red
+                                          resultNum === 3 ? '#F59E0B' : // Blocked - Yellow
+                                          resultNum === 4 ? '#F97316' : // Retest - Orange
+                                          resultNum === 5 ? '#8B5CF6' : // Skipped - Purple
+                                          resultNum === 6 ? '#6B7280' : // Untested - Gray
+                                          resultNum === 7 ? '#3B82F6' : // In Progress - Blue
+                                          resultNum === 8 ? '#4B5563' : // System Issue - Dark Gray
                                           '#6B7280' // Default - Gray
                                       }}
-                                      data-result={execution.result}
+                                      data-result={resultNum}
                                       data-label={execution.resultLabel}
                                     ></div>
                                     <span className="text-sm font-medium text-slate-900 dark:text-white">{execution.resultLabel}</span>
@@ -1118,7 +1157,8 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                                   </div>
                                 )}
                               </div>
-                            ))}
+                            );
+                            })}
                           </div>
                         </div>
                       )}

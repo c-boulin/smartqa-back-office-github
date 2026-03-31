@@ -44,8 +44,9 @@ export interface CreateTestCaseExecutionResponse {
     attributes: {
       id: number;
       result: number;
-      created_at: string;
-      updated_at: string;
+      /** Omitted on some JSON:API create responses; client falls back to clock time. */
+      created_at?: string;
+      updated_at?: string;
     };
     relationships: {
       test_run: {

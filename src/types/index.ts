@@ -199,4 +199,17 @@ export const TEST_RESULTS = {
 } as const;
 
 export type TestResultId = keyof typeof TEST_RESULTS;
+
+/** Normalize API values (JSON:API may send result as string). Without this, `result === 4` fails and UI falls back to grey. */
+export function coerceTestResultId(result: unknown): TestResultId {
+  const n = typeof result === 'number' ? result : Number(result);
+  if (!Number.isFinite(n)) {
+    return 6;
+  }
+  const i = Math.trunc(n);
+  if (i >= 1 && i <= 8) {
+    return i as TestResultId;
+  }
+  return 6;
+}
 export type TestResultValue = typeof TEST_RESULTS[TestResultId];

@@ -950,8 +950,8 @@ const TestRunsOverview: React.FC = () => {
             tc.configurationId === selectedConfigurationId
           )?.executionStatus : undefined
         }
-        onExecutionResultChange={(testCaseId, testRunId, newResultId) => {
-          handleExecutionResultChange(testCaseId, testRunId, newResultId, undefined, selectedConfigurationId);
+        onExecutionResultChange={(testCaseId, testRunId, newResultId, comment) => {
+          handleExecutionResultChange(testCaseId, testRunId, newResultId, comment, selectedConfigurationId);
         }}
       />
 
