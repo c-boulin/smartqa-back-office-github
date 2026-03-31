@@ -1,12 +1,34 @@
-import React, { useState } from 'react';
-import { LayoutGrid, Rocket } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LayoutGrid, Rocket, Shield } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { PERMISSIONS } from '../utils/permissions';
 import OverviewLaunchesTable from '../components/Overview/OverviewLaunchesTable';
 import OverviewWidgetsPanel from '../components/Overview/widgets/OverviewWidgetsPanel';
+import toast from 'react-hot-toast';
 
 type TabType = 'widgets' | 'launches';
 
 const Overview: React.FC = () => {
+  const { hasPermission } = useAuth();
+  const canAccessOverview = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
   const [activeTab, setActiveTab] = useState<TabType>('widgets');
+
+  useEffect(() => {
+    if (!canAccessOverview) {
+      toast.error('You do not have permission to access this page');
+    }
+  }, [canAccessOverview]);
+
+  if (!canAccessOverview) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Shield className="w-12 h-12 text-slate-400 dark:text-gray-600 mx-auto mb-3" />
+          <p className="text-slate-600 dark:text-gray-400">You do not have permission to access this page</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

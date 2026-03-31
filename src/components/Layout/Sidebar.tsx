@@ -80,7 +80,7 @@ const Sidebar: React.FC = () => {
       path: '/overview',
       icon: LayoutGrid,
       label: 'Overview',
-      permissions: [PERMISSIONS.TEST_CASE.READ, PERMISSIONS.TEST_RUN.READ]
+      permissions: [PERMISSIONS.ADMIN_PANEL.READ]
     },
     {
       path: '/settings',

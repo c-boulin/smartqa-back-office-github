@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  ArrowDown,
-  ArrowUp,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
   Clock,
   Copy,
+  Download,
+  ExternalLink,
   FileText,
   History,
   Info,
@@ -18,7 +18,12 @@ import {
   Search,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { OverviewTestLogItemApiRow } from '../../services/overviewWidgetsApi';
+import type {
+  OverviewTestLogItemApiRow,
+  OverviewTestLogKeywordApiNode,
+  OverviewTestLogTreeNode,
+} from '../../services/overviewWidgetsApi';
+import { buildAssetsUrlFromObjectKey } from '../../env';
 
 /** Identifiers for the test-detail sub-tabs (All logs / Item details have body content; others placeholder or empty). */
 export type OverviewTestLogDetailTabId =
@@ -46,7 +51,7 @@ const TEST_LOG_EMPTY_DETAIL_TABS: readonly OverviewTestLogDetailTabId[] = ['atta
 export interface OverviewTestLogViewProps {
   launchTitle: string;
   testDisplayName: string;
-  items: OverviewTestLogItemApiRow[];
+  items: OverviewTestLogTreeNode[];
   testStatusLabel: string;
   /** From API: suite file path from {@code Suites/} ({@code overview_suites.source}). */
   suiteSourceRelative?: string | null;
@@ -91,22 +96,19 @@ function logTimeHoverLabel(item: OverviewTestLogItemApiRow): string {
 }
 
 /**
- * Parses the Time column duration label (e.g. {@code 23s}, {@code 0.21s}, {@code 2m 22s}) to seconds for sorting.
+ * Collects all `overview_msgs` leaves from an accordion tree (for code reference fallback).
  */
-function logItemDurationSeconds(label: string): number {
-  const t = label.trim();
-  if (t === '\u2014' || t === '-' || t === '') {
-    return -1;
-  }
-  const mMin = t.match(/^(\d+)m\s*(\d+)s$/i);
-  if (mMin !== null) {
-    return parseInt(mMin[1], 10) * 60 + parseInt(mMin[2], 10);
-  }
-  const mSec = t.match(/^([\d.]+)s$/i);
-  if (mSec !== null) {
-    return parseFloat(mSec[1]);
-  }
-  return -1;
+function flattenOverviewTestLogMessages(nodes: OverviewTestLogTreeNode[]): OverviewTestLogItemApiRow[] {
+  const out: OverviewTestLogItemApiRow[] = [];
+  const walk = (n: OverviewTestLogTreeNode): void => {
+    if (n.kind === 'message') {
+      out.push(n);
+      return;
+    }
+    n.children.forEach(walk);
+  };
+  nodes.forEach(walk);
+  return out;
 }
 
 /**
@@ -142,7 +144,7 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
 /**
  * Best-effort Robot source location from log lines (e.g. {@code Suites/Foo.robot:14}).
  */
-function extractCodeReferenceFromLogs(logItems: OverviewTestLogItemApiRow[]): string {
+function extractCodeReferenceFromLogs(logItems: Array<{ logMessage: string }>): string {
   for (const row of logItems) {
     const msg = row.logMessage;
     const m = msg.match(/([\w./\\-]+\.robot):\s*(\d+)/i);
@@ -190,6 +192,201 @@ function suiteRelativePathForTestCaseId(suiteSourceRelative: string): string {
 /**
  * One metadata block on the Item details tab (label, monospace value, optional copy).
  */
+type AllLogsTreeRowBaseProps = {
+  depth: number;
+  parentKey: string;
+  rowIndex: number;
+  hoveredTimeRowKey: string | null;
+  onHoverTimeRow: (key: string | null) => void;
+};
+
+/**
+ * Thumbnail + hover actions for a log line with a {@code screenshotObjectKey} (CDN path).
+ */
+function LogMessageScreenshotPreview(props: { objectKey: string }): React.ReactNode {
+  const { objectKey } = props;
+  const url = useMemo(() => buildAssetsUrlFromObjectKey(objectKey), [objectKey]);
+  const downloadName = useMemo(() => {
+    const parts = objectKey.split('/').filter(Boolean);
+
+    return parts.length > 0 ? parts[parts.length - 1] : 'screenshot';
+  }, [objectKey]);
+
+  return (
+    <div className="group relative inline-flex max-w-full flex-col items-center gap-0.5">
+      <img
+        src={url}
+        alt=""
+        className="max-h-full min-h-[35px] min-w-[60px] max-w-[65px] rounded border border-slate-200 object-cover object-top shadow-sm dark:border-slate-600"
+      />
+      <div className="flex items-center justify-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+        <button
+          type="button"
+          className="rounded p-0.5 text-cyan-600 hover:bg-cyan-500/15 dark:text-cyan-400 dark:hover:bg-cyan-500/20"
+          title="Open in new tab"
+          aria-label="Open in new tab"
+          onClick={() => {
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }}
+        >
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+        </button>
+        <a
+          href={url}
+          download={downloadName}
+          className="rounded p-0.5 text-cyan-600 hover:bg-cyan-500/15 dark:text-cyan-400 dark:hover:bg-cyan-500/20"
+          title="Download"
+          aria-label="Download"
+          rel="noopener noreferrer"
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Renders one accordion branch: message row or expandable keyword with nested children.
+ */
+function AllLogsTreeRows(props: { node: OverviewTestLogTreeNode } & AllLogsTreeRowBaseProps): React.ReactNode {
+  const { node, depth, parentKey, rowIndex, hoveredTimeRowKey, onHoverTimeRow } = props;
+  const rowKey = `${parentKey}-${node.kind}-${node.kind === 'keyword' ? node.kwId : node.msgId}-d${depth}-i${rowIndex}`;
+
+  if (node.kind === 'message') {
+    return (
+      <tr key={rowKey} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+        <td
+          className="min-w-0 break-words border-l-[3px] border-cyan-600/70 py-2.5 pr-2 align-top font-mono text-xs text-slate-800 dark:border-cyan-500/50 dark:text-slate-200"
+          style={{ paddingLeft: `${12 + depth * 16}px` }}
+        >
+          {node.logMessage}
+        </td>
+        <td className="py-2.5 px-2 align-top">
+          {node.screenshotObjectKey != null && node.screenshotObjectKey !== '' ? (
+            <LogMessageScreenshotPreview objectKey={node.screenshotObjectKey} />
+          ) : null}
+        </td>
+        <td
+          className="cursor-default py-2.5 pl-2 pr-3 align-top text-right font-mono text-xs whitespace-nowrap text-slate-700 tabular-nums dark:text-slate-300"
+          onMouseEnter={() => onHoverTimeRow(rowKey)}
+          onMouseLeave={() => onHoverTimeRow(null)}
+        >
+          {hoveredTimeRowKey === rowKey ? logTimeHoverLabel(node) : node.startTimeDisplay}
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <KeywordLogAccordionBlock
+      node={node}
+      depth={depth}
+      parentKey={parentKey}
+      rowIndex={rowIndex}
+      hoveredTimeRowKey={hoveredTimeRowKey}
+      onHoverTimeRow={onHoverTimeRow}
+    />
+  );
+}
+
+/**
+ * Expandable keyword row; children are nested keywords and/or `overview_msgs` (sorted by API).
+ */
+function KeywordLogAccordionBlock(
+  props: { node: OverviewTestLogKeywordApiNode } & AllLogsTreeRowBaseProps,
+): React.ReactNode {
+  const { node, depth, parentKey, rowIndex, hoveredTimeRowKey, onHoverTimeRow } = props;
+  const [open, setOpen] = useState(false);
+  const rowKey = `${parentKey}-kw-${node.kwId}-d${depth}-i${rowIndex}`;
+  const expandable = node.children.length > 0;
+
+  return (
+    <React.Fragment key={`${rowKey}-frag`}>
+      <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+        <td
+          className="min-w-0 break-words py-2.5 pr-2 align-top font-mono text-xs text-slate-800 dark:text-slate-200"
+          style={{ paddingLeft: `${8 + depth * 16}px` }}
+        >
+          <div className="flex items-start gap-1">
+            <button
+              type="button"
+              className={`mt-0.5 shrink-0 rounded p-0.5 ${expandable ? 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-600' : 'cursor-default text-slate-300 dark:text-slate-600'}`}
+              aria-expanded={expandable ? open : undefined}
+              disabled={!expandable}
+              onClick={() => {
+                if (expandable) {
+                  setOpen(v => !v);
+                }
+              }}
+              aria-label={expandable ? (open ? 'Collapse': 'Expand') : undefined}
+            >
+              {expandable ? (
+                open ? (
+                  <ChevronDown className="h-4 w-4" aria-hidden />
+                ) : (
+                  <ChevronRight className="h-4 w-4" aria-hidden />
+                )
+              ) : (
+                <span className="inline-block w-4" aria-hidden />
+              )}
+            </button>
+            <span className="min-w-0 break-words">{node.logMessage}</span>
+          </div>
+        </td>
+        <td className="py-2.5 px-2 align-top whitespace-nowrap">
+          <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+            {node.statusLabel}
+          </span>
+        </td>
+        <td
+          className="cursor-default py-2.5 pl-2 pr-3 align-top text-right whitespace-nowrap text-slate-700 dark:text-slate-300"
+          onMouseEnter={() => {
+            if (node.startTimeRelative !== '\u2014' && node.startTimeRelative !== '-') {
+              onHoverTimeRow(rowKey);
+            }
+          }}
+          onMouseLeave={() => onHoverTimeRow(null)}
+        >
+          <div className="inline-flex w-full min-w-0 items-center justify-end gap-2">
+            {node.kwType === 'TEARDOWN' && node.screenshotAttachmentCount > 0 ? (
+              <span
+                className="inline-flex shrink-0 items-center gap-0.5 text-slate-500 dark:text-slate-400"
+                title={`${node.screenshotAttachmentCount} screenshot(s)`}
+                aria-label={`${node.screenshotAttachmentCount} screenshot attachment(s)`}
+                role="img"
+              >
+                <Paperclip className="h-3.5 w-3.5" aria-hidden />
+                <span className="tabular-nums text-xs" aria-hidden>
+                  {node.screenshotAttachmentCount}
+                </span>
+              </span>
+            ) : null}
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+              {hoveredTimeRowKey === rowKey ? logTimeHoverLabel(node) : node.durationLabel}
+            </span>
+          </div>
+        </td>
+      </tr>
+      {open && expandable
+        ? node.children.map((child, cIdx) => (
+            <AllLogsTreeRows
+              key={`${rowKey}-c-${cIdx}`}
+              node={child}
+              depth={depth + 1}
+              parentKey={rowKey}
+              rowIndex={cIdx}
+              hoveredTimeRowKey={hoveredTimeRowKey}
+              onHoverTimeRow={onHoverTimeRow}
+            />
+          ))
+        : null}
+    </React.Fragment>
+  );
+}
+
 function ItemDetailMetadataRow({
   label,
   value,
@@ -264,14 +461,12 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   const itemDetailsStatusUpper =
     suiteListStatusLabel !== '—' ? suiteListStatusLabel.toUpperCase() : '—';
 
-  /** Time column: true = duration descending (longest first), false = shortest first. */
-  const [timeSortDesc, setTimeSortDesc] = useState(true);
   const [hoveredItemDetailSuiteStart, setHoveredItemDetailSuiteStart] = useState(false);
 
   const logItemsSignature = useMemo(
     () =>
       [
-        items.map(i => `${i.logMessage}\0${i.durationLabel}`).join('\n'),
+        JSON.stringify(items),
         suiteSourceRelative ?? '',
         String(testLine ?? ''),
         suiteListMethodType,
@@ -292,10 +487,6 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
     ],
   );
 
-  useEffect(() => {
-    setTimeSortDesc(true);
-  }, [logItemsSignature]);
-
   const [activeDetailTab, setActiveDetailTab] = useState<OverviewTestLogDetailTabId>('all_logs');
 
   useEffect(() => {
@@ -305,37 +496,6 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   useEffect(() => {
     setHoveredItemDetailSuiteStart(false);
   }, [logItemsSignature]);
-
-  /**
-   * Log rows ordered by displayed duration (Time column).
-   */
-  const sortedLogItems = useMemo(() => {
-    const withIdx = items.map((item, originIdx) => ({ item, originIdx }));
-    withIdx.sort((a, b) => {
-      const da = logItemDurationSeconds(a.item.durationLabel);
-      const db = logItemDurationSeconds(b.item.durationLabel);
-      const aMiss = da < 0;
-      const bMiss = db < 0;
-      let cmp = 0;
-      if (aMiss && bMiss) {
-        cmp = 0;
-      } else if (aMiss) {
-        cmp = 1;
-      } else if (bMiss) {
-        cmp = -1;
-      } else {
-        cmp = da === db ? 0 : da < db ? -1 : 1;
-        if (timeSortDesc) {
-          cmp = -cmp;
-        }
-      }
-      if (cmp !== 0) {
-        return cmp;
-      }
-      return a.originIdx - b.originIdx;
-    });
-    return withIdx.map(({ item }) => item);
-  }, [items, timeSortDesc]);
 
   /** Successful load with no log rows: full-width empty state (ReportPortal-style). */
   const showNoResultsEmptyState = !loading && error === null && items.length === 0;
@@ -347,14 +507,14 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
       return fromDb;
     }
 
-    return extractCodeReferenceFromLogs(items);
+    return extractCodeReferenceFromLogs(flattenOverviewTestLogMessages(items));
   }, [suiteSourceRelative, testLine, items]);
   const itemDetailTestCaseId = useMemo(() => {
     const rel = suiteSourceRelative?.trim() ?? '';
     if (rel !== '') {
       return `${suiteRelativePathForTestCaseId(rel)}:${testDisplayName}`;
     }
-    const fromLogs = extractCodeReferenceFromLogs(items);
+    const fromLogs = extractCodeReferenceFromLogs(flattenOverviewTestLogMessages(items));
     if (fromLogs !== '\u2014') {
       const file = fromLogs.split(':')[0];
 
@@ -556,55 +716,33 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
                         <ChevronDown className="h-3.5 w-3.5 opacity-70" />
                       </span>
                     </th>
-                    <th className="py-2 pl-2 pr-3 whitespace-nowrap" scope="col">
-                      <button
-                        type="button"
-                        onClick={() => setTimeSortDesc(d => !d)}
-                        className="inline-flex items-center gap-1 rounded px-0.5 font-semibold uppercase tracking-wide text-slate-600 select-none hover:text-cyan-600 dark:text-slate-400 dark:hover:text-cyan-400"
-                        aria-sort={timeSortDesc ? 'descending' : 'ascending'}
-                      >
+                    <th
+                      className="py-2 pl-2 pr-3 whitespace-nowrap"
+                      scope="col"
+                      title="Order matches Robot/XML execution (seq)"
+                    >
+                      <span className="font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                         Time
-                        {timeSortDesc ? (
-                          <ArrowDown className="h-3.5 w-3.5 opacity-90" aria-hidden />
-                        ) : (
-                          <ArrowUp className="h-3.5 w-3.5 opacity-90" aria-hidden />
-                        )}
-                      </button>
+                      </span>
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {sortedLogItems.map((item, idx) => {
-                    const rowKey = `${item.logMessage.slice(0, 64)}\0${item.durationLabel}\0${item.startTimeRaw ?? ''}\0${idx}`;
-
-                    return (
-                      <tr key={rowKey} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                        <td className="min-w-0 break-words py-2.5 pl-3 pr-2 align-top font-mono text-xs text-slate-800 dark:text-slate-200">
-                          {item.logMessage}
-                        </td>
-                        <td className="py-2.5 px-2 align-top whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                            {item.statusLabel}
-                          </span>
-                        </td>
-                        <td
-                          className="cursor-default py-2.5 pl-2 pr-3 align-top whitespace-nowrap text-slate-700 dark:text-slate-300"
-                          onMouseEnter={() => {
-                            if (item.startTimeRelative !== '\u2014' && item.startTimeRelative !== '-') {
-                              onHoverTimeRow(rowKey);
-                            }
-                          }}
-                          onMouseLeave={() => onHoverTimeRow(null)}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            <Clock className="h-3 w-3 shrink-0 opacity-70" />
-                            {hoveredTimeRowKey === rowKey ? logTimeHoverLabel(item) : item.durationLabel}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {items.map((node, idx) => (
+                    <AllLogsTreeRows
+                      key={
+                        node.kind === 'keyword'
+                          ? `root-kw-${node.kwId}-${idx}`
+                          : `root-msg-${node.msgId}-${idx}`
+                      }
+                      node={node}
+                      depth={0}
+                      parentKey={`r${idx}`}
+                      rowIndex={idx}
+                      hoveredTimeRowKey={hoveredTimeRowKey}
+                      onHoverTimeRow={onHoverTimeRow}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -612,9 +750,9 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
             <p>
-              {sortedLogItems.length === 0
+              {items.length === 0
                 ? '0 – 0 of 0'
-                : `1 – ${sortedLogItems.length} of ${sortedLogItems.length}`}
+                : `1 – ${items.length} of ${items.length}`}
             </p>
             <p>
               <span className="font-semibold text-teal-600 dark:text-teal-400">50</span> per page

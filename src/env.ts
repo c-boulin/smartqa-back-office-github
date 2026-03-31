@@ -25,3 +25,13 @@ export function getAssetsCloudfrontDomain(): string {
     'VITE_ASSETS_CLOUDFRONT_DOMAIN is not configured. Please set it in your environment or ensure VITE_API_BASE_URL is set so it can be derived.'
   );
 }
+
+/**
+ * Builds the full HTTPS URL for an object on the assets CDN (e.g. {@code overview_msgs.screenshot_object_key}).
+ */
+export function buildAssetsUrlFromObjectKey(objectKey: string): string {
+  const base = getAssetsCloudfrontDomain().replace(/\/$/, '');
+  const path = objectKey.trim().replace(/^\/+/, '');
+
+  return `${base}/${path}`;
+}

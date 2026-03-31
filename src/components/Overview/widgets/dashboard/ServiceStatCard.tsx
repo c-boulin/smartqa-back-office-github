@@ -4,6 +4,8 @@ interface ServiceStatCardProps {
   /** Service name, country name, or other row label. */
   serviceName: string;
   passingRate: string;
+  /** Raw pass rate 0–100; used to pick the failing top-bar shade when `status` is failed. */
+  passRateValue?: number | null;
   testCases: number;
   status: 'failed' | 'passed';
   /** When set, card is interactive (e.g. drill down from service list). */
@@ -11,17 +13,52 @@ interface ServiceStatCardProps {
 }
 
 /**
+ * Maps a failing pass rate to a top border colour (aligned with the overview legend: four reds, then green only at 100%).
+ */
+function failingPassRateTopBarClass(rate: number): string {
+  const r = Number.isFinite(rate) ? rate : 0;
+  if (r < 24) {
+    return 'border-t-4 border-t-red-950';
+  }
+  if (r < 49) {
+    return 'border-t-4 border-t-red-700';
+  }
+  if (r < 74) {
+    return 'border-t-4 border-t-red-500';
+  }
+  if (r < 100) {
+    return 'border-t-4 border-t-red-300';
+  }
+  return 'border-t-4 border-t-green-500';
+}
+
+/**
+ * Resolves Tailwind top border classes for the card strip from status and optional numeric rate.
+ */
+function topBarClassName(status: 'failed' | 'passed', passRateValue?: number | null): string {
+  if (status === 'passed') {
+    return 'border-t-4 border-t-green-500';
+  }
+  return failingPassRateTopBarClass(passRateValue ?? 0);
+}
+
+/** Card frame: left/right/bottom only so `dark:border-slate-600` never paints over the accent top strip. */
+const CARD_FRAME_CLASS =
+  'rounded-lg border-x border-b border-slate-200 bg-white p-4 shadow-sm dark:border-x-slate-600 dark:border-b-slate-600 dark:bg-slate-800';
+
+/**
  * Single service/country execution summary card (coloured top bar only).
  */
 export const ServiceStatCard: React.FC<ServiceStatCardProps> = ({
   serviceName,
   passingRate,
+  passRateValue,
   testCases,
   status,
   onClick,
 }) => {
-  const topBar = status === 'passed' ? 'border-t-4 border-green-500' : 'border-t-4 border-red-500';
-  const baseClass = `rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-600 dark:bg-slate-800 ${topBar}`;
+  const topBar = topBarClassName(status, passRateValue);
+  const baseClass = `${CARD_FRAME_CLASS} ${topBar}`;
 
   const body = (
     <>

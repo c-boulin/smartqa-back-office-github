@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { Globe, MessageCircle } from 'lucide-react';
 import type { OverviewExecutionRow } from '../../../services/overviewWidgetsApi';
 import {
   DashboardSection,
@@ -27,6 +26,22 @@ function formatPassRateLabel(passRate: number | null | undefined): string {
     return '—';
   }
   return `${passRate}%`;
+}
+
+/** Tailwind classes for the four failing-band segments, left (darkest) → right (lightest). */
+const FAILED_LEGEND_RED_SHADES = ['bg-red-950', 'bg-red-700', 'bg-red-500', 'bg-red-300'] as const;
+
+/**
+ * Legend strip for “below 99%” pass rate: four equal columns from dark maroon to light red (pill shape).
+ */
+function FailedPassRateLegendSwatch(): React.ReactElement {
+  return (
+    <div className="flex h-1.5 w-14 shrink-0 overflow-hidden rounded-full" aria-hidden>
+      {FAILED_LEGEND_RED_SHADES.map((className, i) => (
+        <span key={i} className={`min-w-0 flex-1 ${className}`} />
+      ))}
+    </div>
+  );
 }
 
 /**
@@ -82,17 +97,27 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
     setScope('serviceByCountry');
   };
 
-  const legendTrailing = (
-    <>
-      <span className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-        <span className="inline-block h-1 w-10 rounded-sm bg-red-500" aria-hidden />
-        less than 99%
-      </span>
-      <span className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-        <span className="inline-block h-1 w-10 rounded-sm bg-green-500" aria-hidden />
-        100%
-      </span>
-    </>
+  /**
+   * Pass/fail legend in the widget body (not the dark section header): pill swatches, labels under bars, right-aligned.
+   */
+  const passRateLegend = (
+    <div
+      className="flex flex-nowrap items-end gap-4 sm:gap-6"
+      role="group"
+      aria-label="Pass rate legend"
+    >
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <FailedPassRateLegendSwatch />
+        <span className="text-right text-xs text-slate-600 dark:text-slate-400">less than 99%</span>
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <span
+          className="inline-block h-1.5 w-14 shrink-0 rounded-full bg-green-500"
+          aria-hidden
+        />
+        <span className="text-right text-xs text-slate-600 dark:text-slate-400">100%</span>
+      </div>
+    </div>
   );
 
   return (
@@ -103,18 +128,9 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
       titleBarClassName="bg-blue-950 dark:bg-blue-950"
     >
       <WidgetContentHeader>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-base font-bold text-slate-900 dark:text-white">{statsHeading}</p>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Component health check</p>
-          </div>
-          <div
-            className="flex shrink-0 items-center gap-2 text-slate-500 dark:text-slate-400"
-            aria-hidden
-          >
-            <MessageCircle className="h-5 w-5" />
-            <Globe className="h-5 w-5" />
-          </div>
+        <div className="min-w-0">
+          <p className="text-base font-bold text-slate-900 dark:text-white">{statsHeading}</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Component health check</p>
         </div>
       </WidgetContentHeader>
 
@@ -147,7 +163,7 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
               <span className="font-medium text-cyan-600 dark:text-cyan-400">country</span>
             )}
           </nav>
-          <div className="flex flex-wrap items-center justify-end gap-4">{legendTrailing}</div>
+          <div className="flex shrink-0 justify-end">{passRateLegend}</div>
         </div>
 
         {rows.length === 0 ? (
@@ -166,6 +182,7 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
                       key={`f-${scope}-${row.key}`}
                       serviceName={row.label}
                       passingRate={formatPassRateLabel(row.passRate)}
+                      passRateValue={row.passRate}
                       testCases={row.pass + row.fail}
                       status="failed"
                       onClick={
@@ -186,6 +203,7 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
                       key={`p-${scope}-${row.key}`}
                       serviceName={row.label}
                       passingRate={formatPassRateLabel(row.passRate)}
+                      passRateValue={row.passRate}
                       testCases={row.pass + row.fail}
                       status="passed"
                       onClick={

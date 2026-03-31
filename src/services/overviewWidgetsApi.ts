@@ -198,7 +198,7 @@ export async function fetchOverviewLaunchSuiteItems(
   ) as Promise<OverviewLaunchSuiteItemsResponse>;
 }
 
-/** One log line under an overview test (top-level keywords). */
+/** Shared time/status fields on log rows (keyword accordion header or `overview_msgs` leaf). */
 export interface OverviewTestLogItemApiRow {
   logMessage: string;
   statusLabel: string;
@@ -208,6 +208,27 @@ export interface OverviewTestLogItemApiRow {
   startTimeRaw: string | null;
 }
 
+/** One `overview_kws` node: expand to show child keywords and/or `overview_msgs` (seq order). */
+export interface OverviewTestLogKeywordApiNode extends OverviewTestLogItemApiRow {
+  kind: 'keyword';
+  kwId: number;
+  /** Raw Robot keyword type from `overview_kws.type` (e.g. SETUP, TEARDOWN); empty when null in DB. */
+  kwType: string;
+  /** Rows in `overview_msgs` with a non-empty `screenshot_object_key` for this keyword. */
+  screenshotAttachmentCount: number;
+  children: OverviewTestLogTreeNode[];
+}
+
+/** One `overview_msgs` row (shown when a keyword is expanded). */
+export interface OverviewTestLogMessageApiNode extends OverviewTestLogItemApiRow {
+  kind: 'message';
+  msgId: number;
+  /** CDN object key when present; thumbnail is shown in the All logs table. */
+  screenshotObjectKey: string | null;
+}
+
+export type OverviewTestLogTreeNode = OverviewTestLogKeywordApiNode | OverviewTestLogMessageApiNode;
+
 export interface OverviewTestLogItemsResponse {
   testName: string;
   testStatusLabel: string;
@@ -215,7 +236,8 @@ export interface OverviewTestLogItemsResponse {
   suiteSourceRelative: string | null;
   /** `overview_tests.line` for test logs; null for suite-keyword logs. */
   testLine: number | null;
-  items: OverviewTestLogItemApiRow[];
+  /** Accordion roots: keywords with nested `children` (keywords + messages). */
+  items: OverviewTestLogTreeNode[];
 }
 
 /**
