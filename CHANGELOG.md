@@ -1,3 +1,9 @@
+## [1.15.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.14.0...1.15.0) (2026-04-01)
+
+### Features
+
+* **TestRunDetails, TestRunsOverview:** synchronize test run state with execution results ([c8edaf6](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/c8edaf696a4353c1f917228ce54dadbf4a968ee4))
+
 ## [1.14.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.13.0...1.14.0) (2026-03-31)
 
 ### Features
