@@ -17,7 +17,7 @@ import { testRunExecutionsApiService } from '../services/testRunExecutionsApi';
 import { useTestRunDetailsFilters } from '../hooks/useTestRunDetailsFilters';
 import { useTestRunExecutionPolling } from '../hooks/useTestRunExecutionPolling';
 import { useApp } from '../context/AppContext';
-import { TestCase, TEST_RESULTS, TestResultId, Tag, coerceTestResultId } from '../types';
+import { TestCase, TEST_RESULTS, TestResultId, Tag, coerceTestResultId, isTerminalTestExecutionResult } from '../types';
 import { usePermissions } from '../hooks/usePermissions';
 import { PERMISSIONS } from '../utils/permissions';
 import toast from 'react-hot-toast';
@@ -168,6 +168,55 @@ const TestRunDetails: React.FC = () => {
       cancelled = true;
     };
   }, [testRun?.projectId]);
+
+  // Keep test run state in sync with execution rows (manual edits, GitLab polling, etc.).
+  useEffect(() => {
+    if (loading || !testRun || !testRunId || testRun.state === 6) {
+      return;
+    }
+    if (testCases.length === 0) {
+      return;
+    }
+
+    const planId = testRun.testPlanId || testPlanIdFromUrl;
+    const allTerminal = testCases.every(tc => isTerminalTestExecutionResult(tc.executionStatus));
+    const anyNonUntested = testCases.some(tc => tc.executionStatus !== 6);
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        if (allTerminal && testRun.state !== 5) {
+          await testRunsApiService.updateTestRunState(testRunId, 5, planId);
+          if (!cancelled) {
+            setTestRun(prev =>
+              prev && String(prev.id) === String(testRunId) ? { ...prev, state: 5 } : prev
+            );
+          }
+        } else if (!allTerminal && testRun.state === 5) {
+          await testRunsApiService.updateTestRunState(testRunId, 2, planId);
+          if (!cancelled) {
+            setTestRun(prev =>
+              prev && String(prev.id) === String(testRunId) ? { ...prev, state: 2 } : prev
+            );
+          }
+        } else if (testRun.state === 1 && anyNonUntested && !allTerminal) {
+          await testRunsApiService.updateTestRunState(testRunId, 2, planId);
+          if (!cancelled) {
+            setTestRun(prev =>
+              prev && String(prev.id) === String(testRunId) ? { ...prev, state: 2 } : prev
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Failed to sync test run state from executions:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [testCases, testRun, testRunId, loading, testPlanIdFromUrl]);
 
   const fetchTestRunDetails = async (testRunId: string) => {
     if (fetchInProgressRef.current) {
@@ -320,33 +369,6 @@ const TestRunDetails: React.FC = () => {
             : tc
         )
       );
-
-      const isNonTrivialResult = (status: number) => status !== 6 && status !== 7;
-      const hasAnyNonTrivialResult = updatedTestCases.some(tc => isNonTrivialResult(tc.executionStatus));
-      const allHaveNonTrivialResult = updatedTestCases.every(tc => isNonTrivialResult(tc.executionStatus));
-
-      if (allHaveNonTrivialResult && testRun.state !== 5 && testRun.state !== 6) {
-        try {
-          await testRunsApiService.updateTestRunState(testRunId, 5, testRun.testPlanId || testPlanIdFromUrl);
-          setTestRun({ ...testRun, state: 5 });
-        } catch (error) {
-          console.error('Failed to update test run state:', error);
-        }
-      } else if (hasAnyNonTrivialResult && isNonTrivialResult(newResultId) && testRun.state === 1) {
-        try {
-          await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId || testPlanIdFromUrl);
-          setTestRun({ ...testRun, state: 2 });
-        } catch (error) {
-          console.error('Failed to update test run state:', error);
-        }
-      } else if (!allHaveNonTrivialResult && testRun.state === 5) {
-        try {
-          await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId || testPlanIdFromUrl);
-          setTestRun({ ...testRun, state: 2 });
-        } catch (error) {
-          console.error('Failed to update test run state:', error);
-        }
-      }
 
       toast.success(`Execution result updated to ${newResultLabel}`);
 

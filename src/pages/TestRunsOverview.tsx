@@ -17,7 +17,7 @@ import { useApp } from '../context/AppContext';
 import { useRestoreLastProject } from '../hooks/useRestoreLastProject';
 import { usePermissions } from '../hooks/usePermissions';
 import { PERMISSIONS } from '../utils/permissions';
-import { TestCase, TEST_RESULTS, TestResultId } from '../types';
+import { TestCase, TEST_RESULTS, TestResultId, isTerminalTestExecutionResult } from '../types';
 import { getDeviceIcon, getDeviceColor } from '../utils/deviceIcons';
 import toast from 'react-hot-toast';
 
@@ -529,12 +529,6 @@ const TestRunsOverview: React.FC = () => {
       // Add to updating set to show loading state
       setUpdatingResults(prev => new Set([...prev, updateKey]));
 
-      // Check if this is the first execution being created for this test run
-      const testRunTestCases = allTestCasesWithExecution.filter(tc => tc.testRunId === testRunId);
-      const isFirstExecution = testRunTestCases.every(tc =>
-        tc.id !== testCaseId || tc.configurationId !== configurationId || tc.executionStatus === 6
-      );
-
       // Use new POST endpoint for test case executions
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- API response needed for error handling
       const response = await testCaseExecutionsApiService.createTestCaseExecution({
@@ -562,39 +556,29 @@ const TestRunsOverview: React.FC = () => {
         )
       );
 
-      // Check if we need to update test run state
-      if (testRun) {
-        if (isFirstExecution && testRun.state === 1) {
-          // First execution created, move test run to "In Progress" (state 2)
+      // Align test run state with execution rows (terminal = not Untested nor In Progress)
+      if (testRun && testRun.state !== 6) {
+        const updatedTestRunTestCases = updatedAllTestCases.filter(tc => tc.testRunId === testRunId);
+        const allTerminal =
+          updatedTestRunTestCases.length > 0 &&
+          updatedTestRunTestCases.every(tc => isTerminalTestExecutionResult(tc.executionStatus));
+        const anyNonUntested = updatedTestRunTestCases.some(tc => tc.executionStatus !== 6);
 
-          try {
+        try {
+          if (allTerminal && testRun.state !== 5) {
+            await testRunsApiService.updateTestRunState(testRunId, 5, testRun.testPlanId ?? undefined);
+            setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 5 } : tr));
+          } else if (!allTerminal && testRun.state === 5) {
             await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId ?? undefined);
             setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 2 } : tr));
-            toast.success(`Execution result updated to ${newResultLabel}`);
-          } catch (error) {
-            console.error('❌ Failed to update test run state:', error);
-            toast.success(`Execution result updated to ${newResultLabel}`);
+          } else if (testRun.state === 1 && anyNonUntested && !allTerminal) {
+            await testRunsApiService.updateTestRunState(testRunId, 2, testRun.testPlanId ?? undefined);
+            setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 2 } : tr));
           }
-        } else {
-          // Check if all test cases for this test run now have results (not Untested - state 6)
-          const updatedTestRunTestCases = updatedAllTestCases.filter(tc => tc.testRunId === testRunId);
-          const allTestCasesHaveResults = updatedTestRunTestCases.every(tc => tc.executionStatus !== 6);
-
-          if (allTestCasesHaveResults && testRun.state !== 5 && testRun.state !== 6) {
-            // All test cases have results, move test run to "Done" (state 5)
-
-            try {
-              await testRunsApiService.updateTestRunState(testRunId, 5, testRun.testPlanId ?? undefined);
-              setTestRuns(prevRuns => prevRuns.map(tr => tr.id === testRunId ? { ...tr, state: 5 } : tr));
-              toast.success(`Execution result updated to ${newResultLabel}`);
-            } catch (error) {
-              console.error('❌ Failed to update test run state:', error);
-              toast.success(`Execution result updated to ${newResultLabel}`);
-            }
-          } else {
-            toast.success(`Execution result updated to ${newResultLabel}`);
-          }
+        } catch (error) {
+          console.error('❌ Failed to update test run state:', error);
         }
+        toast.success(`Execution result updated to ${newResultLabel}`);
       } else {
         toast.success(`Execution result updated to ${newResultLabel}`);
       }

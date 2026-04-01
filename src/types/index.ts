@@ -200,6 +200,11 @@ export const TEST_RESULTS = {
 
 export type TestResultId = keyof typeof TEST_RESULTS;
 
+/** True when the execution is no longer Untested (6) or In Progress (7). Used to decide if a test run can be marked Done. */
+export function isTerminalTestExecutionResult(status: number): boolean {
+  return status !== 6 && status !== 7;
+}
+
 /** Normalize API values (JSON:API may send result as string). Without this, `result === 4` fails and UI falls back to grey. */
 export function coerceTestResultId(result: unknown): TestResultId {
   const n = typeof result === 'number' ? result : Number(result);
