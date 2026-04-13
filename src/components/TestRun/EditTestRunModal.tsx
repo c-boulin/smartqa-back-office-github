@@ -102,10 +102,7 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
       });
 
 
-      // Load existing configurations by calling the API
-      loadExistingConfigurations(testRun.id);
-      loadExistingTestPlan(testRun.id);
-      loadExistingTestPlan(testRun.id);
+      loadExistingConfigurationsAndTestPlan(testRun.id);
 
     } else if (isOpen && !testRun) {
       setValidationError('');
@@ -133,165 +130,37 @@ const EditTestRunModal: React.FC<EditTestRunModalProps> = ({
     }
   }, [isOpen, testRun, users]);
 
-  const loadExistingConfigurations = async (testRunId: string) => {
+  const loadExistingConfigurationsAndTestPlan = async (testRunId: string) => {
     try {
       setIsLoadingConfigurations(true);
 
-      const response = await testRunsApiService.getTestRun(testRunId);
-      const configurationRelationships = response.data.relationships?.configurations?.data || [];
+      const { testRun: details } = await testRunsApiService.getTestRunDetails(testRunId);
 
-      if (configurationRelationships.length > 0) {
-        const manual: Configuration[] = [];
-        const automated: Configuration[] = [];
+      const manual: Configuration[] = [];
+      const automated: Configuration[] = [];
 
-        for (const configRef of configurationRelationships) {
-          const configId = configRef.id.split('/').pop();
-          let foundConfig: Configuration | undefined;
-
-          if (response.included) {
-            const includedConfig = response.included.find(item =>
-              item.type === 'Configuration' && (item.attributes as Record<string, unknown>).id?.toString() === configId
-            );
-
-            if (includedConfig) {
-              const attrs = includedConfig.attributes as Record<string, unknown>;
-              const rel = includedConfig.relationships as Record<string, unknown> | undefined;
-              const projectData = rel?.project != null ? (rel.project as Record<string, unknown>)?.data : undefined;
-              let projectId: string | null = null;
-
-              if (projectData != null && !Array.isArray(projectData) && typeof (projectData as { id?: string }).id === 'string') {
-                const match = /\/api\/projects\/(\d+)$/.exec((projectData as { id: string }).id);
-                projectId = match ? match[1] : null;
-              }
-              if (!projectId && attrs.project_id) {
-                projectId = attrs.project_id.toString();
-              }
-
-              foundConfig = {
-                id: (attrs.id as number).toString(),
-                label: (attrs.label as string) || 'Unknown Configuration',
-                projectId: projectId ?? undefined
-              };
-            }
-          }
-
-          if (!foundConfig) {
-            foundConfig = {
-              id: configId || '',
-              label: `Configuration ${configId}`
-            };
-          }
-
-          if (foundConfig.projectId) {
-            automated.push(foundConfig);
-          } else {
-            manual.push(foundConfig);
-          }
+      for (const config of details.configurations ?? []) {
+        if (config.projectId) {
+          automated.push(config);
+        } else {
+          manual.push(config);
         }
-
-        setExistingManualConfigurations(manual);
-        setExistingAutomatedConfigurations(automated);
-      } else {
-        setExistingManualConfigurations([]);
-        setExistingAutomatedConfigurations([]);
       }
+
+      setExistingManualConfigurations(manual);
+      setExistingAutomatedConfigurations(automated);
+
+      const testPlanId = details.testPlanId ?? '';
+      setFormData(prev => ({ ...prev, testPlanId }));
+      setOriginalTestPlanId(testPlanId);
     } catch (error) {
-      console.error('Failed to load existing configurations:', error);
+      console.error('Failed to load existing configurations and test plan:', error);
       setExistingManualConfigurations([]);
       setExistingAutomatedConfigurations([]);
+      setFormData(prev => ({ ...prev, testPlanId: '' }));
+      setOriginalTestPlanId('');
     } finally {
       setIsLoadingConfigurations(false);
-    }
-  };
-
-  // Function to load assigned user for the test run
-  // const loadAssignedUser = async (testRunId: string) => {
-  //   try {
-  //     
-  //     
-  //     // Get test run details to extract assigned user from relationships.user
-  //     const response = await testRunsApiService.getTestRun(testRunId);
-  //     
-  //     
-  //     // Extract user ID from relationships.user
-  //     const userRelationship = response.data.relationships?.user?.data;
-  //     
-  //     
-  //     if (userRelationship) {
-  //       const assignedUserId = userRelationship.id.split('/').pop();
-  //       
-  //       
-  //       // Set the assigned user in form data
-  //       setFormData(prev => ({
-  //         ...prev,
-  //         assignedTo: assignedUserId || ''
-  //       }));
-  //       
-  //       
-  //     } else {
-  //       
-  //       setFormData(prev => ({
-  //         ...prev,
-  //         assignedTo: ''
-  //       }));
-  //     }
-  //     
-  //   } catch (error) {
-  //     console.error('❌ Failed to load assigned user:', error);
-  //     setFormData(prev => ({
-  //       ...prev,
-  //       assignedTo: ''
-  //     }));
-  //   }
-  // };
-
-  // Function to load existing test plan for the test run
-  const loadExistingTestPlan = async (testRunId: string) => {
-    try {
-
-      // Get test run details with test plan included
-      const response = await testRunsApiService.getTestRun(testRunId);
-
-      // Extract test plan ID from relationships (try both camelCase and snake_case)
-      const testPlanRelationship = response.data.relationships?.testPlan?.data || response.data.relationships?.test_plan?.data;
-
-      if (testPlanRelationship) {
-        const testPlanId = testPlanRelationship.id?.split('/').pop();
-
-        if (testPlanId && testPlanId !== 'undefined' && testPlanId !== 'null') {
-          // Set the test plan ID in form data
-          setFormData(prev => ({
-            ...prev,
-            testPlanId: testPlanId
-          }));
-          
-          // Set original test plan ID for change tracking
-          setOriginalTestPlanId(testPlanId);
-
-        } else {
-
-          setFormData(prev => ({
-            ...prev,
-            testPlanId: ''
-          }));
-          setOriginalTestPlanId('');
-        }
-      } else {
-
-        setFormData(prev => ({
-          ...prev,
-          testPlanId: ''
-        }));
-        setOriginalTestPlanId('');
-      }
-      
-    } catch (error) {
-      console.error('❌ Failed to load existing test plan:', error);
-      setFormData(prev => ({
-        ...prev,
-        testPlanId: ''
-      }));
-      setOriginalTestPlanId('');
     }
   };
 

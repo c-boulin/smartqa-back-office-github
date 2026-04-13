@@ -76,21 +76,16 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
     try {
       setIsLoadingResults(true);
 
-      // Get detailed test run data with executions
-      const testRunResponse = await testRunsApiService.getTestRun(testRunId);
+      const { executions: rawExecutions } = await testRunsApiService.getTestRunDetails(testRunId);
 
-      // Initialize result counts and test case-config mappings
       const resultCounts: Record<string, { count: number; testCaseConfigPairs: Array<{ testCaseId: string; configurationId: string | null }> }> = {};
 
-      // Initialize all possible results
       Object.entries(TEST_RESULTS).forEach(([resultId]) => {
         resultCounts[resultId] = { count: 0, testCaseConfigPairs: [] };
       });
 
-      // Process executions to count results and map test case-config pairs
-      if (testRunResponse.data.attributes.executions && Array.isArray(testRunResponse.data.attributes.executions)) {
+      if (Array.isArray(rawExecutions)) {
 
-        // Group executions by test case ID + configuration ID and get the latest execution per pair
         const lastExecutionPerPair = new Map<string, {
           test_case_id: number;
           configuration_id: number | null;
@@ -99,13 +94,7 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
           [key: string]: unknown
         }>();
 
-        testRunResponse.data.attributes.executions.forEach((execution: {
-          test_case_id: number;
-          configuration_id?: number | null;
-          result: number;
-          created_at: string;
-          [key: string]: unknown
-        }) => {
+        rawExecutions.forEach((execution) => {
           const testCaseId = execution.test_case_id.toString();
           const configurationId = execution.configuration_id?.toString() || null;
           const pairKey = `${testCaseId}-${configurationId || 'null'}`;
@@ -153,10 +142,6 @@ const CloneTestRunModal: React.FC<CloneTestRunModalProps> = ({
             resultCounts[resultId].testCaseConfigPairs.push({ testCaseId, configurationId });
           }
         });
-
-        // Note: We're not counting "untested" pairs here because we don't know which
-        // test case-config combinations exist but haven't been executed yet.
-        // The "All test cases" option will handle including everything.
       }
 
       // Transform to display format
