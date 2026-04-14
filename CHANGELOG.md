@@ -1,3 +1,9 @@
+## [1.17.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.16.0...1.17.0) (2026-04-14)
+
+### Features
+
+* fix tag drodpdown ([0cd53a2](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/0cd53a2dcc7735ebe4c4d01be5c411468016e002))
+
 ## [1.15.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.14.0...1.15.0) (2026-04-01)
 
 ### Features
