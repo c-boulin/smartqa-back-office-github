@@ -159,6 +159,8 @@ export interface TestRunDetailsTestCaseRowPayload {
   fullTestCase: TestRunDetailsTestCasePayload | null;
   configurationId?: string | null;
   configurationLabel?: string | null;
+  /** Latest execution’s `test_run_executions.id` when set (automated XML overview link). */
+  testRunExecutionId?: number | null;
 }
 
 /** One execution from the executions array in test run details (for sidebar history) */
@@ -167,6 +169,7 @@ export interface TestRunDetailsExecutionPayload {
   test_case_id: number;
   test_run_id: number;
   configuration_id: number | null;
+  test_run_execution_id?: number | null;
   result: number;
   comment: string | null;
   created_at: string;
@@ -207,6 +210,7 @@ export interface TestRunDetailsTestCaseRow {
   fullTestCase: TestCase | null;
   configurationId?: string;
   configurationLabel?: string;
+  testRunExecutionId?: number | null;
 }
 
 /** Shape of one test-run item from GET /projects/:id/test-runs-list */
@@ -587,6 +591,10 @@ class TestRunsApiService {
       fullTestCase,
       configurationId: row.configurationId ?? undefined,
       configurationLabel: row.configurationLabel ?? undefined,
+      testRunExecutionId:
+        row.testRunExecutionId !== undefined && row.testRunExecutionId !== null
+          ? row.testRunExecutionId
+          : undefined,
     };
   }
 

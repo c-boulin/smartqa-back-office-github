@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
   ArrowDown,
   ArrowUp,
@@ -14,17 +16,22 @@ import {
   Menu,
   User,
 } from 'lucide-react';
+import { endOfDay, format, isEqual, isSameDay, startOfDay } from 'date-fns';
 import {
+  fetchAllOverviewLaunchesProjectOptions,
   fetchOverviewLaunches,
   fetchOverviewLaunchSuiteItems,
   fetchOverviewSuiteKwLogItems,
   fetchOverviewTestLogItems,
   type OverviewLaunchesMeta,
   type OverviewLaunchApiRow,
+  type OverviewLaunchesProjectOption,
   type OverviewLaunchSuiteItemApiRow,
+  type OverviewLaunchesExecutionFilter,
   type OverviewLaunchesSortColumn,
   type OverviewTestLogItemsResponse,
 } from '../../services/overviewWidgetsApi';
+import { OverviewLaunchStartTimeRangePicker } from './OverviewLaunchStartTimeRangePicker';
 import OverviewTestLogView from './OverviewTestLogView';
 
 /**
@@ -62,12 +69,14 @@ export type OverviewSuiteListLogTarget =
  * Maps the API launch row into table row props.
  */
 function mapApiRowToRow(api: OverviewLaunchApiRow): OverviewLaunchRow {
+  const byLabel = api.runnedByLabel ?? api.ownerLabel;
   return {
     id: String(api.testRunExecutionId),
     title: api.displayName,
     rootOverviewSuiteName: api.rootOverviewSuiteName,
     durationLabel: api.durationLabel,
-    launchedBy: api.ownerLabel,
+    launchedBy: byLabel,
+    runnedByLabel: byLabel,
     attributeText: api.attributeLine,
     startTimeRelative: api.startTimeRelative,
     startTimeDisplay: api.startTimeDisplay,
@@ -84,6 +93,70 @@ function mapApiRowToRow(api: OverviewLaunchApiRow): OverviewLaunchRow {
 }
 
 /**
+ * Finds a suite list row from URL deep-link params (`overviewTest` id or Robot test `testName`).
+ */
+function pickSuiteItemForDeepLink(
+  items: OverviewLaunchSuiteItemApiRow[],
+  overviewTestId: number | null,
+  testName: string | null,
+): OverviewLaunchSuiteItemApiRow | null {
+  if (overviewTestId !== null) {
+    const byTest = items.find(i => i.overviewTestId === overviewTestId);
+    if (byTest !== undefined) {
+      return byTest;
+    }
+  }
+  if (testName !== null && testName.trim() !== '') {
+    const decoded = testName.trim();
+    const preferTest = items.filter(i => i.name === decoded && i.methodType === 'Test');
+    if (preferTest.length > 0) {
+      return preferTest[0];
+    }
+    return items.find(i => i.name === decoded) ?? null;
+  }
+
+  return null;
+}
+
+/**
+ * Maps a suite list API row to the log target used by {@link OverviewTestLogView}.
+ */
+function suiteItemToLogTarget(item: OverviewLaunchSuiteItemApiRow): OverviewSuiteListLogTarget | null {
+  if (item.overviewTestId !== null) {
+    return {
+      kind: 'test',
+      overviewTestId: item.overviewTestId,
+      displayName: item.name,
+      methodType: item.methodType,
+      statusLabel: item.statusLabel,
+      startTimeRelative: item.startTimeRelative,
+      startTimeDisplay: item.startTimeDisplay,
+      startTimeRaw: item.startTimeRaw,
+      durationLabel: item.durationLabel,
+      suiteSourceRelative: item.suiteSourceRelative ?? null,
+      overviewTestLine: item.overviewTestLine ?? null,
+    };
+  }
+  if (item.overviewSuiteKwId !== null) {
+    return {
+      kind: 'suite_kw',
+      overviewSuiteKwId: item.overviewSuiteKwId,
+      displayName: item.name,
+      methodType: item.methodType,
+      statusLabel: item.statusLabel,
+      startTimeRelative: item.startTimeRelative,
+      startTimeDisplay: item.startTimeDisplay,
+      startTimeRaw: item.startTimeRaw,
+      durationLabel: item.durationLabel,
+      suiteSourceRelative: item.suiteSourceRelative ?? null,
+      overviewTestLine: item.overviewTestLine ?? null,
+    };
+  }
+
+  return null;
+}
+
+/**
  * Table shape for the Launches tab (populated from the API).
  */
 export interface OverviewLaunchRow {
@@ -92,6 +165,8 @@ export interface OverviewLaunchRow {
   rootOverviewSuiteName: string | null;
   durationLabel: string;
   launchedBy: string;
+  /** Display for Runned By column (from `runnedByLabel` / owner). */
+  runnedByLabel: string;
   attributeText: string;
   description?: string;
   testCasesLine?: string;
@@ -124,6 +199,7 @@ function buildDrillDownSuiteRow(parent: OverviewLaunchRow): OverviewLaunchRow {
     id: `${parent.id}-suite-detail`,
     title: suiteTitle,
     launchedBy: '',
+    runnedByLabel: '',
     attributeText: '',
     description: undefined,
     testCasesLine: undefined,
@@ -172,6 +248,91 @@ function renderCountCell(value: number | undefined): React.ReactNode {
 }
 
 const PER_PAGE_OPTIONS = [15, 25, 50, 100] as const;
+
+type StartTimePreset = 'any' | 'today' | '2d' | '7d' | '30d' | 'custom';
+
+/**
+ * Same calendar day with both bounds at 00:00 (typical when picking one day twice in the range UI)
+ * is treated as "whole day": the API end becomes last moment of that day.
+ */
+function customRangeEndForApi(start: Date, end: Date): Date {
+  if (!isSameDay(start, end)) {
+    return end;
+  }
+  if (!isEqual(startOfDay(end), end)) {
+    return end;
+  }
+
+  return endOfDay(end);
+}
+
+/**
+ * Formats a local calendar date as Y-m-d for overview launch API filters.
+ */
+function formatLocalYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Returns today at local midnight (date-only semantics for presets).
+ */
+function localToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+
+  return d;
+}
+
+/**
+ * Adds calendar days to a date (local).
+ */
+function addCalendarDays(d: Date, delta: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + delta);
+
+  return x;
+}
+
+/**
+ * Maps start-time preset (and optional custom range) to API `start_from` / `start_to`.
+ * Presets use date-only `Y-m-d` (full calendar days). Custom sends `Y-m-d HH:mm:ss` for exact bounds.
+ */
+function resolveStartTimeRange(
+  preset: StartTimePreset,
+  customFrom: string,
+  customTo: string,
+): { startFrom: string | null; startTo: string | null } {
+  const t = localToday();
+  if (preset === 'any') {
+    return { startFrom: null, startTo: null };
+  }
+  if (preset === 'custom') {
+    const a = customFrom.trim();
+    const b = customTo.trim();
+    if (a === '' && b === '') {
+      return { startFrom: null, startTo: null };
+    }
+
+    return { startFrom: a !== '' ? a : null, startTo: b !== '' ? b : null };
+  }
+  if (preset === 'today') {
+    const y = formatLocalYmd(t);
+
+    return { startFrom: y, startTo: y };
+  }
+  if (preset === '2d') {
+    return { startFrom: formatLocalYmd(addCalendarDays(t, -1)), startTo: formatLocalYmd(t) };
+  }
+  if (preset === '7d') {
+    return { startFrom: formatLocalYmd(addCalendarDays(t, -6)), startTo: formatLocalYmd(t) };
+  }
+
+  return { startFrom: formatLocalYmd(addCalendarDays(t, -29)), startTo: formatLocalYmd(t) };
+}
 
 /**
  * Page numbers for « 1 … 4 5 6 … 20 » style control (window of up to 10 around current).
@@ -464,6 +625,129 @@ const OverviewLaunchesTable: React.FC = () => {
   const [selectedSuiteRowKeys, setSelectedSuiteRowKeys] = useState<Set<string>>(() => new Set());
   const launchSelectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const suiteSelectAllCheckboxRef = useRef<HTMLInputElement>(null);
+  /** Skips resetting suite/log state when applying URL deep-link state in the same commit. */
+  const applyingDeepLinkFromUrlRef = useRef(false);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [projectOptions, setProjectOptions] = useState<OverviewLaunchesProjectOption[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
+  const [projectsDropdownOpen, setProjectsDropdownOpen] = useState(false);
+  const projectsFilterDropdownRef = useRef<HTMLDivElement>(null);
+  const [startTimePreset, setStartTimePreset] = useState<StartTimePreset>('any');
+  const [customRangeStart, setCustomRangeStart] = useState<Date | null>(null);
+  const [customRangeEnd, setCustomRangeEnd] = useState<Date | null>(null);
+  const [executionFilter, setExecutionFilter] = useState<OverviewLaunchesExecutionFilter>('all');
+  const prevStartTimePresetRef = useRef<StartTimePreset>(startTimePreset);
+
+  const customFromApi = useMemo(() => {
+    if (startTimePreset !== 'custom' || customRangeStart === null || customRangeEnd === null) {
+      return '';
+    }
+
+    return format(customRangeStart, 'yyyy-MM-dd HH:mm:ss');
+  }, [startTimePreset, customRangeStart, customRangeEnd]);
+
+  const customToApi = useMemo(() => {
+    if (startTimePreset !== 'custom' || customRangeStart === null || customRangeEnd === null) {
+      return '';
+    }
+
+    return format(customRangeEndForApi(customRangeStart, customRangeEnd), 'yyyy-MM-dd HH:mm:ss');
+  }, [startTimePreset, customRangeStart, customRangeEnd]);
+
+  const { startFrom: resolvedStartFrom, startTo: resolvedStartTo } = useMemo(
+    () => resolveStartTimeRange(startTimePreset, customFromApi, customToApi),
+    [startTimePreset, customFromApi, customToApi],
+  );
+
+  /**
+   * Entering Custom range clears previous bounds so the list is not filtered until start and end are chosen.
+   */
+  useEffect(() => {
+    const prev = prevStartTimePresetRef.current;
+    if (startTimePreset === 'custom' && prev !== 'custom') {
+      setCustomRangeStart(null);
+      setCustomRangeEnd(null);
+    }
+    prevStartTimePresetRef.current = startTimePreset;
+  }, [startTimePreset]);
+
+  const projectIdsFilterKey = useMemo(
+    () =>
+      selectedProjectIds
+        .slice()
+        .sort((a, b) => a - b)
+        .join(','),
+    [selectedProjectIds],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      setProjectsLoading(true);
+      try {
+        const opts = await fetchAllOverviewLaunchesProjectOptions();
+        if (!cancelled) {
+          setProjectOptions(opts);
+        }
+      } catch {
+        if (!cancelled) {
+          setProjectOptions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setProjectsLoading(false);
+        }
+      }
+    };
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [projectIdsFilterKey, startTimePreset, customFromApi, customToApi, executionFilter]);
+
+  /**
+   * Closes the Projects dropdown on outside click or Escape (unlike native details).
+   */
+  useEffect(() => {
+    if (!projectsDropdownOpen) {
+      return;
+    }
+    const closeOnOutsidePointer = (e: PointerEvent) => {
+      const root = projectsFilterDropdownRef.current;
+      if (root === null || root.contains(e.target as Node)) {
+        return;
+      }
+      setProjectsDropdownOpen(false);
+    };
+    const closeOnEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setProjectsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer, true);
+    document.addEventListener('keydown', closeOnEscape, true);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
+      document.removeEventListener('keydown', closeOnEscape, true);
+    };
+  }, [projectsDropdownOpen]);
+
+  /**
+   * Toggles a project id in the multi-select filter list.
+   */
+  const toggleProjectFilter = useCallback((projectId: number) => {
+    setSelectedProjectIds(prev =>
+      prev.includes(projectId) ? prev.filter(id => id !== projectId) : [...prev, projectId].sort((a, b) => a - b),
+    );
+  }, []);
 
   const load = useCallback(
     async (p: number, size: number) => {
@@ -475,6 +759,10 @@ const OverviewLaunchesTable: React.FC = () => {
           perPage: size,
           sort: launchSort.column,
           direction: launchSort.direction,
+          projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+          startFrom: resolvedStartFrom ?? undefined,
+          startTo: resolvedStartTo ?? undefined,
+          executionFilter: executionFilter === 'all' ? undefined : executionFilter,
         });
         setRows(res.launches.map(mapApiRowToRow));
         setMeta(res.meta);
@@ -486,7 +774,14 @@ const OverviewLaunchesTable: React.FC = () => {
         setLoading(false);
       }
     },
-    [launchSort.column, launchSort.direction],
+    [
+      launchSort.column,
+      launchSort.direction,
+      selectedProjectIds,
+      resolvedStartFrom,
+      resolvedStartTo,
+      executionFilter,
+    ],
   );
 
   /**
@@ -532,6 +827,10 @@ const OverviewLaunchesTable: React.FC = () => {
         perPage,
         sort: launchSort.column,
         direction: launchSort.direction,
+        projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+        startFrom: resolvedStartFrom ?? undefined,
+        startTo: resolvedStartTo ?? undefined,
+        executionFilter: executionFilter === 'all' ? undefined : executionFilter,
       });
       setRows(res.launches.map(mapApiRowToRow));
       setMeta(res.meta);
@@ -544,7 +843,16 @@ const OverviewLaunchesTable: React.FC = () => {
     } catch {
       /* keep existing drill row on failure */
     }
-  }, [page, perPage, launchSort.column, launchSort.direction]);
+  }, [
+    page,
+    perPage,
+    launchSort.column,
+    launchSort.direction,
+    selectedProjectIds,
+    resolvedStartFrom,
+    resolvedStartTo,
+    executionFilter,
+  ]);
 
   useEffect(() => {
     void load(page, perPage);
@@ -572,6 +880,11 @@ const OverviewLaunchesTable: React.FC = () => {
   }, [suiteListItems]);
 
   useEffect(() => {
+    if (applyingDeepLinkFromUrlRef.current) {
+      applyingDeepLinkFromUrlRef.current = false;
+
+      return;
+    }
     setSuiteListItems(null);
     setSuiteItemsError(null);
     setSuiteSort({ column: 'start_time', direction: 'asc' });
@@ -579,6 +892,98 @@ const OverviewLaunchesTable: React.FC = () => {
     setTestLogPayload(null);
     setTestLogError(null);
   }, [drillLaunch?.id]);
+
+  const stripOverviewDeepLinkParams = useCallback(() => {
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev);
+        next.delete('tre');
+        next.delete('overviewTest');
+        next.delete('testName');
+
+        return next;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams]);
+
+  /**
+   * Opens the test log view when the URL contains `tre` (and `overviewTest` and/or `testName` from the test run page).
+   */
+  useEffect(() => {
+    const treRaw = searchParams.get('tre');
+    if (treRaw === null || treRaw === '') {
+      return;
+    }
+    const tre = Number(treRaw);
+    if (Number.isNaN(tre) || tre <= 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const overviewTestRaw = searchParams.get('overviewTest');
+      const testNameRaw = searchParams.get('testName');
+      const parsedOt = overviewTestRaw !== null && overviewTestRaw !== '' ? Number(overviewTestRaw) : NaN;
+      const overviewTestId = !Number.isNaN(parsedOt) && parsedOt > 0 ? parsedOt : null;
+
+      try {
+        const launchRes = await fetchOverviewLaunches({ testRunExecutionId: tre, perPage: 1 });
+        if (cancelled) {
+          return;
+        }
+        const mappedRows = launchRes.launches.map(mapApiRowToRow);
+        if (mappedRows.length === 0) {
+          toast.error('Could not open overview log: launch not found.');
+          stripOverviewDeepLinkParams();
+
+          return;
+        }
+
+        const suiteRes = await fetchOverviewLaunchSuiteItems(tre);
+        if (cancelled) {
+          return;
+        }
+
+        const picked = pickSuiteItemForDeepLink(suiteRes.items, overviewTestId, testNameRaw);
+        if (picked === null) {
+          toast.error('Could not open overview log: test not found in suite list.');
+          applyingDeepLinkFromUrlRef.current = true;
+          setDrillLaunch(mappedRows[0]);
+          stripOverviewDeepLinkParams();
+
+          return;
+        }
+
+        const logTarget = suiteItemToLogTarget(picked);
+        if (logTarget === null) {
+          toast.error('Could not open overview log: row has no log data.');
+          applyingDeepLinkFromUrlRef.current = true;
+          setDrillLaunch(mappedRows[0]);
+          stripOverviewDeepLinkParams();
+
+          return;
+        }
+
+        applyingDeepLinkFromUrlRef.current = true;
+        setDrillLaunch(mappedRows[0]);
+        setSuiteListItems(suiteRes.items);
+        setSuiteItemsError(null);
+        setTestLogTarget(logTarget);
+        stripOverviewDeepLinkParams();
+      } catch (e) {
+        if (!cancelled) {
+          toast.error(e instanceof Error ? e.message : 'Could not open overview log.');
+          stripOverviewDeepLinkParams();
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, stripOverviewDeepLinkParams]);
 
   const inTestLogView = testLogTarget !== null;
 
@@ -763,18 +1168,30 @@ const OverviewLaunchesTable: React.FC = () => {
     ? buildDrillDownSuiteRow(drillLaunch).title
     : '';
 
+  const hasLaunchFilters =
+    selectedProjectIds.length > 0 ||
+    startTimePreset !== 'any' ||
+    executionFilter !== 'all';
+
+  /** Text shown on the closed Projects dropdown (matches native select-style controls). */
+  const projectsDropdownSummary = useMemo(() => {
+    if (projectsLoading) {
+      return 'Loading…';
+    }
+    if (projectOptions.length === 0) {
+      return 'No projects';
+    }
+    if (selectedProjectIds.length === 0) {
+      return 'All';
+    }
+    if (selectedProjectIds.length === 1) {
+      return projectOptions.find(o => o.id === selectedProjectIds[0])?.name ?? '1 project';
+    }
+    return `${selectedProjectIds.length} projects`;
+  }, [projectsLoading, projectOptions, selectedProjectIds]);
+
   return (
-    <div className="relative">
-      {loading && !inSuiteListView ? (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 dark:bg-slate-800/60">
-          <Loader2 className="h-8 w-8 animate-spin text-cyan-500" aria-hidden />
-        </div>
-      ) : null}
-      {suiteItemsLoading ? (
-        <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-white/40 dark:bg-slate-800/40">
-          <Loader2 className="h-6 w-6 animate-spin text-cyan-500" aria-hidden />
-        </div>
-      ) : null}
+    <div>
       {error ? (
         <p className="mb-3 text-sm text-red-600 dark:text-red-400" role="alert">
           {error}
@@ -785,7 +1202,146 @@ const OverviewLaunchesTable: React.FC = () => {
           {suiteItemsError}
         </p>
       ) : null}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      {drillLaunch === null ? (
+        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+            <div className="flex min-w-0 flex-1 flex-wrap items-end gap-x-3 gap-y-3 lg:gap-4">
+          <div className="flex w-full min-w-[12rem] max-w-[18rem] flex-col gap-1 sm:w-auto">
+            <span
+              id="ov-projects-filter-label"
+              className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400"
+            >
+              Projects
+            </span>
+            <div ref={projectsFilterDropdownRef} className="relative">
+              <button
+                type="button"
+                id="ov-projects-filter-trigger"
+                aria-expanded={projectsDropdownOpen}
+                aria-haspopup="listbox"
+                aria-labelledby="ov-projects-filter-label ov-projects-filter-trigger"
+                onClick={() => setProjectsDropdownOpen(o => !o)}
+                className="flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+              >
+                <span className="min-w-0 truncate">{projectsDropdownSummary}</span>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${projectsDropdownOpen ? 'rotate-180' : ''}`}
+                  aria-hidden
+                />
+              </button>
+              {projectsDropdownOpen ? (
+                <div
+                  role="listbox"
+                  aria-labelledby="ov-projects-filter-label"
+                  className="absolute left-0 right-0 z-30 mt-1 max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-slate-300 bg-white p-2 text-sm shadow-lg dark:border-slate-600 dark:bg-slate-800"
+                >
+                  {projectsLoading ? (
+                    <p className="text-slate-500 dark:text-slate-400">Loading projects…</p>
+                  ) : projectOptions.length === 0 ? (
+                    <p className="text-slate-500 dark:text-slate-400">No projects available.</p>
+                  ) : (
+                    projectOptions.map(opt => (
+                      <label key={opt.id} className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedProjectIds.includes(opt.id)}
+                          onChange={() => toggleProjectFilter(opt.id)}
+                          className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-slate-600"
+                        />
+                        <span className="text-slate-800 dark:text-slate-200">{opt.name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex w-full min-w-[12rem] max-w-[18rem] flex-col gap-1 sm:w-auto">
+            <span
+              id="ov-start-preset-label"
+              className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400"
+            >
+              Start time
+            </span>
+            <select
+              id="ov-start-preset"
+              aria-labelledby="ov-start-preset-label"
+              value={startTimePreset}
+              onChange={e => setStartTimePreset(e.target.value as StartTimePreset)}
+              className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+            >
+              <option value="any">Any</option>
+              <option value="today">Today</option>
+              <option value="2d">Last 2 days</option>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="custom">Custom range</option>
+            </select>
+          </div>
+          <div className="flex w-full min-w-[10rem] max-w-[14rem] flex-col gap-1 sm:w-auto">
+            <label
+              htmlFor="ov-execution-filter"
+              className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400"
+            >
+              Run by
+            </label>
+            <select
+              id="ov-execution-filter"
+              value={executionFilter}
+              onChange={e => setExecutionFilter(e.target.value as OverviewLaunchesExecutionFilter)}
+              className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+            >
+              <option value="all">All</option>
+              <option value="me">Me</option>
+              <option value="cron">Cron</option>
+            </select>
+          </div>
+            </div>
+          {hasLaunchFilters ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedProjectIds([]);
+                setStartTimePreset('any');
+                setCustomRangeStart(null);
+                setCustomRangeEnd(null);
+                setExecutionFilter('all');
+              }}
+              className="shrink-0 self-start text-sm text-slate-600 underline decoration-slate-400 underline-offset-2 hover:text-cyan-600 sm:self-end dark:text-slate-400 dark:hover:text-cyan-400"
+            >
+              Clear filters
+            </button>
+          ) : null}
+          </div>
+          {startTimePreset === 'custom' ? (
+            <div className="w-full min-w-0 max-w-xl lg:max-w-lg">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                Custom range
+              </span>
+              <OverviewLaunchStartTimeRangePicker
+                startDate={customRangeStart}
+                endDate={customRangeEnd}
+                onRangeChange={(s, e) => {
+                  setCustomRangeStart(s);
+                  setCustomRangeEnd(e);
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="relative min-h-[10rem]">
+        {loading && !inSuiteListView ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 dark:bg-slate-800/60">
+            <Loader2 className="h-8 w-8 animate-spin text-cyan-500" aria-hidden />
+          </div>
+        ) : null}
+        {suiteItemsLoading ? (
+          <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-white/40 dark:bg-slate-800/40">
+            <Loader2 className="h-6 w-6 animate-spin text-cyan-500" aria-hidden />
+          </div>
+        ) : null}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <nav
           className="flex flex-wrap items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400"
           aria-label="Breadcrumb"
@@ -1097,14 +1653,15 @@ const OverviewLaunchesTable: React.FC = () => {
             </tbody>
           </table>
         ) : (
-          <table className="w-full min-w-[1000px] table-fixed text-sm">
+          <table className="w-full min-w-[1080px] table-fixed text-sm">
             {/*
               NAME column width (~half of previous 46% share); other columns absorb the rest.
             */}
             <colgroup>
               <col className="w-10" />
-              <col style={{ width: '23%' }} />
+              <col style={{ width: '20%' }} />
               <col style={{ width: '9.25rem' }} />
+              <col style={{ width: '9rem' }} />
               <col className="w-14" />
               <col className="w-14" />
               <col className="w-14" />
@@ -1136,6 +1693,12 @@ const OverviewLaunchesTable: React.FC = () => {
                   align="left"
                   thClassName="px-2 whitespace-nowrap"
                 />
+                <th
+                  className="py-3 px-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400"
+                  scope="col"
+                >
+                  Runned By
+                </th>
                 <LaunchSortableTh
                   column="total"
                   label="Total"
@@ -1248,7 +1811,7 @@ const OverviewLaunchesTable: React.FC = () => {
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {!loading && rows.length === 0 && !error && drillLaunch === null ? (
                 <tr>
-                  <td colSpan={12} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={13} className="py-8 text-center text-slate-500 dark:text-slate-400">
                     No launches with overview data yet.
                   </td>
                 </tr>
@@ -1288,12 +1851,6 @@ const OverviewLaunchesTable: React.FC = () => {
                         <Clock className="h-3 w-3 shrink-0" />
                         {row.durationLabel}
                       </span>
-                      {row.suiteDrillDown !== true && row.launchedBy !== '' ? (
-                        <span className="inline-flex items-center gap-1">
-                          <User className="h-3 w-3 shrink-0" />
-                          {row.launchedBy}
-                        </span>
-                      ) : null}
                       {row.suiteDrillDown !== true ? (
                         <Link2 className="h-3 w-3 shrink-0 text-slate-400" aria-hidden />
                       ) : null}
@@ -1326,6 +1883,18 @@ const OverviewLaunchesTable: React.FC = () => {
                     {hoveredStartRowId === row.id
                       ? startTimeHoverLabel(row)
                       : row.startTimeRelative}
+                  </td>
+                  <td className="py-3 px-2 align-top text-slate-700 dark:text-slate-300">
+                    {row.suiteDrillDown === true ? (
+                      <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>
+                    ) : row.runnedByLabel !== '' ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
+                        <span className="break-words [overflow-wrap:anywhere]">{row.runnedByLabel}</span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>
+                    )}
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     {row.total}
@@ -1496,6 +2065,7 @@ const OverviewLaunchesTable: React.FC = () => {
           </p>
         </div>
       ) : null}
+      </div>
     </div>
   );
 };

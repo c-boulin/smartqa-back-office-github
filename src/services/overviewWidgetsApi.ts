@@ -1,4 +1,5 @@
 import { apiService } from './api';
+import { projectsApiService, type ApiProject } from './projectsApi';
 
 export interface OverviewWidgetsWindow {
   from: string;
@@ -76,6 +77,10 @@ export interface OverviewLaunchApiRow {
   durationLabel: string;
   /** Launch creator: `roles.slug` when set, else user login / email (API). */
   ownerLabel: string;
+  /** Executor display name: `users.name` for `test_run_executions.created_by` when set. */
+  runnedByLabel: string;
+  /** `test_run_executions.created_by` when set. */
+  createdByUserId: number | null;
   attributeLine: string;
   /** Default Start time column: relative phrase from `overview_statuses.start` (e.g. "5 minutes ago"). */
   startTimeRelative: string;
@@ -105,6 +110,9 @@ export interface OverviewLaunchesResponse {
   meta: OverviewLaunchesMeta;
 }
 
+/** Who created the test run execution: no filter, current user, or null creator (cron / automation). */
+export type OverviewLaunchesExecutionFilter = 'all' | 'me' | 'cron';
+
 /** Column ids for GET /widgets/overview/launches sorting (server-side). */
 export type OverviewLaunchesSortColumn =
   | 'tre_id'
@@ -125,6 +133,53 @@ export interface FetchOverviewLaunchesParams {
   perPage?: number;
   sort?: OverviewLaunchesSortColumn;
   direction?: 'asc' | 'desc';
+  /** Restrict to these SmartQA project ids; omit or empty = all projects. */
+  projectIds?: number[];
+  /**
+   * Lower bound for launch `start` time. Pass `Y-m-d` for a calendar day or `Y-m-d H:i:s` / ISO-like
+   * strings for an exact bound (server parses in app timezone unless offset is present).
+   */
+  startFrom?: string;
+  /** Upper bound; same formats as {@link FetchOverviewLaunchesParams.startFrom}. */
+  startTo?: string;
+  /**
+   * `me` → `executed_by=me` (created_by = current user); `cron` → `executed_by=cron` (created_by IS NULL).
+   * Omit or `all` → no execution filter.
+   */
+  executionFilter?: OverviewLaunchesExecutionFilter;
+  /** Restrict to a single launch row (`test_run_executions.id`) for deep links. */
+  testRunExecutionId?: number;
+}
+
+/** Label + id for overview launch project filter (non-template projects). */
+export interface OverviewLaunchesProjectOption {
+  id: number;
+  name: string;
+}
+
+/**
+ * Loads all non-template projects (paginated server-side) for the Launches tab filter.
+ */
+export async function fetchAllOverviewLaunchesProjectOptions(): Promise<OverviewLaunchesProjectOption[]> {
+  const perPage = 100;
+  const first = await projectsApiService.getProjectsWithSort(1, perPage);
+  const options: OverviewLaunchesProjectOption[] = first.data.map((p: ApiProject) => ({
+    id: p.attributes.id,
+    name: p.attributes.title ?? '',
+  }));
+  const totalPages = Math.max(1, Math.ceil(first.meta.totalItems / first.meta.itemsPerPage));
+  for (let page = 2; page <= totalPages; page++) {
+    const res = await projectsApiService.getProjectsWithSort(page, perPage);
+    options.push(
+      ...res.data.map((p: ApiProject) => ({
+        id: p.attributes.id,
+        name: p.attributes.title ?? '',
+      })),
+    );
+  }
+  options.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+  return options;
 }
 
 /**
@@ -145,6 +200,23 @@ export async function fetchOverviewLaunches(
   }
   if (params.direction != null) {
     search.set('direction', params.direction);
+  }
+  if (params.projectIds != null && params.projectIds.length > 0) {
+    search.set('project_ids', params.projectIds.join(','));
+  }
+  if (params.startFrom != null && params.startFrom !== '') {
+    search.set('start_from', params.startFrom);
+  }
+  if (params.startTo != null && params.startTo !== '') {
+    search.set('start_to', params.startTo);
+  }
+  if (params.executionFilter === 'me') {
+    search.set('executed_by', 'me');
+  } else if (params.executionFilter === 'cron') {
+    search.set('executed_by', 'cron');
+  }
+  if (params.testRunExecutionId != null && params.testRunExecutionId > 0) {
+    search.set('test_run_execution_id', String(params.testRunExecutionId));
   }
   const qs = search.toString();
   const path = qs ? `/widgets/overview/launches?${qs}` : '/widgets/overview/launches';

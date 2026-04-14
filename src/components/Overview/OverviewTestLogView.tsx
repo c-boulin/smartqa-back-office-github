@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   ChevronDown,
@@ -16,6 +17,7 @@ import {
   Paperclip,
   RefreshCw,
   Search,
+  X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type {
@@ -200,12 +202,244 @@ type AllLogsTreeRowBaseProps = {
   onHoverTimeRow: (key: string | null) => void;
 };
 
+/** Screen edge inset when centering the modal (matches outer {@code p-4}). */
+const SCREEN_INSET_FOR_MODAL_PX = 16;
+
+/** Approximate header + footer height before refs are measured. */
+const MODAL_CHROME_VERTICAL_ESTIMATE_PX = 100;
+
+/**
+ * Computes pixel size for the image so it fits the given box while keeping aspect ratio.
+ */
+function computeModalImageDisplaySize(
+  naturalW: number,
+  naturalH: number,
+  maxImageW: number,
+  maxImageH: number,
+): { imgW: number; imgH: number } {
+  const nw = Math.max(1, naturalW);
+  const nh = Math.max(1, naturalH);
+  const scale = Math.min(1, maxImageW / nw, maxImageH / nh);
+
+  return {
+    imgW: Math.max(1, Math.round(nw * scale)),
+    imgH: Math.max(1, Math.round(nh * scale)),
+  };
+}
+
+/**
+ * Initial fit using estimated chrome height (before header/footer are measured).
+ */
+function computeModalImageDisplayFromNatural(naturalW: number, naturalH: number): { imgW: number; imgH: number } {
+  const maxW = Math.max(1, window.innerWidth - SCREEN_INSET_FOR_MODAL_PX * 2);
+  const maxH = Math.max(
+    1,
+    window.innerHeight - SCREEN_INSET_FOR_MODAL_PX * 2 - MODAL_CHROME_VERTICAL_ESTIMATE_PX,
+  );
+
+  return computeModalImageDisplaySize(naturalW, naturalH, maxW, maxH);
+}
+
+/**
+ * Full-screen overlay showing the screenshot; panel size follows the image (scaled to viewport).
+ * Header: close icon; footer: Close button on the right.
+ */
+function ScreenshotPreviewModal(props: {
+  isOpen: boolean;
+  onClose: () => void;
+  imageUrl: string;
+  imageAlt: string;
+}): React.ReactNode {
+  const { isOpen, onClose, imageUrl, imageAlt } = props;
+  const headerRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
+  const [displaySize, setDisplaySize] = useState<{ imgW: number; imgH: number } | null>(null);
+  const [layoutTick, setLayoutTick] = useState(0);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setNaturalSize(null);
+      setDisplaySize(null);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    setNaturalSize(null);
+    setDisplaySize(null);
+  }, [imageUrl]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const onResize = (): void => {
+      setLayoutTick(t => t + 1);
+    };
+    window.addEventListener('resize', onResize);
+
+    return () => window.removeEventListener('resize', onResize);
+  }, [isOpen]);
+
+  /**
+   * Cached images fire {@code complete} without {@code onLoad}; apply dimensions when the dialog opens.
+   */
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const el = imageRef.current;
+    if (el === null || !el.complete || el.naturalWidth < 1) {
+      return;
+    }
+    const nw = el.naturalWidth;
+    const nh = el.naturalHeight;
+    setNaturalSize({ w: nw, h: nh });
+    setDisplaySize(computeModalImageDisplayFromNatural(nw, nh));
+  }, [isOpen, imageUrl]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || naturalSize === null) {
+      return;
+    }
+    const headerH = headerRef.current?.offsetHeight ?? 0;
+    const footerH = footerRef.current?.offsetHeight ?? 0;
+    const maxW = Math.max(1, window.innerWidth - SCREEN_INSET_FOR_MODAL_PX * 2);
+    const maxViewportH = window.innerHeight - SCREEN_INSET_FOR_MODAL_PX * 2;
+    const maxImageH = Math.max(1, maxViewportH - headerH - footerH);
+    const next = computeModalImageDisplaySize(naturalSize.w, naturalSize.h, maxW, maxImageH);
+    setDisplaySize(prev => {
+      if (prev !== null && prev.imgW === next.imgW && prev.imgH === next.imgH) {
+        return prev;
+      }
+
+      return next;
+    });
+  }, [isOpen, naturalSize, layoutTick]);
+
+  /**
+   * Persists intrinsic size and fits the image inside the viewport (estimated chrome first).
+   */
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>): void => {
+    const el = e.currentTarget;
+    const nw = el.naturalWidth;
+    const nh = el.naturalHeight;
+    setNaturalSize({ w: nw, h: nh });
+    setDisplaySize(computeModalImageDisplayFromNatural(nw, nh));
+  };
+
+  if (!isOpen) {
+    return null;
+  }
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  /**
+   * Portal attaches the overlay to {@code document.body} so it sits above the full app (sidebars, tables, stacking contexts).
+   */
+  const modalOverlay = (
+    <div
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Screenshot preview"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default bg-transparent"
+        aria-label="Close screenshot preview"
+        onClick={onClose}
+      />
+      <div
+        className="pointer-events-auto inline-flex max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white text-slate-900 shadow-[0_8px_40px_rgba(0,0,0,0.25)] dark:border-gray-200 dark:bg-white dark:text-slate-900"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          ref={headerRef}
+          className="flex w-full shrink-0 justify-end border-b border-gray-200 bg-white px-2 py-2 dark:border-gray-200 dark:bg-white"
+        >
+          <button
+            type="button"
+            className="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+        <div
+          className="flex shrink-0 justify-center overflow-hidden bg-white dark:bg-white"
+          style={
+            displaySize != null
+              ? { width: displaySize.imgW, height: displaySize.imgH }
+              : { width: 0, height: 0, overflow: 'hidden' }
+          }
+        >
+          <img
+            ref={imageRef}
+            src={imageUrl}
+            alt={imageAlt}
+            width={displaySize?.imgW}
+            height={displaySize?.imgH}
+            onLoad={handleImageLoad}
+            className="block max-w-none object-contain"
+          />
+        </div>
+        <div
+          ref={footerRef}
+          className="flex w-full shrink-0 justify-end border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-200 dark:bg-white"
+        >
+          <button
+            type="button"
+            className="rounded-lg bg-slate-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return createPortal(modalOverlay, document.body);
+}
+
 /**
  * Thumbnail + hover actions for a log line with a {@code screenshotObjectKey} (CDN path).
  */
 function LogMessageScreenshotPreview(props: { objectKey: string }): React.ReactNode {
   const { objectKey } = props;
   const url = useMemo(() => buildAssetsUrlFromObjectKey(objectKey), [objectKey]);
+  const [modalOpen, setModalOpen] = useState(false);
   const downloadName = useMemo(() => {
     const parts = objectKey.split('/').filter(Boolean);
 
@@ -213,36 +447,52 @@ function LogMessageScreenshotPreview(props: { objectKey: string }): React.ReactN
   }, [objectKey]);
 
   return (
-    <div className="group relative inline-flex max-w-full flex-col items-center gap-0.5">
-      <img
-        src={url}
-        alt=""
-        className="max-h-full min-h-[35px] min-w-[60px] max-w-[65px] rounded border border-slate-200 object-cover object-top shadow-sm dark:border-slate-600"
-      />
-      <div className="flex items-center justify-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+    <>
+      <div className="group relative inline-flex max-w-full flex-col items-center gap-0.5">
         <button
           type="button"
-          className="rounded p-0.5 text-cyan-600 hover:bg-cyan-500/15 dark:text-cyan-400 dark:hover:bg-cyan-500/20"
-          title="Open in new tab"
-          aria-label="Open in new tab"
-          onClick={() => {
-            window.open(url, '_blank', 'noopener,noreferrer');
-          }}
+          className="rounded border-0 bg-transparent p-0"
+          title="View screenshot"
+          aria-label="View screenshot in popup"
+          onClick={() => setModalOpen(true)}
         >
-          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          <img
+            src={url}
+            alt=""
+            className="max-h-full min-h-[35px] min-w-[60px] max-w-[65px] cursor-pointer rounded border border-slate-200 object-cover object-top shadow-sm dark:border-slate-600"
+          />
         </button>
-        <a
-          href={url}
-          download={downloadName}
-          className="rounded p-0.5 text-cyan-600 hover:bg-cyan-500/15 dark:text-cyan-400 dark:hover:bg-cyan-500/20"
-          title="Download"
-          aria-label="Download"
-          rel="noopener noreferrer"
-        >
-          <Download className="h-3.5 w-3.5" aria-hidden />
-        </a>
+        <div className="flex items-center justify-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          <button
+            type="button"
+            className="rounded p-0.5 text-cyan-600 hover:bg-cyan-500/15 dark:text-cyan-400 dark:hover:bg-cyan-500/20"
+            title="Open in new tab"
+            aria-label="Open in new tab"
+            onClick={() => {
+              window.open(url, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          </button>
+          <a
+            href={url}
+            download={downloadName}
+            className="rounded p-0.5 text-cyan-600 hover:bg-cyan-500/15 dark:text-cyan-400 dark:hover:bg-cyan-500/20"
+            title="Download"
+            aria-label="Download"
+            rel="noopener noreferrer"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden />
+          </a>
+        </div>
       </div>
-    </div>
+      <ScreenshotPreviewModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        imageUrl={url}
+        imageAlt={downloadName}
+      />
+    </>
   );
 }
 

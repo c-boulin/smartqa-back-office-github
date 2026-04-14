@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutGrid, Rocket, Shield } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PERMISSIONS } from '../utils/permissions';
 import OverviewLaunchesTable from '../components/Overview/OverviewLaunchesTable';
@@ -11,7 +12,20 @@ type TabType = 'widgets' | 'launches';
 const Overview: React.FC = () => {
   const { hasPermission } = useAuth();
   const canAccessOverview = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
-  const [activeTab, setActiveTab] = useState<TabType>('widgets');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TabType>(() =>
+    searchParams.get('tab') === 'launches' ? 'launches' : 'widgets',
+  );
+
+  /**
+   * Deep links may include `tre` + `testName`; ensure the Launches tab is active so the table mounts.
+   */
+  useEffect(() => {
+    const tre = searchParams.get('tre');
+    if (tre !== null && tre !== '') {
+      setActiveTab('launches');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!canAccessOverview) {
@@ -41,7 +55,14 @@ const Overview: React.FC = () => {
           <nav className="flex -mb-px">
             <button
               type="button"
-              onClick={() => setActiveTab('widgets')}
+              onClick={() => {
+                setActiveTab('widgets');
+                setSearchParams(prev => {
+                  const next = new URLSearchParams(prev);
+                  next.set('tab', 'widgets');
+                  return next;
+                }, { replace: true });
+              }}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'widgets'
                   ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
@@ -53,7 +74,14 @@ const Overview: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('launches')}
+              onClick={() => {
+                setActiveTab('launches');
+                setSearchParams(prev => {
+                  const next = new URLSearchParams(prev);
+                  next.set('tab', 'launches');
+                  return next;
+                }, { replace: true });
+              }}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'launches'
                   ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'

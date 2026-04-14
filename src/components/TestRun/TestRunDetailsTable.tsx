@@ -19,6 +19,8 @@ export interface TestCaseWithExecution {
   configurationId?: string;
   configurationLabel?: string;
   execution?: Record<string, unknown>;
+  /** Latest automated run’s `test_run_executions.id` when linked to overview XML. */
+  testRunExecutionId?: number | null;
 }
 
 interface TestRunDetailsTableProps {
@@ -220,6 +222,27 @@ const TestRunDetailsTable: React.FC<TestRunDetailsTableProps> = ({
                       onOpenCommentModal={(selectedResultId) => {
                         onOpenCommentModal(testCase, selectedResultId);
                       }}
+                      overviewLogTo={(() => {
+                        /** Overview log link: automated tab only (not Manual). */
+                        if (
+                          activeConfigTab !== 'automated' ||
+                          !isTestCaseAutomated(testCase) ||
+                          !showLinkedToColumn ||
+                          !gitlabLinksFetched
+                        ) {
+                          return null;
+                        }
+                        const tre = testCase.testRunExecutionId;
+                        const gitlabName = gitlabLinksByTestCaseId[String(testCase.id)] ?? null;
+                        if (tre == null || tre <= 0 || gitlabName == null || gitlabName === '') {
+                          return null;
+                        }
+                        const q = new URLSearchParams();
+                        q.set('tab', 'launches');
+                        q.set('tre', String(tre));
+                        q.set('testName', gitlabName);
+                        return `/overview?${q.toString()}`;
+                      })()}
                     />
                   </div>
                 </td>

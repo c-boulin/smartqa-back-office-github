@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Loader, MessageSquare } from 'lucide-react';
 import { TEST_RESULTS, TestResultId } from '../../types';
 import Tooltip from '../UI/Tooltip';
@@ -10,6 +11,10 @@ interface TestResultDropdownProps {
   isUpdating?: boolean;
   testCaseTitle?: string;
   onOpenCommentModal: (selectedResultId: TestResultId) => void;
+  /**
+   * When set, clicking the status label navigates (same pill styling as manual; chevron toggles dropdown).
+   */
+  overviewLogTo?: string | null;
 }
 
 const getResultColor = (resultId: TestResultId): string => {
@@ -31,18 +36,22 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
   onChange,
   disabled = false,
   isUpdating = false,
-  onOpenCommentModal
+  onOpenCommentModal,
+  overviewLogTo = null,
 }) => {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedResult, setSelectedResult] = useState<TestResultId>(value);
   const [dropdownPosition, setDropdownPosition] = useState<{ vertical: 'bottom' | 'top'; horizontal: 'left' | 'right' }>({ vertical: 'bottom', horizontal: 'left' });
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const splitChevronRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const currentResultLabel = TEST_RESULTS[value];
 
   const calculatePosition = () => {
-    if (buttonRef.current) {
-      const buttonRect = buttonRef.current.getBoundingClientRect();
+    const anchor = overviewLogTo !== null && overviewLogTo !== '' ? splitChevronRef.current : buttonRef.current;
+    if (anchor) {
+      const buttonRect = anchor.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
       const modalHeight = 400;
@@ -106,29 +115,64 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
     };
   }, [isOpen]);
 
-  const resultButton = (
-    <button
-      ref={buttonRef}
-      type="button"
-      onClick={handleToggle}
-      disabled={disabled || isUpdating}
-      className={`w-full px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between ${getStatusColor()} ${
-        disabled || isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'
-      }`}
-    >
-      <div className="flex items-center">
-        <div className={`w-2 h-2 rounded-full mr-2 ${getResultColor(value)}`}></div>
-        <span>{currentResultLabel}</span>
+  const resultButton =
+    overviewLogTo !== null && overviewLogTo !== '' ? (
+      <div
+        className={`flex w-full min-w-0 items-stretch overflow-hidden rounded-full border text-xs font-medium text-slate-900 dark:text-white ${getStatusColor()}`}
+      >
+        <button
+          type="button"
+          onClick={() => navigate(overviewLogTo)}
+          className="flex min-w-0 flex-1 cursor-pointer items-center border-0 bg-transparent px-3 py-1.5 text-left text-inherit hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-cyan-400 rounded-l-full"
+          title="Open test log in Overview"
+        >
+          <div className="flex min-w-0 items-center">
+            <div className={`h-2 w-2 shrink-0 rounded-full mr-2 ${getResultColor(value)}`} />
+            <span className="truncate">{currentResultLabel}</span>
+          </div>
+        </button>
+        <button
+          ref={splitChevronRef}
+          type="button"
+          onClick={handleToggle}
+          disabled={disabled || isUpdating}
+          className={`shrink-0 rounded-r-full border-l border-slate-300 px-2 py-1.5 dark:border-slate-600 ${
+            disabled || isUpdating ? 'cursor-not-allowed opacity-50' : 'hover:opacity-80'
+          }`}
+          aria-label="Change execution result"
+        >
+          {isUpdating ? (
+            <Loader className="h-3 w-3 animate-spin text-slate-600 dark:text-gray-400" />
+          ) : (
+            <svg className="h-3 w-3 text-slate-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </button>
       </div>
-      {isUpdating ? (
-        <Loader className="w-3 h-3 animate-spin text-slate-600 dark:text-gray-400" />
-      ) : (
-        <svg className="w-3 h-3 text-slate-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      )}
-    </button>
-  );
+    ) : (
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={handleToggle}
+        disabled={disabled || isUpdating}
+        className={`w-full px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-cyan-400 text-left flex items-center justify-between ${getStatusColor()} ${
+          disabled || isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'
+        }`}
+      >
+        <div className="flex items-center">
+          <div className={`w-2 h-2 rounded-full mr-2 ${getResultColor(value)}`}></div>
+          <span>{currentResultLabel}</span>
+        </div>
+        {isUpdating ? (
+          <Loader className="w-3 h-3 animate-spin text-slate-600 dark:text-gray-400" />
+        ) : (
+          <svg className="w-3 h-3 text-slate-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        )}
+      </button>
+    );
 
   return (
     <div className="relative">
