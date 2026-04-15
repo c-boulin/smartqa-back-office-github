@@ -595,6 +595,7 @@ const TestRunDetails: React.FC = () => {
                   ...tc,
                   executionStatus: 7 as TestResultId,
                   executionResult: TEST_RESULTS[7],
+                  testRunExecutionId: testRunExecution.id,
                   execution: {
                     ...tc.execution,
                     result: 7,

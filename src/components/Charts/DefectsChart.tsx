@@ -1,28 +1,25 @@
 import React, { useMemo, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import type { TooltipProps } from 'recharts';
 import { Project } from '../../types';
 import { List, BarChart3 } from 'lucide-react';
+import { DEFECT_CHART_TYPES } from '../../constants/defectChartTypes';
 
 interface DefectsChartProps {
   project: Project;
 }
 
-const DEFECT_TYPES = [
-  { key: 'productBug', label: 'Product Bug', color: '#EF4444' },
-  { key: 'productMaintenance', label: 'Product Maintenance', color: '#F97316' },
-  { key: 'internalComponentsBug', label: 'Internal Components Bug', color: '#8B5CF6' },
-  { key: 'automationBug', label: 'Automation Bug', color: '#EAB308' },
-  { key: 'updateForNewFeature', label: 'Update for new feature', color: '#EC4899' },
-  { key: 'missingSpecifications', label: 'Missing specifications', color: '#A855F7' },
-  { key: 'systemIssue', label: 'System Issue', color: '#3B82F6' },
-  { key: 'network', label: 'Network', color: '#06B6D4' },
-  { key: 'gitlabIssue', label: 'GitLab Issue', color: '#14B8A6' },
-  { key: 'noDefect', label: 'No Defect', color: '#6B7280' },
-  { key: 'toInvestigate', label: 'To investigate', color: '#F59E0B' },
-  { key: 'login', label: 'Login', color: '#FBBF24' }
-];
+/** Keys used by mock data (excludes aggregate "other" bucket). */
+const DEFECT_TYPES = DEFECT_CHART_TYPES.filter(d => d.key !== 'other');
 
-const generateMockDefectsData = () => {
+type MockDefectKey = (typeof DEFECT_TYPES)[number]['key'];
+
+type MockDefectRow = { name: string; date: string } & Record<MockDefectKey, number>;
+
+const zeroCounts = (): Record<MockDefectKey, number> =>
+  Object.fromEntries(DEFECT_TYPES.map(d => [d.key, 0])) as Record<MockDefectKey, number>;
+
+const generateMockDefectsData = (): MockDefectRow[] => {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const dates = days.map((day, index) => {
     const date = new Date();
@@ -40,37 +37,15 @@ const generateMockDefectsData = () => {
       return {
         name: day,
         date,
-        productBug: 0,
-        productMaintenance: 0,
-        internalComponentsBug: 0,
-        automationBug: 0,
-        updateForNewFeature: 0,
-        missingSpecifications: 0,
-        systemIssue: 0,
-        network: 0,
-        gitlabIssue: 0,
-        noDefect: 0,
-        toInvestigate: 0,
-        login: 0
+        ...zeroCounts()
       };
     }
 
     const activeDefects = DEFECT_TYPES.filter(() => Math.random() > 0.5);
-    const data: any = {
+    const data: MockDefectRow = {
       name: day,
       date,
-      productBug: 0,
-      productMaintenance: 0,
-      internalComponentsBug: 0,
-      automationBug: 0,
-      updateForNewFeature: 0,
-      missingSpecifications: 0,
-      systemIssue: 0,
-      network: 0,
-      gitlabIssue: 0,
-      noDefect: 0,
-      toInvestigate: 0,
-      login: 0
+      ...zeroCounts()
     };
 
     activeDefects.forEach(defectType => {
@@ -83,21 +58,23 @@ const generateMockDefectsData = () => {
 
 const DefectsChart: React.FC<DefectsChartProps> = ({ project }) => {
   const [viewMode, setViewMode] = useState<'bar' | 'table'>('bar');
-  const mockData = useMemo(() => generateMockDefectsData(), [project.id]);
+  // Regenerate mock series when switching project; values are random per mount.
+  const mockData = useMemo(() => generateMockDefectsData(), [project.id]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional refresh per project
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
     if (active && payload && payload.length) {
-      const total = payload.reduce((sum: number, entry: any) => sum + entry.value, 0);
+      const total = payload.reduce((sum, entry) => sum + (Number(entry.value) || 0), 0);
+      const firstPayload = payload[0]?.payload as MockDefectRow | undefined;
 
       return (
         <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700">
           <p className="font-semibold text-slate-900 dark:text-white mb-2">
-            {label} - {payload[0]?.payload?.date}
+            {label} - {firstPayload?.date}
           </p>
           <p className="text-sm text-slate-600 dark:text-gray-400 mb-2">Total: {total}</p>
           {payload
-            .filter((entry: any) => entry.value > 0)
-            .map((entry: any, index: number) => (
+            .filter(entry => Number(entry.value) > 0)
+            .map((entry, index) => (
               <p key={index} className="text-sm" style={{ color: entry.color }}>
                 {entry.name}: {entry.value}
               </p>
@@ -214,30 +191,27 @@ const DefectsChart: React.FC<DefectsChartProps> = ({ project }) => {
               </tr>
             </thead>
             <tbody>
-              {mockData.map((row, index) => {
-                const total = DEFECT_TYPES.reduce((sum, defect) => sum + (row[defect.key] || 0), 0);
-                return (
-                  <tr
-                    key={index}
-                    className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30"
-                  >
-                    <td className="py-2 px-3 text-slate-900 dark:text-white font-medium">
-                      {row.name}
+              {mockData.map((row, index) => (
+                <tr
+                  key={index}
+                  className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30"
+                >
+                  <td className="py-2 px-3 text-slate-900 dark:text-white font-medium">
+                    {row.name}
+                  </td>
+                  <td className="py-2 px-3 text-slate-600 dark:text-gray-400">
+                    {row.date}
+                  </td>
+                  {DEFECT_TYPES.map(defect => (
+                    <td
+                      key={defect.key}
+                      className="py-2 px-3 text-right text-slate-900 dark:text-white"
+                    >
+                      {row[defect.key] || '-'}
                     </td>
-                    <td className="py-2 px-3 text-slate-600 dark:text-gray-400">
-                      {row.date}
-                    </td>
-                    {DEFECT_TYPES.map(defect => (
-                      <td
-                        key={defect.key}
-                        className="py-2 px-3 text-right text-slate-900 dark:text-white"
-                      >
-                        {row[defect.key] || '-'}
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

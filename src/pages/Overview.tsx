@@ -1,41 +1,45 @@
-import React, { useEffect, useState } from 'react';
-import { projectsApiService } from '../services/projectsApi';
-import { Project } from '../types';
-import { Loader, Activity, AlertTriangle, FileText } from 'lucide-react';
-import TestExecutionOverview from '../components/Overview/TestExecutionOverview';
-import DefectBreakdown from '../components/Overview/DefectBreakdown';
-import AutomatedExecutionLogs from '../components/Overview/AutomatedExecutionLogs';
+import React, { useState, useEffect } from 'react';
+import { LayoutGrid, Rocket, Shield } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { PERMISSIONS } from '../utils/permissions';
+import OverviewLaunchesTable from '../components/Overview/OverviewLaunchesTable';
+import OverviewWidgetsPanel from '../components/Overview/widgets/OverviewWidgetsPanel';
+import toast from 'react-hot-toast';
 
-type TabType = 'execution' | 'defects' | 'logs';
+type TabType = 'widgets' | 'launches';
 
 const Overview: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>('execution');
+  const { hasPermission } = useAuth();
+  const canAccessOverview = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TabType>(() =>
+    searchParams.get('tab') === 'launches' ? 'launches' : 'widgets',
+  );
+
+  /**
+   * Deep links may include `tre` + `testName`; ensure the Launches tab is active so the table mounts.
+   */
+  useEffect(() => {
+    const tre = searchParams.get('tre');
+    if (tre !== null && tre !== '') {
+      setActiveTab('launches');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
-    const fetchAllProjects = async () => {
-      try {
-        setLoading(true);
-        const response = await projectsApiService.getProjects(1);
-        const transformedProjects = response.data.map(apiProject =>
-          projectsApiService.transformApiProject(apiProject)
-        );
-        setProjects(transformedProjects);
-      } catch (error) {
-        console.error('Failed to fetch projects:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!canAccessOverview) {
+      toast.error('You do not have permission to access this page');
+    }
+  }, [canAccessOverview]);
 
-    fetchAllProjects();
-  }, []);
-
-  if (loading) {
+  if (!canAccessOverview) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader className="w-8 h-8 text-cyan-500 animate-spin" />
+        <div className="text-center">
+          <Shield className="w-12 h-12 text-slate-400 dark:text-gray-600 mx-auto mb-3" />
+          <p className="text-slate-600 dark:text-gray-400">You do not have permission to access this page</p>
+        </div>
       </div>
     );
   }
@@ -44,53 +48,61 @@ const Overview: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Overview</h1>
-        <p className="text-slate-600 dark:text-gray-400 mt-2">Test execution and defect analysis across all projects</p>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="border-b border-slate-200 dark:border-slate-700">
           <nav className="flex -mb-px">
             <button
-              onClick={() => setActiveTab('execution')}
+              type="button"
+              onClick={() => {
+                setActiveTab('widgets');
+                setSearchParams(prev => {
+                  const next = new URLSearchParams(prev);
+                  next.set('tab', 'widgets');
+                  return next;
+                }, { replace: true });
+              }}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'execution'
+                activeTab === 'widgets'
                   ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
                   : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
-              <Activity className="w-4 h-4" />
-              Test Execution Overview
+              <LayoutGrid className="w-4 h-4" />
+              Widgets
             </button>
             <button
-              onClick={() => setActiveTab('defects')}
+              type="button"
+              onClick={() => {
+                setActiveTab('launches');
+                setSearchParams(prev => {
+                  const next = new URLSearchParams(prev);
+                  next.set('tab', 'launches');
+                  return next;
+                }, { replace: true });
+              }}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'defects'
+                activeTab === 'launches'
                   ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
                   : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
-              <AlertTriangle className="w-4 h-4" />
-              Defect Breakdown
-            </button>
-            <button
-              onClick={() => setActiveTab('logs')}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'logs'
-                  ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
-                  : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              Automated Execution Logs
+              <Rocket className="w-4 h-4" />
+              Launches
             </button>
           </nav>
         </div>
 
-        <div className="p-6">
-          {activeTab === 'execution' && <TestExecutionOverview projects={projects} />}
-          {activeTab === 'defects' && <DefectBreakdown projects={projects} />}
-          {activeTab === 'logs' && <AutomatedExecutionLogs projects={projects} />}
-        </div>
+        {activeTab === 'widgets' ? (
+          <div className="p-6 bg-slate-50 dark:bg-slate-900/40">
+            <OverviewWidgetsPanel />
+          </div>
+        ) : (
+          <div className="p-6 min-h-[12rem] bg-slate-50 dark:bg-slate-900/40">
+            <OverviewLaunchesTable />
+          </div>
+        )}
       </div>
     </div>
   );

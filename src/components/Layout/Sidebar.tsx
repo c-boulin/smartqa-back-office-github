@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
+  LayoutGrid,
   TestTube,
   Play,
   Calendar,
@@ -74,6 +75,12 @@ const Sidebar: React.FC = () => {
       icon: BarChart3,
       label: 'Reports',
       permissions: [PERMISSIONS.TEST_RUN.READ]
+    },
+    {
+      path: '/overview',
+      icon: LayoutGrid,
+      label: 'Overview',
+      permissions: [PERMISSIONS.ADMIN_PANEL.READ]
     },
     {
       path: '/settings',

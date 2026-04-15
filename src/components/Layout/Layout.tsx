@@ -24,6 +24,7 @@ const Layout: React.FC = () => {
   const getPageTitle = (pathname: string) => {
     const titles: Record<string, string> = {
       '/dashboard': 'Dashboard',
+      '/overview': 'Overview',
       '/projects': 'Project Management',
       '/test-cases': 'Test Cases',
       '/shared-steps': 'Shared Steps',

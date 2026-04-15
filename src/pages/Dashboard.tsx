@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { DashboardStyleDonutPie } from '../components/Charts/DashboardStyleDonutPie';
 import Card from '../components/UI/Card';
 import SkeletonCard from '../components/UI/SkeletonCard';
 import ClosedRunsCaseResultsStackedChart from '../components/Charts/ClosedRunsCaseResultsStackedChart';
@@ -197,54 +198,12 @@ export default function Dashboard() {
             {totalActiveTestCases > 0 ? (
             <div className="h-full w-full flex items-center">
               <ResponsiveContainer width="60%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={activeTestRunsData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    dataKey="value"
-                    startAngle={90}
-                    endAngle={450}
-                    onClick={handleActiveTestRunsClick}
-                  >
-                    {activeTestRunsData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.color}
-                        style={{ cursor: 'pointer' }}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgb(241 245 249)', border: '1px solid rgb(203 213 225)',
-                      borderRadius: '8px',
-                      color: 'rgb(15 23 42)'
-                    }}
-                    labelStyle={{ color: 'rgb(15 23 42)' }}
-                    itemStyle={{ color: 'rgb(15 23 42)' }}
-                  />
-                  <text
-                    x="50%"
-                    y="45%"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-slate-900 dark:fill-white text-2xl font-bold"
-                  >
-                    {totalActiveTestCases}
-                  </text>
-                  <text
-                    x="50%"
-                    y="55%"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-slate-600 dark:fill-gray-400 text-sm"
-                  >
-                    Total Test Cases
-                  </text>
-                </PieChart>
+                <DashboardStyleDonutPie
+                  data={activeTestRunsData}
+                  centerValue={totalActiveTestCases}
+                  centerSubtitle="Total Test Cases"
+                  onSliceClick={handleActiveTestRunsClick}
+                />
               </ResponsiveContainer>
 
               <div className="ml-6 space-y-3 flex-1">
