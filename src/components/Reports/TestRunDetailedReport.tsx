@@ -47,6 +47,8 @@ interface TestCaseWithExecution {
   typeId?: number | string;
   configurationId?: string;
   configurationName?: string;
+  executorName?: string;
+  executorUserId?: string;
 }
 
 interface ReportData {
@@ -59,6 +61,10 @@ interface ReportData {
     failed: number;
     blocked: number;
     untested: number;
+    retest: number;
+    skipped: number;
+    inProgress: number;
+    unknown: number;
   };
   testRunsBreakup: {
     new: number;
@@ -72,6 +78,8 @@ interface ReportData {
     assignee: string;
     count: number;
   }>;
+  defectsLinkedWithTestResults: number;
+  requirementsLinkedWithTestRuns: number;
   testCasesIncluded: TestCaseWithExecution[];
   performanceData: Array<{
     date: string;
@@ -475,13 +483,10 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                     TEST CASE PRIORITY
                   </th>
                   <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
-                    TEST CASE ASSIGNEE
-                  </th>
-                  <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
                     CONFIGURATION
                   </th>
                   <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
-                    <MoreHorizontal className="w-4 h-4 text-slate-600 dark:text-gray-400" />
+                    EXECUTOR
                   </th>
                 </tr>
               </thead>
@@ -516,17 +521,14 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                       </span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="text-sm text-slate-900 dark:text-white">{testCase.assignee}</span>
-                    </td>
-                    <td className="py-4 px-6">
                       <span className="text-sm text-slate-600 dark:text-gray-400">
                         {testCase.configurationName || 'Default'}
                       </span>
                     </td>
                     <td className="py-4 px-6">
-                      <button className="p-1 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
+                      <span className="text-sm text-slate-900 dark:text-white">
+                        {testCase.executorName || 'Unassigned'}
+                      </span>
                     </td>
                   </tr>
                 ))}

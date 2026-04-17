@@ -1105,7 +1105,7 @@ class ReportDownloadService {
 
       // Table headers
       const colWidths = [35, 50, 30, 25, 30];
-      const headers = ['TEST RUN', 'TEST CASE', 'LATEST STATUS', 'PRIORITY', 'ASSIGNEE'];
+      const headers = ['TEST RUN', 'TEST CASE', 'LATEST STATUS', 'PRIORITY', 'EXECUTOR'];
 
       pdf.setFillColor(248, 250, 252);
       pdf.rect(margin, currentY, contentWidth, 8, 'F');
@@ -1184,9 +1184,9 @@ class ReportDownloadService {
         colX += colWidths[2];
         pdf.text(tc.priority, colX, currentY + 6, { maxWidth: colWidths[3] - 4 });
 
-        // Assignee
+        // Executor
         colX += colWidths[3];
-        pdf.text(tc.assignee, colX, currentY + 6, { maxWidth: colWidths[4] - 4 });
+        pdf.text(tc.executorName || 'Unassigned', colX, currentY + 6, { maxWidth: colWidths[4] - 4 });
 
         currentY += rowHeight;
       });
@@ -1697,7 +1697,7 @@ class ReportDownloadService {
         'Test Case Title',
         'Latest Status',
         'Priority',
-        'Assignee'
+        'Executor'
       );
 
       reportData.testCasesIncluded.forEach(tc => {
@@ -1709,7 +1709,7 @@ class ReportDownloadService {
           tc.testCaseTitle,
           tc.latestStatus,
           tc.priority,
-          tc.assignee
+          tc.executorName || 'Unassigned'
         );
       });
       addRow('');
@@ -1888,6 +1888,8 @@ export interface DetailedReportData extends ReportData {
     assignee: string;
     configurationId?: string | null;
     configurationName?: string | null;
+    executorName?: string;
+    executorUserId?: string;
   }>;
   performanceData: Array<{
     date: string;
