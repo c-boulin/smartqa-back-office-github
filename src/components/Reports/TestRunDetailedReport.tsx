@@ -47,8 +47,8 @@ interface TestCaseWithExecution {
   typeId?: number | string;
   configurationId?: string;
   configurationName?: string;
-  executorName?: string;
-  executorUserId?: string;
+  assigneeName?: string;
+  assigneeUserId?: string;
 }
 
 interface ReportData {
@@ -486,7 +486,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                     CONFIGURATION
                   </th>
                   <th className="text-left py-3 px-6 text-sm font-medium text-slate-600 dark:text-gray-400 uppercase tracking-wider">
-                    EXECUTOR
+                    ASSIGNEE
                   </th>
                 </tr>
               </thead>
@@ -527,7 +527,7 @@ const TestRunDetailedReport: React.FC<TestRunDetailedReportProps> = ({
                     </td>
                     <td className="py-4 px-6">
                       <span className="text-sm text-slate-900 dark:text-white">
-                        {testCase.executorName || 'Unassigned'}
+                        {testCase.assigneeName || 'Unassigned'}
                       </span>
                     </td>
                   </tr>
