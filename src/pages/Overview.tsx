@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { LayoutGrid, Rocket, Shield } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PERMISSIONS } from '../utils/permissions';
 import OverviewLaunchesTable from '../components/Overview/OverviewLaunchesTable';
@@ -12,20 +12,35 @@ type TabType = 'widgets' | 'launches';
 const Overview: React.FC = () => {
   const { hasPermission } = useAuth();
   const canAccessOverview = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabType>(() =>
-    searchParams.get('tab') === 'launches' ? 'launches' : 'widgets',
-  );
+  const isLaunchesPath = useMemo(() => {
+    const normalized = location.pathname.replace(/\/+$/, '');
+
+    return normalized === '/overview/launches' || normalized.startsWith('/overview/launches/');
+  }, [location.pathname]);
+
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (isLaunchesPath) {
+      return 'launches';
+    }
+
+    return searchParams.get('tab') === 'launches' ? 'launches' : 'widgets';
+  });
 
   /**
    * Deep links may include `tre` + `testName`; ensure the Launches tab is active so the table mounts.
    */
   useEffect(() => {
     const tre = searchParams.get('tre');
-    if (tre !== null && tre !== '') {
+    if (isLaunchesPath || (tre !== null && tre !== '')) {
       setActiveTab('launches');
+      return;
     }
-  }, [searchParams]);
+
+    setActiveTab('widgets');
+  }, [isLaunchesPath, searchParams]);
 
   useEffect(() => {
     if (!canAccessOverview) {
@@ -56,12 +71,16 @@ const Overview: React.FC = () => {
             <button
               type="button"
               onClick={() => {
+                if (activeTab === 'widgets') {
+                  return;
+                }
                 setActiveTab('widgets');
                 setSearchParams(prev => {
                   const next = new URLSearchParams(prev);
-                  next.set('tab', 'widgets');
+                  next.delete('tab');
                   return next;
                 }, { replace: true });
+                navigate('/overview', { replace: true });
               }}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'widgets'
@@ -75,11 +94,18 @@ const Overview: React.FC = () => {
             <button
               type="button"
               onClick={() => {
+                if (activeTab === 'launches') {
+                  return;
+                }
                 setActiveTab('launches');
                 setSearchParams(prev => {
                   const next = new URLSearchParams(prev);
                   next.set('tab', 'launches');
                   return next;
+                }, { replace: true });
+                navigate({
+                  pathname: '/overview/launches',
+                  search: searchParams.toString() !== '' ? `?${searchParams.toString()}` : '',
                 }, { replace: true });
               }}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${

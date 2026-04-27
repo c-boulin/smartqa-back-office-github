@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Link, Unlink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import StatusBadge from '../UI/StatusBadge';
 import TagsWithTooltip from '../UI/TagsWithTooltip';
 import TestResultDropdown from './TestResultDropdown';
@@ -7,6 +8,10 @@ import { TestResultId, TestCase } from '../../types';
 import { getDeviceIcon, getDeviceColor } from '../../utils/deviceIcons';
 import { Configuration } from '../../services/configurationsApi';
 import { ConfigTab } from './ConfigurationTabs';
+import {
+  fetchOverviewLaunchSuiteItems,
+  type OverviewLaunchSuiteItemApiRow,
+} from '../../services/overviewWidgetsApi';
 
 export interface TestCaseWithExecution {
   id: string;
@@ -15,9 +20,11 @@ export interface TestCaseWithExecution {
   type: string;
   executionStatus: TestResultId;
   executionResult: string;
+  executionResultClickable?: boolean;
   fullTestCase: TestCase | null;
   configurationId?: string;
   configurationLabel?: string;
+  testRunExecutionState?: number | null;
   execution?: Record<string, unknown>;
   /** Latest automated run’s `test_run_executions.id` when linked to overview XML. */
   testRunExecutionId?: number | null;
@@ -74,7 +81,45 @@ const TestRunDetailsTable: React.FC<TestRunDetailsTableProps> = ({
   activeConfigTab,
   hasAutomatedConfigs,
 }) => {
+  const navigate = useNavigate();
   const showLinkedToColumn = hasAutomatedConfigs && activeConfigTab === 'automated';
+
+  const openOverviewLogView = useCallback(async (tre: number, testName: string) => {
+    const trimmedName = testName.trim();
+    if (!Number.isInteger(tre) || tre <= 0 || trimmedName === '') {
+      return;
+    }
+
+    const pickSuiteItem = (items: OverviewLaunchSuiteItemApiRow[]): OverviewLaunchSuiteItemApiRow | null => {
+      const matchingTests = items.filter(item => item.name === trimmedName && item.methodType === 'Test');
+      if (matchingTests.length > 0) {
+        return matchingTests[0];
+      }
+
+      return items.find(item => item.name === trimmedName) ?? null;
+    };
+
+    try {
+      const suiteRes = await fetchOverviewLaunchSuiteItems(tre);
+      const picked = pickSuiteItem(suiteRes.items);
+      if (picked?.overviewTestId != null) {
+        navigate(`/overview/launches/${tre}/test/${picked.overviewTestId}?history_selected_tre=${tre}`);
+        return;
+      }
+      if (picked?.overviewSuiteKwId != null) {
+        navigate(`/overview/launches/${tre}/kw/${picked.overviewSuiteKwId}?history_selected_tre=${tre}`);
+        return;
+      }
+    } catch {
+      // Fall back to the existing Overview deep-link resolver below.
+    }
+
+    const q = new URLSearchParams();
+    q.set('testName', trimmedName);
+    q.set('tre', String(tre));
+    navigate(`/overview/launches?${q.toString()}`);
+  }, [navigate]);
+
   if (testCases.length === 0) {
     return (
       <div className="p-12 text-center text-slate-500 dark:text-gray-400">
@@ -232,16 +277,46 @@ const TestRunDetailsTable: React.FC<TestRunDetailsTableProps> = ({
                         ) {
                           return null;
                         }
+                        const isExecutionResultClickable =
+                          (testCase.testRunExecutionState ?? null) === 1
+                            ? false
+                            : (testCase.executionResultClickable ?? testCase.executionStatus === 1);
+                        if (!isExecutionResultClickable) {
+                          return null;
+                        }
                         const tre = testCase.testRunExecutionId;
                         const gitlabName = gitlabLinksByTestCaseId[String(testCase.id)] ?? null;
                         if (tre == null || tre <= 0 || gitlabName == null || gitlabName === '') {
                           return null;
                         }
                         const q = new URLSearchParams();
-                        q.set('tab', 'launches');
-                        q.set('tre', String(tre));
                         q.set('testName', gitlabName);
-                        return `/overview?${q.toString()}`;
+                        q.set('tre', String(tre));
+                        return `/overview/launches?${q.toString()}`;
+                      })()}
+                      onOverviewLogClick={(() => {
+                        if (
+                          activeConfigTab !== 'automated' ||
+                          !isTestCaseAutomated(testCase) ||
+                          !showLinkedToColumn ||
+                          !gitlabLinksFetched
+                        ) {
+                          return null;
+                        }
+                        const isExecutionResultClickable =
+                          (testCase.testRunExecutionState ?? null) === 1
+                            ? false
+                            : (testCase.executionResultClickable ?? testCase.executionStatus === 1);
+                        if (!isExecutionResultClickable) {
+                          return null;
+                        }
+                        const tre = testCase.testRunExecutionId;
+                        const gitlabName = gitlabLinksByTestCaseId[String(testCase.id)] ?? null;
+                        if (tre == null || tre <= 0 || gitlabName == null || gitlabName.trim() === '') {
+                          return null;
+                        }
+
+                        return () => openOverviewLogView(tre, gitlabName);
                       })()}
                     />
                   </div>

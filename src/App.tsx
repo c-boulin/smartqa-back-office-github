@@ -49,7 +49,7 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }>
               <Route path="dashboard" element={<Dashboard key={`dashboard-${Date.now()}`} />} />
-              <Route path="overview" element={<Overview />} />
+              <Route path="overview/*" element={<Overview />} />
               <Route path="projects" element={<Projects />} />
               <Route path="test-cases" element={<TestCases />} />
               <Route path="shared-steps" element={<SharedSteps />} />

@@ -25,7 +25,7 @@ import toast from 'react-hot-toast';
 const TestRunDetails: React.FC = () => {
   const { id: testRunId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const testPlanIdFromUrl = searchParams.get('testPlanId') || undefined;
   const { state: appState, createTag } = useApp();
   const { hasPermission } = usePermissions();
@@ -48,7 +48,11 @@ const TestRunDetails: React.FC = () => {
   const [isBulkRunning, setIsBulkRunning] = useState(false);
   const [gitlabLinksByTestCaseId, setGitlabLinksByTestCaseId] = useState<Record<string, string | null>>({});
   const [gitlabLinksFetched, setGitlabLinksFetched] = useState(false);
-  const [activeConfigTab, setActiveConfigTab] = useState<ConfigTab>('manual');
+  const [activeConfigTab, setActiveConfigTab] = useState<ConfigTab>(() => {
+    const tabFromUrl = searchParams.get('configTab');
+
+    return tabFromUrl === 'automated' ? 'automated' : 'manual';
+  });
 
   const fetchInProgressRef = useRef(false);
 
@@ -67,6 +71,27 @@ const TestRunDetails: React.FC = () => {
   const hasAutomatedConfigs = useMemo(() =>
     Boolean(testRun?.configurations?.some(c => c.projectId)),
   [testRun?.configurations]);
+
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('configTab');
+    const nextTab: ConfigTab = tabFromUrl === 'automated' ? 'automated' : 'manual';
+    if (nextTab !== activeConfigTab) {
+      setActiveConfigTab(nextTab);
+    }
+  }, [activeConfigTab, searchParams]);
+
+  useEffect(() => {
+    if (loading || testRun === null || hasAutomatedConfigs || activeConfigTab !== 'automated') {
+      return;
+    }
+
+    setActiveConfigTab('manual');
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('configTab');
+      return next;
+    }, { replace: true });
+  }, [activeConfigTab, hasAutomatedConfigs, loading, setSearchParams, testRun]);
 
   const manualTestCases = useMemo(() =>
     filteredTestCases.filter(tc => !hasAutomatedConfiguration(tc.configurationId)),
@@ -356,7 +381,16 @@ const TestRunDetails: React.FC = () => {
 
       const updatedTestCases = testCases.map(tc =>
         tc.id === testCaseId && tc.configurationId === configurationId
-          ? { ...tc, executionStatus: newResultId, executionResult: newResultLabel }
+          ? {
+              ...tc,
+              executionStatus: newResultId,
+              executionResult: newResultLabel,
+              testRunExecutionState: tc.testRunExecutionState,
+              executionResultClickable:
+                tc.fullTestCase?.automationStatus === 2 &&
+                hasAutomatedConfiguration(tc.configurationId) &&
+                newResultId === 1,
+            }
           : tc
       );
 
@@ -365,7 +399,16 @@ const TestRunDetails: React.FC = () => {
       setFilteredTestCases(prevFiltered =>
         prevFiltered.map(tc =>
           tc.id === testCaseId && tc.configurationId === configurationId
-            ? { ...tc, executionStatus: newResultId, executionResult: newResultLabel }
+            ? {
+                ...tc,
+                executionStatus: newResultId,
+                executionResult: newResultLabel,
+                testRunExecutionState: tc.testRunExecutionState,
+                executionResultClickable:
+                  tc.fullTestCase?.automationStatus === 2 &&
+                  hasAutomatedConfiguration(tc.configurationId) &&
+                  newResultId === 1,
+              }
             : tc
         )
       );
@@ -595,6 +638,8 @@ const TestRunDetails: React.FC = () => {
                   ...tc,
                   executionStatus: 7 as TestResultId,
                   executionResult: TEST_RESULTS[7],
+                  executionResultClickable: false,
+                  testRunExecutionState: 1,
                   testRunExecutionId: testRunExecution.id,
                   execution: {
                     ...tc.execution,
@@ -662,6 +707,11 @@ const TestRunDetails: React.FC = () => {
                       ...tc,
                       executionStatus: update.result as TestResultId,
                       executionResult: TEST_RESULTS[update.result as TestResultId] || update.result_label,
+                      testRunExecutionState: update.result === 7 ? 1 : 2,
+                      executionResultClickable:
+                        tc.fullTestCase?.automationStatus === 2 &&
+                        hasAutomatedConfiguration(tc.configurationId) &&
+                        update.result === 1,
                       execution: {
                         ...tc.execution,
                         result: update.result,
@@ -934,6 +984,15 @@ const TestRunDetails: React.FC = () => {
           onTabChange={(tab) => {
             setActiveConfigTab(tab);
             setSelectedTestCasesForBulkRun(new Set());
+            setSearchParams(prev => {
+              const next = new URLSearchParams(prev);
+              if (tab === 'automated') {
+                next.set('configTab', 'automated');
+              } else {
+                next.delete('configTab');
+              }
+              return next;
+            }, { replace: true });
           }}
           manualCount={manualTestCases.length}
           automatedCount={automatedTestCases.length}
