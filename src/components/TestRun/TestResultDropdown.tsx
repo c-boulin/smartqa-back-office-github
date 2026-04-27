@@ -15,6 +15,7 @@ interface TestResultDropdownProps {
    * When set, clicking the status label navigates (same pill styling as manual; chevron toggles dropdown).
    */
   overviewLogTo?: string | null;
+  onOverviewLogClick?: (() => void | Promise<void>) | null;
 }
 
 const getResultColor = (resultId: TestResultId): string => {
@@ -38,6 +39,7 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
   isUpdating = false,
   onOpenCommentModal,
   overviewLogTo = null,
+  onOverviewLogClick = null,
 }) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -122,7 +124,13 @@ const TestResultDropdown: React.FC<TestResultDropdownProps> = ({
       >
         <button
           type="button"
-          onClick={() => navigate(overviewLogTo)}
+          onClick={() => {
+            if (onOverviewLogClick !== null) {
+              void onOverviewLogClick();
+              return;
+            }
+            navigate(overviewLogTo);
+          }}
           className="flex min-w-0 flex-1 cursor-pointer items-center border-0 bg-transparent px-3 py-1.5 text-left text-inherit hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-cyan-400 rounded-l-full"
           title="Open test log in Overview"
         >

@@ -156,9 +156,11 @@ export interface TestRunDetailsTestCaseRowPayload {
   type: string;
   executionStatus: number;
   executionResult?: string;
+  executionResultClickable?: boolean;
   fullTestCase: TestRunDetailsTestCasePayload | null;
   configurationId?: string | null;
   configurationLabel?: string | null;
+  testRunExecutionState?: number | null;
   /** Latest execution’s `test_run_executions.id` when set (automated XML overview link). */
   testRunExecutionId?: number | null;
 }
@@ -207,9 +209,11 @@ export interface TestRunDetailsTestCaseRow {
   type: string;
   executionStatus: TestResultId;
   executionResult: string;
+  executionResultClickable?: boolean;
   fullTestCase: TestCase | null;
   configurationId?: string;
   configurationLabel?: string;
+  testRunExecutionState?: number | null;
   testRunExecutionId?: number | null;
 }
 
@@ -588,9 +592,14 @@ class TestRunsApiService {
       type: row.type,
       executionStatus: row.executionStatus as TestResultId,
       executionResult: row.executionResult ?? 'Untested',
+      executionResultClickable: row.executionResultClickable ?? false,
       fullTestCase,
       configurationId: row.configurationId ?? undefined,
       configurationLabel: row.configurationLabel ?? undefined,
+      testRunExecutionState:
+        row.testRunExecutionState !== undefined && row.testRunExecutionState !== null
+          ? row.testRunExecutionState
+          : undefined,
       testRunExecutionId:
         row.testRunExecutionId !== undefined && row.testRunExecutionId !== null
           ? row.testRunExecutionId
@@ -1190,5 +1199,3 @@ class TestRunsApiService {
 }
 
 export const testRunsApiService = new TestRunsApiService();
-
-

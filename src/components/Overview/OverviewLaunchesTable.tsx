@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ArrowDown,
@@ -19,6 +19,7 @@ import {
 import { endOfDay, format, isEqual, isSameDay, startOfDay } from 'date-fns';
 import {
   fetchAllOverviewLaunchesProjectOptions,
+  fetchOverviewLaunchHistory,
   fetchOverviewLaunches,
   fetchOverviewLaunchSuiteItems,
   fetchOverviewSuiteKwLogItems,
@@ -32,6 +33,10 @@ import {
   type OverviewTestLogItemsResponse,
 } from '../../services/overviewWidgetsApi';
 import { OverviewLaunchStartTimeRangePicker } from './OverviewLaunchStartTimeRangePicker';
+import {
+  HistoryLaunchTooltip,
+  type HistoryLaunchTooltipButtonModel,
+} from './OverviewLaunchHistoryTooltip';
 import OverviewTestLogView from './OverviewTestLogView';
 
 /**
@@ -44,6 +49,7 @@ export type OverviewSuiteListLogTarget =
       displayName: string;
       methodType: string;
       statusLabel: string;
+      statusBand?: string;
       startTimeRelative: string;
       startTimeDisplay: string;
       startTimeRaw: string | null;
@@ -57,6 +63,7 @@ export type OverviewSuiteListLogTarget =
       displayName: string;
       methodType: string;
       statusLabel: string;
+      statusBand?: string;
       startTimeRelative: string;
       startTimeDisplay: string;
       startTimeRaw: string | null;
@@ -129,6 +136,7 @@ function suiteItemToLogTarget(item: OverviewLaunchSuiteItemApiRow): OverviewSuit
       displayName: item.name,
       methodType: item.methodType,
       statusLabel: item.statusLabel,
+      statusBand: item.statusBand,
       startTimeRelative: item.startTimeRelative,
       startTimeDisplay: item.startTimeDisplay,
       startTimeRaw: item.startTimeRaw,
@@ -144,6 +152,7 @@ function suiteItemToLogTarget(item: OverviewLaunchSuiteItemApiRow): OverviewSuit
       displayName: item.name,
       methodType: item.methodType,
       statusLabel: item.statusLabel,
+      statusBand: item.statusBand,
       startTimeRelative: item.startTimeRelative,
       startTimeDisplay: item.startTimeDisplay,
       startTimeRaw: item.startTimeRaw,
@@ -154,6 +163,230 @@ function suiteItemToLogTarget(item: OverviewLaunchSuiteItemApiRow): OverviewSuit
   }
 
   return null;
+}
+
+type OverviewLaunchesRouteState =
+  | { kind: 'list' }
+  | { kind: 'launch'; testRunExecutionId: number }
+  | { kind: 'suite'; testRunExecutionId: number }
+  | { kind: 'test'; testRunExecutionId: number; overviewTestId: number }
+  | { kind: 'kw'; testRunExecutionId: number; overviewSuiteKwId: number };
+
+function positiveIntFromSegment(value: string | undefined): number | null {
+  if (value === undefined || value.trim() === '') {
+    return null;
+  }
+  const parsed = Number(value);
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function positiveIntFromSearchParam(value: string | null): number | null {
+  return positiveIntFromSegment(value ?? undefined);
+}
+
+function parseOverviewLaunchesRoute(pathname: string): OverviewLaunchesRouteState {
+  const normalized = pathname.replace(/\/+$/, '');
+  if (normalized === '/overview/launches') {
+    return { kind: 'list' };
+  }
+
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts[0] !== 'overview' || parts[1] !== 'launches') {
+    return { kind: 'list' };
+  }
+
+  const testRunExecutionId = positiveIntFromSegment(parts[2]);
+  if (testRunExecutionId === null) {
+    return { kind: 'list' };
+  }
+
+  if (parts.length === 3) {
+    return { kind: 'launch', testRunExecutionId };
+  }
+
+  if (parts[3] === 'suite' && parts.length === 4) {
+    return { kind: 'suite', testRunExecutionId };
+  }
+
+  if (parts[3] === 'test' && parts.length === 5) {
+    const overviewTestId = positiveIntFromSegment(parts[4]);
+    if (overviewTestId !== null) {
+      return { kind: 'test', testRunExecutionId, overviewTestId };
+    }
+  }
+
+  if (parts[3] === 'kw' && parts.length === 5) {
+    const overviewSuiteKwId = positiveIntFromSegment(parts[4]);
+    if (overviewSuiteKwId !== null) {
+      return { kind: 'kw', testRunExecutionId, overviewSuiteKwId };
+    }
+  }
+
+  return { kind: 'list' };
+}
+
+function parseProjectIdsSearchParam(value: string | null): number[] {
+  if (value === null || value.trim() === '') {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .split(',')
+        .map(part => Number(part.trim()))
+        .filter(id => Number.isInteger(id) && id > 0),
+    ),
+  ).sort((a, b) => a - b);
+}
+
+function arraysEqual(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+function parseSearchDateValue(raw: string | null): Date | null {
+  if (raw === null || raw.trim() === '') {
+    return null;
+  }
+
+  const trimmed = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [year, month, day] = trimmed.split('-').map(Number);
+    if ([year, month, day].some(Number.isNaN)) {
+      return null;
+    }
+
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  }
+
+  const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T');
+  const parsed = new Date(normalized);
+
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function detectStartTimePresetFromSearch(startFrom: string | null, startTo: string | null): {
+  preset: StartTimePreset;
+  customRangeStart: Date | null;
+  customRangeEnd: Date | null;
+} {
+  if ((startFrom === null || startFrom.trim() === '') && (startTo === null || startTo.trim() === '')) {
+    return { preset: 'any', customRangeStart: null, customRangeEnd: null };
+  }
+
+  const today = localToday();
+  const sameAs = (fromDelta: number, toDelta: number): boolean =>
+    startFrom === formatLocalYmd(addCalendarDays(today, fromDelta)) &&
+    startTo === formatLocalYmd(addCalendarDays(today, toDelta));
+
+  if (sameAs(0, 0)) {
+    return { preset: 'today', customRangeStart: null, customRangeEnd: null };
+  }
+  if (sameAs(-1, 0)) {
+    return { preset: '2d', customRangeStart: null, customRangeEnd: null };
+  }
+  if (sameAs(-6, 0)) {
+    return { preset: '7d', customRangeStart: null, customRangeEnd: null };
+  }
+  if (sameAs(-29, 0)) {
+    return { preset: '30d', customRangeStart: null, customRangeEnd: null };
+  }
+
+  return {
+    preset: 'custom',
+    customRangeStart: parseSearchDateValue(startFrom),
+    customRangeEnd: parseSearchDateValue(startTo),
+  };
+}
+
+
+function launchHistoryButtonLabel(row: OverviewLaunchRow): string {
+  const match = row.title.match(/#(\d+)/);
+
+  return match !== null ? `#${match[1]}` : row.title;
+}
+
+function pickMatchingSuiteItemForHistory(
+  items: OverviewLaunchSuiteItemApiRow[],
+  target: OverviewSuiteListLogTarget,
+): OverviewLaunchSuiteItemApiRow | null {
+  const sameName = items.filter(item => item.name === target.displayName);
+  if (sameName.length === 0) {
+    return null;
+  }
+
+  const sameKind = sameName.filter(item =>
+    target.kind === 'test' ? item.overviewTestId !== null : item.overviewSuiteKwId !== null,
+  );
+  const sameMethodType = (sameKind.length > 0 ? sameKind : sameName).filter(
+    item => item.methodType === target.methodType,
+  );
+  const candidates = sameMethodType.length > 0 ? sameMethodType : (sameKind.length > 0 ? sameKind : sameName);
+
+  if (target.kind === 'test' && (target.suiteSourceRelative !== null || target.overviewTestLine !== null)) {
+    const exact = candidates.find(
+      item =>
+        (item.suiteSourceRelative ?? null) === target.suiteSourceRelative &&
+        (item.overviewTestLine ?? null) === target.overviewTestLine,
+    );
+    if (exact !== undefined) {
+      return exact;
+    }
+  }
+
+  if (target.kind === 'suite_kw' && target.suiteSourceRelative !== null) {
+    const exact = candidates.find(item => (item.suiteSourceRelative ?? null) === target.suiteSourceRelative);
+    if (exact !== undefined) {
+      return exact;
+    }
+  }
+
+  return candidates[0] ?? null;
+}
+
+function sameLogTarget(a: OverviewSuiteListLogTarget | null, b: OverviewSuiteListLogTarget | null): boolean {
+  if (a === b) {
+    return true;
+  }
+  if (a === null || b === null || a.kind !== b.kind) {
+    return false;
+  }
+
+  if (a.kind === 'test') {
+    return b.kind === 'test' && a.overviewTestId === b.overviewTestId;
+  }
+
+  return b.kind === 'suite_kw' && a.overviewSuiteKwId === b.overviewSuiteKwId;
+}
+
+
+const HISTORY_BUTTON_BATCH_SIZE = 10;
+const HISTORY_BUTTON_MAX_VISIBLE = 30;
+
+type HistoryLaunchEntry = {
+  row: OverviewLaunchRow;
+};
+
+function launchHistoryStatus(row: OverviewLaunchRow): { label: string; band: 'passed' | 'failed' | 'skipped' | 'unknown' } {
+  if (row.failed > 0) {
+    return { label: 'Failed', band: 'failed' };
+  }
+  if (row.passed > 0) {
+    return { label: 'Passed', band: 'passed' };
+  }
+  if (row.skipped > 0) {
+    return { label: 'Skipped', band: 'skipped' };
+  }
+
+  return { label: 'Unknown', band: 'unknown' };
+}
+
+function launchHistoryAttributeLines(attributeText: string): string[] {
+  return attributeText
+    .split(/\s*\|\s*|\n+/)
+    .map(part => part.trim())
+    .filter(part => part.length > 0);
 }
 
 /**
@@ -596,6 +829,13 @@ function SuiteListSortableTh({
 }
 
 const OverviewLaunchesTable: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const routeState = useMemo(
+    () => parseOverviewLaunchesRoute(location.pathname),
+    [location.pathname],
+  );
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(15);
   const [launchSort, setLaunchSort] = useState<{
@@ -608,27 +848,38 @@ const OverviewLaunchesTable: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [hoveredStartRowId, setHoveredStartRowId] = useState<string | null>(null);
   const [hoveredSuiteItemRowKey, setHoveredSuiteItemRowKey] = useState<string | null>(null);
+  /** Suite list "View": same launch summary tooltip as the green history pills in the test log. */
+  const [suiteListLaunchTooltip, setSuiteListLaunchTooltip] = useState<{
+    anchorKey: string;
+    top: number;
+    left: number;
+  } | null>(null);
   const [drillLaunch, setDrillLaunch] = useState<OverviewLaunchRow | null>(null);
   const [suiteListItems, setSuiteListItems] = useState<OverviewLaunchSuiteItemApiRow[] | null>(null);
-  const [suiteItemsLoading, setSuiteItemsLoading] = useState(false);
+  const [suiteItemsLoading] = useState(false);
   const [suiteItemsError, setSuiteItemsError] = useState<string | null>(null);
   const [suiteSort, setSuiteSort] = useState<{
     column: SuiteListSortColumn;
     direction: 'asc' | 'desc';
   }>({ column: 'start_time', direction: 'asc' });
+  const [testLogLaunch, setTestLogLaunch] = useState<OverviewLaunchRow | null>(null);
   const [testLogTarget, setTestLogTarget] = useState<OverviewSuiteListLogTarget | null>(null);
   const [testLogPayload, setTestLogPayload] = useState<OverviewTestLogItemsResponse | null>(null);
   const [testLogLoading, setTestLogLoading] = useState(false);
   const [testLogError, setTestLogError] = useState<string | null>(null);
+  const [historyAnchorLaunch, setHistoryAnchorLaunch] = useState<OverviewLaunchRow | null>(null);
+  const [historyAnchorTarget, setHistoryAnchorTarget] = useState<OverviewSuiteListLogTarget | null>(null);
+  const [historyLaunches, setHistoryLaunches] = useState<HistoryLaunchEntry[]>([]);
+  const [historyLaunchesLoading, setHistoryLaunchesLoading] = useState(false);
+  const [historyLaunchesHiddenCount, setHistoryLaunchesHiddenCount] = useState(0);
+  const [historyLaunchesNextBeforeId, setHistoryLaunchesNextBeforeId] = useState<number | null>(null);
   const [hoveredLogTimeRowKey, setHoveredLogTimeRowKey] = useState<string | null>(null);
   const [selectedLaunchRowIds, setSelectedLaunchRowIds] = useState<Set<string>>(() => new Set());
   const [selectedSuiteRowKeys, setSelectedSuiteRowKeys] = useState<Set<string>>(() => new Set());
   const launchSelectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const suiteSelectAllCheckboxRef = useRef<HTMLInputElement>(null);
-  /** Skips resetting suite/log state when applying URL deep-link state in the same commit. */
-  const applyingDeepLinkFromUrlRef = useRef(false);
-
-  const [searchParams, setSearchParams] = useSearchParams();
+  const historyLaunchTargetCacheRef = useRef<Map<string, OverviewSuiteListLogTarget | null>>(new Map());
+  const skipNextLaunchesSearchSyncRef = useRef(false);
 
   const [projectOptions, setProjectOptions] = useState<OverviewLaunchesProjectOption[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -667,20 +918,89 @@ const OverviewLaunchesTable: React.FC = () => {
    */
   useEffect(() => {
     const prev = prevStartTimePresetRef.current;
-    if (startTimePreset === 'custom' && prev !== 'custom') {
+    const hasUrlBounds =
+      (searchParams.get('start_from') ?? '').trim() !== '' || (searchParams.get('start_to') ?? '').trim() !== '';
+    if (startTimePreset === 'custom' && prev !== 'custom' && !hasUrlBounds) {
       setCustomRangeStart(null);
       setCustomRangeEnd(null);
     }
     prevStartTimePresetRef.current = startTimePreset;
-  }, [startTimePreset]);
+  }, [searchParams, startTimePreset]);
 
-  const projectIdsFilterKey = useMemo(
-    () =>
-      selectedProjectIds
-        .slice()
-        .sort((a, b) => a - b)
-        .join(','),
-    [selectedProjectIds],
+  const historySelectedLaunchIdFromSearch = useMemo(
+    () => positiveIntFromSearchParam(searchParams.get('history_selected_tre')),
+    [searchParams],
+  );
+
+  const buildNextLaunchesSearchParams = useCallback(
+    (
+      mutate?: (next: URLSearchParams) => void,
+      historyAnchorTestRunExecutionId?: number | null,
+    ): URLSearchParams => {
+      const next = new URLSearchParams(searchParams);
+      if (mutate !== undefined) {
+        mutate(next);
+      }
+      if (historyAnchorTestRunExecutionId === null) {
+        next.delete('history_selected_tre');
+      } else if (
+        historyAnchorTestRunExecutionId !== undefined &&
+        Number.isInteger(historyAnchorTestRunExecutionId) &&
+        historyAnchorTestRunExecutionId > 0
+      ) {
+        next.set('history_selected_tre', String(historyAnchorTestRunExecutionId));
+      }
+
+      return next;
+    },
+    [searchParams],
+  );
+
+  const replaceLaunchesSearchParams = useCallback(
+    (
+      mutate: (next: URLSearchParams) => void,
+      historyAnchorTestRunExecutionId?: number | null,
+    ) => {
+      const next = buildNextLaunchesSearchParams(mutate, historyAnchorTestRunExecutionId);
+      const current = searchParams.toString();
+      const updated = next.toString();
+      if (current === updated) {
+        return;
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [buildNextLaunchesSearchParams, searchParams, setSearchParams],
+  );
+
+  const navigateToLaunchesRoute = useCallback(
+    (
+      nextRoute: OverviewLaunchesRouteState,
+      replace = false,
+      historyAnchorTestRunExecutionId?: number | null,
+    ) => {
+      let pathname = '/overview/launches';
+      if (nextRoute.kind !== 'list') {
+        pathname = `/overview/launches/${nextRoute.testRunExecutionId}`;
+        if (nextRoute.kind === 'suite') {
+          pathname += '/suite';
+        } else if (nextRoute.kind === 'test') {
+          pathname += `/test/${nextRoute.overviewTestId}`;
+        } else if (nextRoute.kind === 'kw') {
+          pathname += `/kw/${nextRoute.overviewSuiteKwId}`;
+        }
+      }
+
+      const nextSearchParams = buildNextLaunchesSearchParams(undefined, historyAnchorTestRunExecutionId);
+      const nextSearch = nextSearchParams.toString();
+      const target = `${pathname}${nextSearch !== '' ? `?${nextSearch}` : ''}`;
+      const current = `${location.pathname}${location.search}`;
+      if (target === current) {
+        return;
+      }
+
+      navigate(target, { replace });
+    },
+    [buildNextLaunchesSearchParams, location.pathname, location.search, navigate],
   );
 
   useEffect(() => {
@@ -710,8 +1030,116 @@ const OverviewLaunchesTable: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    setPage(1);
-  }, [projectIdsFilterKey, startTimePreset, customFromApi, customToApi, executionFilter]);
+    skipNextLaunchesSearchSyncRef.current = true;
+
+    const parsedPage = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
+    const parsedPerPageRaw = Number(searchParams.get('per_page') ?? `${PER_PAGE_OPTIONS[0]}`) || PER_PAGE_OPTIONS[0];
+    const parsedPerPage = PER_PAGE_OPTIONS.includes(parsedPerPageRaw as typeof PER_PAGE_OPTIONS[number])
+      ? parsedPerPageRaw
+      : PER_PAGE_OPTIONS[0];
+
+    const rawSort = searchParams.get('sort');
+    const allowedSorts: OverviewLaunchesSortColumn[] = [
+      'tre_id',
+      'name',
+      'start_time',
+      'duration',
+      'total',
+      'passed',
+      'failed',
+      'skipped',
+      'product_bug',
+      'auto_bug',
+      'system_issue',
+      'to_investigate',
+    ];
+    const parsedSort: OverviewLaunchesSortColumn =
+      rawSort !== null && allowedSorts.includes(rawSort as OverviewLaunchesSortColumn)
+        ? (rawSort as OverviewLaunchesSortColumn)
+        : 'tre_id';
+    const parsedDirection: 'asc' | 'desc' = searchParams.get('direction') === 'asc' ? 'asc' : 'desc';
+    const parsedProjectIds = parseProjectIdsSearchParam(searchParams.get('project_ids'));
+    const parsedExecutionFilter: OverviewLaunchesExecutionFilter =
+      searchParams.get('executed_by') === 'me'
+        ? 'me'
+        : searchParams.get('executed_by') === 'cron'
+          ? 'cron'
+          : 'all';
+    const parsedPreset = detectStartTimePresetFromSearch(
+      searchParams.get('start_from'),
+      searchParams.get('start_to'),
+    );
+
+    setPage(prev => (prev === parsedPage ? prev : parsedPage));
+    setPerPage(prev => (prev === parsedPerPage ? prev : parsedPerPage));
+    setLaunchSort(prev =>
+      prev.column === parsedSort && prev.direction === parsedDirection
+        ? prev
+        : { column: parsedSort, direction: parsedDirection },
+    );
+    setSelectedProjectIds(prev => (arraysEqual(prev, parsedProjectIds) ? prev : parsedProjectIds));
+    setExecutionFilter(prev => (prev === parsedExecutionFilter ? prev : parsedExecutionFilter));
+    setStartTimePreset(prev => (prev === parsedPreset.preset ? prev : parsedPreset.preset));
+    setCustomRangeStart(prev => {
+      const next = parsedPreset.customRangeStart;
+      if (prev?.getTime() === next?.getTime()) {
+        return prev;
+      }
+      return next;
+    });
+    setCustomRangeEnd(prev => {
+      const next = parsedPreset.customRangeEnd;
+      if (prev?.getTime() === next?.getTime()) {
+        return prev;
+      }
+      return next;
+    });
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (skipNextLaunchesSearchSyncRef.current) {
+      skipNextLaunchesSearchSyncRef.current = false;
+      return;
+    }
+
+    replaceLaunchesSearchParams(next => {
+      next.set('page', String(page));
+      next.set('per_page', String(perPage));
+      next.set('sort', launchSort.column);
+      next.set('direction', launchSort.direction);
+      if (selectedProjectIds.length > 0) {
+        next.set('project_ids', selectedProjectIds.join(','));
+      } else {
+        next.delete('project_ids');
+      }
+      if (resolvedStartFrom !== null && resolvedStartFrom !== '') {
+        next.set('start_from', resolvedStartFrom);
+      } else {
+        next.delete('start_from');
+      }
+      if (resolvedStartTo !== null && resolvedStartTo !== '') {
+        next.set('start_to', resolvedStartTo);
+      } else {
+        next.delete('start_to');
+      }
+      if (executionFilter !== 'all') {
+        next.set('executed_by', executionFilter);
+      } else {
+        next.delete('executed_by');
+      }
+      next.set('tab', 'launches');
+    });
+  }, [
+    page,
+    perPage,
+    launchSort.column,
+    launchSort.direction,
+    selectedProjectIds,
+    resolvedStartFrom,
+    resolvedStartTo,
+    executionFilter,
+    replaceLaunchesSearchParams,
+  ]);
 
   /**
    * Closes the Projects dropdown on outside click or Escape (unlike native details).
@@ -744,6 +1172,7 @@ const OverviewLaunchesTable: React.FC = () => {
    * Toggles a project id in the multi-select filter list.
    */
   const toggleProjectFilter = useCallback((projectId: number) => {
+    setPage(1);
     setSelectedProjectIds(prev =>
       prev.includes(projectId) ? prev.filter(id => id !== projectId) : [...prev, projectId].sort((a, b) => a - b),
     );
@@ -797,74 +1226,174 @@ const OverviewLaunchesTable: React.FC = () => {
     });
   }, []);
 
-  /**
-   * Reloads suite list rows for the current drill-down launch (breadcrumb return / open list).
-   */
-  const loadSuiteItems = useCallback(async () => {
-    if (drillLaunch === null) {
-      return;
-    }
-    setSuiteItemsLoading(true);
-    setSuiteItemsError(null);
-    try {
-      const res = await fetchOverviewLaunchSuiteItems(Number(drillLaunch.id));
-      setSuiteListItems(res.items);
-    } catch (e) {
-      setSuiteItemsError(e instanceof Error ? e.message : 'Could not load suite items.');
-      setSuiteListItems(null);
-    } finally {
-      setSuiteItemsLoading(false);
-    }
-  }, [drillLaunch]);
-
-  /**
-   * Re-syncs launch list state and the drilled row (when still on that launch) from the API.
-   */
-  const refreshDrillLaunchRow = useCallback(async (launchId: string) => {
-    try {
+  const fetchLaunchRowById = useCallback(
+    async (launchId: number): Promise<OverviewLaunchRow | null> => {
       const res = await fetchOverviewLaunches({
-        page,
-        perPage,
-        sort: launchSort.column,
-        direction: launchSort.direction,
+        testRunExecutionId: launchId,
+        perPage: 1,
         projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
         startFrom: resolvedStartFrom ?? undefined,
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
       });
-      setRows(res.launches.map(mapApiRowToRow));
-      setMeta(res.meta);
-      const found = res.launches.find(l => String(l.testRunExecutionId) === launchId);
-      if (found !== undefined) {
-        setDrillLaunch(prev =>
-          prev !== null && prev.id === launchId ? mapApiRowToRow(found) : prev,
-        );
-      }
-    } catch {
-      /* keep existing drill row on failure */
-    }
-  }, [
-    page,
-    perPage,
-    launchSort.column,
-    launchSort.direction,
-    selectedProjectIds,
-    resolvedStartFrom,
-    resolvedStartTo,
-    executionFilter,
-  ]);
+
+      const row = res.launches[0];
+
+      return row !== undefined ? mapApiRowToRow(row) : null;
+    },
+    [selectedProjectIds, resolvedStartFrom, resolvedStartTo, executionFilter],
+  );
 
   useEffect(() => {
     void load(page, perPage);
   }, [load, page, perPage]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const clearLocalSelection = (): void => {
+      setDrillLaunch(null);
+      setSuiteListItems(null);
+      setSuiteItemsError(null);
+      setHistoryAnchorLaunch(null);
+      setHistoryAnchorTarget(null);
+      setTestLogLaunch(null);
+      setTestLogTarget(null);
+      setTestLogPayload(null);
+      setTestLogError(null);
+      setHoveredLogTimeRowKey(null);
+      historyLaunchTargetCacheRef.current = new Map();
+    };
+
+    const run = async (): Promise<void> => {
+      if (routeState.kind === 'list') {
+        clearLocalSelection();
+        return;
+      }
+
+      try {
+        const launchRow = await fetchLaunchRowById(routeState.testRunExecutionId);
+        if (cancelled) {
+          return;
+        }
+        if (launchRow === null) {
+          toast.error('Could not open overview launch: launch not found.');
+          navigateToLaunchesRoute({ kind: 'list' }, true);
+          return;
+        }
+
+        setDrillLaunch(launchRow);
+
+        if (routeState.kind === 'launch') {
+          setSuiteListItems(null);
+          setSuiteItemsError(null);
+          setTestLogLaunch(null);
+          setTestLogTarget(null);
+          setTestLogPayload(null);
+          setTestLogError(null);
+          setHoveredLogTimeRowKey(null);
+          historyLaunchTargetCacheRef.current = new Map();
+          return;
+        }
+
+        const suiteRes = await fetchOverviewLaunchSuiteItems(routeState.testRunExecutionId);
+        if (cancelled) {
+          return;
+        }
+
+        setSuiteListItems(suiteRes.items);
+        setSuiteItemsError(null);
+
+        if (routeState.kind === 'suite') {
+          setTestLogLaunch(null);
+          setTestLogTarget(null);
+          setTestLogPayload(null);
+          setTestLogError(null);
+          setHoveredLogTimeRowKey(null);
+          historyLaunchTargetCacheRef.current = new Map();
+          return;
+        }
+
+        const matchedItem =
+          routeState.kind === 'test'
+            ? suiteRes.items.find(item => item.overviewTestId === routeState.overviewTestId) ?? null
+            : suiteRes.items.find(item => item.overviewSuiteKwId === routeState.overviewSuiteKwId) ?? null;
+        const anchorTarget = matchedItem !== null ? suiteItemToLogTarget(matchedItem) : null;
+        if (anchorTarget === null) {
+          toast.error('Could not open overview log: row not found in suite list.');
+          navigateToLaunchesRoute({ kind: 'suite', testRunExecutionId: routeState.testRunExecutionId }, true);
+          return;
+        }
+
+        let selectedLaunchRow = launchRow;
+        let selectedLogTarget = anchorTarget;
+        const selectedLaunchId = historySelectedLaunchIdFromSearch;
+
+        if (selectedLaunchId !== null && selectedLaunchId !== routeState.testRunExecutionId) {
+          const selectedRow = await fetchLaunchRowById(selectedLaunchId);
+          if (cancelled) {
+            return;
+          }
+          if (selectedRow === null) {
+            toast.error('Could not open overview log: selected launch not found.');
+            navigateToLaunchesRoute(routeState, true, null);
+            return;
+          }
+
+          const selectedSuiteRes = await fetchOverviewLaunchSuiteItems(selectedLaunchId);
+          if (cancelled) {
+            return;
+          }
+          const selectedMatchedItem = pickMatchingSuiteItemForHistory(selectedSuiteRes.items, anchorTarget);
+          const selectedTarget = selectedMatchedItem !== null ? suiteItemToLogTarget(selectedMatchedItem) : null;
+          if (selectedTarget === null) {
+            toast.error(`Could not find element "${anchorTarget.displayName}" in selected launch.`);
+            navigateToLaunchesRoute(routeState, true, null);
+            return;
+          }
+
+          selectedLaunchRow = selectedRow;
+          selectedLogTarget = selectedTarget;
+          historyLaunchTargetCacheRef.current = new Map([
+            [launchRow.id, anchorTarget],
+            [selectedRow.id, selectedTarget],
+          ]);
+        } else {
+          historyLaunchTargetCacheRef.current = new Map([[launchRow.id, anchorTarget]]);
+        }
+
+        setHistoryAnchorLaunch(prev => (prev?.id === launchRow.id ? prev : launchRow));
+        setHistoryAnchorTarget(prev => (sameLogTarget(prev, anchorTarget) ? prev : anchorTarget));
+        setTestLogLaunch(selectedLaunchRow);
+        setTestLogTarget(selectedLogTarget);
+        setTestLogPayload(null);
+        setTestLogError(null);
+        setHoveredLogTimeRowKey(null);
+      } catch (e) {
+        if (!cancelled) {
+          toast.error(e instanceof Error ? e.message : 'Could not open overview launch.');
+        }
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchLaunchRowById, historySelectedLaunchIdFromSearch, navigateToLaunchesRoute, routeState]);
+
+  useEffect(() => {
     setDrillLaunch(null);
     setSuiteListItems(null);
     setSuiteItemsError(null);
+    setHistoryAnchorLaunch(null);
+    setHistoryAnchorTarget(null);
+    setTestLogLaunch(null);
     setTestLogTarget(null);
     setTestLogPayload(null);
     setTestLogError(null);
+    historyLaunchTargetCacheRef.current = new Map();
   }, [page, perPage]);
 
   useEffect(() => {
@@ -880,17 +1409,14 @@ const OverviewLaunchesTable: React.FC = () => {
   }, [suiteListItems]);
 
   useEffect(() => {
-    if (applyingDeepLinkFromUrlRef.current) {
-      applyingDeepLinkFromUrlRef.current = false;
-
-      return;
-    }
     setSuiteListItems(null);
     setSuiteItemsError(null);
     setSuiteSort({ column: 'start_time', direction: 'asc' });
+    setTestLogLaunch(null);
     setTestLogTarget(null);
     setTestLogPayload(null);
     setTestLogError(null);
+    historyLaunchTargetCacheRef.current = new Map();
   }, [drillLaunch?.id]);
 
   const stripOverviewDeepLinkParams = useCallback(() => {
@@ -933,8 +1459,7 @@ const OverviewLaunchesTable: React.FC = () => {
         if (cancelled) {
           return;
         }
-        const mappedRows = launchRes.launches.map(mapApiRowToRow);
-        if (mappedRows.length === 0) {
+        if (launchRes.launches.length === 0) {
           toast.error('Could not open overview log: launch not found.');
           stripOverviewDeepLinkParams();
 
@@ -949,8 +1474,7 @@ const OverviewLaunchesTable: React.FC = () => {
         const picked = pickSuiteItemForDeepLink(suiteRes.items, overviewTestId, testNameRaw);
         if (picked === null) {
           toast.error('Could not open overview log: test not found in suite list.');
-          applyingDeepLinkFromUrlRef.current = true;
-          setDrillLaunch(mappedRows[0]);
+          navigateToLaunchesRoute({ kind: 'launch', testRunExecutionId: tre }, true);
           stripOverviewDeepLinkParams();
 
           return;
@@ -959,18 +1483,27 @@ const OverviewLaunchesTable: React.FC = () => {
         const logTarget = suiteItemToLogTarget(picked);
         if (logTarget === null) {
           toast.error('Could not open overview log: row has no log data.');
-          applyingDeepLinkFromUrlRef.current = true;
-          setDrillLaunch(mappedRows[0]);
+          navigateToLaunchesRoute({ kind: 'launch', testRunExecutionId: tre }, true);
           stripOverviewDeepLinkParams();
 
           return;
         }
 
-        applyingDeepLinkFromUrlRef.current = true;
-        setDrillLaunch(mappedRows[0]);
-        setSuiteListItems(suiteRes.items);
-        setSuiteItemsError(null);
-        setTestLogTarget(logTarget);
+        navigateToLaunchesRoute(
+          logTarget.kind === 'test'
+            ? {
+                kind: 'test',
+                testRunExecutionId: tre,
+                overviewTestId: logTarget.overviewTestId,
+              }
+            : {
+                kind: 'kw',
+                testRunExecutionId: tre,
+                overviewSuiteKwId: logTarget.overviewSuiteKwId,
+              },
+          true,
+          null,
+        );
         stripOverviewDeepLinkParams();
       } catch (e) {
         if (!cancelled) {
@@ -983,18 +1516,185 @@ const OverviewLaunchesTable: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, stripOverviewDeepLinkParams]);
+  }, [navigateToLaunchesRoute, searchParams, stripOverviewDeepLinkParams]);
+
 
   const inTestLogView = testLogTarget !== null;
 
+  const loadHistoryLaunches = useCallback(async () => {
+    if (historyAnchorLaunch === null || historyAnchorTarget === null) {
+      setHistoryLaunches([]);
+      setHistoryLaunchesHiddenCount(0);
+      setHistoryLaunchesNextBeforeId(null);
+      return;
+    }
+    setHistoryLaunchesLoading(true);
+    try {
+      const res = await fetchOverviewLaunchHistory({
+        testRunExecutionId: Number(historyAnchorLaunch.id),
+        perPage: HISTORY_BUTTON_BATCH_SIZE,
+        projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+        startFrom: resolvedStartFrom ?? undefined,
+        startTo: resolvedStartTo ?? undefined,
+        executionFilter: executionFilter === 'all' ? undefined : executionFilter,
+      });
+      const rowsForHistory = res.launches.map(mapApiRowToRow).reverse();
+
+      setHistoryLaunches(rowsForHistory.map(row => ({ row } satisfies HistoryLaunchEntry)));
+      setHistoryLaunchesHiddenCount(res.meta.hiddenCount);
+      setHistoryLaunchesNextBeforeId(res.meta.nextBeforeTestRunExecutionId);
+    } catch {
+      setHistoryLaunches([]);
+      setHistoryLaunchesHiddenCount(0);
+      setHistoryLaunchesNextBeforeId(null);
+    } finally {
+      setHistoryLaunchesLoading(false);
+    }
+  }, [
+    historyAnchorLaunch,
+    historyAnchorTarget,
+    selectedProjectIds,
+    resolvedStartFrom,
+    resolvedStartTo,
+    executionFilter
+  ]);
+
+  useEffect(() => {
+    if (!inTestLogView) {
+      setHistoryAnchorLaunch(null);
+      setHistoryAnchorTarget(null);
+      setHistoryLaunches([]);
+      setHistoryLaunchesHiddenCount(0);
+      setHistoryLaunchesNextBeforeId(null);
+      setHistoryLaunchesLoading(false);
+      return;
+    }
+  }, [inTestLogView]);
+
+  useEffect(() => {
+    if (!inTestLogView || historyAnchorLaunch === null || historyAnchorTarget === null) {
+      return;
+    }
+
+    void loadHistoryLaunches();
+  }, [inTestLogView, historyAnchorLaunch, historyAnchorTarget, loadHistoryLaunches]);
+
+  const openHistoryLaunch = useCallback(async (launchId: string) => {
+    if (historyAnchorLaunch === null || historyAnchorTarget === null) {
+      return;
+    }
+
+    if (launchId === testLogLaunch?.id) {
+      return;
+    }
+
+    const selectedLaunch =
+      launchId === historyAnchorLaunch.id
+        ? { row: historyAnchorLaunch }
+        : historyLaunches.find(entry => entry.row.id === launchId);
+    if (selectedLaunch === undefined) {
+      return;
+    }
+
+    try {
+      let matchedTarget: OverviewSuiteListLogTarget | null | undefined =
+        historyLaunchTargetCacheRef.current.get(selectedLaunch.row.id);
+
+      if (matchedTarget === undefined) {
+        const suiteRes = await fetchOverviewLaunchSuiteItems(Number(selectedLaunch.row.id));
+        const matchedItem = pickMatchingSuiteItemForHistory(suiteRes.items, historyAnchorTarget);
+        matchedTarget = matchedItem !== null ? suiteItemToLogTarget(matchedItem) : null;
+        historyLaunchTargetCacheRef.current.set(selectedLaunch.row.id, matchedTarget);
+      }
+
+      if (matchedTarget === null) {
+        toast.error(`Could not find element "${historyAnchorTarget.displayName}" in selected launch.`);
+        return;
+      }
+
+      navigateToLaunchesRoute(
+        historyAnchorTarget.kind === 'test'
+          ? {
+              kind: 'test',
+              testRunExecutionId: Number(historyAnchorLaunch.id),
+              overviewTestId: historyAnchorTarget.overviewTestId,
+            }
+          : {
+              kind: 'kw',
+              testRunExecutionId: Number(historyAnchorLaunch.id),
+              overviewSuiteKwId: historyAnchorTarget.overviewSuiteKwId,
+            },
+        false,
+        launchId === historyAnchorLaunch.id ? null : Number(selectedLaunch.row.id),
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not switch launch.');
+    }
+  }, [historyAnchorLaunch, historyAnchorTarget, historyLaunches, navigateToLaunchesRoute, testLogLaunch?.id]);
+
+  const loadMoreHistoryLaunches = useCallback(async () => {
+    if (
+      historyAnchorLaunch === null ||
+      historyAnchorTarget === null ||
+      historyLaunchesLoading ||
+      historyLaunchesHiddenCount <= 0 ||
+      historyLaunchesNextBeforeId === null ||
+      historyLaunches.length >= HISTORY_BUTTON_MAX_VISIBLE
+    ) {
+      return;
+    }
+
+    setHistoryLaunchesLoading(true);
+    try {
+      const remainingSlots = HISTORY_BUTTON_MAX_VISIBLE - historyLaunches.length;
+      const res = await fetchOverviewLaunchHistory({
+        testRunExecutionId: Number(historyAnchorLaunch.id),
+        perPage: Math.min(HISTORY_BUTTON_BATCH_SIZE, remainingSlots),
+        projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+        startFrom: resolvedStartFrom ?? undefined,
+        startTo: resolvedStartTo ?? undefined,
+        executionFilter: executionFilter === 'all' ? undefined : executionFilter,
+        beforeTestRunExecutionId: historyLaunchesNextBeforeId,
+      });
+      const rowsForHistory = res.launches.map(mapApiRowToRow).reverse();
+
+      setHistoryLaunches(prev => [
+        ...rowsForHistory.map(row => ({ row } satisfies HistoryLaunchEntry)),
+        ...prev,
+      ]);
+      if (remainingSlots <= HISTORY_BUTTON_BATCH_SIZE) {
+        setHistoryLaunchesHiddenCount(0);
+        setHistoryLaunchesNextBeforeId(null);
+      } else {
+        setHistoryLaunchesHiddenCount(res.meta.hiddenCount);
+        setHistoryLaunchesNextBeforeId(res.meta.nextBeforeTestRunExecutionId);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not load older launches.');
+    } finally {
+      setHistoryLaunchesLoading(false);
+    }
+  }, [
+    historyAnchorLaunch,
+    historyAnchorTarget,
+    historyLaunchesLoading,
+    historyLaunchesHiddenCount,
+    historyLaunchesNextBeforeId,
+    historyLaunches.length,
+    selectedProjectIds,
+    resolvedStartFrom,
+    resolvedStartTo,
+    executionFilter
+  ]);
+
   const loadTestLog = useCallback(async () => {
-    if (drillLaunch === null || testLogTarget === null) {
+    if (testLogLaunch === null || testLogTarget === null) {
       return;
     }
     setTestLogLoading(true);
     setTestLogError(null);
     try {
-      const execId = Number(drillLaunch.id);
+      const execId = Number(testLogLaunch.id);
       const res =
         testLogTarget.kind === 'test'
           ? await fetchOverviewTestLogItems(execId, testLogTarget.overviewTestId)
@@ -1006,7 +1706,19 @@ const OverviewLaunchesTable: React.FC = () => {
     } finally {
       setTestLogLoading(false);
     }
-  }, [drillLaunch, testLogTarget]);
+  }, [testLogLaunch, testLogTarget]);
+
+  const visibleHistoryLaunchEntries = useMemo(() => {
+    if (historyLaunches.length > 0) {
+      return historyLaunches;
+    }
+
+    if (testLogLaunch !== null) {
+      return [{ row: testLogLaunch } satisfies HistoryLaunchEntry];
+    }
+
+    return [];
+  }, [historyLaunches, testLogLaunch]);
 
   useEffect(() => {
     void loadTestLog();
@@ -1016,12 +1728,11 @@ const OverviewLaunchesTable: React.FC = () => {
    * Returns from test log to the suite list (third level).
    */
   const clearTestLogOnly = useCallback(() => {
-    setTestLogTarget(null);
-    setTestLogPayload(null);
-    setTestLogError(null);
-    setHoveredLogTimeRowKey(null);
-    void loadSuiteItems();
-  }, [loadSuiteItems]);
+    if (drillLaunch === null) {
+      return;
+    }
+    navigateToLaunchesRoute({ kind: 'suite', testRunExecutionId: Number(drillLaunch.id) }, false, null);
+  }, [drillLaunch, navigateToLaunchesRoute]);
 
   /**
    * Returns from test log to the single root-suite row (second level).
@@ -1030,15 +1741,8 @@ const OverviewLaunchesTable: React.FC = () => {
     if (drillLaunch === null) {
       return;
     }
-    const launchId = drillLaunch.id;
-    setTestLogTarget(null);
-    setTestLogPayload(null);
-    setTestLogError(null);
-    setHoveredLogTimeRowKey(null);
-    setSuiteListItems(null);
-    setSuiteItemsError(null);
-    void refreshDrillLaunchRow(launchId);
-  }, [drillLaunch, refreshDrillLaunchRow]);
+    navigateToLaunchesRoute({ kind: 'launch', testRunExecutionId: Number(drillLaunch.id) }, false, null);
+  }, [drillLaunch, navigateToLaunchesRoute]);
 
   const displayRows = useMemo(
     () => (drillLaunch !== null ? [buildDrillDownSuiteRow(drillLaunch)] : rows),
@@ -1140,29 +1844,22 @@ const OverviewLaunchesTable: React.FC = () => {
    * Opens the root-suite list view (tests + suite keywords) for the current drilled launch.
    */
   const openSuiteListView = useCallback(() => {
-    void loadSuiteItems();
-  }, [loadSuiteItems]);
+    if (drillLaunch === null) {
+      return;
+    }
+    navigateToLaunchesRoute({ kind: 'suite', testRunExecutionId: Number(drillLaunch.id) });
+  }, [drillLaunch, navigateToLaunchesRoute]);
 
   const clearToAllLaunches = useCallback(() => {
-    setDrillLaunch(null);
-    setSuiteListItems(null);
-    setSuiteItemsError(null);
-    setTestLogTarget(null);
-    setTestLogPayload(null);
-    setTestLogError(null);
-    setHoveredLogTimeRowKey(null);
-    void load(page, perPage);
-  }, [load, page, perPage]);
+    navigateToLaunchesRoute({ kind: 'list' }, false, null);
+  }, [navigateToLaunchesRoute]);
 
   const clearSuiteListOnly = useCallback(() => {
     if (drillLaunch === null) {
       return;
     }
-    const launchId = drillLaunch.id;
-    setSuiteListItems(null);
-    setSuiteItemsError(null);
-    void refreshDrillLaunchRow(launchId);
-  }, [drillLaunch, refreshDrillLaunchRow]);
+    navigateToLaunchesRoute({ kind: 'launch', testRunExecutionId: Number(drillLaunch.id) }, false, null);
+  }, [drillLaunch, navigateToLaunchesRoute]);
 
   const suiteRowTitle = drillLaunch
     ? buildDrillDownSuiteRow(drillLaunch).title
@@ -1189,6 +1886,74 @@ const OverviewLaunchesTable: React.FC = () => {
     }
     return `${selectedProjectIds.length} projects`;
   }, [projectsLoading, projectOptions, selectedProjectIds]);
+
+  /**
+   * Payload for {@link HistoryLaunchTooltip}: current drilled launch (suite list parent execution).
+   */
+  const drillLaunchHistoryTooltipButton = useMemo((): HistoryLaunchTooltipButtonModel | null => {
+    if (drillLaunch === null) {
+      return null;
+    }
+    const st = launchHistoryStatus(drillLaunch);
+    return {
+      id: drillLaunch.id,
+      label: launchHistoryButtonLabel(drillLaunch),
+      active: true,
+      title: drillLaunch.title,
+      statusLabel: st.label,
+      statusBand: st.band,
+      attributeLines: launchHistoryAttributeLines(drillLaunch.attributeText),
+      durationLabel: drillLaunch.durationLabel,
+    };
+  }, [drillLaunch]);
+
+  useEffect(() => {
+    setSuiteListLaunchTooltip(null);
+  }, [testLogTarget, drillLaunch?.id, suiteListItems]);
+
+  useEffect(() => {
+    if (suiteListLaunchTooltip === null) {
+      return;
+    }
+
+    const clear = (): void => {
+      setSuiteListLaunchTooltip(null);
+    };
+
+    const onDocMouseDown = (e: MouseEvent): void => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) {
+        return;
+      }
+      if (t.closest('[data-overview-suite-launch-view]')) {
+        return;
+      }
+      clear();
+    };
+
+    window.addEventListener('scroll', clear, true);
+    window.addEventListener('resize', clear);
+    document.addEventListener('mousedown', onDocMouseDown, true);
+
+    return () => {
+      window.removeEventListener('scroll', clear, true);
+      window.removeEventListener('resize', clear);
+      document.removeEventListener('mousedown', onDocMouseDown, true);
+    };
+  }, [suiteListLaunchTooltip]);
+
+  useEffect(() => {
+    if (suiteListLaunchTooltip === null) {
+      return;
+    }
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        setSuiteListLaunchTooltip(null);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [suiteListLaunchTooltip]);
 
   return (
     <div>
@@ -1267,7 +2032,10 @@ const OverviewLaunchesTable: React.FC = () => {
               id="ov-start-preset"
               aria-labelledby="ov-start-preset-label"
               value={startTimePreset}
-              onChange={e => setStartTimePreset(e.target.value as StartTimePreset)}
+              onChange={e => {
+                setPage(1);
+                setStartTimePreset(e.target.value as StartTimePreset);
+              }}
               className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             >
               <option value="any">Any</option>
@@ -1288,7 +2056,10 @@ const OverviewLaunchesTable: React.FC = () => {
             <select
               id="ov-execution-filter"
               value={executionFilter}
-              onChange={e => setExecutionFilter(e.target.value as OverviewLaunchesExecutionFilter)}
+              onChange={e => {
+                setPage(1);
+                setExecutionFilter(e.target.value as OverviewLaunchesExecutionFilter);
+              }}
               className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             >
               <option value="all">All</option>
@@ -1301,6 +2072,7 @@ const OverviewLaunchesTable: React.FC = () => {
             <button
               type="button"
               onClick={() => {
+                setPage(1);
                 setSelectedProjectIds([]);
                 setStartTimePreset('any');
                 setCustomRangeStart(null);
@@ -1322,6 +2094,7 @@ const OverviewLaunchesTable: React.FC = () => {
                 startDate={customRangeStart}
                 endDate={customRangeEnd}
                 onRangeChange={(s, e) => {
+                  setPage(1);
                   setCustomRangeStart(s);
                   setCustomRangeEnd(e);
                 }}
@@ -1417,19 +2190,37 @@ const OverviewLaunchesTable: React.FC = () => {
             <span className="border-b-2 border-teal-500 pb-1.5 text-teal-600 dark:text-teal-400">
               List view
             </span>
-            <span className="cursor-not-allowed pb-1.5 text-slate-400">Unique errors</span>
-            <span className="cursor-not-allowed pb-1.5 text-slate-400">Log view</span>
-            <span className="cursor-not-allowed pb-1.5 text-slate-400">History</span>
           </div>
         </div>
       ) : null}
       <div className="overflow-x-auto rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         {inTestLogView && drillLaunch !== null && testLogTarget !== null ? (
           <OverviewTestLogView
-            launchTitle={drillLaunch.title}
             testDisplayName={testLogPayload?.testName ?? testLogTarget.displayName}
             items={testLogPayload?.items ?? []}
             testStatusLabel={testLogPayload?.testStatusLabel ?? '—'}
+            historyButtons={visibleHistoryLaunchEntries.map(entry => ({
+              id: entry.row.id,
+              label: launchHistoryButtonLabel(entry.row),
+              active: testLogLaunch?.id === entry.row.id,
+              title: entry.row.title,
+              statusLabel: launchHistoryStatus(entry.row).label,
+              statusBand: launchHistoryStatus(entry.row).band,
+              attributeLines: launchHistoryAttributeLines(entry.row.attributeText),
+              durationLabel: historyAnchorTarget?.durationLabel ?? testLogTarget.durationLabel,
+            }))}
+            hiddenHistoryButtonsCount={
+              historyLaunches.length >= HISTORY_BUTTON_MAX_VISIBLE || historyLaunchesHiddenCount <= 0
+                ? 0
+                : HISTORY_BUTTON_BATCH_SIZE
+            }
+            onShowMoreHistoryButtons={() => {
+              void loadMoreHistoryLaunches();
+            }}
+            historyButtonsLoading={historyLaunchesLoading}
+            onSelectHistoryButton={launchId => {
+              void openHistoryLaunch(launchId);
+            }}
             suiteSourceRelative={
               testLogPayload?.suiteSourceRelative ?? testLogTarget.suiteSourceRelative ?? null
             }
@@ -1440,6 +2231,7 @@ const OverviewLaunchesTable: React.FC = () => {
             }
             suiteListMethodType={testLogTarget.methodType}
             suiteListStatusLabel={testLogTarget.statusLabel}
+            suiteListStatusBand={testLogTarget.statusBand}
             suiteListStartTimeRelative={testLogTarget.startTimeRelative}
             suiteListStartTimeDisplay={testLogTarget.startTimeDisplay}
             suiteListStartTimeRaw={testLogTarget.startTimeRaw}
@@ -1545,21 +2337,32 @@ const OverviewLaunchesTable: React.FC = () => {
                       {item.overviewTestId !== null ? (
                         <button
                           type="button"
-                          onClick={() =>
-                            setTestLogTarget({
+                          onClick={() => {
+                            const overviewTestId = item.overviewTestId;
+                            if (overviewTestId === null || drillLaunch === null) {
+                              return;
+                            }
+                            const nextTarget: OverviewSuiteListLogTarget = {
                               kind: 'test',
-                              overviewTestId: item.overviewTestId,
+                              overviewTestId,
                               displayName: item.name,
                               methodType: item.methodType,
                               statusLabel: item.statusLabel,
+                              statusBand: item.statusBand,
                               startTimeRelative: item.startTimeRelative,
                               startTimeDisplay: item.startTimeDisplay,
                               startTimeRaw: item.startTimeRaw,
                               durationLabel: item.durationLabel,
                               suiteSourceRelative: item.suiteSourceRelative ?? null,
                               overviewTestLine: item.overviewTestLine ?? null,
-                            })
-                          }
+                            };
+                            historyLaunchTargetCacheRef.current = new Map([[drillLaunch.id, nextTarget]]);
+                            navigateToLaunchesRoute({
+                              kind: 'test',
+                              testRunExecutionId: Number(drillLaunch.id),
+                              overviewTestId,
+                            }, false, null);
+                          }}
                           className="block text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline [overflow-wrap:anywhere]"
                         >
                           {item.name}
@@ -1567,21 +2370,32 @@ const OverviewLaunchesTable: React.FC = () => {
                       ) : item.overviewSuiteKwId !== null ? (
                         <button
                           type="button"
-                          onClick={() =>
-                            setTestLogTarget({
+                          onClick={() => {
+                            const overviewSuiteKwId = item.overviewSuiteKwId;
+                            if (overviewSuiteKwId === null || drillLaunch === null) {
+                              return;
+                            }
+                            const nextTarget: OverviewSuiteListLogTarget = {
                               kind: 'suite_kw',
-                              overviewSuiteKwId: item.overviewSuiteKwId,
+                              overviewSuiteKwId,
                               displayName: item.name,
                               methodType: item.methodType,
                               statusLabel: item.statusLabel,
+                              statusBand: item.statusBand,
                               startTimeRelative: item.startTimeRelative,
                               startTimeDisplay: item.startTimeDisplay,
                               startTimeRaw: item.startTimeRaw,
                               durationLabel: item.durationLabel,
                               suiteSourceRelative: item.suiteSourceRelative ?? null,
                               overviewTestLine: item.overviewTestLine ?? null,
-                            })
-                          }
+                            };
+                            historyLaunchTargetCacheRef.current = new Map([[drillLaunch.id, nextTarget]]);
+                            navigateToLaunchesRoute({
+                              kind: 'kw',
+                              testRunExecutionId: Number(drillLaunch.id),
+                              overviewSuiteKwId,
+                            }, false, null);
+                          }}
                           className="block text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline [overflow-wrap:anywhere]"
                         >
                           {item.name}
@@ -1600,7 +2414,7 @@ const OverviewLaunchesTable: React.FC = () => {
                     </td>
                     <td className="whitespace-nowrap py-3 px-2 align-top text-slate-700 dark:text-slate-300">
                       <span className="inline-flex items-center gap-1">
-                        {item.statusLabel}
+                        {item.statusLabel !== '—' ? item.statusLabel.toUpperCase() : '—'}
                         <ChevronDown className="h-3.5 w-3.5 opacity-60" aria-hidden />
                       </span>
                     </td>
@@ -1840,7 +2654,12 @@ const OverviewLaunchesTable: React.FC = () => {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => setDrillLaunch(row)}
+                        onClick={() =>
+                          navigateToLaunchesRoute({
+                            kind: 'launch',
+                            testRunExecutionId: Number(row.id),
+                          })
+                        }
                         className="text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline [overflow-wrap:anywhere]"
                       >
                         {row.title}
@@ -2066,6 +2885,13 @@ const OverviewLaunchesTable: React.FC = () => {
         </div>
       ) : null}
       </div>
+      {suiteListLaunchTooltip !== null && drillLaunchHistoryTooltipButton !== null ? (
+        <HistoryLaunchTooltip
+          button={drillLaunchHistoryTooltipButton}
+          top={suiteListLaunchTooltip.top}
+          left={suiteListLaunchTooltip.left}
+        />
+      ) : null}
     </div>
   );
 };

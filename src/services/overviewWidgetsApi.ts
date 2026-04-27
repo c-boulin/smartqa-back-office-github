@@ -110,6 +110,27 @@ export interface OverviewLaunchesResponse {
   meta: OverviewLaunchesMeta;
 }
 
+export interface OverviewLaunchHistoryMeta {
+  perPage: number;
+  hiddenCount: number;
+  nextBeforeTestRunExecutionId: number | null;
+}
+
+export interface OverviewLaunchHistoryResponse {
+  launches: OverviewLaunchApiRow[];
+  meta: OverviewLaunchHistoryMeta;
+}
+
+export interface FetchOverviewLaunchHistoryParams {
+  testRunExecutionId: number;
+  perPage?: number;
+  projectIds?: number[];
+  startFrom?: string;
+  startTo?: string;
+  executionFilter?: OverviewLaunchesExecutionFilter;
+  beforeTestRunExecutionId?: number;
+}
+
 /** Who created the test run execution: no filter, current user, or null creator (cron / automation). */
 export type OverviewLaunchesExecutionFilter = 'all' | 'me' | 'cron';
 
@@ -266,12 +287,50 @@ export async function fetchOverviewLaunches(
   }) as Promise<OverviewLaunchesResponse>;
 }
 
+export async function fetchOverviewLaunchHistory(
+  params: FetchOverviewLaunchHistoryParams,
+): Promise<OverviewLaunchHistoryResponse> {
+  const search = new URLSearchParams();
+  if (params.perPage != null) {
+    search.set('per_page', String(params.perPage));
+  }
+  if (params.projectIds != null && params.projectIds.length > 0) {
+    search.set('project_ids', params.projectIds.join(','));
+  }
+  if (params.startFrom != null && params.startFrom !== '') {
+    search.set('start_from', params.startFrom);
+  }
+  if (params.startTo != null && params.startTo !== '') {
+    search.set('start_to', params.startTo);
+  }
+  if (params.executionFilter === 'me') {
+    search.set('executed_by', 'me');
+  } else if (params.executionFilter === 'cron') {
+    search.set('executed_by', 'cron');
+  }
+  if (params.beforeTestRunExecutionId != null && params.beforeTestRunExecutionId > 0) {
+    search.set('before_test_run_execution_id', String(params.beforeTestRunExecutionId));
+  }
+
+  const qs = search.toString();
+  const basePath = `/widgets/overview/launches/${params.testRunExecutionId}/history`;
+  const path = qs ? `${basePath}?${qs}` : basePath;
+
+  return apiService.authenticatedRequest(path, {
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+  }) as Promise<OverviewLaunchHistoryResponse>;
+}
+
 /** One row in the suite list view (`overview_tests` + suite-level `overview_kws`). */
 export interface OverviewLaunchSuiteItemApiRow {
   methodType: string;
   name: string;
   durationLabel: string;
   statusLabel: string;
+  statusBand?: string;
   startTimeRelative: string;
   startTimeDisplay: string;
   startTimeRaw: string | null;
@@ -311,6 +370,7 @@ export async function fetchOverviewLaunchSuiteItems(
 export interface OverviewTestLogItemApiRow {
   logMessage: string;
   statusLabel: string;
+  statusBand?: string;
   durationLabel: string;
   startTimeRelative: string;
   startTimeDisplay: string;

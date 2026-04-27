@@ -1,18 +1,17 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { HistoryLaunchTooltip } from './OverviewLaunchHistoryTooltip';
+import { computeHistoryLaunchTooltipPosition } from './overviewLaunchTooltipPosition';
 import {
   AlertTriangle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
+  ChevronUp,
   Clock,
-  Copy,
   Download,
   ExternalLink,
   FileText,
-  History,
-  Info,
   Loader2,
   Paperclip,
   RefreshCw,
@@ -28,33 +27,34 @@ import type {
 import { buildAssetsUrlFromObjectKey } from '../../env';
 
 /** Identifiers for the test-detail sub-tabs (All logs / Item details have body content; others placeholder or empty). */
-export type OverviewTestLogDetailTabId =
-  | 'stack_trace'
-  | 'all_logs'
-  | 'attachments'
-  | 'item_details'
-  | 'history';
+export type OverviewTestLogDetailTabId = 'all_logs';
 
 const TEST_LOG_DETAIL_TABS: ReadonlyArray<{
   id: OverviewTestLogDetailTabId;
   label: string;
   icon: LucideIcon;
 }> = [
-  { id: 'stack_trace', label: 'Stack trace', icon: ClipboardList },
   { id: 'all_logs', label: 'All logs', icon: FileText },
-  { id: 'attachments', label: 'Attachments', icon: Paperclip },
-  { id: 'item_details', label: 'Item details', icon: Info },
-  { id: 'history', label: 'History of actions', icon: History },
 ];
 
-/** Sub-tabs that only reserve an empty panel until content exists. */
-const TEST_LOG_EMPTY_DETAIL_TABS: readonly OverviewTestLogDetailTabId[] = ['attachments'];
-
 export interface OverviewTestLogViewProps {
-  launchTitle: string;
   testDisplayName: string;
   items: OverviewTestLogTreeNode[];
   testStatusLabel: string;
+  historyButtons: Array<{
+    id: string;
+    label: string;
+    active: boolean;
+    title: string;
+    statusLabel: string;
+    statusBand?: string;
+    attributeLines: string[];
+    durationLabel: string;
+  }>;
+  hiddenHistoryButtonsCount?: number;
+  onShowMoreHistoryButtons?: () => void;
+  historyButtonsLoading?: boolean;
+  onSelectHistoryButton?: (launchId: string) => void;
   /** From API: suite file path from {@code Suites/} ({@code overview_suites.source}). */
   suiteSourceRelative?: string | null;
   /** From API: Robot test line when opening a test log. */
@@ -63,6 +63,7 @@ export interface OverviewTestLogViewProps {
   suiteListMethodType: string;
   /** Status from the suite list row (same as previous table). */
   suiteListStatusLabel: string;
+  suiteListStatusBand?: string;
   suiteListStartTimeRelative: string;
   suiteListStartTimeDisplay: string;
   suiteListStartTimeRaw: string | null;
@@ -75,19 +76,6 @@ export interface OverviewTestLogViewProps {
 }
 
 /**
- * Parses a launch display name like `SB_fuzeforge_DE #612` for the history strip.
- */
-function launchNumberFromTitle(title: string): number | null {
-  const m = title.match(/#(\d+)/);
-  if (m === null) {
-    return null;
-  }
-  const n = Number.parseInt(m[1], 10);
-
-  return Number.isNaN(n) ? null : n;
-}
-
-/**
  * Hover title for log row time column (raw DB start when present).
  */
 function logTimeHoverLabel(item: OverviewTestLogItemApiRow): string {
@@ -97,103 +85,74 @@ function logTimeHoverLabel(item: OverviewTestLogItemApiRow): string {
   return item.startTimeDisplay;
 }
 
-/**
- * Collects all `overview_msgs` leaves from an accordion tree (for code reference fallback).
- */
-function flattenOverviewTestLogMessages(nodes: OverviewTestLogTreeNode[]): OverviewTestLogItemApiRow[] {
-  const out: OverviewTestLogItemApiRow[] = [];
-  const walk = (n: OverviewTestLogTreeNode): void => {
-    if (n.kind === 'message') {
-      out.push(n);
-      return;
-    }
-    n.children.forEach(walk);
-  };
-  nodes.forEach(walk);
-  return out;
-}
-
-/**
- * Item details file fields apply only when suite list method type is Test.
- */
-function isItemDetailsTestMethodType(methodType: string): boolean {
-  return methodType.trim().toLowerCase() === 'test';
-}
-
-/**
- * Hover label for suite-list start time on Item details (raw when present, else display).
- */
-function itemDetailsSuiteStartHoverTitle(display: string, raw: string | null): string {
-  if (raw !== null && raw !== '') {
-    return raw;
+function normalizeStatusBand(
+  statusBand: string | null | undefined,
+  statusLabel: string | null | undefined,
+): 'passed' | 'failed' | 'skipped' | 'unknown' {
+  const normalizedBand = (statusBand ?? '').trim().toLowerCase();
+  if (normalizedBand === 'passed' || normalizedBand === 'failed' || normalizedBand === 'skipped') {
+    return normalizedBand;
   }
-  return display;
+
+  const normalizedLabel = (statusLabel ?? '').trim().toLowerCase();
+  if (normalizedLabel.startsWith('pass')) {
+    return 'passed';
+  }
+  if (normalizedLabel.startsWith('fail')) {
+    return 'failed';
+  }
+  if (normalizedLabel.startsWith('skip')) {
+    return 'skipped';
+  }
+
+  return 'unknown';
 }
 
-async function copyTextToClipboard(text: string): Promise<boolean> {
-  const t = text.trim();
-  if (t === '' || t === '\u2014') {
-    return false;
-  }
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
+function statusDotClass(statusBand: string | null | undefined, statusLabel: string | null | undefined): string {
+  switch (normalizeStatusBand(statusBand, statusLabel)) {
+    case 'failed':
+      return 'bg-red-500';
+    case 'passed':
+      return 'bg-emerald-500';
+    case 'skipped':
+      return 'bg-amber-400';
+    default:
+      return 'bg-slate-400 dark:bg-slate-500';
   }
 }
 
-/**
- * Best-effort Robot source location from log lines (e.g. {@code Suites/Foo.robot:14}).
- */
-function extractCodeReferenceFromLogs(logItems: Array<{ logMessage: string }>): string {
-  for (const row of logItems) {
-    const msg = row.logMessage;
-    const m = msg.match(/([\w./\\-]+\.robot):\s*(\d+)/i);
-    if (m !== null) {
-      return `${m[1]}:${m[2]}`;
-    }
-    const m2 = msg.match(/([\w./\\-]+\.robot:\d+)/i);
-    if (m2 !== null) {
-      return m2[1];
-    }
+function decisionStatusDotClass(status: 'PASSED' | 'FAILED' | 'SKIPPED' | ''): string {
+  switch (status) {
+    case 'FAILED':
+      return 'bg-red-500';
+    case 'SKIPPED':
+      return 'bg-slate-500';
+    case 'PASSED':
+      return 'bg-emerald-500';
+    default:
+      return 'bg-slate-400 dark:bg-slate-500';
   }
-  return '\u2014';
 }
 
-/**
- * Builds Item details "Code reference" from the suite path and `overview_tests.line`,
- * without appending `:${line}` when the path already ends with `:\d+`.
- */
-function codeReferenceFromSuitePathAndLine(
-  suiteSourceRelative: string | null | undefined,
-  testLine: number | null | undefined,
-): string | null {
-  const rel = suiteSourceRelative?.trim() ?? '';
-  if (rel === '') {
-    return null;
+function historyButtonStatusClass(statusBand: string | null | undefined, statusLabel: string | null | undefined): string {
+  switch (normalizeStatusBand(statusBand, statusLabel)) {
+    case 'failed':
+      return 'bg-red-500/15 text-red-700 ring-1 ring-inset ring-red-500/30 dark:bg-red-500/20 dark:text-red-300 dark:ring-red-400/30';
+    case 'skipped':
+      return 'bg-amber-500/15 text-amber-700 ring-1 ring-inset ring-amber-500/30 dark:bg-amber-500/20 dark:text-amber-300 dark:ring-amber-400/30';
+    case 'passed':
+      return 'bg-emerald-600/15 text-emerald-700 ring-1 ring-inset ring-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/30';
+    default:
+      return 'bg-slate-500/15 text-slate-700 ring-1 ring-inset ring-slate-400/30 dark:bg-slate-500/20 dark:text-slate-300 dark:ring-slate-500/30';
   }
-  if (testLine != null && testLine > 0) {
-    if (/:\d+$/.test(rel)) {
-      return rel;
-    }
-
-    return `${rel}:${testLine}`;
-  }
-
-  return rel;
 }
 
-/**
- * Strips a trailing `:line` segment so "Test case id" stays `path:name`, not `path:line:name`.
- */
-function suiteRelativePathForTestCaseId(suiteSourceRelative: string): string {
-  return suiteSourceRelative.trim().replace(/:\d+$/, '');
-}
+type HistoryButtonTooltipState = {
+  button: OverviewTestLogViewProps['historyButtons'][number];
+  top: number;
+  left: number;
+};
 
-/**
- * One metadata block on the Item details tab (label, monospace value, optional copy).
- */
 type AllLogsTreeRowBaseProps = {
   depth: number;
   parentKey: string;
@@ -586,8 +545,8 @@ function KeywordLogAccordionBlock(
         </td>
         <td className="py-2.5 px-2 align-top whitespace-nowrap">
           <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-            {node.statusLabel}
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDotClass(node.statusBand, node.statusLabel)}`} aria-hidden />
+            {node.statusLabel !== '—' ? node.statusLabel.toUpperCase() : '—'}
           </span>
         </td>
         <td
@@ -637,155 +596,132 @@ function KeywordLogAccordionBlock(
   );
 }
 
-function ItemDetailMetadataRow({
-  label,
-  value,
-  allowCopy,
-}: {
-  label: string;
-  value: string;
-  allowCopy: boolean;
-}) {
-  const canCopy = allowCopy && value.trim() !== '' && value !== '\u2014';
-
-  return (
-    <div className="space-y-1">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        {label}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="min-w-0 break-all font-mono text-xs text-slate-800 dark:text-slate-200">{value}</span>
-        {canCopy ? (
-          <button
-            type="button"
-            onClick={() => void copyTextToClipboard(value)}
-            className="rounded p-1 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-800 dark:hover:bg-slate-600 dark:hover:text-slate-100"
-            aria-label={`Copy ${label}`}
-          >
-            <Copy className="h-3.5 w-3.5" aria-hidden />
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 /**
  * Fourth-level ReportPortal-style test log view (ALL LOGS table and chrome).
  */
 const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
-  launchTitle,
   testDisplayName,
   items,
   testStatusLabel,
-  suiteSourceRelative = null,
-  testLine = null,
-  suiteListMethodType,
+  historyButtons,
+  hiddenHistoryButtonsCount = 0,
+  onShowMoreHistoryButtons,
+  historyButtonsLoading = false,
+  onSelectHistoryButton,
   suiteListStatusLabel,
-  suiteListStartTimeRelative,
-  suiteListStartTimeDisplay,
-  suiteListStartTimeRaw,
-  suiteListDurationLabel,
+  suiteListStatusBand,
   loading,
   error,
   onRefresh,
   hoveredTimeRowKey,
   onHoverTimeRow,
 }) => {
-  const launchNum = useMemo(() => launchNumberFromTitle(launchTitle), [launchTitle]);
-
-  const historyPills = useMemo(() => {
-    if (launchNum === null) {
-      return [launchTitle];
-    }
-    const start = Math.max(1, launchNum - 5);
-    const labels: number[] = [];
-    for (let i = start; i <= launchNum; i++) {
-      labels.push(i);
-    }
-
-    return labels;
-  }, [launchNum, launchTitle]);
 
   const statusUpper = testStatusLabel !== '—' ? testStatusLabel.toUpperCase() : '—';
-  const itemDetailsStatusUpper =
-    suiteListStatusLabel !== '—' ? suiteListStatusLabel.toUpperCase() : '—';
+  const testStatusDotClass = statusDotClass(undefined, testStatusLabel);
+  const selectedDecisionStatus = (() => {
+    switch (normalizeStatusBand(suiteListStatusBand, suiteListStatusLabel || testStatusLabel)) {
+      case 'failed':
+        return 'FAILED';
+      case 'skipped':
+        return 'SKIPPED';
+      case 'passed':
+        return 'PASSED';
+      default:
+        return '';
+    }
+  })();
 
-  const [hoveredItemDetailSuiteStart, setHoveredItemDetailSuiteStart] = useState(false);
+  const showHistoryButtonTooltip = (
+    button: OverviewTestLogViewProps['historyButtons'][number],
+    element: HTMLButtonElement,
+  ): void => {
+    const { top, left } = computeHistoryLaunchTooltipPosition(element);
+
+    setHoveredHistoryButton({
+      button,
+      top,
+      left,
+    });
+  };
+
+  const hideHistoryButtonTooltip = (buttonId: string): void => {
+    setHoveredHistoryButton(current => (current?.button.id === buttonId ? null : current));
+  };
 
   const logItemsSignature = useMemo(
-    () =>
-      [
-        JSON.stringify(items),
-        suiteSourceRelative ?? '',
-        String(testLine ?? ''),
-        suiteListMethodType,
-        suiteListStatusLabel,
-        suiteListStartTimeRelative,
-        suiteListDurationLabel,
-        testDisplayName,
-      ].join('\n'),
-    [
-      items,
-      suiteSourceRelative,
-      testLine,
-      suiteListMethodType,
-      suiteListStatusLabel,
-      suiteListStartTimeRelative,
-      suiteListDurationLabel,
-      testDisplayName,
-    ],
+    () => [JSON.stringify(items), testDisplayName].join('\n'),
+    [items, testDisplayName],
   );
 
   const [activeDetailTab, setActiveDetailTab] = useState<OverviewTestLogDetailTabId>('all_logs');
+  const [hoveredHistoryButton, setHoveredHistoryButton] = useState<HistoryButtonTooltipState | null>(null);
+  const [decisionStatus, setDecisionStatus] = useState<'PASSED' | 'FAILED' | 'SKIPPED' | ''>(selectedDecisionStatus);
+  const [decisionMenuOpen, setDecisionMenuOpen] = useState(false);
+  const decisionMenuRef = useRef<HTMLDivElement>(null);
+
+  const decisionStatusDot = decisionStatusDotClass(decisionStatus);
 
   useEffect(() => {
     setActiveDetailTab('all_logs');
+    setHoveredHistoryButton(null);
   }, [logItemsSignature]);
 
   useEffect(() => {
-    setHoveredItemDetailSuiteStart(false);
-  }, [logItemsSignature]);
+    setDecisionStatus(selectedDecisionStatus);
+    setDecisionMenuOpen(false);
+  }, [selectedDecisionStatus, logItemsSignature]);
+
+  useEffect(() => {
+    if (hoveredHistoryButton === null) {
+      return;
+    }
+
+    const clearTooltip = (): void => {
+      setHoveredHistoryButton(null);
+    };
+
+    window.addEventListener('scroll', clearTooltip, true);
+    window.addEventListener('resize', clearTooltip);
+
+    return () => {
+      window.removeEventListener('scroll', clearTooltip, true);
+      window.removeEventListener('resize', clearTooltip);
+    };
+  }, [hoveredHistoryButton]);
+
+  useEffect(() => {
+    if (!decisionMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent): void => {
+      if (decisionMenuRef.current?.contains(event.target as Node) !== true) {
+        setDecisionMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setDecisionMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [decisionMenuOpen]);
 
   /** Successful load with no log rows: full-width empty state (ReportPortal-style). */
   const showNoResultsEmptyState = !loading && error === null && items.length === 0;
 
-  const showItemDetailFileFields = isItemDetailsTestMethodType(suiteListMethodType);
-  const itemDetailCodeReference = useMemo(() => {
-    const fromDb = codeReferenceFromSuitePathAndLine(suiteSourceRelative, testLine);
-    if (fromDb !== null) {
-      return fromDb;
-    }
-
-    return extractCodeReferenceFromLogs(flattenOverviewTestLogMessages(items));
-  }, [suiteSourceRelative, testLine, items]);
-  const itemDetailTestCaseId = useMemo(() => {
-    const rel = suiteSourceRelative?.trim() ?? '';
-    if (rel !== '') {
-      return `${suiteRelativePathForTestCaseId(rel)}:${testDisplayName}`;
-    }
-    const fromLogs = extractCodeReferenceFromLogs(flattenOverviewTestLogMessages(items));
-    if (fromLogs !== '\u2014') {
-      const file = fromLogs.split(':')[0];
-
-      return `${file}:${testDisplayName}`;
-    }
-
-    return testDisplayName;
-  }, [suiteSourceRelative, testDisplayName, items]);
-
   return (
-    <div className="relative min-h-[12rem] p-4 text-sm text-slate-800 dark:text-slate-200">
-      {loading ? (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-slate-800/70">
-          <Loader2 className="h-8 w-8 animate-spin text-cyan-500" aria-hidden />
-        </div>
-      ) : null}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <label className="flex cursor-not-allowed items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <input type="checkbox" disabled className="rounded border-slate-300" />
-          History across all launches
-        </label>
+    <div className="min-h-[12rem] p-4 text-sm text-slate-800 dark:text-slate-200">
+      <div className="mb-4 flex justify-end">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded border border-slate-200 dark:border-slate-600">
             <button
@@ -817,47 +753,148 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
         </div>
       </div>
 
-      {launchNum !== null ? (
-        <div className="mb-4 flex flex-wrap items-end gap-1 border-b border-slate-200 pb-2 dark:border-slate-700">
-          {historyPills.map((entry, idx) => {
-            const isCurrent = typeof entry === 'number' && entry === launchNum;
-            const label = typeof entry === 'number' ? `#${entry}` : entry;
-
-            return (
-              <div key={`${label}-${idx}`} className="flex flex-col items-center gap-0.5">
-                <span className="text-[10px] text-red-500" aria-hidden>
-                  ▲
-                </span>
-                <span
-                  className={
-                    isCurrent
-                      ? 'border-b-2 border-teal-500 px-2 py-1 text-xs font-semibold text-teal-600 dark:text-teal-400'
-                      : 'rounded bg-emerald-600/15 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
-                  }
-                >
-                  {label}
-                </span>
-              </div>
-            );
-          })}
+      {historyButtons.length > 0 || hiddenHistoryButtonsCount > 0 ? (
+        <div className="mb-5 mx-[25px]">
+          <div className="relative overflow-x-auto overflow-y-hidden pb-3 [scrollbar-width:thin]">
+            <div className="inline-flex min-w-full items-center gap-2 whitespace-nowrap pr-2">
+              {hiddenHistoryButtonsCount > 0 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onShowMoreHistoryButtons?.();
+                    }}
+                    disabled={historyButtonsLoading}
+                    className="shrink-0 rounded-md border border-slate-200 bg-white px-4 py-2 text-center text-xs font-semibold text-cyan-600 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-cyan-400 dark:hover:bg-slate-700"
+                  >
+                    <span className="block leading-none">+{hiddenHistoryButtonsCount}</span>
+                    <span className="mt-1 block leading-none">More</span>
+                  </button>
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden />
+                </>
+              ) : null}
+              {historyButtons.map((button, index) => (
+                <React.Fragment key={button.id}>
+                  <div
+                    className={`relative flex shrink-0 items-center ${button.active ? 'pb-1' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      onMouseEnter={e => {
+                        showHistoryButtonTooltip(button, e.currentTarget);
+                      }}
+                      onMouseLeave={() => {
+                        hideHistoryButtonTooltip(button.id);
+                      }}
+                      onFocus={e => {
+                        showHistoryButtonTooltip(button, e.currentTarget);
+                      }}
+                      onBlur={() => {
+                        hideHistoryButtonTooltip(button.id);
+                      }}
+                      onClick={e => {
+                        e.currentTarget.blur();
+                        if (!button.active) {
+                          onSelectHistoryButton?.(button.id);
+                        }
+                      }}
+                      disabled={historyButtonsLoading}
+                      aria-current={button.active ? 'page' : undefined}
+                      className={`relative min-w-[3.8rem] rounded-sm px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${historyButtonStatusClass(button.statusBand, button.statusLabel)} ${
+                        button.active
+                          ? 'shadow-[inset_0_-2px_0_0_rgba(45,212,191,1)]'
+                          : 'hover:brightness-105'
+                      }`}
+                    >
+                      {button.label}
+                    </button>
+                    {button.active ? (
+                      <span className="pointer-events-none absolute inset-x-1 -bottom-0.5 h-0.5 rounded-full bg-teal-400" aria-hidden />
+                    ) : null}
+                  </div>
+                  {index < historyButtons.length - 1 ? (
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden />
+                  ) : null}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : historyButtonsLoading ? (
+        <div className="mb-4 border-b border-slate-200 pb-2 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          Loading launches…
         </div>
       ) : null}
 
+      {hoveredHistoryButton !== null ? (
+        <HistoryLaunchTooltip
+          button={hoveredHistoryButton.button}
+          top={hoveredHistoryButton.top}
+          left={hoveredHistoryButton.left}
+        />
+      ) : null}
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-100 px-3 py-2.5 dark:bg-slate-700/50">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
-          <span className="text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">
-            {statusUpper}
-          </span>
-          <ChevronDown className="h-4 w-4 text-slate-400" aria-hidden />
+        <div className="min-h-[1px] flex-1" />
+        <div className="flex flex-wrap items-center gap-3 border-l border-slate-300 pl-4 dark:border-slate-600">
+          <div className="relative" ref={decisionMenuRef}>
+            <button
+              type="button"
+              onClick={() => setDecisionMenuOpen(open => !open)}
+              className="inline-flex min-w-[8.5rem] items-center justify-between gap-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-50"
+              aria-haspopup="listbox"
+              aria-expanded={decisionMenuOpen}
+            >
+              <span className="inline-flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${decisionStatusDot}`} aria-hidden />
+                <span>{decisionStatus || statusUpper}</span>
+              </span>
+              {decisionMenuOpen ? (
+                <ChevronUp className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+              )}
+            </button>
+
+            {decisionMenuOpen ? (
+              <div className="absolute right-0 top-full z-20 mt-2 w-[11rem] overflow-hidden rounded border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800">
+                <div role="listbox" aria-label="Decision status">
+                  {(['PASSED', 'FAILED', 'SKIPPED'] as const).map(status => {
+                    const isSelected = decisionStatus === status;
+
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onClick={() => {
+                          setDecisionStatus(status);
+                          setDecisionMenuOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                          isSelected
+                            ? 'bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-slate-100'
+                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/70'
+                        }`}
+                      >
+                        <span className={`h-2.5 w-2.5 rounded-full ${decisionStatusDotClass(status)}`} aria-hidden />
+                        <span>{status}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            disabled
+            className="cursor-not-allowed rounded border border-slate-300 bg-slate-200 px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-400"
+          >
+            Make decision
+          </button>
         </div>
-        <button
-          type="button"
-          disabled
-          className="cursor-not-allowed rounded border border-slate-300 bg-slate-200 px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-400"
-        >
-          Make decision
-        </button>
       </div>
 
       <div className="mb-3 border-b border-slate-200 dark:border-slate-700">
@@ -906,34 +943,17 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
         hidden={activeDetailTab !== 'all_logs'}
         aria-labelledby="test-log-tab-all_logs"
       >
-        <div className="mb-4 flex flex-wrap items-center gap-4 border-b border-slate-100 pb-3 text-xs dark:border-slate-700/80">
-            <span className="font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Log level
-            </span>
-            <div className="flex flex-wrap gap-2 text-slate-500 dark:text-slate-400">
-              {['Fatal', 'Error', 'Warn', 'Info', 'Debug', 'Trace'].map(level => (
-                <span
-                  key={level}
-                  className={level === 'Trace' ? 'font-semibold text-teal-600 dark:text-teal-400' : ''}
-                >
-                  {level}
-                </span>
-              ))}
-            </div>
-            <label className="ml-auto flex cursor-not-allowed items-center gap-1.5">
-              <input type="checkbox" disabled className="rounded border-slate-300" />
-              Logs with attachment
-            </label>
-            <label className="flex cursor-not-allowed items-center gap-1.5">
-              <input type="checkbox" disabled className="rounded border-slate-300" />
-              Hide all passed logs
-            </label>
-          </div>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <span className="font-medium text-slate-600 dark:text-slate-300">{testDisplayName}</span>
+          <span className="tabular-nums">&lt; 1 of 1 &gt;</span>
+        </div>
 
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-medium text-slate-600 dark:text-slate-300">{testDisplayName}</span>
-            <span className="tabular-nums">&lt; 1 of 1 &gt;</span>
-          </div>
+        <div className="relative min-h-[10rem]">
+          {loading ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded border border-slate-200 bg-white/70 dark:border-slate-700 dark:bg-slate-900/60">
+              <Loader2 className="h-8 w-8 animate-spin text-cyan-500" aria-hidden />
+            </div>
+          ) : null}
 
           {showNoResultsEmptyState ? (
             <div
@@ -945,7 +965,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
               <span>No results found</span>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className={`overflow-x-auto ${loading ? 'pointer-events-none select-none opacity-60' : ''}`}>
               <table className="w-full min-w-[720px] table-fixed text-sm">
                 <colgroup>
                   <col style={{ width: '58%' }} />
@@ -997,132 +1017,20 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
               </table>
             </div>
           )}
+        </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            <p>
-              {items.length === 0
-                ? '0 – 0 of 0'
-                : `1 – ${items.length} of ${items.length}`}
-            </p>
-            <p>
-              <span className="font-semibold text-teal-600 dark:text-teal-400">50</span> per page
-            </p>
-          </div>
-      </div>
-
-      <div
-        role="tabpanel"
-        id="test-log-panel-stack_trace"
-        hidden={activeDetailTab !== 'stack_trace'}
-        aria-labelledby="test-log-tab-stack_trace"
-      >
-        <div
-          className="flex min-h-[10rem] w-full items-center justify-center gap-2 rounded border border-slate-200 bg-white px-4 py-10 text-slate-500 dark:border-slate-700 dark:bg-slate-900/30 dark:text-slate-400"
-          role="status"
-          aria-live="polite"
-        >
-          <AlertTriangle className="h-5 w-5 shrink-0 text-slate-500 opacity-90 dark:text-slate-500" aria-hidden />
-          <span>No stack trace to display</span>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          <p>
+            {items.length === 0
+              ? '0 – 0 of 0'
+              : `1 – ${items.length} of ${items.length}`}
+          </p>
+          <p>
+            <span className="font-semibold text-teal-600 dark:text-teal-400">50</span> per page
+          </p>
         </div>
       </div>
 
-      <div
-        role="tabpanel"
-        id="test-log-panel-history"
-        hidden={activeDetailTab !== 'history'}
-        aria-labelledby="test-log-tab-history"
-      >
-        <div
-          className="flex min-h-[10rem] w-full items-center justify-center gap-2 rounded border border-slate-200 bg-white px-4 py-10 text-slate-500 dark:border-slate-700 dark:bg-slate-900/30 dark:text-slate-400"
-          role="status"
-          aria-live="polite"
-        >
-          <AlertTriangle className="h-5 w-5 shrink-0 text-slate-500 opacity-90 dark:text-slate-500" aria-hidden />
-          <span>No activities to display</span>
-        </div>
-      </div>
-
-      <div
-        role="tabpanel"
-        id="test-log-panel-item_details"
-        hidden={activeDetailTab !== 'item_details'}
-        aria-labelledby="test-log-tab-item_details"
-      >
-        <div className="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-600 dark:bg-slate-800/40">
-          <div className="grid gap-6 p-4 md:grid-cols-[minmax(0,1fr)_minmax(11rem,16rem)] md:items-stretch md:p-6">
-            <div className="flex min-w-0 gap-3">
-              <span className="max-w-[7rem] shrink-0 break-words pt-1 text-end text-[10px] font-semibold uppercase leading-tight tracking-wide text-slate-400 dark:text-slate-500 sm:max-w-[8rem]">
-                {suiteListMethodType}
-              </span>
-              <div className="min-w-0 flex-1 border-l border-slate-200 pl-4 dark:border-slate-600">
-                <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg">
-                  {testDisplayName}
-                </h2>
-                <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="font-bold text-slate-900 dark:text-slate-100">{itemDetailsStatusUpper}</span>
-                  <span
-                    className="cursor-default text-sm text-slate-600 dark:text-slate-400"
-                    onMouseEnter={() => {
-                      if (
-                        suiteListStartTimeRelative !== '\u2014' &&
-                        suiteListStartTimeRelative !== '-'
-                      ) {
-                        setHoveredItemDetailSuiteStart(true);
-                      }
-                    }}
-                    onMouseLeave={() => setHoveredItemDetailSuiteStart(false)}
-                  >
-                    {hoveredItemDetailSuiteStart
-                      ? itemDetailsSuiteStartHoverTitle(
-                          suiteListStartTimeDisplay,
-                          suiteListStartTimeRaw,
-                        )
-                      : suiteListStartTimeRelative}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
-                  <Clock className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-                  <span>{suiteListDurationLabel}</span>
-                </div>
-                <div className="mt-5 space-y-4 border-t border-slate-200 pt-4 dark:border-slate-600">
-                  {showItemDetailFileFields ? (
-                    <>
-                      <ItemDetailMetadataRow
-                        label="Code reference"
-                        value={itemDetailCodeReference}
-                        allowCopy
-                      />
-                      <ItemDetailMetadataRow label="Test case id" value={itemDetailTestCaseId} allowCopy />
-                    </>
-                  ) : null}
-                  <ItemDetailMetadataRow label="Description" value={'\u2014'} allowCopy={false} />
-                </div>
-              </div>
-            </div>
-            <div className="flex min-h-[11rem] flex-col border-slate-200 md:border-l md:pl-6 dark:border-slate-600">
-              <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Parameters:
-              </span>
-              <div className="flex flex-1 items-center justify-center pt-4 md:pt-0">
-                <span className="text-center text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                  NO PARAMETERS
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {TEST_LOG_EMPTY_DETAIL_TABS.map(id => (
-        <div
-          key={id}
-          role="tabpanel"
-          id={`test-log-panel-${id}`}
-          hidden={activeDetailTab !== id}
-          aria-labelledby={`test-log-tab-${id}`}
-          className="min-h-[12rem]"
-        />
-      ))}
     </div>
   );
 };
