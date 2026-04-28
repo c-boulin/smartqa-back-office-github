@@ -47,7 +47,7 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({ weeklyTot
   return (
     <DashboardSection
       title="Weekly Test Execution & Defects Overview"
-      description={`It shows a summary of the test cases run for ${formatOverviewWindowRangeShort(window.from, window.to)} (previous calendar week, Mon–Sun), specifying passed and failed tests.`}
+      description={`It shows a summary of the test cases run for ${formatOverviewWindowRangeShort(window.from, window.to)}, specifying passed and failed tests.`}
       icon="report"
     >
       <WidgetContentHeader>
