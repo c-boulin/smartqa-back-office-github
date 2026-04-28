@@ -13,7 +13,6 @@ import {
   ExternalLink,
   FileText,
   Loader2,
-  Paperclip,
   RefreshCw,
   Search,
   X,
@@ -559,19 +558,6 @@ function KeywordLogAccordionBlock(
           onMouseLeave={() => onHoverTimeRow(null)}
         >
           <div className="inline-flex w-full min-w-0 items-center justify-end gap-2">
-            {node.kwType === 'TEARDOWN' && node.screenshotAttachmentCount > 0 ? (
-              <span
-                className="inline-flex shrink-0 items-center gap-0.5 text-slate-500 dark:text-slate-400"
-                title={`${node.screenshotAttachmentCount} screenshot(s)`}
-                aria-label={`${node.screenshotAttachmentCount} screenshot attachment(s)`}
-                role="img"
-              >
-                <Paperclip className="h-3.5 w-3.5" aria-hidden />
-                <span className="tabular-nums text-xs" aria-hidden>
-                  {node.screenshotAttachmentCount}
-                </span>
-              </span>
-            ) : null}
             <span className="inline-flex items-center gap-1">
               <Clock className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
               {hoveredTimeRowKey === rowKey ? logTimeHoverLabel(node) : node.durationLabel}
