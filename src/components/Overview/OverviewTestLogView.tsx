@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Clock,
   Download,
   ExternalLink,
@@ -115,19 +114,6 @@ function statusDotClass(statusBand: string | null | undefined, statusLabel: stri
       return 'bg-emerald-500';
     case 'skipped':
       return 'bg-amber-400';
-    default:
-      return 'bg-slate-400 dark:bg-slate-500';
-  }
-}
-
-function decisionStatusDotClass(status: 'PASSED' | 'FAILED' | 'SKIPPED' | ''): string {
-  switch (status) {
-    case 'FAILED':
-      return 'bg-red-500';
-    case 'SKIPPED':
-      return 'bg-slate-500';
-    case 'PASSED':
-      return 'bg-emerald-500';
     default:
       return 'bg-slate-400 dark:bg-slate-500';
   }
@@ -594,29 +580,12 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   onShowMoreHistoryButtons,
   historyButtonsLoading = false,
   onSelectHistoryButton,
-  suiteListStatusLabel,
-  suiteListStatusBand,
   loading,
   error,
   onRefresh,
   hoveredTimeRowKey,
   onHoverTimeRow,
 }) => {
-
-  const statusUpper = testStatusLabel !== '—' ? testStatusLabel.toUpperCase() : '—';
-  const testStatusDotClass = statusDotClass(undefined, testStatusLabel);
-  const selectedDecisionStatus = (() => {
-    switch (normalizeStatusBand(suiteListStatusBand, suiteListStatusLabel || testStatusLabel)) {
-      case 'failed':
-        return 'FAILED';
-      case 'skipped':
-        return 'SKIPPED';
-      case 'passed':
-        return 'PASSED';
-      default:
-        return '';
-    }
-  })();
 
   const showHistoryButtonTooltip = (
     button: OverviewTestLogViewProps['historyButtons'][number],
@@ -642,21 +611,11 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
 
   const [activeDetailTab, setActiveDetailTab] = useState<OverviewTestLogDetailTabId>('all_logs');
   const [hoveredHistoryButton, setHoveredHistoryButton] = useState<HistoryButtonTooltipState | null>(null);
-  const [decisionStatus, setDecisionStatus] = useState<'PASSED' | 'FAILED' | 'SKIPPED' | ''>(selectedDecisionStatus);
-  const [decisionMenuOpen, setDecisionMenuOpen] = useState(false);
-  const decisionMenuRef = useRef<HTMLDivElement>(null);
-
-  const decisionStatusDot = decisionStatusDotClass(decisionStatus);
 
   useEffect(() => {
     setActiveDetailTab('all_logs');
     setHoveredHistoryButton(null);
   }, [logItemsSignature]);
-
-  useEffect(() => {
-    setDecisionStatus(selectedDecisionStatus);
-    setDecisionMenuOpen(false);
-  }, [selectedDecisionStatus, logItemsSignature]);
 
   useEffect(() => {
     if (hoveredHistoryButton === null) {
@@ -675,32 +634,6 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
       window.removeEventListener('resize', clearTooltip);
     };
   }, [hoveredHistoryButton]);
-
-  useEffect(() => {
-    if (!decisionMenuOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: MouseEvent): void => {
-      if (decisionMenuRef.current?.contains(event.target as Node) !== true) {
-        setDecisionMenuOpen(false);
-      }
-    };
-
-    const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        setDecisionMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [decisionMenuOpen]);
 
   /** Successful load with no log rows: full-width empty state (ReportPortal-style). */
   const showNoResultsEmptyState = !loading && error === null && items.length === 0;
@@ -823,56 +756,6 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-100 px-3 py-2.5 dark:bg-slate-700/50">
         <div className="min-h-[1px] flex-1" />
         <div className="flex flex-wrap items-center gap-3 border-l border-slate-300 pl-4 dark:border-slate-600">
-          <div className="relative" ref={decisionMenuRef}>
-            <button
-              type="button"
-              onClick={() => setDecisionMenuOpen(open => !open)}
-              className="inline-flex min-w-[8.5rem] items-center justify-between gap-2 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-50"
-              aria-haspopup="listbox"
-              aria-expanded={decisionMenuOpen}
-            >
-              <span className="inline-flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${decisionStatusDot}`} aria-hidden />
-                <span>{decisionStatus || statusUpper}</span>
-              </span>
-              {decisionMenuOpen ? (
-                <ChevronUp className="h-3.5 w-3.5 text-slate-400" aria-hidden />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5 text-slate-400" aria-hidden />
-              )}
-            </button>
-
-            {decisionMenuOpen ? (
-              <div className="absolute right-0 top-full z-20 mt-2 w-[11rem] overflow-hidden rounded border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800">
-                <div role="listbox" aria-label="Decision status">
-                  {(['PASSED', 'FAILED', 'SKIPPED'] as const).map(status => {
-                    const isSelected = decisionStatus === status;
-
-                    return (
-                      <button
-                        key={status}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        onClick={() => {
-                          setDecisionStatus(status);
-                          setDecisionMenuOpen(false);
-                        }}
-                        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
-                          isSelected
-                            ? 'bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-slate-100'
-                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/70'
-                        }`}
-                      >
-                        <span className={`h-2.5 w-2.5 rounded-full ${decisionStatusDotClass(status)}`} aria-hidden />
-                        <span>{status}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-          </div>
           <button
             type="button"
             disabled
