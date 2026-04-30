@@ -366,6 +366,7 @@ const HISTORY_BUTTON_MAX_VISIBLE = 30;
 
 type HistoryLaunchEntry = {
   row: OverviewLaunchRow;
+  target: OverviewSuiteListLogTarget | null;
 };
 
 function launchHistoryStatus(row: OverviewLaunchRow): { label: string; band: 'passed' | 'failed' | 'skipped' | 'unknown' } {
@@ -1521,6 +1522,28 @@ const OverviewLaunchesTable: React.FC = () => {
 
   const inTestLogView = testLogTarget !== null;
 
+  const buildHistoryLaunchEntry = useCallback(
+    async (row: OverviewLaunchRow, target: OverviewSuiteListLogTarget): Promise<HistoryLaunchEntry> => {
+      const cachedTarget = historyLaunchTargetCacheRef.current.get(row.id);
+      if (cachedTarget !== undefined) {
+        return { row, target: cachedTarget };
+      }
+
+      let matchedTarget: OverviewSuiteListLogTarget | null = null;
+      try {
+        const suiteRes = await fetchOverviewLaunchSuiteItems(Number(row.id));
+        const matchedItem = pickMatchingSuiteItemForHistory(suiteRes.items, target);
+        matchedTarget = matchedItem !== null ? suiteItemToLogTarget(matchedItem) : null;
+      } catch {
+        matchedTarget = null;
+      }
+      historyLaunchTargetCacheRef.current.set(row.id, matchedTarget);
+
+      return { row, target: matchedTarget };
+    },
+    [],
+  );
+
   const loadHistoryLaunches = useCallback(async () => {
     if (historyAnchorLaunch === null || historyAnchorTarget === null) {
       setHistoryLaunches([]);
@@ -1539,8 +1562,11 @@ const OverviewLaunchesTable: React.FC = () => {
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
       });
       const rowsForHistory = res.launches.map(mapApiRowToRow).reverse();
+      const entries = await Promise.all(
+        rowsForHistory.map(row => buildHistoryLaunchEntry(row, historyAnchorTarget)),
+      );
 
-      setHistoryLaunches(rowsForHistory.map(row => ({ row } satisfies HistoryLaunchEntry)));
+      setHistoryLaunches(entries);
       setHistoryLaunchesHiddenCount(res.meta.hiddenCount);
       setHistoryLaunchesNextBeforeId(res.meta.nextBeforeTestRunExecutionId);
     } catch {
@@ -1556,7 +1582,8 @@ const OverviewLaunchesTable: React.FC = () => {
     selectedProjectIds,
     resolvedStartFrom,
     resolvedStartTo,
-    executionFilter
+    executionFilter,
+    buildHistoryLaunchEntry,
   ]);
 
   useEffect(() => {
@@ -1657,9 +1684,12 @@ const OverviewLaunchesTable: React.FC = () => {
         beforeTestRunExecutionId: historyLaunchesNextBeforeId,
       });
       const rowsForHistory = res.launches.map(mapApiRowToRow).reverse();
+      const entries = await Promise.all(
+        rowsForHistory.map(row => buildHistoryLaunchEntry(row, historyAnchorTarget)),
+      );
 
       setHistoryLaunches(prev => [
-        ...rowsForHistory.map(row => ({ row } satisfies HistoryLaunchEntry)),
+        ...entries,
         ...prev,
       ]);
       if (remainingSlots <= HISTORY_BUTTON_BATCH_SIZE) {
@@ -1684,7 +1714,8 @@ const OverviewLaunchesTable: React.FC = () => {
     selectedProjectIds,
     resolvedStartFrom,
     resolvedStartTo,
-    executionFilter
+    executionFilter,
+    buildHistoryLaunchEntry,
   ]);
 
   const loadTestLog = useCallback(async () => {
@@ -1714,11 +1745,11 @@ const OverviewLaunchesTable: React.FC = () => {
     }
 
     if (testLogLaunch !== null) {
-      return [{ row: testLogLaunch } satisfies HistoryLaunchEntry];
+      return [{ row: testLogLaunch, target: testLogTarget } satisfies HistoryLaunchEntry];
     }
 
     return [];
-  }, [historyLaunches, testLogLaunch]);
+  }, [historyLaunches, testLogLaunch, testLogTarget]);
 
   useEffect(() => {
     void loadTestLog();
@@ -2204,10 +2235,10 @@ const OverviewLaunchesTable: React.FC = () => {
               label: launchHistoryButtonLabel(entry.row),
               active: testLogLaunch?.id === entry.row.id,
               title: entry.row.title,
-              statusLabel: launchHistoryStatus(entry.row).label,
-              statusBand: launchHistoryStatus(entry.row).band,
+              statusLabel: entry.target?.statusLabel ?? 'Unknown',
+              statusBand: entry.target?.statusBand,
               attributeLines: launchHistoryAttributeLines(entry.row.attributeText),
-              durationLabel: historyAnchorTarget?.durationLabel ?? testLogTarget.durationLabel,
+              durationLabel: entry.target?.durationLabel ?? historyAnchorTarget?.durationLabel ?? testLogTarget.durationLabel,
             }))}
             hiddenHistoryButtonsCount={
               historyLaunches.length >= HISTORY_BUTTON_MAX_VISIBLE || historyLaunchesHiddenCount <= 0
