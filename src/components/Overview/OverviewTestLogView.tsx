@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Download,
   ExternalLink,
   FileText,
   Loader2,
@@ -384,7 +383,7 @@ function LogMessageScreenshotPreview(props: { objectKey: string }): React.ReactN
   const { objectKey } = props;
   const url = useMemo(() => buildAssetsUrlFromObjectKey(objectKey), [objectKey]);
   const [modalOpen, setModalOpen] = useState(false);
-  const downloadName = useMemo(() => {
+  const imageName = useMemo(() => {
     const parts = objectKey.split('/').filter(Boolean);
 
     return parts.length > 0 ? parts[parts.length - 1] : 'screenshot';
@@ -418,23 +417,13 @@ function LogMessageScreenshotPreview(props: { objectKey: string }): React.ReactN
           >
             <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           </button>
-          <a
-            href={url}
-            download={downloadName}
-            className="rounded p-0.5 text-cyan-600 hover:bg-cyan-500/15 dark:text-cyan-400 dark:hover:bg-cyan-500/20"
-            title="Download"
-            aria-label="Download"
-            rel="noopener noreferrer"
-          >
-            <Download className="h-3.5 w-3.5" aria-hidden />
-          </a>
         </div>
       </div>
       <ScreenshotPreviewModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         imageUrl={url}
-        imageAlt={downloadName}
+        imageAlt={imageName}
       />
     </>
   );
