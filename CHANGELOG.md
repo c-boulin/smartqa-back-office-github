@@ -1,3 +1,11 @@
+## [1.18.1](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.18.0...1.18.1) (2026-05-05)
+
+### Bug Fixes
+
+* color history buttons by suite element status ([301fb3d](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/301fb3dcf02a1889e48e4820d7bb472597845649))
+* **test-run:** disable log link while in progress and persist execution tab in URL ([3a2786c](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/3a2786caa01218b9593a7ee3bfaf2de02f7556c9))
+* remove screenshot preview download action ([6228c5b](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/6228c5b95f77272bf8c1b32b58583d2d925050e2))
+
 ## [1.18.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.17.0...1.18.0) (2026-04-20)
 
 ### Features
