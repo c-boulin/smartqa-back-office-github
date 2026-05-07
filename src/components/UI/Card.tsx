@@ -6,6 +6,7 @@ interface CardProps {
   gradient?: boolean;
   hover?: boolean;
   onClick?: () => void;
+  'data-mipqa'?: string;
 }
 
 const Card: React.FC<CardProps> = ({
@@ -13,7 +14,8 @@ const Card: React.FC<CardProps> = ({
   className = '',
   gradient = false,
   hover = false,
-  onClick
+  onClick,
+  'data-mipqa': dataMipqa,
 }) => {
   const baseClasses = `rounded-xl shadow-lg border backdrop-blur-sm transition-all duration-300`;
   const gradientClasses = gradient
@@ -27,6 +29,7 @@ const Card: React.FC<CardProps> = ({
     <div
       className={`${baseClasses} ${gradientClasses} ${hoverClasses} ${className}`}
       onClick={onClick}
+      data-mipqa={dataMipqa}
     >
       {children}
     </div>

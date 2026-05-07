@@ -17,6 +17,7 @@ interface DroppableFolderNodeProps {
   isDragInProgress: boolean;
   dragOverFolderId: string | null;
   onDragOverFolder: (folderId: string | null) => void;
+  showTestCaseCount?: boolean;
 }
 
 const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
@@ -31,7 +32,8 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
   onTestCaseDropped,
   isDragInProgress,
   dragOverFolderId,
-  onDragOverFolder
+  onDragOverFolder,
+  showTestCaseCount = true,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; alignTop: boolean } | null>(null);
@@ -171,7 +173,13 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
 
   return (
     <div className="relative">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_28px] gap-2 items-center" style={{ paddingLeft: `${level * 12}px` }}>
+      <div
+        className="grid items-center gap-1"
+        style={{
+          paddingLeft: `${level * 12}px`,
+          gridTemplateColumns: showTestCaseCount ? 'minmax(0,1fr) auto 28px' : 'minmax(0,1fr) 28px',
+        }}
+      >
         <Tooltip content={folder.description ? `${folder.name}\n─────\n${folder.description}` : folder.name}>
           <div
             className={`flex items-center py-2 px-2 cursor-pointer transition-colors rounded-lg overflow-hidden ${
@@ -209,7 +217,7 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
               <Folder className="w-4 h-4 mr-2 flex-shrink-0" />
             )}
             <div className="flex-1 min-w-0 overflow-hidden">
-              <span className="truncate text-sm font-medium min-w-0 block">{folder.name}</span>
+              <span className="truncate font-medium min-w-0 block" style={{ fontSize: showTestCaseCount ? '0.875rem' : '0.9375rem' }}>{folder.name}</span>
               {isSelected && folder.description && (
                 <div className="text-xs text-slate-600 dark:text-gray-400 mt-1 truncate overflow-hidden">
                   {folder.description}
@@ -225,13 +233,15 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
           </div>
         </Tooltip>
 
-        <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium whitespace-nowrap ${
-          testCasesCount > 0
-            ? 'text-cyan-700 dark:text-cyan-400 bg-cyan-500/20 border border-cyan-500/30'
-            : 'text-slate-500 dark:text-gray-500 bg-slate-200 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600'
-        }`}>
-          {testCasesCount}
-        </span>
+        {showTestCaseCount && (
+          <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium whitespace-nowrap ${
+            testCasesCount > 0
+              ? 'text-cyan-700 dark:text-cyan-400 bg-cyan-500/20 border border-cyan-500/30'
+              : 'text-slate-500 dark:text-gray-500 bg-slate-200 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600'
+          }`}>
+            {testCasesCount}
+          </span>
+        )}
 
         {/* Three-dots button - fixed column */}
         {(onEditFolder || onDeleteFolder) ? (
@@ -308,6 +318,7 @@ const DroppableFolderNode: React.FC<DroppableFolderNodeProps> = ({
               isDragInProgress={isDragInProgress}
               dragOverFolderId={dragOverFolderId}
               onDragOverFolder={onDragOverFolder}
+              showTestCaseCount={showTestCaseCount}
             />
           ))}
         </>

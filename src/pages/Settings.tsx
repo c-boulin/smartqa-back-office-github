@@ -206,7 +206,7 @@ const Settings: React.FC = () => {
           <Shield className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Settings</h1>
+          <h1 data-mipqa="settings-title" className="text-3xl font-bold text-slate-900 dark:text-white">Settings</h1>
           <p className="text-slate-600 dark:text-gray-400">Manage users and permissions</p>
         </div>
       </div>
@@ -215,6 +215,7 @@ const Settings: React.FC = () => {
       <Card className="p-0">
         <div className="flex border-b border-slate-200 dark:border-slate-700">
           <button
+            data-mipqa="settings-tab-users"
             onClick={() => setActiveTab('users')}
             className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
               activeTab === 'users'
@@ -226,6 +227,7 @@ const Settings: React.FC = () => {
             User Management
           </button>
           <button
+            data-mipqa="settings-tab-automation"
             onClick={() => setActiveTab('automation')}
             className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
               activeTab === 'automation'
@@ -279,6 +281,7 @@ const Settings: React.FC = () => {
                 .map((user) => (
                   <tr
                     key={user.id}
+                    data-mipqa={`user-row-${user.id}`}
                     className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -312,6 +315,7 @@ const Settings: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <select
+                          data-mipqa={`user-role-select-${user.id}`}
                           value={user.role_id || ''}
                           onChange={(e) => handleRoleChange(user.id, e.target.value)}
                           disabled={updatingUserId === user.id}
@@ -383,7 +387,7 @@ const Settings: React.FC = () => {
                 </thead>
                 <tbody>
                   {projects.map((project) => (
-                    <tr key={project.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors">
+                    <tr key={project.id} data-mipqa={`automation-project-row-${project.id}`} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
                         #{project.id || 'NO_ID'}
                       </td>
@@ -400,6 +404,7 @@ const Settings: React.FC = () => {
                       </td>
                       <td className="py-4 px-6">
                         <button
+                          data-mipqa={`automation-edit-btn-${project.id}`}
                           type="button"
                           onClick={() => {
                             setProjectBeingEdited(project);

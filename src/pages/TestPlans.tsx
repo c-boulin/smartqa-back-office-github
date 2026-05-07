@@ -252,7 +252,7 @@ const TestPlans: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Test Plans</h2>
+          <h2 data-mipqa="testplans-title" className="text-2xl font-bold text-slate-900 dark:text-white">Test Plans</h2>
           <p className="text-slate-600 dark:text-gray-400">
             {selectedProject 
               ? `Manage test plans for ${selectedProject.name} (${pagination.totalItems} total)` 
@@ -269,6 +269,7 @@ const TestPlans: React.FC = () => {
         </div>
         <PermissionGuard permission={PERMISSIONS.TEST_PLAN.CREATE}>
           <Button
+            data-mipqa="create-testplan-button"
             icon={Plus}
             onClick={() => setIsCreateModalOpen(true)}
             disabled={!selectedProject}
@@ -287,6 +288,7 @@ const TestPlans: React.FC = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-600 dark:text-gray-400 w-4 h-4" />
               <input
+                data-mipqa="testplans-search-input"
                 type="text"
                 placeholder="Search test plans by title..."
                 value={searchTerm}
@@ -300,6 +302,7 @@ const TestPlans: React.FC = () => {
             <div className="flex items-center space-x-2">
               <Filter className="w-4 h-4 text-slate-600 dark:text-gray-400" />
               <select
+                data-mipqa="testplans-owner-filter"
                 value={ownerFilter}
                 onChange={(e) => setOwnerFilter(e.target.value)}
                 className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
@@ -405,13 +408,14 @@ const TestPlans: React.FC = () => {
                 };
                 
                 return (
-                  <tr key={testPlan.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors">
+                  <tr key={testPlan.id} data-mipqa={`testplan-row-${testPlan.id}`} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors">
                     <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
                       TP{testPlan.id}
                     </td>
                     <td className="py-4 px-6">
                       <div>
                         <button
+                          data-mipqa={`testplan-title-btn-${testPlan.id}`}
                           onClick={() => handleTestPlanClick(testPlan)}
                           className="text-left w-full group"
                         >
@@ -487,6 +491,7 @@ const TestPlans: React.FC = () => {
                       <td className="py-4 px-6">
                         <div className="flex items-center space-x-2">
                           <select
+                            data-mipqa={`testplan-status-select-${testPlan.id}`}
                             value={testPlan.status}
                             onChange={async (e) => {
                               try {
@@ -505,6 +510,7 @@ const TestPlans: React.FC = () => {
                           </select>
                           {hasPermission(PERMISSIONS.TEST_PLAN.UPDATE) && (
                             <button
+                              data-mipqa={`testplan-edit-btn-${testPlan.id}`}
                               onClick={() => openEditModal(testPlan)}
                               className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                               title="Edit"
@@ -515,6 +521,7 @@ const TestPlans: React.FC = () => {
                           )}
                           {hasPermission(PERMISSIONS.TEST_PLAN.DELETE) && (
                             <button
+                              data-mipqa={`testplan-delete-btn-${testPlan.id}`}
                               onClick={() => openDeleteDialog(testPlan)}
                               className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                               title="Delete"

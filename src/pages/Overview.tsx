@@ -62,13 +62,14 @@ const Overview: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Overview</h1>
+        <h1 data-mipqa="overview-title" className="text-3xl font-bold text-slate-900 dark:text-white">Overview</h1>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="border-b border-slate-200 dark:border-slate-700">
           <nav className="flex -mb-px">
             <button
+              data-mipqa="overview-tab-widgets"
               type="button"
               onClick={() => {
                 if (activeTab === 'widgets') {
@@ -92,6 +93,7 @@ const Overview: React.FC = () => {
               Widgets
             </button>
             <button
+              data-mipqa="overview-tab-launches"
               type="button"
               onClick={() => {
                 if (activeTab === 'launches') {

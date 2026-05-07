@@ -144,7 +144,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+        <h1 data-mipqa="dashboard-title" className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
       </div>
 
       {selectedProject && (
@@ -162,14 +162,14 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card gradient className="p-6 text-center">
+        <Card data-mipqa="automation-coverage-card" gradient className="p-6 text-center">
           <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Automation Coverage</h3>
           <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
             {summaryLoading ? <Loader className="w-6 h-6 animate-spin inline" /> : `${summaryData?.automationCoverage || 0}%`}
           </div>
         </Card>
 
-        <Card gradient className="p-6 text-center">
+        <Card data-mipqa="automated-testcases-card" gradient className="p-6 text-center">
           <div className="flex items-center justify-center mb-2">
             <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mr-1">Automated Test Cases</h3>
           </div>
@@ -178,7 +178,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card gradient className="p-6 text-center">
+        <Card data-mipqa="total-testcases-card" gradient className="p-6 text-center">
           <h3 className="text-sm font-medium text-slate-600 dark:text-gray-400 mb-2">Total Test Cases</h3>
           <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
             {summaryLoading ? <Loader className="w-6 h-6 animate-spin inline" /> : summaryData?.totalTestCases || 0}

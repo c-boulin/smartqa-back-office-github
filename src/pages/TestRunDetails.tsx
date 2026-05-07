@@ -800,6 +800,7 @@ const TestRunDetails: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button
+            data-mipqa="testrun-details-back-btn"
             variant="secondary"
             icon={ArrowLeft}
             onClick={() => navigate('/test-runs')}
@@ -807,7 +808,7 @@ const TestRunDetails: React.FC = () => {
             Back to Test Runs
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{testRun.name}</h1>
+            <h1 data-mipqa="testrun-details-title" className="text-2xl font-bold text-slate-900 dark:text-white">{testRun.name}</h1>
             <p className="text-slate-600 dark:text-gray-400">Test Run TR{testRun.id}</p>
           </div>
         </div>

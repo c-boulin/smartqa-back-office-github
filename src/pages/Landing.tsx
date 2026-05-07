@@ -105,6 +105,7 @@ const Landing: React.FC = () => {
                       </div>
                     </div>
                     <button
+                      data-mipqa="navbar-logout-button"
                       onClick={handleLogout}
                       className="p-2 text-slate-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                       title="Logout"
@@ -113,8 +114,9 @@ const Landing: React.FC = () => {
                     </button>
                   </>
                 ) : (
-                  <Link 
-                    to="/login" 
+                  <Link
+                    data-mipqa="navbar-login-link"
+                    to="/login"
                     className="text-slate-600 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors font-medium"
                   >
                     Login
@@ -140,35 +142,35 @@ const Landing: React.FC = () => {
           </div>
 
           {/* Title */}
-          <h1 className="text-6xl md:text-7xl font-bold mb-6">
+          <h1 data-mipqa="landing-title" className="text-6xl md:text-7xl font-bold mb-6">
             <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
               SMARTQA
             </span>
           </h1>
 
-          <p className="text-xl md:text-2xl text-slate-700 dark:text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
+          <p data-mipqa="landing-subtitle" className="text-xl md:text-2xl text-slate-700 dark:text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
             The ultimate test management platform. Streamline your QA processes,
             track test executions, and generate comprehensive reports with our futuristic interface.
           </p>
 
           {/* Quick Features */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            <div className="bg-gradient-to-br from-white to-slate-100 dark:from-slate-800/80 dark:to-slate-900/80 border border-slate-300 dark:border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
+            <div data-mipqa="feature-card-test-management" className="bg-gradient-to-br from-white to-slate-100 dark:from-slate-800/80 dark:to-slate-900/80 border border-slate-300 dark:border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
               <TestTube className="w-8 h-8 text-cyan-600 dark:text-cyan-400 mx-auto mb-4" />
               <h3 className="text-slate-900 dark:text-white font-semibold mb-2">Test Management</h3>
               <p className="text-slate-600 dark:text-gray-400 text-sm">Organize and manage your test cases efficiently</p>
             </div>
-            <div className="bg-gradient-to-br from-white to-slate-100 dark:from-slate-800/80 dark:to-slate-900/80 border border-slate-300 dark:border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
+            <div data-mipqa="feature-card-analytics" className="bg-gradient-to-br from-white to-slate-100 dark:from-slate-800/80 dark:to-slate-900/80 border border-slate-300 dark:border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
               <BarChart3 className="w-8 h-8 text-purple-600 dark:text-purple-400 mx-auto mb-4" />
               <h3 className="text-slate-900 dark:text-white font-semibold mb-2">Analytics</h3>
               <p className="text-slate-600 dark:text-gray-400 text-sm">Real-time insights and comprehensive reports</p>
             </div>
-            <div className="bg-gradient-to-br from-white to-slate-100 dark:from-slate-800/80 dark:to-slate-900/80 border border-slate-300 dark:border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
+            <div data-mipqa="feature-card-collaboration" className="bg-gradient-to-br from-white to-slate-100 dark:from-slate-800/80 dark:to-slate-900/80 border border-slate-300 dark:border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
               <Users className="w-8 h-8 text-green-600 dark:text-green-400 mx-auto mb-4" />
               <h3 className="text-slate-900 dark:text-white font-semibold mb-2">Collaboration</h3>
               <p className="text-slate-600 dark:text-gray-400 text-sm">Collaborative testing with shared workflows</p>
             </div>
-            <div className="bg-gradient-to-br from-white to-slate-100 dark:from-slate-800/80 dark:to-slate-900/80 border border-slate-300 dark:border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
+            <div data-mipqa="feature-card-security" className="bg-gradient-to-br from-white to-slate-100 dark:from-slate-800/80 dark:to-slate-900/80 border border-slate-300 dark:border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
               <Shield className="w-8 h-8 text-yellow-600 dark:text-yellow-400 mx-auto mb-4" />
               <h3 className="text-slate-900 dark:text-white font-semibold mb-2">Security</h3>
               <p className="text-slate-600 dark:text-gray-400 text-sm">Enterprise-grade security and compliance</p>
@@ -193,7 +195,7 @@ const Landing: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
           {features.map((feature, index) => (
-            <Card key={index} gradient hover className="p-6 h-full">
+            <Card key={index} data-mipqa={`feature-detail-card-${index}`} gradient hover className="p-6 h-full">
               <div className="flex flex-col h-full">
                 <div className="flex items-center mb-4">
                   <div className="p-3 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-lg mr-4">

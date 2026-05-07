@@ -3,17 +3,16 @@ import { useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
-  LayoutGrid,
   TestTube,
   Play,
   Calendar,
   BarChart3,
-  Settings,
   Layers,
   ChevronDown,
   Loader,
   Search,
-  X
+  X,
+  FolderOpen
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -21,6 +20,11 @@ import { projectsApiService } from '../../services/projectsApi';
 import { usePermissions } from '../../hooks/usePermissions';
 import { PERMISSIONS } from '../../utils/permissions';
 import { Project } from '../../types';
+
+const TEMPLATE_NAV_ITEMS = [
+  { path: '/test-cases',    icon: TestTube, label: 'Test Cases' },
+  { path: '/shared-steps',  icon: Layers,   label: 'Shared Steps' },
+];
 
 const Sidebar: React.FC = () => {
   const { state, dispatch, getSelectedProject, loadProjects } = useApp();
@@ -38,6 +42,14 @@ const Sidebar: React.FC = () => {
   const [hasMoreProjects, setHasMoreProjects] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Template dropdown state
+  const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [allTemplates, setAllTemplates] = useState<Project[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const templateDropdownRef = useRef<HTMLDivElement | null>(null);
+  const templateSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const allNavItems = [
     {
@@ -76,18 +88,6 @@ const Sidebar: React.FC = () => {
       label: 'Reports',
       permissions: [PERMISSIONS.TEST_RUN.READ]
     },
-    {
-      path: '/overview',
-      icon: LayoutGrid,
-      label: 'Overview',
-      permissions: [PERMISSIONS.ADMIN_PANEL.READ]
-    },
-    {
-      path: '/settings',
-      icon: Settings,
-      label: 'Settings',
-      permissions: [PERMISSIONS.ADMIN_PANEL.READ]
-    }
   ];
 
   const navItems = allNavItems.filter(item => {
@@ -263,38 +263,6 @@ const Sidebar: React.FC = () => {
     return '🔍 Select Project';
   };
 
-  const handleClearProject = () => {
-    dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: null });
-    navigate('/projects');
-  };
-
-  const getProjectFilterInfo = () => {
-    if (location.pathname === '/projects') {
-      return null;
-    }
-
-    const selectedProject = getSelectedProject();
-    if (selectedProject) {
-      return (
-        <div className="px-4 py-2 mb-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <div className="text-xs text-cyan-400 font-medium">Filtered by:</div>
-              <div className="text-sm text-slate-900 dark:text-white truncate">{selectedProject.name}</div>
-            </div>
-            <button
-              onClick={handleClearProject}
-              className="flex-shrink-0 p-1 hover:bg-cyan-500/20 rounded transition-colors group"
-              title="Clear filter"
-            >
-              <X className="w-4 h-4 text-cyan-400 group-hover:text-slate-900 dark:hover:text-white" />
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
 
   // Refresh projects when component mounts or when needed
   useEffect(() => {
@@ -337,8 +305,189 @@ const Sidebar: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDropdownOpen, searchTerm]);
 
+  // Load templates when template dropdown opens
+  useEffect(() => {
+    if (!isTemplateDropdownOpen) return;
+
+    const load = async () => {
+      try {
+        setIsLoadingTemplates(true);
+        const response = await projectsApiService.getTemplatesList(1, 50);
+        const list = (response?.data ?? []).map(t => projectsApiService.transformApiProject(t));
+        setAllTemplates(list);
+      } catch {
+        setAllTemplates([]);
+      } finally {
+        setIsLoadingTemplates(false);
+      }
+    };
+
+    load();
+  }, [isTemplateDropdownOpen]);
+
+  // Close template dropdown on outside click
+  useEffect(() => {
+    if (!isTemplateDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (templateDropdownRef.current && !templateDropdownRef.current.contains(e.target as Node)) {
+        setIsTemplateDropdownOpen(false);
+        setTemplateSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isTemplateDropdownOpen]);
+
+  const filteredTemplates = allTemplates.filter(t =>
+    t.name.toLowerCase().includes(templateSearch.toLowerCase())
+  );
+
+  const handleTemplateSelect = (template: Project) => {
+    setIsTemplateDropdownOpen(false);
+    setTemplateSearch('');
+    dispatch({ type: 'SET_NAVIGATING_TO_PROJECT', payload: true });
+    dispatch({ type: 'SET_TEMPLATE_MODE', payload: true });
+    dispatch({ type: 'UPDATE_PROJECT', payload: template });
+    dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: template.id });
+    navigate('/test-cases');
+  };
+
+  // Clear template mode when navigating to non-template pages via top nav
+  useEffect(() => {
+    const templateAllowedPaths = ['/test-cases', '/shared-steps'];
+    if (state.isTemplateMode && !templateAllowedPaths.includes(location.pathname)) {
+      dispatch({ type: 'SET_TEMPLATE_MODE', payload: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, state.isTemplateMode]);
+
+  // ---- Template mode sidebar ----
+  if (state.isTemplateMode) {
+    const selectedTemplate = getSelectedProject();
+    return (
+      <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl min-h-[calc(100vh-3.5rem)] sticky top-14">
+        <nav className="p-4 space-y-2">
+          {/* Templates label + dropdown */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-2 px-4">
+              Templates
+            </label>
+            <div className="relative" ref={templateDropdownRef}>
+              <button
+                onClick={() => setIsTemplateDropdownOpen(prev => !prev)}
+                className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-left flex items-center justify-between hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                <span className="flex items-center gap-2 truncate">
+                  <span className="text-cyan-600 dark:text-cyan-400">📁 </span>
+                  <span className="text-sm text-slate-900 dark:text-white truncate">
+                    {selectedTemplate?.name ?? 'Template'}
+                  </span>
+                </span>
+                <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isTemplateDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isTemplateDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg z-50 max-h-64 flex flex-col">
+                  {/* Search */}
+                  <div className="p-2 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search templates..."
+                        value={templateSearch}
+                        onChange={e => setTemplateSearch(e.target.value)}
+                        className="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        autoFocus
+                      />
+                      {templateSearch && (
+                        <button onClick={() => setTemplateSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* List */}
+                  <div className="overflow-y-auto flex-1">
+                    {isLoadingTemplates ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader className="w-5 h-5 text-cyan-500 animate-spin" />
+                      </div>
+                    ) : filteredTemplates.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">No templates found</div>
+                    ) : (
+                      filteredTemplates.map(template => (
+                        <button
+                          key={template.id}
+                          onClick={() => handleTemplateSelect(template)}
+                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${
+                            template.id === selectedTemplate?.id
+                              ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+                              : 'text-slate-900 dark:text-white'
+                          }`}
+                        >
+                          <FolderOpen className="w-4 h-4 shrink-0 text-cyan-500" />
+                          <span className="truncate">{template.name}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Footer link to all templates */}
+                  <div className="border-t border-slate-200 dark:border-slate-700 shrink-0">
+                    <button
+                      onClick={() => {
+                        setIsTemplateDropdownOpen(false);
+                        dispatch({ type: 'SET_TEMPLATE_MODE', payload: false });
+                        dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: null });
+                        navigate('/templates');
+                      }}
+                      className="w-full px-4 py-2.5 text-sm text-cyan-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"
+                    >
+                      View all templates →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <hr className="border-slate-200 dark:border-slate-700 my-0" />
+
+          {/* Only Test Cases + Shared Steps */}
+          <div className="pt-4 space-y-1">
+            {TEMPLATE_NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={(e) => {
+                  if (location.pathname === item.path) {
+                    e.preventDefault();
+                    navigate(item.path, { replace: false, state: { timestamp: Date.now() } });
+                  }
+                }}
+                className={({ isActive }) =>
+                  `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
+                    isActive
+                      ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 shadow-lg'
+                      : 'text-slate-600 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                  }`
+                }
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+                <div className="ml-auto w-2 h-2 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              </NavLink>
+            ))}
+          </div>
+        </nav>
+      </aside>
+    );
+  }
+
   return (
-    <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl">
+    <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl min-h-[calc(100vh-3.5rem)] sticky top-14">
       <nav className="p-4 space-y-2">
         {/* Projects Dropdown */}
         <div className="mb-4">
@@ -498,14 +647,12 @@ const Sidebar: React.FC = () => {
           </div>
         </div>
 
-        {/* Project Filter Info */}
-        {getProjectFilterInfo()}
-
         {/* Other Navigation Items */}
         {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
+            data-mipqa={`sidebar-${item.label.toLowerCase().replace(/\s+/g, '-')}-link`}
             onClick={(e) => {
               // If clicking on the current page, force re-navigation to trigger route change
               if (location.pathname === item.path) {
