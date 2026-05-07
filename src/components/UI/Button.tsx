@@ -1,5 +1,5 @@
 import React from 'react';
-import { DivideIcon as LucideIcon } from 'lucide-react';
+import { Divide as LucideIcon } from 'lucide-react';
 import { useLoading } from '../../context/LoadingContext';
 
 interface ButtonProps {
@@ -12,6 +12,7 @@ interface ButtonProps {
   className?: string;
   type?: 'button' | 'submit' | 'reset';
   loadingMessage?: string;
+  'data-mipqa'?: string;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -23,7 +24,8 @@ const Button: React.FC<ButtonProps> = ({
   disabled = false,
   className = '',
   type = 'button',
-  loadingMessage
+  loadingMessage,
+  'data-mipqa': dataMipqa,
 }) => {
   const { loading, setLoading } = useLoading();
 
@@ -64,6 +66,7 @@ const Button: React.FC<ButtonProps> = ({
       onClick={handleClick}
       disabled={disabled || loading.isLoading}
       className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
+      data-mipqa={dataMipqa}
     >
       {Icon && <Icon className="w-4 h-4 mr-2" />}
       {children}

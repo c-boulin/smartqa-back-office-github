@@ -17,6 +17,10 @@ export interface ApiProject {
     test_suite_name?: string;
     gitlabProjectName?: string;
     testSuiteName?: string;
+    category?: string | { id: string | number; name: string; iri?: string };
+    project_type?: string | { id: string | number; name: string; iri?: string };
+    projectType?: string | { id: string | number; name: string; iri?: string };
+    type?: string;
   };
   relationships: {
     testCases: {
@@ -37,6 +41,12 @@ export interface ApiProject {
     destroyer: {
       data: Array<{ id: string; type: string }>;
     };
+    projectType?: {
+      data: { type: string; id: string } | null;
+    };
+    category?: {
+      data: { type: string; id: string } | null;
+    };
   };
 }
 
@@ -56,6 +66,12 @@ export interface ProjectsApiResponse {
   data: ApiProject[];
 }
 
+
+interface CategoryRelationship {
+  data: { type: "Category"; id: string } | null;
+}
+
+
 export interface CreateProjectRequest {
   data: {
     type: "Project";
@@ -63,6 +79,12 @@ export interface CreateProjectRequest {
       title: string;
       description: string;
       is_template?: boolean;
+      country?: string;
+      url?: string;
+      type?: string;
+    };
+    relationships?: {
+      category?: CategoryRelationship;
     };
   };
 }
@@ -77,6 +99,10 @@ export interface UpdateProjectRequest {
       url?: string;
       gitlab_project_name?: string;
       test_suite_name?: string;
+      type?: string;
+    };
+    relationships?: {
+      category?: CategoryRelationship;
     };
   };
 }
@@ -110,6 +136,7 @@ class ProjectsApiService {
   transformApiProject(apiProject: ApiProject) {
     // Extract the project ID from the API URL format
     const projectId = apiProject.attributes.id.toString();
+    console.log('[projectsApi] raw projectType attr:', apiProject.attributes.projectType, '| project_type attr:', apiProject.attributes.project_type, '| rel:', apiProject.relationships.projectType);
 
     if (!projectId || projectId === 'undefined' || projectId === '') {
       console.error('❌ Invalid project ID during transformation:', apiProject);
@@ -130,6 +157,28 @@ class ProjectsApiService {
       url: apiProject.attributes.url,
       gitlab_project_name: apiProject.attributes.gitlabProjectName ?? apiProject.attributes.gitlab_project_name,
       test_suite_name: apiProject.attributes.testSuiteName ?? apiProject.attributes.test_suite_name,
+      category: typeof apiProject.attributes.category === 'object' && apiProject.attributes.category !== null
+        ? apiProject.attributes.category.name
+        : apiProject.attributes.category,
+      categoryIri: (() => {
+        const attrCat = apiProject.attributes.category;
+        if (typeof attrCat === 'object' && attrCat !== null) return attrCat.iri ?? `/api/categories/${attrCat.id}`;
+        const relCat = apiProject.relationships.category?.data;
+        if (relCat) return relCat.id;
+        return undefined;
+      })(),
+      project_type: (() => {
+        const raw = apiProject.attributes.type ?? apiProject.attributes.projectType ?? apiProject.attributes.project_type;
+        if (!raw) return undefined;
+        const str = typeof raw === 'object' && raw !== null ? raw.name : String(raw);
+        return str;
+      })(),
+      projectTypeIri: (() => {
+        const raw = apiProject.attributes.type ?? apiProject.attributes.projectType ?? apiProject.attributes.project_type;
+        if (!raw) return undefined;
+        const str = typeof raw === 'object' && raw !== null ? raw.name : String(raw);
+        return str;
+      })(),
     };
   }
 
@@ -287,17 +336,33 @@ class ProjectsApiService {
     return apiService.authenticatedRequest(`/projects/${id}`);
   }
 
+  async getTemplate(id: string): Promise<{ data: ApiProject }> {
+    return apiService.authenticatedRequest(`/templates/${id}`);
+  }
+
   async createProject(projectData: {
     title: string;
     description: string;
+    country?: string;
+    url?: string;
+    categoryIri?: string;
+    projectTypeIri?: string;
   }): Promise<CreateProjectResponse> {
+    const attributes: CreateProjectRequest['data']['attributes'] = {
+      title: projectData.title,
+      description: projectData.description,
+    };
+    if (projectData.country) attributes.country = projectData.country;
+    if (projectData.url) attributes.url = projectData.url;
+    if (projectData.projectTypeIri) attributes.type = projectData.projectTypeIri;
+
     const requestBody: CreateProjectRequest = {
       data: {
         type: "Project",
-        attributes: {
-          title: projectData.title,
-          description: projectData.description
-        }
+        attributes,
+        relationships: projectData.categoryIri
+          ? { category: { data: { type: "Category", id: projectData.categoryIri } } }
+          : undefined,
       }
     };
 
@@ -316,15 +381,27 @@ class ProjectsApiService {
   async createTemplate(templateData: {
     title: string;
     description: string;
+    country?: string;
+    url?: string;
+    categoryIri?: string;
+    projectTypeIri?: string;
   }): Promise<CreateProjectResponse> {
+    const attributes: CreateProjectRequest['data']['attributes'] = {
+      title: templateData.title,
+      description: templateData.description,
+      is_template: true,
+    };
+    if (templateData.country) attributes.country = templateData.country;
+    if (templateData.url) attributes.url = templateData.url;
+    if (templateData.projectTypeIri) attributes.type = templateData.projectTypeIri;
+
     const requestBody: CreateProjectRequest = {
       data: {
         type: "Project",
-        attributes: {
-          title: templateData.title,
-          description: templateData.description,
-          is_template: true
-        }
+        attributes,
+        relationships: templateData.categoryIri
+          ? { category: { data: { type: "Category", id: templateData.categoryIri } } }
+          : undefined,
       }
     };
 
@@ -347,27 +424,26 @@ class ProjectsApiService {
     url?: string;
     gitlab_project_name?: string;
     test_suite_name?: string;
+    categoryIri?: string;
+    projectTypeIri?: string;
   }): Promise<UpdateProjectResponse> {
     const attributes: UpdateProjectRequest['data']['attributes'] = {
       title: projectData.title,
       description: projectData.description,
     };
-    if (projectData.country !== undefined) {
-      attributes.country = projectData.country;
-    }
-    if (projectData.url !== undefined) {
-      attributes.url = projectData.url;
-    }
-    if (projectData.gitlab_project_name !== undefined) {
-      attributes.gitlab_project_name = projectData.gitlab_project_name;
-    }
-    if (projectData.test_suite_name !== undefined) {
-      attributes.test_suite_name = projectData.test_suite_name;
-    }
+    if (projectData.country !== undefined) attributes.country = projectData.country;
+    if (projectData.url !== undefined) attributes.url = projectData.url;
+    if (projectData.gitlab_project_name !== undefined) attributes.gitlab_project_name = projectData.gitlab_project_name;
+    if (projectData.test_suite_name !== undefined) attributes.test_suite_name = projectData.test_suite_name;
+    if (projectData.projectTypeIri !== undefined) attributes.type = projectData.projectTypeIri;
+
     const requestBody: UpdateProjectRequest = {
       data: {
         type: "Project",
         attributes,
+        relationships: projectData.categoryIri !== undefined
+          ? { category: { data: projectData.categoryIri ? { type: "Category", id: projectData.categoryIri } : null } }
+          : undefined,
       },
     };
 
@@ -392,14 +468,23 @@ class ProjectsApiService {
   async updateTemplate(id: string, templateData: {
     title: string;
     description: string;
+    categoryIri?: string;
+    country?: string;
+    projectTypeIri?: string;
   }): Promise<UpdateProjectResponse> {
+    const attributes: UpdateProjectRequest['data']['attributes'] = {
+      title: templateData.title,
+      description: templateData.description,
+    };
+    if (templateData.country !== undefined) attributes.country = templateData.country;
+    if (templateData.projectTypeIri !== undefined) attributes.type = templateData.projectTypeIri;
     const requestBody: UpdateProjectRequest = {
       data: {
         type: "Project",
-        attributes: {
-          title: templateData.title,
-          description: templateData.description
-        }
+        attributes,
+        relationships: templateData.categoryIri !== undefined
+          ? { category: { data: templateData.categoryIri ? { type: "Category", id: templateData.categoryIri } : null } }
+          : undefined,
       }
     };
 
@@ -421,7 +506,7 @@ class ProjectsApiService {
     });
   }
 
-  async cloneProject(id: string, projectData: { title: string; description: string }): Promise<{ data: ApiProject }> {
+  async cloneProject(id: string, projectData: { title: string; description: string; category?: string; categoryIri?: string; country?: string; project_type?: string; testCasesCount?: number }): Promise<{ data: ApiProject }> {
     const requestBody = {
       title: projectData.title,
       description: projectData.description
@@ -437,6 +522,7 @@ class ProjectsApiService {
     }
 
     if (response.success && response.data) {
+      const testCasesCount = projectData.testCasesCount ?? 0;
       return {
         data: {
           id: `/api/projects/${response.data.id}`,
@@ -446,10 +532,13 @@ class ProjectsApiService {
             title: response.data.title,
             description: response.data.description,
             createdAt: response.data.created_at,
-            updatedAt: response.data.updated_at
+            updatedAt: response.data.updated_at,
+            country: projectData.country,
+            category: projectData.category,
+            project_type: projectData.project_type,
           },
           relationships: {
-            testCases: { data: [] },
+            testCases: { data: Array.from({ length: testCasesCount }, (_, i) => ({ type: 'TestCase', id: String(i) })) },
             testRuns: { data: [] },
             sharedSteps: { data: [] },
             creator: { data: { type: 'User', id: '' } },
@@ -517,7 +606,7 @@ class ProjectsApiService {
     return response || this.getDefaultProjectsResponse();
   }
 
-  async cloneTemplate(id: string, projectData: { title: string; description: string }): Promise<{ data: ApiProject }> {
+  async cloneTemplate(id: string, projectData: { title: string; description: string; category?: string; categoryIri?: string; country?: string; project_type?: string; testCasesCount?: number }): Promise<{ data: ApiProject }> {
     const requestBody = {
       title: projectData.title,
       description: projectData.description
@@ -533,6 +622,7 @@ class ProjectsApiService {
     }
 
     if (response.success && response.data) {
+      const testCasesCount = projectData.testCasesCount ?? 0;
       return {
         data: {
           id: `/api/templates/${response.data.id}`,
@@ -542,10 +632,13 @@ class ProjectsApiService {
             title: response.data.title,
             description: response.data.description,
             createdAt: response.data.created_at,
-            updatedAt: response.data.updated_at
+            updatedAt: response.data.updated_at,
+            country: projectData.country,
+            category: projectData.category,
+            project_type: projectData.project_type,
           },
           relationships: {
-            testCases: { data: [] },
+            testCases: { data: Array.from({ length: testCasesCount }, (_, i) => ({ type: 'TestCase', id: String(i) })) },
             testRuns: { data: [] },
             sharedSteps: { data: [] },
             creator: { data: { type: 'User', id: '' } },
@@ -559,11 +652,20 @@ class ProjectsApiService {
     return response;
   }
 
-  async cloneTemplateToProject(id: string, projectData: { title: string; description: string }): Promise<{ data: ApiProject }> {
-    const requestBody = {
+  async cloneTemplateToProject(id: string, projectData: {
+    title: string;
+    description: string;
+    country?: string;
+    categoryIri?: string;
+    categoryName?: string;
+    projectTypeIri?: string;
+  }): Promise<{ data: ApiProject }> {
+    const requestBody: Record<string, unknown> = {
       title: projectData.title,
-      description: projectData.description
+      description: projectData.description,
     };
+    if (projectData.country) requestBody.country = projectData.country;
+    if (projectData.projectTypeIri) requestBody.type = projectData.projectTypeIri;
 
     const response = await apiService.authenticatedRequest(`/projects/${id}/clone`, {
       method: 'POST',
@@ -584,7 +686,12 @@ class ProjectsApiService {
             title: response.data.title,
             description: response.data.description,
             createdAt: response.data.created_at,
-            updatedAt: response.data.updated_at
+            updatedAt: response.data.updated_at,
+            country: response.data.country ?? projectData.country,
+            category: projectData.categoryName
+              ? { id: projectData.categoryIri ?? '', name: projectData.categoryName, iri: projectData.categoryIri }
+              : response.data.category,
+            type: response.data.type ?? projectData.projectTypeIri,
           },
           relationships: {
             testCases: { data: [] },
@@ -592,7 +699,8 @@ class ProjectsApiService {
             sharedSteps: { data: [] },
             creator: { data: { type: 'User', id: '' } },
             editor: { data: { type: 'User', id: '' } },
-            destroyer: { data: [] }
+            destroyer: { data: [] },
+            ...(projectData.categoryIri ? { category: { data: { type: 'Category', id: projectData.categoryIri } } } : {}),
           }
         }
       };

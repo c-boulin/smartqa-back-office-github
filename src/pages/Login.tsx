@@ -199,8 +199,9 @@ const Login: React.FC = () => {
 
       <div className="relative w-full max-w-md">
         {/* Back to Home Link */}
-        <Link 
-          to="/" 
+        <Link
+          to="/"
+          data-mipqa="back-home-link"
           className="inline-flex items-center text-slate-600 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors mb-8"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -218,23 +219,24 @@ const Login: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-purple-500 opacity-30 rounded-full blur-lg"></div>
               </div>
             </div>
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 data-mipqa="signin-title" className="text-3xl font-bold mb-2">
               <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
                 Welcome to SMARTQA
               </span>
             </h1>
-            <p className="text-slate-600 dark:text-gray-400">Sign in with your organization account</p>
+            <p data-mipqa="signin-subtitle" className="text-slate-600 dark:text-gray-400">Sign in with your organization account</p>
           </div>
 
           {/* SSO Login */}
           <div className="space-y-6">
             {state.error && (
-              <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+              <div data-mipqa="signin-error-msg" className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
                 <p className="text-red-400 text-sm text-center">{state.error}</p>
               </div>
             )}
 
-            <Button 
+            <Button
+              data-mipqa="sso-login-button"
               onClick={handleSSOLogin}
               disabled={isInitializing || !ssoUrl || isAuthenticating}
               className="w-full py-4 text-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 border border-blue-500/50"

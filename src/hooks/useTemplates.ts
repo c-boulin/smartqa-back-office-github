@@ -212,7 +212,7 @@ export const useTemplates = () => {
     }
   };
 
-  const cloneTemplate = async (id: string, data: { title: string; description: string }) => {
+  const cloneTemplate = async (id: string, data: { title: string; description: string; category?: string; categoryIri?: string; country?: string; project_type?: string; projectTypeIri?: string; testCasesCount?: number }) => {
     try {
       return await withLoading((async () => {
         const response = await projectsApiService.cloneTemplate(id, data);
@@ -222,6 +222,29 @@ export const useTemplates = () => {
         }
 
         const clonedTemplate = projectsApiService.transformApiProject(response.data);
+
+        // Persist category/country/type to the backend so re-fetches return complete data
+        if (data.country || data.categoryIri || data.projectTypeIri) {
+          try {
+            await projectsApiService.updateTemplate(clonedTemplate.id, {
+              title: clonedTemplate.name,
+              description: clonedTemplate.description,
+              categoryIri: data.categoryIri,
+              country: data.country,
+              projectTypeIri: data.projectTypeIri,
+            });
+          } catch {
+            // Non-fatal — still show template with patched in-memory data
+          }
+        }
+
+        // Apply source metadata to in-memory record immediately
+        if (data.category) clonedTemplate.category = data.category;
+        if (data.categoryIri) clonedTemplate.categoryIri = data.categoryIri;
+        if (data.country) clonedTemplate.country = data.country;
+        if (data.project_type) clonedTemplate.project_type = data.project_type;
+        if (data.projectTypeIri) clonedTemplate.projectTypeIri = data.projectTypeIri;
+        if (data.testCasesCount !== undefined) clonedTemplate.testCasesCount = data.testCasesCount;
         setTemplates(prevTemplates => [clonedTemplate, ...prevTemplates]);
 
         setPagination(prev => ({
@@ -260,15 +283,22 @@ export const useTemplates = () => {
     }
   };
 
-  const createTemplate = async (templateData: { name: string; description: string }) => {
+  const createTemplate = async (templateData: { name: string; description: string; country?: string; url?: string; categoryIri?: string; categoryName?: string; projectTypeIri?: string; }) => {
     return withLoading(
       (async () => {
         const response = await projectsApiService.createTemplate({
           title: templateData.name,
-          description: templateData.description
+          description: templateData.description,
+          country: templateData.country,
+          url: templateData.url,
+          categoryIri: templateData.categoryIri,
+          projectTypeIri: templateData.projectTypeIri,
         });
 
         const newTemplate = projectsApiService.transformApiProject(response.data);
+        if (!newTemplate.category && templateData.categoryName) {
+          newTemplate.category = templateData.categoryName;
+        }
         setTemplates(prevTemplates => [newTemplate, ...prevTemplates]);
 
         setPagination(prev => ({
@@ -283,15 +313,19 @@ export const useTemplates = () => {
     );
   };
 
-  const updateTemplate = async (id: string, templateData: { name: string; description: string }) => {
+  const updateTemplate = async (id: string, templateData: { name: string; description: string; categoryIri?: string; categoryName?: string }) => {
     return withLoading(
       (async () => {
         const response = await projectsApiService.updateTemplate(id, {
           title: templateData.name,
-          description: templateData.description
+          description: templateData.description,
+          categoryIri: templateData.categoryIri,
         });
 
         const updatedTemplate = projectsApiService.transformApiProject(response.data);
+        if (!updatedTemplate.category && templateData.categoryName) {
+          updatedTemplate.category = templateData.categoryName;
+        }
         setTemplates(prevTemplates =>
           prevTemplates.map(template =>
             template.id === id ? updatedTemplate : template

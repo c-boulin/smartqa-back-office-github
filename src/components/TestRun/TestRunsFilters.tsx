@@ -64,6 +64,7 @@ const TestRunsFilters: React.FC<TestRunsFiltersProps> = ({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-400 w-4 h-4 z-10" />
             <input
+              data-mipqa="testruns-search-input"
               type="text"
               placeholder="Search test runs by name..."
               value={searchTerm}
@@ -75,6 +76,7 @@ const TestRunsFilters: React.FC<TestRunsFiltersProps> = ({
         </div>
         <div className="flex items-center space-x-4">
           <Button
+            data-mipqa="testruns-filter-btn"
             variant="secondary"
             icon={Filter}
             onClick={onOpenFiltersSidebar}

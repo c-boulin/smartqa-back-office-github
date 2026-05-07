@@ -11,6 +11,7 @@ interface DroppableFolderTreeProps {
   onEditFolder?: (folder: FolderType) => void;
   onDeleteFolder?: (folder: FolderType) => void;
   onTestCaseDropped: (testCaseId: string, targetFolderId: string) => void;
+  showTestCaseCount?: boolean;
 }
 
 const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
@@ -20,7 +21,8 @@ const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
   loading,
   onEditFolder,
   onDeleteFolder,
-  onTestCaseDropped
+  onTestCaseDropped,
+  showTestCaseCount = true,
 }) => {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [isDragInProgress, setIsDragInProgress] = useState(false);
@@ -145,6 +147,7 @@ const DroppableFolderTree: React.FC<DroppableFolderTreeProps> = ({
           isDragInProgress={isDragInProgress}
           dragOverFolderId={dragOverFolderId}
           onDragOverFolder={setDragOverFolderId}
+          showTestCaseCount={showTestCaseCount}
         />
       ))}
     </div>

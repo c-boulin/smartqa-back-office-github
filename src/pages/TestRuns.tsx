@@ -478,7 +478,7 @@ const TestRuns: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Test Runs</h2>
+          <h2 data-mipqa="testruns-title" className="text-2xl font-bold text-slate-900 dark:text-white">Test Runs</h2>
           <p className="text-slate-600 dark:text-gray-400">
             {selectedProject 
               ? `Manage test runs for ${selectedProject.name} (${pagination.totalItems} total)` 
@@ -495,6 +495,7 @@ const TestRuns: React.FC = () => {
         </div>
         <PermissionGuard permission={PERMISSIONS.TEST_RUN.CREATE}>
           <Button
+            data-mipqa="create-testrun-button"
             icon={Plus}
             onClick={() => {
               if (appState.configurations.length === 0 && !appState.isLoadingConfigurations) {
@@ -528,6 +529,7 @@ const TestRuns: React.FC = () => {
           <Card className="p-0 overflow-hidden">
             <div className="flex border-b border-slate-200 dark:border-slate-700">
               <button
+                data-mipqa="testruns-tab-active"
                 onClick={() => setActiveTab('active')}
                 className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${
                   activeTab === 'active'
@@ -542,6 +544,7 @@ const TestRuns: React.FC = () => {
                 </span>
               </button>
               <button
+                data-mipqa="testruns-tab-closed"
                 onClick={() => setActiveTab('closed')}
                 className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${
                   activeTab === 'closed'
@@ -598,13 +601,14 @@ const TestRuns: React.FC = () => {
                 </thead>
                 <tbody>
                   {filteredTestRuns.map((testRun) => (
-                    <tr key={testRun.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors">
+                    <tr key={testRun.id} data-mipqa={`testrun-row-${testRun.id}`} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-800/30 transition-colors">
                       <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
                         TR{testRun.id}
                       </td>
                       <td className="py-4 px-6">
                         <div>
                           <button
+                            data-mipqa={`testrun-name-btn-${testRun.id}`}
                             onClick={() => handleTestRunNameClick(testRun)}
                             className="text-left w-full group"
                           >
@@ -668,6 +672,7 @@ const TestRuns: React.FC = () => {
                           <div className="flex items-center space-x-2">
                             {activeTab === 'active' && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
                               <button
+                                data-mipqa={`testrun-edit-btn-${testRun.id}`}
                                 onClick={() => openEditModal(testRun)}
                                 className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                                 title="Edit"
@@ -678,6 +683,7 @@ const TestRuns: React.FC = () => {
                             )}
                             {hasPermission(PERMISSIONS.TEST_RUN.CREATE) && (
                               <button
+                                data-mipqa={`testrun-clone-btn-${testRun.id}`}
                                 onClick={() => openCloneModal(testRun)}
                                 className="p-2 text-slate-600 dark:text-gray-400 hover:text-green-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                                 title="Clone Test Run"
@@ -688,6 +694,7 @@ const TestRuns: React.FC = () => {
                             )}
                             {activeTab === 'active' && testRun.state !== 6 && hasPermission(PERMISSIONS.TEST_RUN.UPDATE) && (
                               <button
+                                data-mipqa={`testrun-close-btn-${testRun.id}`}
                                 onClick={() => openCloseModal(testRun)}
                                 className="p-2 text-slate-600 dark:text-gray-400 hover:text-orange-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                                 title="Close Test Run"
@@ -698,6 +705,7 @@ const TestRuns: React.FC = () => {
                             )}
                             {hasPermission(PERMISSIONS.TEST_RUN.DELETE) && (
                               <button
+                                data-mipqa={`testrun-delete-btn-${testRun.id}`}
                                 onClick={() => openDeleteDialog(testRun)}
                                 className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                                 title="Delete"
@@ -741,6 +749,7 @@ const TestRuns: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Button
+                      data-mipqa="testruns-pagination-prev"
                       variant="secondary"
                       size="sm"
                       onClick={() => handlePageChange(pagination.currentPage - 1)}
@@ -753,6 +762,7 @@ const TestRuns: React.FC = () => {
                       Page {pagination.currentPage} of {pagination.totalPages}
                     </span>
                     <Button
+                      data-mipqa="testruns-pagination-next"
                       variant="secondary"
                       size="sm"
                       onClick={() => handlePageChange(pagination.currentPage + 1)}

@@ -597,7 +597,11 @@ const TestCases: React.FC = () => {
 
       if (selectedFolderId) {
         setTimeout(() => {
-          showFolderTestCases(selectedFolderId);
+          if (selectedFolderId === '__none__') {
+            filterTestCasesByFolder('__none__');
+          } else {
+            showFolderTestCases(selectedFolderId);
+          }
         }, 100);
       }
 
@@ -662,23 +666,25 @@ const TestCases: React.FC = () => {
         createdAttachments: data.createdAttachments || []
       };
 
-      // Only add folderId if a folder is selected
-      if (selectedFolderId) {
+      // Only add folderId if a real folder is selected (not the __none__ sentinel)
+      if (selectedFolderId && selectedFolderId !== '__none__') {
         testCasePayload.folderId = selectedFolderId;
       }
 
       await createTestCase(testCasePayload);
-      
+
       await fetchAllTestCasesAndExtractFolders(selectedProject.id);
       setIsCreateModalOpen(false);
       toast.success('Test case created successfully');
-      
+
       // Re-apply folder filter to show only test cases from the selected folder
       if (selectedFolderId) {
-
-        // Small delay to ensure test case creation and folder data refresh completes
         setTimeout(() => {
-          showFolderTestCases(selectedFolderId);
+          if (selectedFolderId === '__none__') {
+            filterTestCasesByFolder('__none__');
+          } else {
+            showFolderTestCases(selectedFolderId);
+          }
         }, 100);
       }
       
@@ -970,39 +976,43 @@ const TestCases: React.FC = () => {
 
       {/* Only show content if project is selected */}
       {selectedProject && (
-        <div className="flex gap-4">
-          <TestCasesFolderSidebar
-            folderTree={folderTree}
-            selectedFolderId={selectedFolderId}
-            onSelectFolder={selectFolder}
-            foldersLoading={foldersLoading}
-            onCreateFolder={handleCreateFolder}
-            onEditFolder={openEditFolderModal}
-            onDeleteFolder={openDeleteFolderDialog}
-            onTestCaseDropped={handleTestCaseDropped}
+        <div className="space-y-3">
+          {/* Search + View + Filters + Create bar — full width above the two-column layout */}
+          <TestCasesFilters
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            onSearchKeyPress={handleSearchKeyPress}
+            currentSearchTerm={currentSearchTerm}
+            filters={filters}
+            onFilterChange={updateFilter}
+            onApplyFilters={applyFilters}
+            onClearAllFilters={clearAllFilters}
             onClearIndividualFilter={clearIndividualFilter}
+            onOpenFiltersSidebar={() => setIsFiltersSidebarOpen(true)}
+            availableTags={tags}
+            onCreateTag={handleCreateTag}
+            visibleColumns={visibleColumns}
+            onToggleColumn={handleToggleColumn}
+            onCreateTestCase={() => setIsCreateModalOpen(true)}
           />
 
-          {/* Main Content */}
-          <div className="flex-1 space-y-4">
-            <TestCasesFilters
-              searchTerm={searchTerm}
-              onSearchTermChange={setSearchTerm}
-              onSearchKeyPress={handleSearchKeyPress}
-              currentSearchTerm={currentSearchTerm}
-              filters={filters}
-              onFilterChange={updateFilter}
-              onApplyFilters={applyFilters}
-              onClearAllFilters={clearAllFilters}
+          <div className="flex gap-4">
+            <TestCasesFolderSidebar
+              folderTree={folderTree}
+              selectedFolderId={selectedFolderId}
+              onSelectFolder={selectFolder}
+              foldersLoading={foldersLoading}
+              onCreateFolder={handleCreateFolder}
+              onEditFolder={openEditFolderModal}
+              onDeleteFolder={openDeleteFolderDialog}
+              onTestCaseDropped={handleTestCaseDropped}
               onClearIndividualFilter={clearIndividualFilter}
-              onOpenFiltersSidebar={() => setIsFiltersSidebarOpen(true)}
-              availableTags={tags}
-              onCreateTag={handleCreateTag}
-              visibleColumns={visibleColumns}
-              onToggleColumn={handleToggleColumn}
+              unfolderedCount={allTestCases.filter(tc => !tc.folderId).length}
             />
 
-            <TestCasesTable
+            {/* Main Content */}
+            <div className="flex-1">
+              <TestCasesTable
               testCases={testCases}
               loading={loading}
               isApplyingNavigationFilter={isApplyingNavigationFilter}
@@ -1022,6 +1032,7 @@ const TestCases: React.FC = () => {
               visibleColumns={visibleColumns}
               folderMap={folderMap}
             />
+            </div>
           </div>
         </div>
       )}

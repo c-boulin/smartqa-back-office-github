@@ -258,9 +258,9 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   // Function to filter test cases by folder (client-side)
   const filterTestCasesByFolder = useCallback((targetFolderId?: string | null) => {
     const useFolderId = targetFolderId !== undefined ? targetFolderId : folderId;
-    
+
     setCurrentFilterMode('folder');
-    
+
     if (!useFolderId) {
       // Show all test cases
       setTestCases(allTestCases);
@@ -269,6 +269,16 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
         totalItems: allTestCases.length,
         itemsPerPage: 30,
         totalPages: Math.ceil(allTestCases.length / 30)
+      });
+    } else if (useFolderId === '__none__') {
+      // Show only unfoldered test cases
+      const filtered = allTestCases.filter(tc => !tc.folderId);
+      setTestCases(filtered);
+      setPagination({
+        currentPage: 1,
+        totalItems: filtered.length,
+        itemsPerPage: 30,
+        totalPages: Math.ceil(filtered.length / 30)
       });
     } else {
       // Filter by folder

@@ -331,10 +331,11 @@ const Reports: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Reports</h1>
+            <h1 data-mipqa="reports-title" className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Reports</h1>
             <p className="text-slate-600 dark:text-gray-400">Generate and manage test reports</p>
           </div>
           <Button
+            data-mipqa="create-report-button"
             onClick={() => setIsCreateModalOpen(true)}
             className="bg-cyan-600 hover:bg-cyan-700"
           >
@@ -349,6 +350,7 @@ const Reports: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-blue-500/5" />
             <div className="relative p-6">
               <button
+                data-mipqa="reports-intro-close-btn"
                 onClick={() => setShowIntroductionPanel(false)}
                 className="absolute top-4 right-4 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
@@ -368,6 +370,7 @@ const Reports: React.FC = () => {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-600 dark:text-gray-400 w-4 h-4" />
           <input
+            data-mipqa="reports-search-input"
             type="text"
             placeholder="Search reports..."
             value={searchTerm}
@@ -399,7 +402,8 @@ const Reports: React.FC = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Test Run Summary */}
-              <Card 
+              <Card
+                data-mipqa="report-template-test-run-summary"
                 className="p-6 cursor-pointer hover:border-cyan-500/50 transition-all duration-200"
                 onClick={() => handleTemplateClick('Test Run Summary')}
               >
@@ -416,6 +420,7 @@ const Reports: React.FC = () => {
 
               {/* Test Run Detailed Report */}
               <Card
+                data-mipqa="report-template-test-run-detailed"
                 className="p-6 cursor-pointer hover:border-purple-500/50 transition-all duration-200"
                 onClick={() => handleTemplateClick('Test Run Detailed Report')}
               >
@@ -473,9 +478,10 @@ const Reports: React.FC = () => {
                       scheduledReportsApiService.getReportTemplateLabel(report.reportTemplate).toLowerCase().includes(searchTerm.toLowerCase())
                     )
                     .map((report) => (
-                      <tr key={report.id} className="hover:bg-slate-50 dark:bg-slate-800/30 transition-colors">
+                      <tr key={report.id} data-mipqa={`report-row-${report.id}`} className="hover:bg-slate-50 dark:bg-slate-800/30 transition-colors">
                         <td className="py-4 px-6">
                           <button
+                            data-mipqa={`report-view-title-btn-${report.id}`}
                             onClick={() => handleViewReport(report)}
                             className="text-left w-full"
                           >
@@ -514,6 +520,7 @@ const Reports: React.FC = () => {
                         </td>
                         <td className="py-4 px-6">
                           <select
+                            data-mipqa={`report-status-select-${report.id}`}
                             value={report.isActive !== false ? 'active' : 'inactive'}
                             onChange={(e) => handleStatusChange(report, e.target.value === 'active')}
                             className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
@@ -525,6 +532,7 @@ const Reports: React.FC = () => {
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
                             <button
+                              data-mipqa={`report-view-btn-${report.id}`}
                               className="p-2 text-slate-600 dark:text-gray-400 hover:text-green-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                               onClick={() => handleViewReport(report)}
                               title="View report"
@@ -532,6 +540,7 @@ const Reports: React.FC = () => {
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
+                              data-mipqa={`report-edit-btn-${report.id}`}
                               className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                               onClick={() => {
                                 setSelectedScheduledReport(report);
@@ -542,6 +551,7 @@ const Reports: React.FC = () => {
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button
+                              data-mipqa={`report-delete-btn-${report.id}`}
                               className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
                               onClick={() => {
                                 setSelectedScheduledReportId(report.id);
