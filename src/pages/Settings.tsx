@@ -120,10 +120,30 @@ const Settings: React.FC = () => {
     setGitlabRepositoriesLoading(true);
     apiService
       .authenticatedRequest('/gitlab/repositories')
-      .then((response: { data?: Array<{ id: string; name: string; url: string }> }) => {
+      .then((response: {
+        data?: Array<
+          | { id: string; name: string; url: string }
+          | { id: string; type?: string; attributes: { id: number | string; name: string; url: string } }
+        >;
+      }) => {
         if (cancelled) return;
         const list = response?.data;
-        setGitlabRepositories(Array.isArray(list) ? list : []);
+        if (!Array.isArray(list)) {
+          setGitlabRepositories([]);
+          return;
+        }
+        const normalized: GitlabRepositoryOption[] = list.map((item) => {
+          if (item && typeof item === 'object' && 'attributes' in item && item.attributes) {
+            return {
+              id: String(item.attributes.id ?? item.id),
+              name: item.attributes.name,
+              url: item.attributes.url,
+            };
+          }
+          const flat = item as { id: string; name: string; url: string };
+          return { id: String(flat.id), name: flat.name, url: flat.url };
+        }).filter((r) => r.name && r.url);
+        setGitlabRepositories(normalized);
       })
       .catch(() => {
         if (!cancelled) setGitlabRepositories([]);
