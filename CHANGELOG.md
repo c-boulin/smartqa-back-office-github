@@ -1,3 +1,9 @@
+## [1.19.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.18.2...1.19.0) (2026-05-12)
+
+### Features
+
+* change UX design ([8e29393](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/8e29393f83a0ac4a958b43075000fedb4dd4335f))
+
 ## [1.18.1](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.18.0...1.18.1) (2026-05-05)
 
 ### Bug Fixes
