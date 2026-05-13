@@ -95,14 +95,14 @@ const GlobalHeader: React.FC = () => {
                 to={item.path}
                 className={`relative flex items-center gap-2 px-4 h-14 text-sm font-medium transition-colors duration-150 ${
                   active
-                    ? 'text-white dark:text-white'
-                    : 'text-slate-600 dark:text-purple-200 hover:text-purple-900 dark:hover:text-white'
+                    ? 'text-slate-900 dark:text-white'
+                    : 'text-slate-600 dark:text-purple-200 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <item.icon className="w-4 h-4 shrink-0" />
                 <span>{item.label}</span>
                 {active && (
-                  <span className="absolute bottom-0 inset-x-0 h-0.5 rounded-t-full bg-white/90" />
+                  <span className="absolute bottom-0 inset-x-0 h-0.5 rounded-t-full bg-slate-900 dark:bg-white/90" />
                 )}
               </Link>
             );

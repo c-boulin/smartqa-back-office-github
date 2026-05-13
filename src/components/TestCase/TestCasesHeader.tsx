@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Project } from '../../types';
+import { useApp } from '../../context/AppContext';
 
 interface TestCasesHeaderProps {
   selectedProject: Project | null;
@@ -8,17 +9,22 @@ interface TestCasesHeaderProps {
   selectedFolder: { id: string; name: string } | null;
   onCreateTestCase: () => void;
   disabled: boolean;
+  rootLabel?: string;
 }
 
 const TestCasesHeader: React.FC<TestCasesHeaderProps> = ({
   selectedProject,
   selectedFolder,
+  rootLabel,
 }) => {
+  const { state } = useApp();
+  const resolvedRootLabel = rootLabel ?? (state.isTemplateMode ? 'Templates' : 'Projects');
+
   return (
     <div className="space-y-3">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-gray-400">
-        <span>Projects</span>
+        <span>{resolvedRootLabel}</span>
         {selectedProject && (
           <>
             <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />

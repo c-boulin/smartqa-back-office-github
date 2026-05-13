@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, FileText, CreditCard as Edit2, Trash2, BarChart, Search, X, Loader, Eye } from 'lucide-react';
+import PageBreadcrumb from '../components/UI/PageBreadcrumb';
 import { format } from 'date-fns';
 import { useLocation } from 'react-router-dom';
 import Card from '../components/UI/Card';
@@ -329,19 +330,22 @@ const Reports: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 data-mipqa="reports-title" className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Reports</h1>
-            <p className="text-slate-600 dark:text-gray-400">Generate and manage test reports</p>
+        <div className="space-y-3">
+          <PageBreadcrumb currentPage="Reports" />
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 data-mipqa="reports-title" className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Reports</h1>
+              <p className="text-slate-600 dark:text-gray-400">Generate and manage test reports</p>
+            </div>
+            <Button
+              data-mipqa="create-report-button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="bg-cyan-600 hover:bg-cyan-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Report
+            </Button>
           </div>
-          <Button
-            data-mipqa="create-report-button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="bg-cyan-600 hover:bg-cyan-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Report
-          </Button>
         </div>
 
         {/* Introduction Panel */}

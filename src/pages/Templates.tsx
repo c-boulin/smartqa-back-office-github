@@ -510,7 +510,7 @@ const Templates: React.FC = () => {
     dispatch({ type: 'SET_TEMPLATE_MODE', payload: true });
     dispatch({ type: 'UPDATE_PROJECT', payload: template });
     dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: template.id });
-    setTimeout(() => { toast.success(`Selected template: ${template.name}`); navigate('/test-cases'); }, 50);
+    setTimeout(() => { toast.success(`Selected template: ${template.name}`); navigate('/test-cases', { state: { from: 'templates' } }); }, 50);
   }, [dispatch, navigate]);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader, Globe, ChevronDown } from 'lucide-react';
+import { X, Loader, ChevronDown } from 'lucide-react';
 import { COUNTRY_CODES_ALPHA2 } from '../../constants/countryCodes';
 import { Project } from '../../types';
 import { categoriesApiService, Category } from '../../services/categoriesApi';
@@ -202,8 +202,7 @@ const CreateProjectModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, templa
                               : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
                           }`}
                         >
-                          {c.code === 'WW' && <Globe className="w-3.5 h-3.5 shrink-0" />}
-                          {c.code !== 'WW' && <span className="w-3.5 text-xs font-mono text-slate-400 dark:text-slate-500">{c.code}</span>}
+                          <span className="w-3.5 text-xs font-mono text-slate-400 dark:text-slate-500">{c.code !== 'WW' ? c.code : ''}</span>
                           {c.name}
                         </button>
                       </li>

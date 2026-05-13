@@ -6,6 +6,7 @@ import TagsWithTooltip from '../UI/TagsWithTooltip';
 import { TestCase, TEST_CASE_TYPES } from '../../types';
 import { usePermissions } from '../../hooks/usePermissions';
 import { PERMISSIONS } from '../../utils/permissions';
+import { useApp } from '../../context/AppContext';
 
 const HOVER_PREFETCH_DELAY_MS = 150;
 const AUTOMATION_STATUS_AUTOMATED = 2;
@@ -65,11 +66,12 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { hasPermission } = usePermissions();
+  const { state: appState } = useApp();
 
   const canEdit = hasPermission(PERMISSIONS.TEST_CASE.UPDATE);
   const canDelete = hasPermission(PERMISSIONS.TEST_CASE.DELETE);
   const canCreate = hasPermission(PERMISSIONS.TEST_CASE.CREATE);
-  const canRun = hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE);
+  const canRun = hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && !appState.isTemplateMode;
   const hasAnyAction = canEdit || canDelete || canCreate || canRun;
 
   const handleMouseEnter = useCallback(() => {

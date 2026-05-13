@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Plus, Search, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Calendar, Filter, X } from 'lucide-react';
+import PageBreadcrumb from '../components/UI/PageBreadcrumb';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/UI/Card';
@@ -250,34 +251,30 @@ const TestPlans: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 data-mipqa="testplans-title" className="text-2xl font-bold text-slate-900 dark:text-white">Test Plans</h2>
-          <p className="text-slate-600 dark:text-gray-400">
-            {selectedProject 
-              ? `Manage test plans for ${selectedProject.name} (${pagination.totalItems} total)` 
-              : `Manage test plans across all projects (${pagination.totalItems} total)`
-            }
-          </p>
-          {selectedProject && (
-            <div className="mt-2">
-              <div className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-700 dark:text-cyan-400">
-                📁 Project: {selectedProject.name}
-              </div>
-            </div>
-          )}
+      <div className="space-y-3">
+        <PageBreadcrumb currentPage="Test Plans" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 data-mipqa="testplans-title" className="text-2xl font-bold text-slate-900 dark:text-white">Test Plans</h2>
+            <p className="text-slate-600 dark:text-gray-400">
+              {selectedProject
+                ? `Manage test plans for ${selectedProject.name} (${pagination.totalItems} total)`
+                : `Manage test plans across all projects (${pagination.totalItems} total)`
+              }
+            </p>
+          </div>
+          <PermissionGuard permission={PERMISSIONS.TEST_PLAN.CREATE}>
+            <Button
+              data-mipqa="create-testplan-button"
+              icon={Plus}
+              onClick={() => setIsCreateModalOpen(true)}
+              disabled={!selectedProject}
+              title={!selectedProject ? 'Please select a project first' : 'Create new test plan'}
+            >
+              New Test Plan
+            </Button>
+          </PermissionGuard>
         </div>
-        <PermissionGuard permission={PERMISSIONS.TEST_PLAN.CREATE}>
-          <Button
-            data-mipqa="create-testplan-button"
-            icon={Plus}
-            onClick={() => setIsCreateModalOpen(true)}
-            disabled={!selectedProject}
-            title={!selectedProject ? 'Please select a project first' : 'Create new test plan'}
-          >
-            New Test Plan
-          </Button>
-        </PermissionGuard>
       </div>
 
       {/* Show message if no project selected */}

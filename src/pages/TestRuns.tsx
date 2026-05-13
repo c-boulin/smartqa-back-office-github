@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Play, Clock, CheckCircle, User, Copy, Activity, Archive } from 'lucide-react';
+import PageBreadcrumb from '../components/UI/PageBreadcrumb';
 // import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/UI/Card';
@@ -476,39 +477,35 @@ const TestRuns: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 data-mipqa="testruns-title" className="text-2xl font-bold text-slate-900 dark:text-white">Test Runs</h2>
-          <p className="text-slate-600 dark:text-gray-400">
-            {selectedProject 
-              ? `Manage test runs for ${selectedProject.name} (${pagination.totalItems} total)` 
-              : `Please select a project to view test runs`
-            }
-          </p>
-          {selectedProject && (
-            <div className="mt-2">
-              <div className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-700 dark:text-cyan-400">
-                📁 Project: {selectedProject.name} ({filteredTestRuns.length} {activeTab} test runs)
-              </div>
-            </div>
-          )}
-        </div>
-        <PermissionGuard permission={PERMISSIONS.TEST_RUN.CREATE}>
-          <Button
-            data-mipqa="create-testrun-button"
-            icon={Plus}
-            onClick={() => {
-              if (appState.configurations.length === 0 && !appState.isLoadingConfigurations) {
-                loadConfigurations();
+      <div className="space-y-3">
+        <PageBreadcrumb currentPage="Test Runs" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 data-mipqa="testruns-title" className="text-2xl font-bold text-slate-900 dark:text-white">Test Runs</h2>
+            <p className="text-slate-600 dark:text-gray-400">
+              {selectedProject
+                ? `Manage test runs for ${selectedProject.name} (${pagination.totalItems} total)`
+                : `Please select a project to view test runs`
               }
-              setIsCreateModalOpen(true);
-            }}
-            disabled={!selectedProject}
-          title={!selectedProject ? 'Please select a project first' : 'Create new test run'}
-        >
-          New Test Run
-        </Button>
-        </PermissionGuard>
+            </p>
+          </div>
+          <PermissionGuard permission={PERMISSIONS.TEST_RUN.CREATE}>
+            <Button
+              data-mipqa="create-testrun-button"
+              icon={Plus}
+              onClick={() => {
+                if (appState.configurations.length === 0 && !appState.isLoadingConfigurations) {
+                  loadConfigurations();
+                }
+                setIsCreateModalOpen(true);
+              }}
+              disabled={!selectedProject}
+              title={!selectedProject ? 'Please select a project first' : 'Create new test run'}
+            >
+              New Test Run
+            </Button>
+          </PermissionGuard>
+        </div>
       </div>
 
       {/* Show message if no project selected */}

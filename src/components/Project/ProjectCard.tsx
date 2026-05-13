@@ -137,7 +137,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
     </div>
 
     {/* Footer */}
-    <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-200/60 dark:border-slate-700/40" style={{ backgroundColor: '#253247' }}>
+    <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-200/60 dark:border-slate-700/40 bg-slate-100/80 dark:bg-slate-800/60">
       <button
         onClick={onTestCasesClick}
         className="text-sm font-medium text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 transition-colors"
