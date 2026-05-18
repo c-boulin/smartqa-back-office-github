@@ -76,14 +76,14 @@ export type OverviewSuiteListLogTarget =
  * Maps the API launch row into table row props.
  */
 function mapApiRowToRow(api: OverviewLaunchApiRow): OverviewLaunchRow {
-  const byLabel = api.runnedByLabel ?? api.ownerLabel;
+  const runnedByLabel = api.runnedByLabel ?? '';
   return {
     id: String(api.testRunExecutionId),
     title: api.displayName,
     rootOverviewSuiteName: api.rootOverviewSuiteName,
     durationLabel: api.durationLabel,
-    launchedBy: byLabel,
-    runnedByLabel: byLabel,
+    launchedBy: runnedByLabel,
+    runnedByLabel: runnedByLabel,
     attributeText: api.attributeLine,
     startTimeRelative: api.startTimeRelative,
     startTimeDisplay: api.startTimeDisplay,

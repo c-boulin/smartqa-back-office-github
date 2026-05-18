@@ -77,8 +77,8 @@ export interface OverviewLaunchApiRow {
   durationLabel: string;
   /** Launch creator: `roles.slug` when set, else user login / email (API). */
   ownerLabel: string;
-  /** Executor display name: `users.name` for `test_run_executions.created_by` when set. */
-  runnedByLabel: string;
+  /** Executor display name: `users.name` for `test_run_executions.created_by` when set; null when created_by IS NULL (cron/automation). */
+  runnedByLabel: string | null;
   /** `test_run_executions.created_by` when set. */
   createdByUserId: number | null;
   attributeLine: string;
