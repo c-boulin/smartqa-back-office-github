@@ -84,6 +84,7 @@ function mapApiRowToRow(api: OverviewLaunchApiRow): OverviewLaunchRow {
     durationLabel: api.durationLabel,
     launchedBy: byLabel,
     runnedByLabel: byLabel,
+    createdByUserId: api.createdByUserId,
     attributeText: api.attributeLine,
     startTimeRelative: api.startTimeRelative,
     startTimeDisplay: api.startTimeDisplay,
@@ -401,6 +402,8 @@ export interface OverviewLaunchRow {
   launchedBy: string;
   /** Display for Runned By column (from `runnedByLabel` / owner). */
   runnedByLabel: string;
+  /** null means the launch was triggered by cron / automation (no human creator). */
+  createdByUserId: number | null;
   attributeText: string;
   description?: string;
   testCasesLine?: string;
@@ -434,6 +437,7 @@ function buildDrillDownSuiteRow(parent: OverviewLaunchRow): OverviewLaunchRow {
     title: suiteTitle,
     launchedBy: '',
     runnedByLabel: '',
+    createdByUserId: null,
     attributeText: '',
     description: undefined,
     testCasesLine: undefined,
@@ -2741,6 +2745,11 @@ const OverviewLaunchesTable: React.FC = () => {
                       <span className="inline-flex items-center gap-1.5">
                         <User className="h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
                         <span className="break-words [overflow-wrap:anywhere]">{row.runnedByLabel}</span>
+                      </span>
+                    ) : row.createdByUserId === null ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
+                        <span className="break-words [overflow-wrap:anywhere]">Cron</span>
                       </span>
                     ) : (
                       <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>
