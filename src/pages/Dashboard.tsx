@@ -5,6 +5,7 @@ import {
   TestTube,
   Database,
 } from 'lucide-react';
+import PageBreadcrumb from '../components/UI/PageBreadcrumb';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { DashboardStyleDonutPie } from '../components/Charts/DashboardStyleDonutPie';
@@ -143,8 +144,11 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 data-mipqa="dashboard-title" className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+      <div className="space-y-3">
+        <PageBreadcrumb currentPage="Dashboard" />
+        <div className="flex items-center justify-between">
+          <h1 data-mipqa="dashboard-title" className="text-2xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+        </div>
       </div>
 
       {selectedProject && (

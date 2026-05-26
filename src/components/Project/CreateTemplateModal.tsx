@@ -129,7 +129,7 @@ const CreateTemplateModal: React.FC<Props> = ({ isOpen, onClose, onSubmit }) => 
             </select>
           </Field>
 
-          <Field label="Description" error={errors.description}>
+          <Field label="Description" required error={errors.description}>
             <textarea
               value={form.description}
               onChange={e => set('description', e.target.value)}

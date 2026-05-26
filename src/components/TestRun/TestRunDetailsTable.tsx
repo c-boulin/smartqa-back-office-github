@@ -277,16 +277,11 @@ const TestRunDetailsTable: React.FC<TestRunDetailsTableProps> = ({
                         ) {
                           return null;
                         }
-                        const isExecutionResultClickable =
-                          (testCase.testRunExecutionState ?? null) === 1
-                            ? false
-                            : (testCase.executionResultClickable ?? testCase.executionStatus === 1);
-                        if (!isExecutionResultClickable) {
-                          return null;
-                        }
+                        const isInProgress = (testCase.testRunExecutionState ?? null) === 1;
                         const tre = testCase.testRunExecutionId;
                         const gitlabName = gitlabLinksByTestCaseId[String(testCase.id)] ?? null;
-                        if (tre == null || tre <= 0 || gitlabName == null || gitlabName === '') {
+                        const isTerminalResult = testCase.executionStatus === 1 || testCase.executionStatus === 2;
+                        if (isInProgress || !isTerminalResult || tre == null || tre <= 0 || gitlabName == null || gitlabName === '') {
                           return null;
                         }
                         const q = new URLSearchParams();
@@ -303,16 +298,11 @@ const TestRunDetailsTable: React.FC<TestRunDetailsTableProps> = ({
                         ) {
                           return null;
                         }
-                        const isExecutionResultClickable =
-                          (testCase.testRunExecutionState ?? null) === 1
-                            ? false
-                            : (testCase.executionResultClickable ?? testCase.executionStatus === 1);
-                        if (!isExecutionResultClickable) {
-                          return null;
-                        }
+                        const isInProgress = (testCase.testRunExecutionState ?? null) === 1;
                         const tre = testCase.testRunExecutionId;
                         const gitlabName = gitlabLinksByTestCaseId[String(testCase.id)] ?? null;
-                        if (tre == null || tre <= 0 || gitlabName == null || gitlabName.trim() === '') {
+                        const isTerminalResult = testCase.executionStatus === 1 || testCase.executionStatus === 2;
+                        if (isInProgress || !isTerminalResult || tre == null || tre <= 0 || gitlabName == null || gitlabName.trim() === '') {
                           return null;
                         }
 

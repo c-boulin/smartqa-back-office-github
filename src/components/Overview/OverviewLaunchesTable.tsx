@@ -17,6 +17,7 @@ import {
   User,
 } from 'lucide-react';
 import { endOfDay, format, isEqual, isSameDay, startOfDay } from 'date-fns';
+import { convertUtcToLocalDisplay } from '../../utils/dateHelpers';
 import {
   fetchAllOverviewLaunchesProjectOptions,
   fetchOverviewLaunchHistory,
@@ -84,6 +85,7 @@ function mapApiRowToRow(api: OverviewLaunchApiRow): OverviewLaunchRow {
     durationLabel: api.durationLabel,
     launchedBy: byLabel,
     runnedByLabel: byLabel,
+    createdByUserId: api.createdByUserId,
     attributeText: api.attributeLine,
     startTimeRelative: api.startTimeRelative,
     startTimeDisplay: api.startTimeDisplay,
@@ -399,8 +401,10 @@ export interface OverviewLaunchRow {
   rootOverviewSuiteName: string | null;
   durationLabel: string;
   launchedBy: string;
-  /** Display for Runned By column (from `runnedByLabel` / owner). */
+  /** Display for Ran By column (from `runnedByLabel` / owner). */
   runnedByLabel: string;
+  /** null means the launch was triggered by cron / automation (no human creator). */
+  createdByUserId: number | null;
   attributeText: string;
   description?: string;
   testCasesLine?: string;
@@ -434,6 +438,7 @@ function buildDrillDownSuiteRow(parent: OverviewLaunchRow): OverviewLaunchRow {
     title: suiteTitle,
     launchedBy: '',
     runnedByLabel: '',
+    createdByUserId: null,
     attributeText: '',
     description: undefined,
     testCasesLine: undefined,
@@ -446,9 +451,9 @@ function buildDrillDownSuiteRow(parent: OverviewLaunchRow): OverviewLaunchRow {
  */
 function startTimeHoverLabel(row: OverviewLaunchRow): string {
   if (row.startTimeRaw !== null && row.startTimeRaw !== '') {
-    return row.startTimeRaw;
+    return convertUtcToLocalDisplay(row.startTimeRaw);
   }
-  return row.startTimeDisplay;
+  return convertUtcToLocalDisplay(row.startTimeDisplay);
 }
 
 /**
@@ -456,9 +461,9 @@ function startTimeHoverLabel(row: OverviewLaunchRow): string {
  */
 function suiteItemStartHoverLabel(item: OverviewLaunchSuiteItemApiRow): string {
   if (item.startTimeRaw !== null && item.startTimeRaw !== '') {
-    return item.startTimeRaw;
+    return convertUtcToLocalDisplay(item.startTimeRaw);
   }
-  return item.startTimeDisplay;
+  return convertUtcToLocalDisplay(item.startTimeDisplay);
 }
 
 /**
@@ -2542,7 +2547,7 @@ const OverviewLaunchesTable: React.FC = () => {
                   className="py-3 px-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400"
                   scope="col"
                 >
-                  Runned By
+                  Ran By
                 </th>
                 <LaunchSortableTh
                   column="total"
@@ -2741,6 +2746,11 @@ const OverviewLaunchesTable: React.FC = () => {
                       <span className="inline-flex items-center gap-1.5">
                         <User className="h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
                         <span className="break-words [overflow-wrap:anywhere]">{row.runnedByLabel}</span>
+                      </span>
+                    ) : row.createdByUserId === null ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
+                        <span className="break-words [overflow-wrap:anywhere]">Cron</span>
                       </span>
                     ) : (
                       <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>

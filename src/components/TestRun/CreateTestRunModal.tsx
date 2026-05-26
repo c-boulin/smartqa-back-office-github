@@ -299,19 +299,29 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
               
               {showTestCaseSelector && (
                 <div className="bg-white dark:bg-slate-800 border border-slate-600 rounded-lg p-4">
-                  {/* Search and Select All - Only show if there are available test cases */}
-                  {filteredTestCases.filter(testCase => !formData.testCaseIds.includes(testCase.id)).length > 0 && (
-                    <div className="flex gap-2 mb-3">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-gray-400 w-4 h-4" />
-                        <input
-                          type="text"
-                          placeholder="Search test cases..."
-                          value={testCaseSearch}
-                          onChange={(e) => setTestCaseSearch(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm"
-                        />
-                      </div>
+                  {/* Search bar - always visible when selector is open */}
+                  <div className="flex gap-2 mb-3">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-gray-400 w-4 h-4" />
+                      <input
+                        type="text"
+                        placeholder="Search test cases..."
+                        value={testCaseSearch}
+                        onChange={(e) => setTestCaseSearch(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } }}
+                        className="w-full pl-10 pr-8 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-sm"
+                      />
+                      {testCaseSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setTestCaseSearch('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-gray-300 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    {filteredTestCases.filter(testCase => !formData.testCaseIds.includes(testCase.id)).length > 0 && (
                       <button
                         type="button"
                         onClick={() => {
@@ -328,8 +338,8 @@ const CreateTestRunModal: React.FC<CreateTestRunModalProps> = ({
                       >
                         Select All
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Test Cases List */}
                   {testCasesLoading ? (

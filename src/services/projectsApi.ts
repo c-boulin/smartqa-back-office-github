@@ -247,7 +247,7 @@ class ProjectsApiService {
   }
   async getProjectsForSidebar(searchTerm?: string): Promise<{ projects: Project[]; meta: { totalItems: number; currentPage: number; itemsPerPage: number } }> {
     try {
-      let url = '/projects?itemsPerPage=30&page=1';
+      let url = '/projects?itemsPerPage=30&page=1&order[createdAt]=desc';
 
       if (searchTerm && searchTerm.trim()) {
         url += `&title=${encodeURIComponent(searchTerm.trim())}`;
@@ -277,9 +277,8 @@ class ProjectsApiService {
 
   async getProjectsForSidebarPage(page: number, searchTerm?: string): Promise<ProjectsApiResponse> {
     try {
-      let url = `/projects?itemsPerPage=30&page=${page}`;
+      let url = `/projects?itemsPerPage=30&page=${page}&order[createdAt]=desc`;
 
-      // Add search if provided
       if (searchTerm && searchTerm.trim()) {
         url += `&title=${encodeURIComponent(searchTerm.trim())}`;
       }

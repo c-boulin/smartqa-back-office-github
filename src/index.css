@@ -170,6 +170,34 @@
   }
 }
 
+/* Sidebar project dropdown scrollbar */
+.sidebar-project-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(100 116 139 / 0.4) transparent;
+}
+.sidebar-project-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-project-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-project-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgb(100 116 139 / 0.35);
+  border-radius: 4px;
+}
+.sidebar-project-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(100 116 139 / 0.6);
+}
+.dark .sidebar-project-scrollbar {
+  scrollbar-color: rgb(148 163 184 / 0.25) transparent;
+}
+.dark .sidebar-project-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgb(148 163 184 / 0.25);
+}
+.dark .sidebar-project-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(148 163 184 / 0.5);
+}
+
 /* react-datepicker (Overview → Start time → Custom range): dark popover */
 .dark .react-datepicker {
   background-color: rgb(30 41 59);

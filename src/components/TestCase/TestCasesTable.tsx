@@ -87,6 +87,7 @@ interface FolderSectionBlockProps {
   gitlabLinksByTestCaseId: Record<string, string | null>;
   gitlabLinksFetched: boolean;
   folderMap: Record<string, string>;
+  folderSelected: boolean;
 }
 
 const FolderSectionBlock: React.FC<FolderSectionBlockProps> = ({
@@ -103,10 +104,11 @@ const FolderSectionBlock: React.FC<FolderSectionBlockProps> = ({
   gitlabLinksByTestCaseId,
   gitlabLinksFetched,
   folderMap,
+  folderSelected,
 }) => {
   const [showAll, setShowAll] = useState(false);
   const total = section.testCases.length;
-  const visible = showAll ? total : Math.min(INITIAL_VISIBLE, total);
+  const visible = (folderSelected || showAll) ? total : Math.min(INITIAL_VISIBLE, total);
   const hidden = total - visible;
 
   return (
@@ -144,8 +146,8 @@ const FolderSectionBlock: React.FC<FolderSectionBlockProps> = ({
           </table>
         </div>
 
-        {total > INITIAL_VISIBLE && (
-          <div className="border-t border-slate-200 dark:border-slate-700 px-4 py-2.5 flex justify-start">
+        {total > INITIAL_VISIBLE && !folderSelected && (
+          <div className="border-t border-slate-200 dark:border-slate-700 px-4 py-2.5 flex justify-center">
             <button
               onClick={() => setShowAll(!showAll)}
               className="flex items-center gap-1.5 text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 font-medium transition-colors"
@@ -263,6 +265,7 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
           gitlabLinksByTestCaseId={gitlabLinksByTestCaseId}
           gitlabLinksFetched={gitlabLinksFetched}
           folderMap={folderMap}
+          folderSelected={!!selectedFolder}
         />
       ))}
 

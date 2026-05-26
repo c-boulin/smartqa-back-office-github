@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { convertUtcToLocalDisplay } from '../../utils/dateHelpers';
 import { createPortal } from 'react-dom';
 import { HistoryLaunchTooltip } from './OverviewLaunchHistoryTooltip';
 import { computeHistoryLaunchTooltipPosition } from './overviewLaunchTooltipPosition';
@@ -77,9 +78,9 @@ export interface OverviewTestLogViewProps {
  */
 function logTimeHoverLabel(item: OverviewTestLogItemApiRow): string {
   if (item.startTimeRaw !== null && item.startTimeRaw !== '') {
-    return item.startTimeRaw;
+    return convertUtcToLocalDisplay(item.startTimeRaw);
   }
-  return item.startTimeDisplay;
+  return convertUtcToLocalDisplay(item.startTimeDisplay);
 }
 
 function normalizeStatusBand(
@@ -455,7 +456,7 @@ function AllLogsTreeRows(props: { node: OverviewTestLogTreeNode } & AllLogsTreeR
           onMouseEnter={() => onHoverTimeRow(rowKey)}
           onMouseLeave={() => onHoverTimeRow(null)}
         >
-          {hoveredTimeRowKey === rowKey ? logTimeHoverLabel(node) : node.startTimeDisplay}
+          {hoveredTimeRowKey === rowKey ? logTimeHoverLabel(node) : convertUtcToLocalDisplay(node.startTimeDisplay)}
         </td>
       </tr>
     );
