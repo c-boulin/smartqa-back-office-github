@@ -1,3 +1,9 @@
+## [1.21.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.20.0...1.21.0) (2026-05-26)
+
+### Features
+
+* fix new ui ([024c311](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/024c31199970b13684dfec7353db457c90508624))
+
 ## [1.19.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.18.2...1.19.0) (2026-05-12)
 
 ### Features
