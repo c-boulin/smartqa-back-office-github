@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus, Search, SquarePen, Trash2, Copy,
   ChevronLeft, ChevronRight, Loader,
@@ -182,29 +183,48 @@ const TemplateActionMenu: React.FC<{
   disabled: boolean;
 }> = ({ template, onDuplicate, onDelete, canCreate, canDelete, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  const openMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isOpen && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setIsOpen(v => !v);
+  };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setIsOpen(false);
+    const handleOutside = (e: MouseEvent) => {
+      if (
+        dropRef.current && !dropRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setIsOpen(false);
     };
-    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (isOpen) document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
   }, [isOpen]);
 
   if (!canCreate && !canDelete) return null;
 
   return (
-    <div ref={menuRef} className="relative">
+    <>
       <button
-        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+        ref={btnRef}
+        onClick={openMenu}
         disabled={disabled}
         className="p-2 text-slate-400 dark:text-gray-500 hover:text-slate-600 dark:hover:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
       >
         <MoreVertical className="w-4 h-4" />
       </button>
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 py-1 overflow-hidden">
+      {isOpen && createPortal(
+        <div
+          ref={dropRef}
+          style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+          className="w-52 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1"
+        >
           {canCreate && (
             <button
               onClick={(e) => { e.stopPropagation(); setIsOpen(false); onDuplicate(template); }}
@@ -223,9 +243,10 @@ const TemplateActionMenu: React.FC<{
               Delete Template
             </button>
           )}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 
@@ -510,7 +531,7 @@ const Templates: React.FC = () => {
     dispatch({ type: 'SET_TEMPLATE_MODE', payload: true });
     dispatch({ type: 'UPDATE_PROJECT', payload: template });
     dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: template.id });
-    setTimeout(() => { toast.success(`Selected template: ${template.name}`); navigate('/test-cases'); }, 50);
+    setTimeout(() => { toast.success(`Selected template: ${template.name}`); navigate('/test-cases', { state: { from: 'templates' } }); }, 50);
   }, [dispatch, navigate]);
 
   useEffect(() => {
@@ -631,8 +652,8 @@ const Templates: React.FC = () => {
           </div>
         )}
 
-        <div className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-2xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
+        <div className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-2xl shadow-sm">
+          <div className="overflow-x-auto overflow-y-visible rounded-2xl">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700/60">

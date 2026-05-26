@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader, Globe, ChevronDown } from 'lucide-react';
+import { X, Loader, ChevronDown } from 'lucide-react';
 import { COUNTRY_CODES_ALPHA2 } from '../../constants/countryCodes';
 import { Project } from '../../types';
 import { categoriesApiService, Category } from '../../services/categoriesApi';
 import { HARDCODED_PROJECT_TYPES, ProjectType } from '../../services/projectTypesApi';
 
-const WW_OPTION = { code: 'WW', name: 'WW (Worldwide)' };
+const WW_OPTION = { code: 'WW', name: 'Worldwide' };
 const ALL_COUNTRIES = [WW_OPTION, ...COUNTRY_CODES_ALPHA2];
 
 function isValidUrl(value: string): boolean {
@@ -171,7 +171,7 @@ const CreateProjectModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, templa
                 className={`${inputCls(!!errors.country)} flex items-center justify-between text-left`}
               >
                 <span className={selectedCountry ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}>
-                  {selectedCountry ? `${selectedCountry.code === 'WW' ? '' : selectedCountry.code + ' – '}${selectedCountry.name}` : 'Select a country'}
+                  {selectedCountry ? `${selectedCountry.code} – ${selectedCountry.name}` : 'Select a country'}
                 </span>
                 <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${countryOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -202,8 +202,7 @@ const CreateProjectModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, templa
                               : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
                           }`}
                         >
-                          {c.code === 'WW' && <Globe className="w-3.5 h-3.5 shrink-0" />}
-                          {c.code !== 'WW' && <span className="w-3.5 text-xs font-mono text-slate-400 dark:text-slate-500">{c.code}</span>}
+                          <span className="w-3.5 text-xs font-mono text-slate-400 dark:text-slate-500">{c.code}</span>
                           {c.name}
                         </button>
                       </li>
@@ -253,7 +252,7 @@ const CreateProjectModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, templa
             </select>
           </Field>
 
-          <Field label="Description" error={errors.description}>
+          <Field label="Description" required error={errors.description}>
             <textarea
               value={form.description}
               onChange={e => set('description', e.target.value)}

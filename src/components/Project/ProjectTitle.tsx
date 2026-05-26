@@ -1,5 +1,4 @@
 import React from 'react';
-import { Globe } from 'lucide-react';
 import { Project } from '../../types';
 
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -18,18 +17,28 @@ export function categoryColor(category?: string): string {
   return category ? (CATEGORY_COLORS[category] ?? 'bg-slate-500') : 'bg-slate-500';
 }
 
+export function buildProjectLabel(project: Pick<Project, 'name' | 'category' | 'country' | 'project_type' | 'projectTypeIri'>): string {
+  return [
+    project.category,
+    project.country,
+    project.name,
+    project.project_type || project.projectTypeIri,
+  ].filter(Boolean).join(' - ');
+}
+
 interface ProjectTitleProps {
   project: Pick<Project, 'name' | 'category' | 'country' | 'project_type' | 'projectTypeIri'>;
   nameClassName?: string;
   hideCategory?: boolean;
   categoryAndTitleOnly?: boolean;
+  truncate?: boolean;
 }
 
 const Separator = () => (
-  <span className="text-slate-400 dark:text-slate-500 text-xs shrink-0 select-none font-normal">-</span>
+  <span className="text-slate-400 dark:text-slate-500 text-xs shrink-0 select-none font-normal"> </span>
 );
 
-const ProjectTitle: React.FC<ProjectTitleProps> = ({ project, nameClassName = '', hideCategory = false, categoryAndTitleOnly = false }) => {
+const ProjectTitle: React.FC<ProjectTitleProps> = ({ project, nameClassName = '', hideCategory = false, categoryAndTitleOnly = false, truncate = false }) => {
   const { category, country, name } = project;
   const project_type = project.project_type || project.projectTypeIri;
 
@@ -50,8 +59,8 @@ const ProjectTitle: React.FC<ProjectTitleProps> = ({ project, nameClassName = ''
     if (country) {
       if (parts.length > 0) parts.push(<Separator key="sep-country" />);
       parts.push(
-        <span key="country" className="flex items-center gap-0.5 text-xs font-mono font-semibold text-slate-900 dark:text-white uppercase shrink-0">
-          {country === 'WW' ? <><Globe className="w-3 h-3" />WW</> : country}
+        <span key="country" className="flex items-center gap-0.5 text-xs font-semibold text-slate-900 dark:text-white uppercase shrink-0">
+          {country === 'WW' ? 'WW' : country}
         </span>
       );
     }
@@ -69,6 +78,46 @@ const ProjectTitle: React.FC<ProjectTitleProps> = ({ project, nameClassName = ''
     parts.push(
       <span key="type" className={`font-semibold text-slate-900 dark:text-white leading-tight shrink-0 ${nameClassName}`}>
         {project_type}
+      </span>
+    );
+  }
+
+  if (truncate) {
+    const fullTitle = [
+      !hideCategory && category ? category : null,
+      country,
+      name,
+      project_type,
+    ].filter(Boolean).join(' - ');
+
+    const metaNodes: React.ReactNode[] = [];
+    if (!hideCategory && category) {
+      metaNodes.push(
+        <span key="category" className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold text-white rounded-md shrink-0 ${categoryColor(category)}`}>
+          {category}
+        </span>
+      );
+    }
+    if (country) {
+      if (metaNodes.length > 0) metaNodes.push(<Separator key="sep-country" />);
+      metaNodes.push(
+        <span key="country" className="text-xs font-semibold text-slate-900 dark:text-white uppercase shrink-0">
+          {country}
+        </span>
+      );
+    }
+
+    const label = project_type && !categoryAndTitleOnly ? `${name} ${project_type}` : name;
+
+    return (
+      <span className="flex items-center gap-x-1.5 overflow-hidden w-full" title={fullTitle}>
+        {metaNodes.length > 0 && (
+          <span className="flex items-center gap-x-1.5 shrink-0">{metaNodes}</span>
+        )}
+        {metaNodes.length > 0 && <Separator key="sep-name" />}
+        <span className={`font-semibold text-slate-900 dark:text-white leading-tight truncate min-w-0 ${nameClassName}`}>
+          {label}
+        </span>
       </span>
     );
   }

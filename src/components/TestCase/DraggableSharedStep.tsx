@@ -102,9 +102,8 @@ const DraggableSharedStep: React.FC<DraggableSharedStepProps> = ({
           )}
         </div>
         
-        <div className="flex items-center justify-between text-xs text-purple-700 dark:text-purple-300/60">
+        <div className="text-xs text-purple-700 dark:text-purple-300/60">
           <span>{sharedStep.stepsCount} step{sharedStep.stepsCount !== 1 ? 's' : ''} and result{sharedStep.stepsCount !== 1 ? 's' : ''}</span>
-          <span>Used in {sharedStep.usedInCount} test case{sharedStep.usedInCount !== 1 ? 's' : ''}</span>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Search, Loader } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
@@ -39,6 +40,8 @@ const TestCases: React.FC = () => {
   const { getSelectedProject, state: appState, createTag } = useApp();
   const { state: authState } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const rootLabel = (location.state as { from?: string } | null)?.from === 'templates' ? 'Templates' : 'Projects';
   const selectedProject = getSelectedProject();
 
   useRestoreLastProject();
@@ -961,6 +964,7 @@ const TestCases: React.FC = () => {
         selectedFolder={selectedFolder}
         onCreateTestCase={() => setIsCreateModalOpen(true)}
         disabled={!selectedProject}
+        rootLabel={rootLabel}
       />
 
       {/* Show message if no project selected */}

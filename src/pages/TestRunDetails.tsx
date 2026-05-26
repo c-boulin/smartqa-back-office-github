@@ -389,7 +389,7 @@ const TestRunDetails: React.FC = () => {
               executionResultClickable:
                 tc.fullTestCase?.automationStatus === 2 &&
                 hasAutomatedConfiguration(tc.configurationId) &&
-                newResultId === 1,
+                (newResultId === 1 || newResultId === 2),
             }
           : tc
       );
@@ -711,7 +711,7 @@ const TestRunDetails: React.FC = () => {
                       executionResultClickable:
                         tc.fullTestCase?.automationStatus === 2 &&
                         hasAutomatedConfiguration(tc.configurationId) &&
-                        update.result === 1,
+                        (update.result === 1 || update.result === 2),
                       execution: {
                         ...tc.execution,
                         result: update.result,

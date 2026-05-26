@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Plus, Search, SquarePen, Trash2, ChevronLeft, ChevronRight, Loader, Layers, User, Eye } from 'lucide-react';
 import Card from '../components/UI/Card';
+import PageBreadcrumb from '../components/UI/PageBreadcrumb';
 import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import CreateSharedStepModal from '../components/SharedStep/CreateSharedStepModal';
@@ -318,33 +319,29 @@ const SharedSteps: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Shared Steps</h2>
-          <p className="text-slate-600 dark:text-gray-400">
-            {selectedProject 
-              ? `Manage reusable test steps for ${selectedProject.name} (${pagination.totalItems} total)` 
-              : `Please select a project to view shared steps`
-            }
-          </p>
-          {selectedProject && (
-            <div className="mt-2">
-              <div className="inline-flex items-center px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-sm text-cyan-700 dark:text-cyan-400">
-                📁 Project: {selectedProject.name}
-              </div>
-            </div>
-          )}
+      <div className="space-y-3">
+        <PageBreadcrumb currentPage="Shared Steps" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Shared Steps</h2>
+            <p className="text-slate-600 dark:text-gray-400">
+              {selectedProject
+                ? `Manage reusable test steps for ${selectedProject.name} (${pagination.totalItems} total)`
+                : `Please select a project to view shared steps`
+              }
+            </p>
+          </div>
+          <PermissionGuard permission={PERMISSIONS.SHARED_STEP.CREATE}>
+            <Button
+              icon={Plus}
+              onClick={() => setIsCreateModalOpen(true)}
+              disabled={!selectedProject}
+              title={!selectedProject ? 'Please select a project first' : 'Create new shared step'}
+            >
+              New Shared Step
+            </Button>
+          </PermissionGuard>
         </div>
-        <PermissionGuard permission={PERMISSIONS.SHARED_STEP.CREATE}>
-          <Button
-            icon={Plus}
-            onClick={() => setIsCreateModalOpen(true)}
-            disabled={!selectedProject}
-            title={!selectedProject ? 'Please select a project first' : 'Create new shared step'}
-          >
-            New Shared Step
-          </Button>
-        </PermissionGuard>
       </div>
 
       {/* Show message if no project selected */}

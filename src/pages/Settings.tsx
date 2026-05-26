@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Users, Loader, Shield, Bot, Search, ChevronLeft, ChevronRight, SquarePen } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Users, Loader, Shield, Bot, Search, ChevronLeft, ChevronRight, SquarePen, X } from 'lucide-react';
 import { usersApiService, User } from '../services/usersApi';
 import { apiService, Role } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,7 @@ import Modal from '../components/UI/Modal';
 import { useProjects } from '../hooks/useProjects';
 import { Project } from '../types';
 import AutomationEditWizard from '../components/Settings/AutomationEditWizard';
+import ProjectTitle from '../components/Project/ProjectTitle';
 
 type GitlabRepositoryOption = {
   id: string;
@@ -39,9 +40,30 @@ const Settings: React.FC = () => {
     loading: projectsLoading,
     pagination: projectsPagination,
     fetchProjectsWithSort,
+    searchProjects,
   } = useProjects();
 
+  const [projectSearch, setProjectSearch] = useState('');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const fetchProjects = (page: number) => fetchProjectsWithSort(page, 'order[createdAt]=desc');
+
+  const handleProjectSearch = (value: string) => {
+    setProjectSearch(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      if (value.trim()) {
+        searchProjects(value.trim(), 1, 'order[createdAt]=desc');
+      } else {
+        fetchProjects(1);
+      }
+    }, 300);
+  };
+
+  const clearProjectSearch = () => {
+    setProjectSearch('');
+    fetchProjects(1);
+  };
 
   const [automationEditModalOpen, setAutomationEditModalOpen] = useState(false);
   const [projectBeingEdited, setProjectBeingEdited] = useState<Project | null>(null);
@@ -371,6 +393,30 @@ const Settings: React.FC = () => {
           </Card>
 
           <Card className="overflow-hidden">
+            {/* Search bar */}
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-500 pointer-events-none" />
+                <input
+                  data-mipqa="automation-project-search-input"
+                  type="text"
+                  value={projectSearch}
+                  onChange={(e) => handleProjectSearch(e.target.value)}
+                  placeholder="Search projects..."
+                  className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 dark:focus:border-cyan-500 transition-colors"
+                />
+                {projectSearch && (
+                  <button
+                    type="button"
+                    onClick={clearProjectSearch}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-gray-300 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
             {projectsLoading && (
               <div className="absolute inset-0 bg-slate-100/50 dark:bg-slate-900/50 flex items-center justify-center z-10">
                 <Loader className="w-6 h-6 text-cyan-600 dark:text-cyan-400 animate-spin" />
@@ -380,27 +426,22 @@ const Settings: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-slate-100 dark:bg-slate-800/50 border-b border-slate-300 dark:border-slate-700">
                   <tr>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">ID</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Title</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Actions</th>
+                    <th className="text-left py-3.5 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-500 w-20">ID</th>
+                    <th className="text-left py-3.5 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-500">Project</th>
+                    <th className="text-left py-3.5 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-500 w-24">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
                   {projects.map((project) => (
-                    <tr key={project.id} data-mipqa={`automation-project-row-${project.id}`} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="py-4 px-6 text-sm text-slate-700 dark:text-gray-300 font-mono">
+                    <tr key={project.id} data-mipqa={`automation-project-row-${project.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="py-4 px-6 text-sm text-slate-500 dark:text-gray-400 font-mono shrink-0">
                         #{project.id || 'NO_ID'}
                       </td>
                       <td className="py-4 px-6">
-                        <div>
-                          <h3 className="font-semibold text-slate-900 dark:text-white">
-                            {project.name}
-                            {(!project.id || project.id === '' || project.id === 'undefined') && (
-                              <span className="text-red-400 text-xs ml-2">(NO ID)</span>
-                            )}
-                          </h3>
-                          <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">{project.description}</p>
-                        </div>
+                        <ProjectTitle project={project} />
+                        {project.description && (
+                          <p className="text-xs text-slate-500 dark:text-gray-400 mt-1 line-clamp-1">{project.description}</p>
+                        )}
                       </td>
                       <td className="py-4 px-6">
                         <button
@@ -423,9 +464,11 @@ const Settings: React.FC = () => {
               {projects.length === 0 && !projectsLoading && (
                 <div className="text-center py-12">
                   <Search className="w-12 h-12 mx-auto mb-4 opacity-50 text-slate-400 dark:text-gray-500" />
-                  <p className="text-lg font-medium text-slate-600 dark:text-gray-400">No projects found</p>
+                  <p className="text-lg font-medium text-slate-600 dark:text-gray-400">
+                    {projectSearch ? 'No projects match your search' : 'No projects found'}
+                  </p>
                   <p className="text-sm text-slate-500 dark:text-gray-500 mt-1">
-                    Create projects from the Projects page to see them here.
+                    {projectSearch ? 'Try a different search term.' : 'Create projects from the Projects page to see them here.'}
                   </p>
                 </div>
               )}
@@ -442,7 +485,7 @@ const Settings: React.FC = () => {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => fetchProjects(projectsPagination.currentPage - 1)}
+                      onClick={() => projectSearch ? searchProjects(projectSearch, projectsPagination.currentPage - 1, 'order[createdAt]=desc') : fetchProjects(projectsPagination.currentPage - 1)}
                       disabled={projectsPagination.currentPage === 1 || projectsLoading}
                       icon={ChevronLeft}
                     >
@@ -454,7 +497,7 @@ const Settings: React.FC = () => {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => fetchProjects(projectsPagination.currentPage + 1)}
+                      onClick={() => projectSearch ? searchProjects(projectSearch, projectsPagination.currentPage + 1, 'order[createdAt]=desc') : fetchProjects(projectsPagination.currentPage + 1)}
                       disabled={projectsPagination.currentPage === projectsPagination.totalPages || projectsLoading}
                       icon={ChevronRight}
                     >
