@@ -1,10 +1,18 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { buildProjectLabel } from '../Project/ProjectTitle';
+import { Project } from '../../types';
 
 interface PageBreadcrumbProps {
   currentPage: string;
+}
+
+function buildBreadcrumbLabel(project: Pick<Project, 'name' | 'country' | 'project_type' | 'projectTypeIri'>): string {
+  return [
+    project.country,
+    project.name,
+    project.project_type || project.projectTypeIri,
+  ].filter(Boolean).join(' - ');
 }
 
 const PageBreadcrumb: React.FC<PageBreadcrumbProps> = ({ currentPage }) => {
@@ -12,7 +20,7 @@ const PageBreadcrumb: React.FC<PageBreadcrumbProps> = ({ currentPage }) => {
   const selectedProject = getSelectedProject();
   const rootLabel = state.isTemplateMode ? 'Templates' : 'Projects';
 
-  const projectLabel = selectedProject ? buildProjectLabel(selectedProject) : null;
+  const projectLabel = selectedProject ? buildBreadcrumbLabel(selectedProject) : null;
 
   return (
     <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-gray-400">
