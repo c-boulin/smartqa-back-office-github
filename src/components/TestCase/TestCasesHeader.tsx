@@ -2,7 +2,14 @@ import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Project } from '../../types';
 import { useApp } from '../../context/AppContext';
-import { buildProjectLabel } from '../Project/ProjectTitle';
+
+function buildBreadcrumbLabel(project: Pick<Project, 'name' | 'country' | 'project_type' | 'projectTypeIri'>): string {
+  return [
+    project.country,
+    project.name,
+    project.project_type || project.projectTypeIri,
+  ].filter(Boolean).join(' - ');
+}
 
 interface TestCasesHeaderProps {
   selectedProject: Project | null;
@@ -29,7 +36,7 @@ const TestCasesHeader: React.FC<TestCasesHeaderProps> = ({
         {selectedProject && (
           <>
             <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>{buildProjectLabel(selectedProject)}</span>
+            <span>{buildBreadcrumbLabel(selectedProject)}</span>
           </>
         )}
         {selectedFolder && (
