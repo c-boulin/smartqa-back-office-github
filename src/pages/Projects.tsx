@@ -22,7 +22,6 @@ import ProjectTitle from '../components/Project/ProjectTitle';
 import CreateProjectModal, { CreateProjectFormData } from '../components/Project/CreateProjectModal';
 import EditProjectModal, { EditProjectFormData } from '../components/Project/EditProjectModal';
 import SearchAutocomplete, { Suggestion } from '../components/UI/SearchAutocomplete';
-import { COUNTRY_CODES_ALPHA2 } from '../constants/countryCodes';
 
 const ProjectFormModal: React.FC<{
   isOpen: boolean;
@@ -366,20 +365,12 @@ const Projects: React.FC = () => {
   const [modalTemplates, setModalTemplates] = useState<Project[]>([]);
   const [templatesLoadingForModal, setTemplatesLoadingForModal] = useState(false);
 
-  const projectNameSuggestions = useMemo<Suggestion[]>(() => {
-    const names: Suggestion[] = projects
-      .map(p => p.name)
-      .filter(Boolean)
-      .map(n => ({ label: n, type: 'name' as const }));
-
-    const countryCodes = new Set(projects.map(p => p.country).filter(Boolean));
-    const countries: Suggestion[] = Array.from(countryCodes).map(code => {
-      const found = COUNTRY_CODES_ALPHA2.find(c => c.code === code);
-      return { label: code!, type: 'country' as const, meta: found?.name };
-    });
-
-    return [...names, ...countries];
-  }, [projects]);
+  const projectNameSuggestions = useMemo<Suggestion[]>(() =>
+    projects
+      .filter(p => p.name)
+      .map(p => ({ label: p.name, country: p.country ?? undefined })),
+    [projects]
+  );
 
   const SORT_OPTIONS = useMemo(() => [
     { value: 'createdAt-desc', label: 'Creation Date (New to Old)', param: 'order[createdAt]=desc' },

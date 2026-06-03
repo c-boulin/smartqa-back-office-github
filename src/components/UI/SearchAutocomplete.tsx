@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, X, MapPin } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 export interface Suggestion {
+  /** The project/template name shown as the main label */
   label: string;
-  type: 'name' | 'country';
-  /** secondary text shown on the right (e.g. full country name) */
-  meta?: string;
+  /** Country code badge shown next to the name (e.g. "BR") */
+  country?: string;
 }
 
 interface SearchAutocompleteProps {
@@ -33,9 +33,13 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filtered: Suggestion[] = value.trim().length > 0
-    ? suggestions
-        .filter(s => s.label.toLowerCase().includes(value.toLowerCase()))
-        .slice(0, 8)
+    ? suggestions.filter(s => {
+        const q = value.toLowerCase();
+        return (
+          s.label.toLowerCase().includes(q) ||
+          (s.country ?? '').toLowerCase().includes(q)
+        );
+      }).slice(0, 10)
     : [];
 
   const showDropdown = open && filtered.length > 0;
@@ -106,14 +110,14 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
 
   const highlightMatch = (text: string) => {
     const lc = value.toLowerCase();
-    const matchStart = text.toLowerCase().indexOf(lc);
-    if (matchStart === -1) return <span>{text}</span>;
-    const matchEnd = matchStart + lc.length;
+    const start = text.toLowerCase().indexOf(lc);
+    if (start === -1) return <span>{text}</span>;
+    const end = start + lc.length;
     return (
       <>
-        {text.slice(0, matchStart)}
-        <span className="font-semibold text-cyan-600 dark:text-cyan-400">{text.slice(matchStart, matchEnd)}</span>
-        {text.slice(matchEnd)}
+        {text.slice(0, start)}
+        <span className="font-semibold text-cyan-600 dark:text-cyan-400">{text.slice(start, end)}</span>
+        {text.slice(end)}
       </>
     );
   };
@@ -151,10 +155,11 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         >
           {filtered.map((suggestion, idx) => {
             const isActive = idx === activeIndex;
-            const isCountry = suggestion.type === 'country';
+            const countryQ = suggestion.country && value.trim().length > 0 &&
+              suggestion.country.toLowerCase().includes(value.toLowerCase());
             return (
               <li
-                key={`${suggestion.type}-${suggestion.label}`}
+                key={suggestion.label}
                 role="option"
                 aria-selected={isActive}
                 onMouseDown={(e) => { e.preventDefault(); commit(suggestion.label); }}
@@ -165,16 +170,17 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                     : 'text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
                 }`}
               >
-                {isCountry
-                  ? <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 shrink-0" />
-                  : <Search className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 shrink-0" />
-                }
+                <Search className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 shrink-0" />
                 <span className="flex-1 min-w-0 truncate">
                   {highlightMatch(suggestion.label)}
                 </span>
-                {suggestion.meta && (
-                  <span className="text-xs text-slate-400 dark:text-gray-500 shrink-0 truncate max-w-[120px]">
-                    {suggestion.meta}
+                {suggestion.country && (
+                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded shrink-0 ${
+                    countryQ
+                      ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-gray-400'
+                  }`}>
+                    {suggestion.country}
                   </span>
                 )}
               </li>
