@@ -4,6 +4,8 @@ import { Search, X } from 'lucide-react';
 export interface Suggestion {
   /** The project/template name shown as the main label */
   label: string;
+  /** Internal project/template id for direct navigation */
+  id?: string | number;
   /** Country code badge shown next to the name (e.g. "BR") */
   country?: string;
   /** Project type badge (e.g. "Webapp", "Native App") */
@@ -14,6 +16,8 @@ interface SearchAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
   onSearch: (value: string) => void;
+  /** Called when a suggestion is clicked — use for direct navigation */
+  onSelect?: (suggestion: Suggestion) => void;
   suggestions: Suggestion[];
   placeholder?: string;
   inputClassName?: string;
@@ -24,6 +28,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   value,
   onChange,
   onSearch,
+  onSelect,
   suggestions,
   placeholder = 'Search...',
   inputClassName,
@@ -47,12 +52,16 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
 
   const showDropdown = open && filtered.length > 0;
 
-  const commit = useCallback((term: string) => {
-    onChange(term);
-    onSearch(term);
+  const commit = useCallback((suggestion: Suggestion) => {
+    onChange(suggestion.label);
+    if (onSelect) {
+      onSelect(suggestion);
+    } else {
+      onSearch(suggestion.label);
+    }
     setOpen(false);
     setActiveIndex(-1);
-  }, [onChange, onSearch]);
+  }, [onChange, onSearch, onSelect]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
@@ -78,7 +87,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (activeIndex >= 0) {
-        commit(filtered[activeIndex].label);
+        commit(filtered[activeIndex]);
       } else {
         onSearch(value);
         setOpen(false);
@@ -162,15 +171,16 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
               suggestion.country.toLowerCase().includes(value.toLowerCase());
             return (
               <li
-                key={suggestion.label}
+                key={`${suggestion.id ?? suggestion.label}-${idx}`}
                 role="option"
                 aria-selected={isActive}
-                onMouseDown={(e) => { e.preventDefault(); commit(suggestion.label); }}
+                onMouseDown={(e) => { e.preventDefault(); commit(suggestion); }}
                 onMouseEnter={() => setActiveIndex(idx)}
+                onMouseLeave={() => setActiveIndex(-1)}
                 className={`flex items-center gap-2 px-3 py-2.5 cursor-pointer text-sm transition-colors ${
                   isActive
                     ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
-                    : 'text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                    : 'text-slate-700 dark:text-gray-200'
                 }`}
               >
                 <Search className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 shrink-0" />

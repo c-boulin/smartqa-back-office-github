@@ -368,7 +368,7 @@ const Projects: React.FC = () => {
   const projectNameSuggestions = useMemo<Suggestion[]>(() =>
     projects
       .filter(p => p.name)
-      .map(p => ({ label: p.name, country: p.country ?? undefined, type: p.project_type ?? undefined })),
+      .map(p => ({ label: p.name, id: p.id, country: p.country ?? undefined, type: p.project_type ?? undefined })),
     [projects]
   );
 
@@ -732,6 +732,10 @@ const Projects: React.FC = () => {
               value={searchTerm}
               onChange={setSearchTerm}
               onSearch={handleSearch}
+              onSelect={(suggestion) => {
+                const project = projects.find(p => p.id === suggestion.id);
+                if (project) handleProjectClick(project);
+              }}
               suggestions={projectNameSuggestions}
               placeholder="Search for project..."
             />
