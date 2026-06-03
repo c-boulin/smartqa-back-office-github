@@ -1,13 +1,19 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, MapPin } from 'lucide-react';
+
+export interface Suggestion {
+  label: string;
+  type: 'name' | 'country';
+  /** secondary text shown on the right (e.g. full country name) */
+  meta?: string;
+}
 
 interface SearchAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
   onSearch: (value: string) => void;
-  suggestions: string[];
+  suggestions: Suggestion[];
   placeholder?: string;
-  className?: string;
   inputClassName?: string;
   'data-mipqa'?: string;
 }
@@ -26,8 +32,10 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const filtered = value.trim().length > 0
-    ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase())).slice(0, 8)
+  const filtered: Suggestion[] = value.trim().length > 0
+    ? suggestions
+        .filter(s => s.label.toLowerCase().includes(value.toLowerCase()))
+        .slice(0, 8)
     : [];
 
   const showDropdown = open && filtered.length > 0;
@@ -63,7 +71,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (activeIndex >= 0) {
-        commit(filtered[activeIndex]);
+        commit(filtered[activeIndex].label);
       } else {
         onSearch(value);
         setOpen(false);
@@ -93,7 +101,22 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const baseInputCls = inputClassName ?? 'w-full pl-10 pr-8 py-2.5 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition-all';
+  const baseInputCls = inputClassName
+    ?? 'w-full pl-10 pr-8 py-2.5 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition-all';
+
+  const highlightMatch = (text: string) => {
+    const lc = value.toLowerCase();
+    const matchStart = text.toLowerCase().indexOf(lc);
+    if (matchStart === -1) return <span>{text}</span>;
+    const matchEnd = matchStart + lc.length;
+    return (
+      <>
+        {text.slice(0, matchStart)}
+        <span className="font-semibold text-cyan-600 dark:text-cyan-400">{text.slice(matchStart, matchEnd)}</span>
+        {text.slice(matchEnd)}
+      </>
+    );
+  };
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -127,31 +150,33 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden"
         >
           {filtered.map((suggestion, idx) => {
-            const lc = value.toLowerCase();
-            const matchStart = suggestion.toLowerCase().indexOf(lc);
-            const matchEnd = matchStart + lc.length;
-            const before = suggestion.slice(0, matchStart);
-            const match = suggestion.slice(matchStart, matchEnd);
-            const after = suggestion.slice(matchEnd);
+            const isActive = idx === activeIndex;
+            const isCountry = suggestion.type === 'country';
             return (
               <li
-                key={suggestion}
+                key={`${suggestion.type}-${suggestion.label}`}
                 role="option"
-                aria-selected={idx === activeIndex}
-                onMouseDown={(e) => { e.preventDefault(); commit(suggestion); }}
+                aria-selected={isActive}
+                onMouseDown={(e) => { e.preventDefault(); commit(suggestion.label); }}
                 onMouseEnter={() => setActiveIndex(idx)}
                 className={`flex items-center gap-2 px-3 py-2.5 cursor-pointer text-sm transition-colors ${
-                  idx === activeIndex
+                  isActive
                     ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
                     : 'text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
                 }`}
               >
-                <Search className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 shrink-0" />
-                <span>
-                  {before}
-                  <span className="font-semibold text-cyan-600 dark:text-cyan-400">{match}</span>
-                  {after}
+                {isCountry
+                  ? <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 shrink-0" />
+                  : <Search className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 shrink-0" />
+                }
+                <span className="flex-1 min-w-0 truncate">
+                  {highlightMatch(suggestion.label)}
                 </span>
+                {suggestion.meta && (
+                  <span className="text-xs text-slate-400 dark:text-gray-500 shrink-0 truncate max-w-[120px]">
+                    {suggestion.meta}
+                  </span>
+                )}
               </li>
             );
           })}
@@ -162,3 +187,6 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
 };
 
 export default SearchAutocomplete;
+
+
+export default SearchAutocomplete

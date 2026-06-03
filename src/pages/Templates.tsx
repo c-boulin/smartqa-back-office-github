@@ -20,7 +20,8 @@ import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
 import CreateTemplateModal, { CreateTemplateFormData } from '../components/Project/CreateTemplateModal';
 import ProjectTitle from '../components/Project/ProjectTitle';
-import SearchAutocomplete from '../components/UI/SearchAutocomplete';
+import SearchAutocomplete, { Suggestion } from '../components/UI/SearchAutocomplete';
+import { COUNTRY_CODES_ALPHA2 } from '../constants/countryCodes';
 
 /* ------------------------------------------------------------------ */
 /* TemplateFormModal                                                    */
@@ -387,10 +388,20 @@ const Templates: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '', categoryIri: '', categoryName: '' });
 
-  const templateNameSuggestions = useMemo(
-    () => templates.map(t => t.name).filter(Boolean),
-    [templates]
-  );
+  const templateNameSuggestions = useMemo<Suggestion[]>(() => {
+    const names: Suggestion[] = templates
+      .map(t => t.name)
+      .filter(Boolean)
+      .map(n => ({ label: n, type: 'name' as const }));
+
+    const countryCodes = new Set(templates.map(t => t.country).filter(Boolean));
+    const countries: Suggestion[] = Array.from(countryCodes).map(code => {
+      const found = COUNTRY_CODES_ALPHA2.find(c => c.code === code);
+      return { label: code!, type: 'country' as const, meta: found?.name };
+    });
+
+    return [...names, ...countries];
+  }, [templates]);
 
   const SORT_OPTIONS = useMemo(() => [
     { value: 'createdAt-desc', label: 'Creation date (New/Old)', param: 'order[createdAt]=desc' },
