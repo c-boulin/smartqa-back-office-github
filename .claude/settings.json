@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /tmp/cc-agent/67493349/project && npx --no-install vite build --mode dev 2>&1 | tail -5",
+            "timeout": 120,
+            "statusMessage": "Building project..."
+          }
+        ]
+      }
+    ]
+  }
+}

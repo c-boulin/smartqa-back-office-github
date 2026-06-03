@@ -390,7 +390,7 @@ const Templates: React.FC = () => {
   const templateNameSuggestions = useMemo<Suggestion[]>(() =>
     templates
       .filter(t => t.name)
-      .map(t => ({ label: t.name, country: t.country ?? undefined })),
+      .map(t => ({ label: t.name, country: t.country ?? undefined, type: t.project_type ?? undefined })),
     [templates]
   );
 

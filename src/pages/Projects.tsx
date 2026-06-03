@@ -368,7 +368,7 @@ const Projects: React.FC = () => {
   const projectNameSuggestions = useMemo<Suggestion[]>(() =>
     projects
       .filter(p => p.name)
-      .map(p => ({ label: p.name, country: p.country ?? undefined })),
+      .map(p => ({ label: p.name, country: p.country ?? undefined, type: p.project_type ?? undefined })),
     [projects]
   );
 

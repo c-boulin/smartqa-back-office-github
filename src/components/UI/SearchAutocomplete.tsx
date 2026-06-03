@@ -6,6 +6,8 @@ export interface Suggestion {
   label: string;
   /** Country code badge shown next to the name (e.g. "BR") */
   country?: string;
+  /** Project type badge (e.g. "Webapp", "Native App") */
+  type?: string;
 }
 
 interface SearchAutocompleteProps {
@@ -37,7 +39,8 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         const q = value.toLowerCase();
         return (
           s.label.toLowerCase().includes(q) ||
-          (s.country ?? '').toLowerCase().includes(q)
+          (s.country ?? '').toLowerCase().includes(q) ||
+          (s.type ?? '').toLowerCase().includes(q)
         );
       }).slice(0, 10)
     : [];
@@ -174,6 +177,11 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                 <span className="flex-1 min-w-0 truncate">
                   {highlightMatch(suggestion.label)}
                 </span>
+                {suggestion.type && (
+                  <span className="text-xs font-medium px-1.5 py-0.5 rounded shrink-0 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-gray-400">
+                    {suggestion.type}
+                  </span>
+                )}
                 {suggestion.country && (
                   <span className={`text-xs font-medium px-1.5 py-0.5 rounded shrink-0 ${
                     countryQ
