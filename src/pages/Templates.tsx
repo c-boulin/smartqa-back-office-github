@@ -20,6 +20,7 @@ import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
 import CreateTemplateModal, { CreateTemplateFormData } from '../components/Project/CreateTemplateModal';
 import ProjectTitle from '../components/Project/ProjectTitle';
+import SearchAutocomplete from '../components/UI/SearchAutocomplete';
 
 /* ------------------------------------------------------------------ */
 /* TemplateFormModal                                                    */
@@ -386,6 +387,11 @@ const Templates: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '', categoryIri: '', categoryName: '' });
 
+  const templateNameSuggestions = useMemo(
+    () => templates.map(t => t.name).filter(Boolean),
+    [templates]
+  );
+
   const SORT_OPTIONS = useMemo(() => [
     { value: 'createdAt-desc', label: 'Creation date (New/Old)', param: 'order[createdAt]=desc' },
     { value: 'createdAt-asc',  label: 'Creation date (Old/New)', param: 'order[createdAt]=asc' },
@@ -582,14 +588,13 @@ const Templates: React.FC = () => {
         <div className="flex items-center gap-3 flex-1 flex-wrap">
           {/* Search */}
           <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search for template..."
+            <SearchAutocomplete
+              data-mipqa="templates-search-input"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch(searchTerm); } }}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition-all"
+              onChange={setSearchTerm}
+              onSearch={handleSearch}
+              suggestions={templateNameSuggestions}
+              placeholder="Search for template..."
             />
           </div>
 
