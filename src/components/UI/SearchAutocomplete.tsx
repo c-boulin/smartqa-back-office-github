@@ -187,6 +187,3 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
 };
 
 export default SearchAutocomplete;
-
-
-export default SearchAutocomplete
