@@ -60,6 +60,19 @@ export interface User {
   role?: Role;
 }
 
+export interface SettingsRole {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SettingsDataResponse extends UsersApiResponse {
+  roles?: SettingsRole[];
+}
+
 class UsersApiService {
   public getDefaultUsersResponse(): UsersApiResponse {
     return {
@@ -81,6 +94,12 @@ class UsersApiService {
     const response = await apiService.authenticatedRequest(
       `/users?itemsPerPage=${itemsPerPage}&include=role&page=${page}`
     );
+    return response || this.getDefaultUsersResponse();
+  }
+
+  async getSettingsData(page: number = 1, itemsPerPage: number = 1000): Promise<SettingsDataResponse> {
+    const url = `/settings-data?itemsPerPage=${itemsPerPage}&page=${page}`;
+    const response = await apiService.authenticatedRequest(url);
     return response || this.getDefaultUsersResponse();
   }
 

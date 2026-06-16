@@ -269,17 +269,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     try {
       dispatch({ type: 'SET_LOADING_TAGS', payload: true });
-      
+
       const transformedTags = await tagsApiService.getTags();
 
       dispatch({ type: 'SET_TAGS', payload: transformedTags });
-      
+
     } catch (error) {
       console.error('Failed to load tags:', error);
     } finally {
       dispatch({ type: 'SET_LOADING_TAGS', payload: false });
     }
-  }, [authState.isAuthenticated, state.isLoadingTags]);
+  }, [authState.isAuthenticated]);
 
   // Load configurations from API
   const loadConfigurations = async () => {

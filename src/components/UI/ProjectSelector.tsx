@@ -28,11 +28,15 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Filter projects based on search term
-  const filteredProjects = state.projects.filter(project =>
-    project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProjects = state.projects.filter(project => {
+    const q = searchTerm.toLowerCase();
+    return (
+      project.name.toLowerCase().includes(q) ||
+      project.id.toLowerCase().includes(q) ||
+      (project.country ?? '').toLowerCase().includes(q) ||
+      (project.project_type ?? '').toLowerCase().includes(q)
+    );
+  });
 
   // Find selected project
   const selectedProject = state.projects.find(p => p.id === selectedProjectId);
@@ -97,9 +101,21 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         >
           <div className="flex items-center flex-1 min-w-0">
             <FolderOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-400 pointer-events-none" />
-            <span className="truncate ml-7">
+            <span className="truncate ml-7 flex items-center gap-2 min-w-0">
               {selectedProject ? (
-                <span className="font-medium">{selectedProject.name}</span>
+                <>
+                  {selectedProject.country && (
+                    <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-gray-300">
+                      {selectedProject.country}
+                    </span>
+                  )}
+                  <span className="font-medium truncate">{selectedProject.name}</span>
+                  {selectedProject.project_type && (
+                    <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300">
+                      {selectedProject.project_type}
+                    </span>
+                  )}
+                </>
               ) : (
                 <span className="text-slate-400 dark:text-gray-400">{placeholder}</span>
               )}
@@ -193,10 +209,20 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                             selectedProjectId === project.id ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400 dark:text-gray-400'
                           }`} />
                           <div className="flex-1 min-w-0">
-                            <div className={`font-medium truncate ${
+                            <div className={`font-medium truncate flex items-center gap-2 ${
                               selectedProjectId === project.id ? 'text-cyan-600 dark:text-cyan-300' : 'text-slate-900 dark:text-white'
                             }`}>
-                              {project.name}
+                              {project.country && (
+                                <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-gray-300">
+                                  {project.country}
+                                </span>
+                              )}
+                              <span className="truncate">{project.name}</span>
+                              {project.project_type && (
+                                <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300">
+                                  {project.project_type}
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-slate-500 dark:text-gray-400 truncate mt-1">{project.description}</div>
                           </div>

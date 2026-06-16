@@ -20,6 +20,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { PERMISSIONS } from '../../utils/permissions';
 import { Project } from '../../types';
 import ProjectTitle from '../Project/ProjectTitle';
+import SidebarUserCard from './SidebarUserCard';
 
 const TEMPLATE_NAV_ITEMS = [
   { path: '/test-cases',    icon: TestTube, label: 'Test Cases' },
@@ -365,8 +366,8 @@ const Sidebar: React.FC = () => {
   if (state.isTemplateMode) {
     const selectedTemplate = getSelectedProject();
     return (
-      <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl min-h-[calc(100vh-3.5rem)] sticky top-14">
-        <nav className="p-4 space-y-2">
+      <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl min-h-[calc(100vh-3.5rem)] sticky top-14 flex flex-col">
+        <nav className="p-4 space-y-2 flex-1">
           {/* Templates label + dropdown */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-2 px-4">
@@ -482,13 +483,16 @@ const Sidebar: React.FC = () => {
             ))}
           </div>
         </nav>
+        <div className="border-t border-slate-200 dark:border-slate-700 mt-auto">
+          <SidebarUserCard />
+        </div>
       </aside>
     );
   }
 
   return (
-    <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl min-h-[calc(100vh-3.5rem)] sticky top-14">
-      <nav className="p-4 space-y-2">
+    <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl min-h-[calc(100vh-3.5rem)] sticky top-14 flex flex-col">
+      <nav className="p-4 space-y-2 flex-1">
         {/* Projects Dropdown */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-2 px-4">
@@ -683,6 +687,9 @@ const Sidebar: React.FC = () => {
           </NavLink>
         ))}
       </nav>
+      <div className="border-t border-slate-200 dark:border-slate-700 mt-auto">
+        <SidebarUserCard />
+      </div>
     </aside>
   );
 };

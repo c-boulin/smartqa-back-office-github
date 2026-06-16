@@ -2,6 +2,9 @@ import React from 'react';
 import { Plus, FolderOpen, MoreHorizontal } from 'lucide-react';
 import DroppableFolderTree from '../FolderTree/DroppableFolderTree';
 import { Folder } from '../../services/foldersApi';
+import { useApp } from '../../context/AppContext';
+import { usePermissions } from '../../hooks/usePermissions';
+import { PERMISSIONS } from '../../utils/permissions';
 
 interface TestCasesFolderSidebarProps {
   folderTree: Folder[];
@@ -27,6 +30,9 @@ const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
   onTestCaseDropped,
   unfolderedCount = 0,
 }) => {
+  const { state: appState } = useApp();
+  const { hasPermission } = usePermissions();
+  const templateWriteAllowed = !appState.isTemplateMode || hasPermission(PERMISSIONS.TEMPLATE.UPDATE);
   const isUnfolderedSelected = selectedFolderId === '__none__';
 
   const handleUnfolderedClick = () => {
@@ -51,6 +57,7 @@ const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
             </svg>
             <span className="text-sm font-bold text-slate-900 dark:text-white">Folders</span>
           </div>
+          {templateWriteAllowed && (
           <button
             onClick={onCreateFolder}
             className="w-7 h-7 flex items-center justify-center text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
@@ -58,6 +65,7 @@ const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
           >
             <Plus className="w-4 h-4" />
           </button>
+          )}
         </div>
 
         {/* Folder list */}
@@ -103,8 +111,8 @@ const TestCasesFolderSidebar: React.FC<TestCasesFolderSidebarProps> = ({
             selectedFolderId={isUnfolderedSelected ? null : selectedFolderId}
             onSelectFolder={(folderId) => onSelectFolder(folderId)}
             loading={foldersLoading}
-            onEditFolder={onEditFolder}
-            onDeleteFolder={onDeleteFolder}
+            onEditFolder={templateWriteAllowed ? onEditFolder : undefined}
+            onDeleteFolder={templateWriteAllowed ? onDeleteFolder : undefined}
             onTestCaseDropped={onTestCaseDropped}
             showTestCaseCount={true}
           />

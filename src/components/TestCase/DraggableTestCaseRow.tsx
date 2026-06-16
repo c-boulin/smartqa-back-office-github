@@ -68,9 +68,10 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
   const { hasPermission } = usePermissions();
   const { state: appState } = useApp();
 
-  const canEdit = hasPermission(PERMISSIONS.TEST_CASE.UPDATE);
-  const canDelete = hasPermission(PERMISSIONS.TEST_CASE.DELETE);
-  const canCreate = hasPermission(PERMISSIONS.TEST_CASE.CREATE);
+  const templateWriteAllowed = !appState.isTemplateMode || hasPermission(PERMISSIONS.TEMPLATE.UPDATE);
+  const canEdit = hasPermission(PERMISSIONS.TEST_CASE.UPDATE) && templateWriteAllowed;
+  const canDelete = hasPermission(PERMISSIONS.TEST_CASE.DELETE) && templateWriteAllowed;
+  const canCreate = hasPermission(PERMISSIONS.TEST_CASE.CREATE) && templateWriteAllowed;
   const canRun = hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && !appState.isTemplateMode;
   const hasAnyAction = canEdit || canDelete || canCreate || canRun;
 

@@ -3,6 +3,7 @@ import { Users, Loader, Shield, Bot, Search, ChevronLeft, ChevronRight, SquarePe
 import { usersApiService, User } from '../services/usersApi';
 import { apiService, Role } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { getRoleDisplayLabel } from '../components/Layout/SidebarUserCard';
 import { PERMISSIONS } from '../utils/permissions';
 import Pagination from '../components/UI/Pagination';
 import toast from 'react-hot-toast';
@@ -22,18 +23,16 @@ type GitlabRepositoryOption = {
 
 type SettingsTab = 'users' | 'automation';
 
-const USERS_PER_PAGE = 30;
-
 const Settings: React.FC = () => {
   const { state: authState, hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('users');
-  const [users, setUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+  const [userSearch, setUserSearch] = useState('');
+  const [usersPage, setUsersPage] = useState(1);
+  const rolesLoadedRef = useRef(false);
 
   const {
     projects,
@@ -73,54 +72,61 @@ const Settings: React.FC = () => {
   const isSuperAdmin = authState.user?.role?.slug === 'superadmin';
   const canAccessSettings = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
 
-  const loadUsers = useCallback(async (page: number) => {
+  const loadSettingsData = useCallback(async () => {
     try {
       setLoading(true);
-      const usersResponse = await usersApiService.getUsers(page, USERS_PER_PAGE);
+      const response = await usersApiService.getSettingsData(1, 1000);
 
-      const transformedUsers = usersResponse.data.map(apiUser =>
-        usersApiService.transformApiUser(apiUser, usersResponse.included)
+      const transformedUsers = response.data.map(apiUser =>
+        usersApiService.transformApiUser(apiUser, response.included)
       );
+      setAllUsers(transformedUsers);
 
-      setUsers(transformedUsers);
-      setTotalItems(usersResponse.meta.totalItems);
-
-      const lastPageLink = usersResponse.links.last;
-      const lastPageMatch = lastPageLink?.match(/page=(\d+)/);
-      const computedTotalPages = lastPageMatch
-        ? parseInt(lastPageMatch[1])
-        : Math.ceil(usersResponse.meta.totalItems / USERS_PER_PAGE);
-      setTotalPages(computedTotalPages);
-      setCurrentPage(usersResponse.meta.currentPage);
+      if (!rolesLoadedRef.current && response.roles && response.roles.length > 0) {
+        rolesLoadedRef.current = true;
+        setRoles(response.roles.map(r => ({
+          id: r.id,
+          name: r.name,
+          slug: r.slug,
+          description: r.description,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+          permissions: []
+        })));
+      }
     } catch (error) {
-      console.error('Failed to load users:', error);
+      console.error('Failed to load settings data:', error);
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const loadRoles = useCallback(async () => {
-    try {
-      const rolesResponse = await usersApiService.getRoles();
-      setRoles(rolesResponse);
-    } catch (error) {
-      console.error('Failed to load roles:', error);
-      toast.error('Failed to load roles');
-    }
-  }, []);
+  const filteredUsers = allUsers
+    .filter(u => !(authState.user && authState.user.id.toString() === u.id))
+    .filter(u => isSuperAdmin || u.role?.slug !== 'superadmin')
+    .filter(u => !userSearch.trim() || u.name.toLowerCase().includes(userSearch.trim().toLowerCase()));
+
+  const USERS_PER_PAGE_DISPLAY = 30;
+  const totalFilteredPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE_DISPLAY));
+  const pagedUsers = filteredUsers.slice((usersPage - 1) * USERS_PER_PAGE_DISPLAY, usersPage * USERS_PER_PAGE_DISPLAY);
 
   useEffect(() => {
     if (!canAccessSettings) {
       toast.error('You do not have permission to access this page');
       return;
     }
-    loadUsers(1);
-    loadRoles();
-  }, [canAccessSettings, loadUsers, loadRoles]);
+    loadSettingsData();
+  }, [canAccessSettings, loadSettingsData]);
 
-  const handlePageChange = (page: number) => {
-    loadUsers(page);
+  const handleUserSearch = (value: string) => {
+    setUserSearch(value);
+    setUsersPage(1);
+  };
+
+  const clearUserSearch = () => {
+    setUserSearch('');
+    setUsersPage(1);
   };
 
   useEffect(() => {
@@ -185,7 +191,7 @@ const Settings: React.FC = () => {
 
       const updatedRole = roles.find(r => r.id === parseInt(newRoleId));
 
-      setUsers(prevUsers =>
+      setAllUsers(prevUsers =>
         prevUsers.map(user =>
           user.id === userId
             ? { ...user, role_id: newRoleId, role: updatedRole }
@@ -266,13 +272,37 @@ const Settings: React.FC = () => {
       {activeTab === 'users' && (
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
         <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-cyan-500" />
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">User Management</h2>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-cyan-500" />
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">User Management</h2>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
+                Assign roles to users to control their access and permissions
+              </p>
+            </div>
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-500 pointer-events-none" />
+              <input
+                data-mipqa="users-search-input"
+                type="text"
+                value={userSearch}
+                onChange={(e) => handleUserSearch(e.target.value)}
+                placeholder="Search by name..."
+                className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 dark:focus:border-cyan-500 transition-colors"
+              />
+              {userSearch && (
+                <button
+                  type="button"
+                  onClick={clearUserSearch}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
-          <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
-            Assign roles to users to control their access and permissions
-          </p>
         </div>
 
         <div className="overflow-x-auto">
@@ -297,10 +327,7 @@ const Settings: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-              {users
-                .filter(user => !(authState.user && authState.user.id.toString() === user.id))
-                .filter(user => isSuperAdmin || user.role?.slug !== 'superadmin')
-                .map((user) => (
+              {pagedUsers.map((user) => (
                   <tr
                     key={user.id}
                     data-mipqa={`user-row-${user.id}`}
@@ -325,7 +352,7 @@ const Settings: React.FC = () => {
                       <div className="flex items-center gap-2">
                         {user.role ? (
                           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-700">
-                            {user.role.name}
+                            {getRoleDisplayLabel(user.role.slug, user.role.name)}
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-gray-400">
@@ -363,19 +390,21 @@ const Settings: React.FC = () => {
           </table>
         </div>
 
-        {users.length === 0 && !loading && (
+        {filteredUsers.length === 0 && !loading && (
           <div className="p-12 text-center">
             <Users className="w-12 h-12 text-slate-400 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-slate-600 dark:text-gray-400">No users found</p>
+            <p className="text-slate-600 dark:text-gray-400">
+              {userSearch ? `No users found matching "${userSearch}"` : 'No users found'}
+            </p>
           </div>
         )}
 
         <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          itemsPerPage={USERS_PER_PAGE}
-          onPageChange={handlePageChange}
+          currentPage={usersPage}
+          totalPages={totalFilteredPages}
+          totalItems={filteredUsers.length}
+          itemsPerPage={USERS_PER_PAGE_DISPLAY}
+          onPageChange={setUsersPage}
         />
       </div>
       )}

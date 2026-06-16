@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search, Loader } from 'lucide-react';
 import Card from '../components/UI/Card';
@@ -37,7 +37,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
 const TestCases: React.FC = () => {
-  const { getSelectedProject, state: appState, createTag } = useApp();
+  const { getSelectedProject, state: appState, createTag, loadTags } = useApp();
   const { state: authState } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -49,6 +49,14 @@ const TestCases: React.FC = () => {
   // Use tags from app context
   const tags = appState.tags;
   const tagsLoading = appState.isLoadingTags;
+
+  // Reload tags on mount if context was cleared by a page refresh
+  useEffect(() => {
+    if (tags.length === 0 && !tagsLoading) {
+      loadTags();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   const {
     folderTree,

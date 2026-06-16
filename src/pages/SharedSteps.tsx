@@ -19,13 +19,15 @@ import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
 
 const SharedSteps: React.FC = () => {
-  const { getSelectedProject } = useApp();
+  const { getSelectedProject, state: appState } = useApp();
   const { hasPermission } = usePermissions();
   const { state: authState } = useAuth();
   const selectedProject = getSelectedProject();
 
-  const hasAnyAction = hasPermission(PERMISSIONS.SHARED_STEP.UPDATE) ||
-                       hasPermission(PERMISSIONS.SHARED_STEP.DELETE);
+  const templateWriteAllowed = !appState.isTemplateMode || hasPermission(PERMISSIONS.TEMPLATE.UPDATE);
+
+  const hasAnyAction = (hasPermission(PERMISSIONS.SHARED_STEP.UPDATE) ||
+    hasPermission(PERMISSIONS.SHARED_STEP.DELETE)) && templateWriteAllowed;
 
   useRestoreLastProject();
   
@@ -332,14 +334,14 @@ const SharedSteps: React.FC = () => {
             </p>
           </div>
           <PermissionGuard permission={PERMISSIONS.SHARED_STEP.CREATE}>
-            <Button
+            {templateWriteAllowed && <Button
               icon={Plus}
               onClick={() => setIsCreateModalOpen(true)}
               disabled={!selectedProject}
               title={!selectedProject ? 'Please select a project first' : 'Create new shared step'}
             >
               New Shared Step
-            </Button>
+            </Button>}
           </PermissionGuard>
         </div>
       </div>
@@ -410,7 +412,7 @@ const SharedSteps: React.FC = () => {
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Title</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Used in</th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Created By</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Actions</th>
+                    {hasAnyAction && <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-gray-400">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -444,40 +446,42 @@ const SharedSteps: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center space-x-2">
-                          {hasPermission(PERMISSIONS.SHARED_STEP.READ) && (
-                            <button
-                              onClick={() => openViewModal(sharedStep)}
-                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                              title="View"
-                              disabled={isSubmitting}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                          )}
-                          {hasPermission(PERMISSIONS.SHARED_STEP.UPDATE) && (
-                            <button
-                              onClick={() => openEditModal(sharedStep)}
-                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                              title="Edit"
-                              disabled={isSubmitting}
-                            >
-                              <SquarePen className="w-4 h-4" />
-                            </button>
-                          )}
-                          {hasPermission(PERMISSIONS.SHARED_STEP.DELETE) && (
-                            <button
-                              onClick={() => openDeleteDialog(sharedStep)}
-                              className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
-                              title="Delete"
-                              disabled={isSubmitting}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                      {hasAnyAction && (
+                        <td className="py-4 px-6">
+                          <div className="flex items-center space-x-2">
+                            {hasPermission(PERMISSIONS.SHARED_STEP.READ) && (
+                              <button
+                                onClick={() => openViewModal(sharedStep)}
+                                className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                                title="View"
+                                disabled={isSubmitting}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            )}
+                            {hasPermission(PERMISSIONS.SHARED_STEP.UPDATE) && (
+                              <button
+                                onClick={() => openEditModal(sharedStep)}
+                                className="p-2 text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                                title="Edit"
+                                disabled={isSubmitting}
+                              >
+                                <SquarePen className="w-4 h-4" />
+                              </button>
+                            )}
+                            {hasPermission(PERMISSIONS.SHARED_STEP.DELETE) && (
+                              <button
+                                onClick={() => openDeleteDialog(sharedStep)}
+                                className="p-2 text-slate-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors"
+                                title="Delete"
+                                disabled={isSubmitting}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
