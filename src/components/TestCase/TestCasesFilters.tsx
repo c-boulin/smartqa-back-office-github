@@ -5,6 +5,8 @@ import PermissionGuard from '../PermissionGuard';
 import { PERMISSIONS } from '../../utils/permissions';
 import { AUTOMATION_STATUS_LABELS } from '../../types';
 import { Tag } from '../../services/tagsApi';
+import { useApp } from '../../context/AppContext';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface FiltersState {
   automationStatus: string;
@@ -45,6 +47,10 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
   onToggleColumn,
   onCreateTestCase
 }) => {
+  const { state: appState } = useApp();
+  const { hasPermission } = usePermissions();
+  const templateWriteAllowed = !appState.isTemplateMode || hasPermission(PERMISSIONS.TEMPLATE.UPDATE);
+  const canCreateTestCase = templateWriteAllowed;
   const activeFilterCount = [
     filters.automationStatus !== 'all' ? 1 : 0,
     filters.priority !== 'all' ? 1 : 0,
@@ -113,7 +119,7 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
         <div className="flex-1" />
 
         {/* Create test case button — far right */}
-        {onCreateTestCase && (
+        {onCreateTestCase && canCreateTestCase && (
           <PermissionGuard permission={PERMISSIONS.TEST_CASE.CREATE}>
             <button
               data-mipqa="create-testcase-button"

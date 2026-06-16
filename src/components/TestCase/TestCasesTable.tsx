@@ -6,6 +6,7 @@ import { TestCase } from '../../types';
 import { usePermissions } from '../../hooks/usePermissions';
 import { PERMISSIONS } from '../../utils/permissions';
 import { ColumnVisibility } from '../UI/ColumnVisibilityDropdown';
+import { useApp } from '../../context/AppContext';
 
 const INITIAL_VISIBLE = 5;
 
@@ -186,12 +187,15 @@ const TestCasesTable: React.FC<TestCasesTableProps> = ({
   folderMap = {},
 }) => {
   const { hasPermission } = usePermissions();
+  const { state: appState } = useApp();
 
-  const hasAnyAction =
+  const templateWriteAllowed = !appState.isTemplateMode || hasPermission(PERMISSIONS.TEMPLATE.UPDATE);
+  const hasAnyAction = templateWriteAllowed && (
     hasPermission(PERMISSIONS.TEST_CASE.UPDATE) ||
     hasPermission(PERMISSIONS.TEST_CASE.DELETE) ||
     hasPermission(PERMISSIONS.TEST_CASE.CREATE) ||
-    hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE);
+    hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE)
+  );
 
   const sections = useMemo<FolderSection[]>(() => {
     if (testCases.length === 0) return [];

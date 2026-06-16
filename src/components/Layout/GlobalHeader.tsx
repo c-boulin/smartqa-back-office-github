@@ -16,6 +16,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { PERMISSIONS } from '../../utils/permissions';
 import ThemeToggle from '../UI/ThemeToggle';
 import NotificationsBell from './NotificationsBell';
+import { getRoleDisplayLabel } from './SidebarUserCard';
 
 /**
  * Maps each top-nav root to the set of route prefixes that belong to it.
@@ -118,9 +119,29 @@ const GlobalHeader: React.FC = () => {
             <div className="w-8 h-8 bg-gradient-to-r from-cyan-600 to-purple-600 dark:from-cyan-400 dark:to-purple-500 rounded-full flex items-center justify-center">
               <User className="w-4 h-4 text-white" />
             </div>
-            <span className="text-sm font-medium text-slate-900 dark:text-white max-w-[140px] truncate">
-              {state.user?.name || 'User'}
-            </span>
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-medium text-slate-900 dark:text-white max-w-[140px] truncate">
+                {state.user?.name || 'User'}
+              </span>
+              {state.user?.role?.name && (
+                <span
+                  className="text-[10px] font-medium leading-tight px-1.5 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: (() => {
+                      const r = (state.user.role.slug ?? state.user.role.name ?? '').toLowerCase();
+                      if (r.includes('superadmin') || r.includes('super_admin') || r.includes('super admin')) return '#47246E';
+                      if (r.includes('admin')) return '#47246E';
+                      if (r.includes('project manager') || r.includes('projectmanager') || r.includes('project_manager') || r.includes('manager')) return '#24446E';
+                      if (r.includes('guest')) return '#655B7C';
+                      return '#24446E';
+                    })(),
+                    color: 'rgba(255,255,255,0.7)',
+                  }}
+                >
+                  {getRoleDisplayLabel(state.user.role.slug, state.user.role.name)}
+                </span>
+              )}
+            </div>
             <button
               onClick={handleLogout}
               className="p-2 text-slate-500 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400 transition-colors"

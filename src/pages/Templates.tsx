@@ -20,6 +20,7 @@ import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
 import CreateTemplateModal, { CreateTemplateFormData } from '../components/Project/CreateTemplateModal';
 import ProjectTitle from '../components/Project/ProjectTitle';
+import SearchAutocomplete, { Suggestion } from '../components/UI/SearchAutocomplete';
 
 /* ------------------------------------------------------------------ */
 /* TemplateFormModal                                                    */
@@ -362,9 +363,9 @@ const Templates: React.FC = () => {
   const { hasPermission } = usePermissions();
   const hasFetchedRef = useRef(false);
 
-  const hasAnyAction = hasPermission(PERMISSIONS.PROJECT.UPDATE) ||
-                       hasPermission(PERMISSIONS.PROJECT.DELETE) ||
-                       hasPermission(PERMISSIONS.PROJECT.CREATE);
+  const hasAnyAction = hasPermission(PERMISSIONS.TEMPLATE.UPDATE) ||
+                       hasPermission(PERMISSIONS.TEMPLATE.DELETE) ||
+                       hasPermission(PERMISSIONS.TEMPLATE.CREATE);
 
   const {
     templates, loading, error, pagination,
@@ -385,6 +386,13 @@ const Templates: React.FC = () => {
   const [templateToManage, setTemplateToManage] = useState<Project | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '', categoryIri: '', categoryName: '' });
+
+  const templateNameSuggestions = useMemo<Suggestion[]>(() =>
+    templates
+      .filter(t => t.name)
+      .map(t => ({ label: t.name, country: t.country ?? undefined, type: t.project_type ?? undefined })),
+    [templates]
+  );
 
   const SORT_OPTIONS = useMemo(() => [
     { value: 'createdAt-desc', label: 'Creation date (New/Old)', param: 'order[createdAt]=desc' },
@@ -582,14 +590,13 @@ const Templates: React.FC = () => {
         <div className="flex items-center gap-3 flex-1 flex-wrap">
           {/* Search */}
           <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search for template..."
+            <SearchAutocomplete
+              data-mipqa="templates-search-input"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch(searchTerm); } }}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition-all"
+              onChange={setSearchTerm}
+              onSearch={handleSearch}
+              suggestions={templateNameSuggestions}
+              placeholder="Search for template..."
             />
           </div>
 
@@ -610,7 +617,7 @@ const Templates: React.FC = () => {
           </div>
         </div>
 
-        <PermissionGuard permission={PERMISSIONS.PROJECT.CREATE}>
+        <PermissionGuard permission={PERMISSIONS.TEMPLATE.CREATE}>
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white text-sm font-medium rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all whitespace-nowrap"
@@ -710,7 +717,7 @@ const Templates: React.FC = () => {
                       {hasAnyAction && (
                         <td className="py-4 px-6 align-middle">
                           <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                            {hasPermission(PERMISSIONS.PROJECT.UPDATE) && (
+                            {hasPermission(PERMISSIONS.TEMPLATE.UPDATE) && (
                               <button
                                 onClick={() => openEditModal(template)}
                                 className="p-2 text-slate-400 dark:text-gray-500 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
@@ -724,8 +731,8 @@ const Templates: React.FC = () => {
                               template={template}
                               onDuplicate={openCloneModal}
                               onDelete={openDeleteDialog}
-                              canCreate={hasPermission(PERMISSIONS.PROJECT.CREATE)}
-                              canDelete={hasPermission(PERMISSIONS.PROJECT.DELETE)}
+                              canCreate={hasPermission(PERMISSIONS.TEMPLATE.CREATE)}
+                              canDelete={hasPermission(PERMISSIONS.TEMPLATE.DELETE)}
                               disabled={isSubmitting}
                             />
                           </div>

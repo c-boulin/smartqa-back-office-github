@@ -71,6 +71,12 @@ export const PERMISSIONS = {
     UPDATE: 'test-run:update',
     DELETE: 'test-run:delete',
   },
+  TEMPLATE: {
+    CREATE: 'template:create',
+    READ: 'template:read',
+    UPDATE: 'template:update',
+    DELETE: 'template:delete',
+  },
   ADMIN_PANEL: {
     READ: 'admin-panel:read',
   },
