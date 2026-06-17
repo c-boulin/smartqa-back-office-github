@@ -1,3 +1,9 @@
+## [1.23.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.22.0...1.23.0) (2026-06-17)
+
+### Features
+
+* UI improvements ([55a3ad4](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/55a3ad49d0f17da5f438cbb15d2dc938cea4305a))
+
 ## [1.21.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.20.0...1.21.0) (2026-05-26)
 
 ### Features
