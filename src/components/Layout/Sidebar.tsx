@@ -20,7 +20,6 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { PERMISSIONS } from '../../utils/permissions';
 import { Project } from '../../types';
 import ProjectTitle from '../Project/ProjectTitle';
-import SidebarUserCard from './SidebarUserCard';
 
 const TEMPLATE_NAV_ITEMS = [
   { path: '/test-cases',    icon: TestTube, label: 'Test Cases' },
@@ -483,9 +482,6 @@ const Sidebar: React.FC = () => {
             ))}
           </div>
         </nav>
-        <div className="border-t border-slate-200 dark:border-slate-700 mt-auto">
-          <SidebarUserCard />
-        </div>
       </aside>
     );
   }
@@ -687,9 +683,6 @@ const Sidebar: React.FC = () => {
           </NavLink>
         ))}
       </nav>
-      <div className="border-t border-slate-200 dark:border-slate-700 mt-auto">
-        <SidebarUserCard />
-      </div>
     </aside>
   );
 };
