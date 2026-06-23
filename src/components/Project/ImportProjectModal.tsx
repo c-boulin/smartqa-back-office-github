@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, FileJson, CheckCircle, AlertCircle, Loader, FolderOpen } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { apiService } from '../../services/api';
 
 interface ImportProject {
   title: string;
@@ -122,21 +121,12 @@ const ImportProjectModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => 
     setImporting(true);
     setImportError(null);
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${API_BASE_URL}/api/project-imports/from-file`, {
+      const response = await apiService.authenticatedRequest('/project-imports/from-file', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(parsed),
       });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error((err as { message?: string }).message || `Import failed (${response.status})`);
-      }
-      const result: ImportResult = await response.json();
+      const result: ImportResult = response;
       setImportResult(result);
       setStep('success');
       onSuccess();
