@@ -277,7 +277,7 @@ const ImportProjectModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => 
                 <p className="text-sm text-slate-500 dark:text-slate-400 text-center">{importResult.message}</p>
               </div>
               <div className="space-y-2" data-mipqa="import-project-success-list">
-                {importResult.projects.map((p) => (
+                {(importResult.projects ?? []).map((p) => (
                   <div
                     key={p.id}
                     className="flex items-center justify-between gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl"
