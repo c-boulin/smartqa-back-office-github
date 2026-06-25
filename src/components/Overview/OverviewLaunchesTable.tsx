@@ -882,10 +882,6 @@ const OverviewLaunchesTable: React.FC = () => {
   const [historyLaunchesHiddenCount, setHistoryLaunchesHiddenCount] = useState(0);
   const [historyLaunchesNextBeforeId, setHistoryLaunchesNextBeforeId] = useState<number | null>(null);
   const [hoveredLogTimeRowKey, setHoveredLogTimeRowKey] = useState<string | null>(null);
-  const [selectedLaunchRowIds, setSelectedLaunchRowIds] = useState<Set<string>>(() => new Set());
-  const [selectedSuiteRowKeys, setSelectedSuiteRowKeys] = useState<Set<string>>(() => new Set());
-  const launchSelectAllCheckboxRef = useRef<HTMLInputElement>(null);
-  const suiteSelectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const historyLaunchTargetCacheRef = useRef<Map<string, OverviewSuiteListLogTarget | null>>(new Map());
   const skipNextLaunchesSearchSyncRef = useRef(false);
 
@@ -1792,36 +1788,6 @@ const OverviewLaunchesTable: React.FC = () => {
 
   const launchRowIdsOnPage = useMemo(() => displayRows.map(r => r.id), [displayRows]);
 
-  const allLaunchRowsSelected =
-    launchRowIdsOnPage.length > 0 && launchRowIdsOnPage.every(id => selectedLaunchRowIds.has(id));
-  const someLaunchRowsSelected =
-    launchRowIdsOnPage.length > 0 && launchRowIdsOnPage.some(id => selectedLaunchRowIds.has(id));
-
-  useEffect(() => {
-    const el = launchSelectAllCheckboxRef.current;
-    if (el !== null) {
-      el.indeterminate = someLaunchRowsSelected && !allLaunchRowsSelected;
-    }
-  }, [someLaunchRowsSelected, allLaunchRowsSelected]);
-
-  const toggleSelectAllLaunchRows = useCallback(() => {
-    setSelectedLaunchRowIds(prev => {
-      const allSelected =
-        launchRowIdsOnPage.length > 0 && launchRowIdsOnPage.every(id => prev.has(id));
-      const next = new Set(prev);
-      if (allSelected) {
-        for (const id of launchRowIdsOnPage) {
-          next.delete(id);
-        }
-      } else {
-        for (const id of launchRowIdsOnPage) {
-          next.add(id);
-        }
-      }
-      return next;
-    });
-  }, [launchRowIdsOnPage]);
-
   const inSuiteListView = suiteListItems !== null;
 
   /**
@@ -1838,36 +1804,6 @@ const OverviewLaunchesTable: React.FC = () => {
     () => filteredSuiteItems.map(suiteListItemRowKey),
     [filteredSuiteItems],
   );
-
-  const allSuiteRowsSelected =
-    suiteRowKeysOnPage.length > 0 && suiteRowKeysOnPage.every(k => selectedSuiteRowKeys.has(k));
-  const someSuiteRowsSelected =
-    suiteRowKeysOnPage.length > 0 && suiteRowKeysOnPage.some(k => selectedSuiteRowKeys.has(k));
-
-  useEffect(() => {
-    const el = suiteSelectAllCheckboxRef.current;
-    if (el !== null) {
-      el.indeterminate = someSuiteRowsSelected && !allSuiteRowsSelected;
-    }
-  }, [someSuiteRowsSelected, allSuiteRowsSelected]);
-
-  const toggleSelectAllSuiteRows = useCallback(() => {
-    setSelectedSuiteRowKeys(prev => {
-      const allSelected =
-        suiteRowKeysOnPage.length > 0 && suiteRowKeysOnPage.every(k => prev.has(k));
-      const next = new Set(prev);
-      if (allSelected) {
-        for (const k of suiteRowKeysOnPage) {
-          next.delete(k);
-        }
-      } else {
-        for (const k of suiteRowKeysOnPage) {
-          next.add(k);
-        }
-      }
-      return next;
-    });
-  }, [suiteRowKeysOnPage]);
 
   /**
    * Toggles suite List view sort (client-side); new text columns default A→Z, start time chronological.
@@ -2438,17 +2374,6 @@ const OverviewLaunchesTable: React.FC = () => {
                 <th className="py-3 px-2 text-xs font-semibold uppercase tracking-wide text-slate-600 align-bottom dark:text-slate-400">
                   Defect type
                 </th>
-                <th className="py-3 pl-2 pr-4 align-top" scope="col">
-                  <input
-                    ref={suiteSelectAllCheckboxRef}
-                    type="checkbox"
-                    checked={allSuiteRowsSelected}
-                    onChange={toggleSelectAllSuiteRows}
-                    disabled={suiteRowKeysOnPage.length === 0}
-                    className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 disabled:opacity-40"
-                    aria-label="Select all suite list rows on this page"
-                  />
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -2582,25 +2507,6 @@ const OverviewLaunchesTable: React.FC = () => {
                       ) : (
                         item.defectType
                       )}
-                    </td>
-                    <td className="py-3 pl-2 pr-4 align-top">
-                      <input
-                        type="checkbox"
-                        checked={selectedSuiteRowKeys.has(rowKey)}
-                        onChange={() => {
-                          setSelectedSuiteRowKeys(prev => {
-                            const next = new Set(prev);
-                            if (next.has(rowKey)) {
-                              next.delete(rowKey);
-                            } else {
-                              next.add(rowKey);
-                            }
-                            return next;
-                          });
-                        }}
-                        className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
-                        aria-label={`Select ${item.name}`}
-                      />
                     </td>
                   </tr>
                 );
@@ -2750,17 +2656,6 @@ const OverviewLaunchesTable: React.FC = () => {
                   align="right"
                   thClassName="px-1 pl-2 text-right"
                 />
-                <th className="py-3 pl-2 pr-4 align-top" scope="col">
-                  <input
-                    ref={launchSelectAllCheckboxRef}
-                    type="checkbox"
-                    checked={allLaunchRowsSelected}
-                    onChange={toggleSelectAllLaunchRows}
-                    disabled={launchRowIdsOnPage.length === 0}
-                    className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 disabled:opacity-40"
-                    aria-label="Select all launches on this page"
-                  />
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -2884,25 +2779,6 @@ const OverviewLaunchesTable: React.FC = () => {
                   </td>
                   <td className="py-3 px-2 pl-3 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     {renderCountCell(row.toInvestigate)}
-                  </td>
-                  <td className="py-3 pl-2 pr-4 align-top">
-                    <input
-                      type="checkbox"
-                      checked={selectedLaunchRowIds.has(row.id)}
-                      onChange={() => {
-                        setSelectedLaunchRowIds(prev => {
-                          const next = new Set(prev);
-                          if (next.has(row.id)) {
-                            next.delete(row.id);
-                          } else {
-                            next.add(row.id);
-                          }
-                          return next;
-                        });
-                      }}
-                      className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
-                      aria-label={`Select ${row.title}`}
-                    />
                   </td>
                 </tr>
               ))}
