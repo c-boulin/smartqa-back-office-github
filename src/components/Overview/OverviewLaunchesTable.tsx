@@ -2088,7 +2088,7 @@ const OverviewLaunchesTable: React.FC = () => {
                   className="absolute left-0 right-0 z-30 mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-xl flex flex-col"
                   style={{ maxHeight: '15rem' }}
                 >
-                  <div className="overflow-y-auto flex-1" style={{ maxHeight: '12rem' }}>
+                  <div className="overflow-y-auto flex-1 sidebar-project-scrollbar" style={{ maxHeight: '12rem' }}>
                     {projectsLoading ? (
                       <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -2126,7 +2126,7 @@ const OverviewLaunchesTable: React.FC = () => {
                               )}
                               <span className="min-w-0 flex-1 flex items-center gap-1.5 overflow-hidden">
                                 {opt.country && (
-                                  <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-gray-300">
+                                  <span className="shrink-0 text-xs font-semibold text-slate-400 dark:text-slate-500">
                                     {opt.country}
                                   </span>
                                 )}
