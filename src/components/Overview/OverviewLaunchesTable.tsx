@@ -2134,7 +2134,7 @@ const OverviewLaunchesTable: React.FC = () => {
                                   {opt.name}
                                 </span>
                                 {opt.project_type && (
-                                  <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300">
+                                  <span className="shrink-0 text-xs font-semibold text-slate-400 dark:text-slate-500">
                                     {opt.project_type}
                                   </span>
                                 )}
