@@ -2028,7 +2028,7 @@ const OverviewLaunchesTable: React.FC = () => {
             <div ref={projectsFilterDropdownRef} className="relative">
               {/* Closed state: summary button; open state: search input */}
               {projectsDropdownOpen ? (
-                <div className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800/50 border border-cyan-500 dark:border-cyan-500/70 rounded-lg flex items-center gap-2">
+                <div className="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-cyan-500 dark:border-cyan-500/70 rounded-md flex items-center gap-2">
                   <Search className="w-4 h-4 text-slate-400 dark:text-gray-400 shrink-0" />
                   <input
                     type="text"
@@ -2060,8 +2060,8 @@ const OverviewLaunchesTable: React.FC = () => {
                   aria-haspopup="listbox"
                   aria-labelledby="ov-projects-filter-label ov-projects-filter-trigger"
                   onClick={() => setProjectsDropdownOpen(true)}
-                  className={`w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 focus:border-transparent hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors text-left flex items-center justify-between ${
-                    selectedProjectIds.length > 0 ? 'border-cyan-500/50 dark:border-cyan-500/40 bg-slate-200 dark:bg-slate-700/50' : ''
+                  className={`w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 focus:border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors text-left flex items-center justify-between ${
+                    selectedProjectIds.length > 0 ? 'border-cyan-500/50 dark:border-cyan-500/40' : ''
                   }`}
                   data-mipqa="ov-projects-filter-trigger"
                 >
