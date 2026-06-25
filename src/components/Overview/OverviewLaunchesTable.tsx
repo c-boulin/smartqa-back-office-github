@@ -2472,6 +2472,11 @@ const OverviewLaunchesTable: React.FC = () => {
                           {item.durationLabel}
                         </span>
                       </div>
+                      {isFailed && item.failMessage != null && item.failMessage !== '' ? (
+                        <p className="mt-1.5 line-clamp-2 text-xs text-red-700 dark:text-red-300 font-mono [overflow-wrap:anywhere]">
+                          {item.failMessage}
+                        </p>
+                      ) : null}
                     </td>
                     <td className="whitespace-nowrap py-3 px-2 align-top text-slate-700 dark:text-slate-300">
                       <span className="inline-flex items-center gap-1">
