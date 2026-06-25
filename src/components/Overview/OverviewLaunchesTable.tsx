@@ -2386,7 +2386,7 @@ const OverviewLaunchesTable: React.FC = () => {
                 return (
                   <tr
                     key={rowKey}
-                    className={`transition-colors ${isFailed ? 'bg-red-100 dark:bg-red-900/10 hover:bg-red-200/70 dark:hover:bg-red-900/20' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
+                    className={`transition-colors ${isFailed ? 'bg-red-100 dark:bg-red-900/40 hover:bg-red-200/70 dark:hover:bg-red-900/60' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
                   >
                     <td className="py-3 pl-4 pr-2 align-top text-slate-400">
                       <span className="inline-flex p-1" aria-hidden="true" />
