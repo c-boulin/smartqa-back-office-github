@@ -1,4 +1,5 @@
 import { apiService } from './api';
+import { projectsApiService, type ApiProject } from './projectsApi';
 
 export interface OverviewWidgetsWindow {
   from: string;
@@ -178,18 +179,52 @@ export interface OverviewLaunchesProjectOption {
   name: string;
 }
 
+const PER_PAGE = 200;
+
 /**
- * Fetches the list of projects that have at least one launch entry.
- * Calls GET /widgets/overview/launches/projects (server returns [{id, name}] sorted by name).
+ * Collects distinct projectIds from all launch pages (no filters), then resolves names from
+ * the projects API. Only projects that appear in at least one launch row are returned.
  */
 export async function fetchAllOverviewLaunchesProjectOptions(): Promise<OverviewLaunchesProjectOption[]> {
-  return apiService.authenticatedRequest('/widgets/overview/launches/projects', {
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-  }) as Promise<OverviewLaunchesProjectOption[]>;
+  // Fetch first launch page to know total pages.
+  const first = await fetchOverviewLaunches({ page: 1, perPage: PER_PAGE });
+  const projectIds = new Set<number>(first.launches.map(l => l.projectId));
+
+  if (first.meta.lastPage > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: first.meta.lastPage - 1 }, (_, i) =>
+        fetchOverviewLaunches({ page: i + 2, perPage: PER_PAGE }),
+      ),
+    );
+    for (const page of rest) {
+      for (const l of page.launches) projectIds.add(l.projectId);
+    }
+  }
+
+  if (projectIds.size === 0) return [];
+
+  // Resolve names: fetch all project pages and keep only those whose id is in the set.
+  const firstProjects = await projectsApiService.getProjectsWithSort(1, 100);
+  const allProjects: ApiProject[] = [...firstProjects.data];
+  const totalProjectPages = Math.max(1, Math.ceil(firstProjects.meta.totalItems / firstProjects.meta.itemsPerPage));
+  if (totalProjectPages > 1) {
+    const restProjects = await Promise.all(
+      Array.from({ length: totalProjectPages - 1 }, (_, i) =>
+        projectsApiService.getProjectsWithSort(i + 2, 100),
+      ),
+    );
+    for (const res of restProjects) allProjects.push(...res.data);
+  }
+
+  const options: OverviewLaunchesProjectOption[] = allProjects
+    .filter(p => projectIds.has(p.attributes.id))
+    .map(p => ({ id: p.attributes.id, name: p.attributes.title ?? '' }));
+
+  options.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+  return options;
 }
+
 
 /**
  * Fetches execution rows for the Overview Launches tab (Robot XML mirror joined to executions).
