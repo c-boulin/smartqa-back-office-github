@@ -2380,10 +2380,13 @@ const OverviewLaunchesTable: React.FC = () => {
               ) : null}
               {filteredSuiteItems.map(item => {
                 const rowKey = suiteListItemRowKey(item);
+                const isFailed =
+                  item.statusBand === 'failed' ||
+                  item.statusLabel.toUpperCase().includes('FAIL');
                 return (
                   <tr
                     key={rowKey}
-                    className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+                    className={`transition-colors ${isFailed ? 'bg-red-50/60 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
                   >
                     <td className="py-3 pl-4 pr-2 align-top text-slate-400">
                       <span className="inline-flex p-1" aria-hidden="true" />
