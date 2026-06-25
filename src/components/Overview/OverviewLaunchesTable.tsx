@@ -22,17 +22,20 @@ import { endOfDay, format, isEqual, isSameDay, startOfDay } from 'date-fns';
 import { convertUtcToLocalDisplay } from '../../utils/dateHelpers';
 import {
   fetchAllOverviewLaunchesProjectOptions,
+  fetchOverviewDefectTypes,
   fetchOverviewLaunchHistory,
   fetchOverviewLaunches,
   fetchOverviewLaunchSuiteItems,
   fetchOverviewSuiteKwLogItems,
   fetchOverviewTestLogItems,
+  type OverviewDefectType,
   type OverviewLaunchesMeta,
   type OverviewLaunchApiRow,
   type OverviewLaunchesProjectOption,
   type OverviewLaunchSuiteItemApiRow,
   type OverviewLaunchesExecutionFilter,
   type OverviewLaunchesSortColumn,
+  type OverviewTestDefect,
   type OverviewTestLogItemsResponse,
 } from '../../services/overviewWidgetsApi';
 import { OverviewLaunchStartTimeRangePicker } from './OverviewLaunchStartTimeRangePicker';
@@ -41,6 +44,7 @@ import {
   type HistoryLaunchTooltipButtonModel,
 } from './OverviewLaunchHistoryTooltip';
 import OverviewTestLogView from './OverviewTestLogView';
+import { DefectSelectionModal } from './DefectSelectionModal';
 
 /**
  * Suite list row opens either test log or suite-keyword log (ReportPortal: every name is a link).
@@ -897,6 +901,19 @@ const OverviewLaunchesTable: React.FC = () => {
   const [executionFilter, setExecutionFilter] = useState<OverviewLaunchesExecutionFilter>('all');
   const prevStartTimePresetRef = useRef<StartTimePreset>(startTimePreset);
 
+  // Defect types (cached once)
+  const [defectTypes, setDefectTypes] = useState<OverviewDefectType[]>([]);
+  // Map slug → defect type for fast look-up in the suite items table
+  const defectTypeBySlug = useMemo<Map<string, OverviewDefectType>>(
+    () => new Map(defectTypes.map(d => [d.slug, d])),
+    [defectTypes],
+  );
+  // Modal state
+  const [defectModalTarget, setDefectModalTarget] = useState<{
+    overviewTestId: number;
+    testName: string;
+  } | null>(null);
+
   const customFromApi = useMemo(() => {
     if (startTimePreset !== 'custom' || customRangeStart === null || customRangeEnd === null) {
       return '';
@@ -931,6 +948,13 @@ const OverviewLaunchesTable: React.FC = () => {
     }
     prevStartTimePresetRef.current = startTimePreset;
   }, [searchParams, startTimePreset]);
+
+  // Fetch defect types once on mount
+  useEffect(() => {
+    fetchOverviewDefectTypes()
+      .then(data => setDefectTypes(data))
+      .catch(() => { /* non-critical — table still works without colors */ });
+  }, []);
 
   const historySelectedLaunchIdFromSearch = useMemo(
     () => positiveIntFromSearchParam(searchParams.get('history_selected_tre')),
@@ -1797,6 +1821,20 @@ const OverviewLaunchesTable: React.FC = () => {
     [filteredSuiteItems],
   );
 
+  const isCronContext = executionFilter === 'cron';
+
+  /** Updates the defectType slug on a suite item after the modal applies. */
+  const handleDefectApplied = useCallback((overviewTestId: number, applied: OverviewTestDefect | null) => {
+    setSuiteListItems(prev => {
+      if (prev === null) return prev;
+      return prev.map(item =>
+        item.overviewTestId === overviewTestId
+          ? { ...item, defectType: applied !== null ? applied.defectType.slug : null }
+          : item,
+      );
+    });
+  }, []);
+
   /**
    * Toggles suite List view sort (client-side); new text columns default A→Z, start time chronological.
    */
@@ -1935,6 +1973,7 @@ const OverviewLaunchesTable: React.FC = () => {
   }, [suiteListLaunchTooltip]);
 
   return (
+    <>
     <div>
       {error ? (
         <p className="mb-3 text-sm text-red-600 dark:text-red-400" role="alert">
@@ -2505,11 +2544,46 @@ const OverviewLaunchesTable: React.FC = () => {
                         : item.startTimeRelative}
                     </td>
                     <td className="py-3 px-2 align-top text-slate-700 dark:text-slate-300">
-                      {item.defectType === null ||
-                      item.defectType === '' ? (
-                        <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>
+                      {isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
+                        (() => {
+                          const resolved = item.defectType ? defectTypeBySlug.get(item.defectType) : null;
+                          return resolved != null ? (
+                            <button
+                              type="button"
+                              data-mipqa="defect-badge-btn"
+                              onClick={() => setDefectModalTarget({ overviewTestId: item.overviewTestId!, testName: item.name })}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-slate-600 bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-200 hover:border-slate-400 hover:bg-slate-700 transition-colors"
+                            >
+                              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: resolved.color }} />
+                              {resolved.name}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              data-mipqa="defect-make-decision-btn"
+                              onClick={() => setDefectModalTarget({ overviewTestId: item.overviewTestId!, testName: item.name })}
+                              className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-600 bg-transparent px-2.5 py-0.5 text-xs font-medium text-slate-400 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
+                            >
+                              Make Decision
+                            </button>
+                          );
+                        })()
                       ) : (
-                        item.defectType
+                        item.defectType === null || item.defectType === '' ? (
+                          <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>
+                        ) : (
+                          (() => {
+                            const dt = defectTypeBySlug.get(item.defectType!);
+                            return dt != null ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs">
+                                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dt.color }} />
+                                {dt.name}
+                              </span>
+                            ) : (
+                              <span>{item.defectType}</span>
+                            );
+                          })()
+                        )
                       )}
                     </td>
                   </tr>
@@ -2919,6 +2993,16 @@ const OverviewLaunchesTable: React.FC = () => {
         />
       ) : null}
     </div>
+    {defectModalTarget !== null && (
+      <DefectSelectionModal
+        overviewTestId={defectModalTarget.overviewTestId}
+        testName={defectModalTarget.testName}
+        defectTypes={defectTypes}
+        onClose={() => setDefectModalTarget(null)}
+        onApplied={applied => handleDefectApplied(defectModalTarget.overviewTestId, applied)}
+      />
+    )}
+    </>
   );
 };
 

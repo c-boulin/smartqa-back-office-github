@@ -425,6 +425,73 @@ export async function fetchOverviewTestLogItems(
   ) as Promise<OverviewTestLogItemsResponse>;
 }
 
+// ---------------------------------------------------------------------------
+// Defect types
+// ---------------------------------------------------------------------------
+
+export interface OverviewDefectType {
+  id: number;
+  name: string;
+  slug: string;
+  color: string;
+  isDefault: boolean;
+}
+
+export interface OverviewDefectTypesResponse {
+  data: OverviewDefectType[];
+}
+
+export async function fetchOverviewDefectTypes(): Promise<OverviewDefectType[]> {
+  const res = await apiService.authenticatedRequest('/overview-defect-types', {
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+  }) as OverviewDefectTypesResponse;
+  return res.data;
+}
+
+// ---------------------------------------------------------------------------
+// Test defect assignment
+// ---------------------------------------------------------------------------
+
+export interface OverviewTestDefect {
+  id: number;
+  overviewTestId: number;
+  defectType: { id: number; name: string; slug: string; color: string };
+  comment: string;
+  ignoreInAutoAnalysis: boolean;
+  assignedBy: number | null;
+  updatedAt: string;
+}
+
+export interface OverviewTestDefectResponse {
+  data: OverviewTestDefect | null;
+}
+
+export async function fetchOverviewTestDefect(overviewTestId: number): Promise<OverviewTestDefect | null> {
+  const res = await apiService.authenticatedRequest(`/overview-tests/${overviewTestId}/defect`, {
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+  }) as OverviewTestDefectResponse;
+  return res.data;
+}
+
+export async function putOverviewTestDefect(
+  overviewTestId: number,
+  payload: { defect_type_id: number; comment: string; ignore_in_auto_analysis: boolean },
+): Promise<OverviewTestDefect> {
+  const res = await apiService.authenticatedRequest(`/overview-tests/${overviewTestId}/defect`, {
+    method: 'PUT',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }) as OverviewTestDefectResponse;
+  return res.data!;
+}
+
+export async function deleteOverviewTestDefect(overviewTestId: number): Promise<void> {
+  await apiService.authenticatedRequest(`/overview-tests/${overviewTestId}/defect`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+  });
+}
+
 /**
  * Same JSON shape as test log: direct child `overview_kws` under a top-level suite-scoped keyword.
  */
