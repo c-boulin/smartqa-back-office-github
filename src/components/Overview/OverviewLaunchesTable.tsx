@@ -1821,7 +1821,9 @@ const OverviewLaunchesTable: React.FC = () => {
     [filteredSuiteItems],
   );
 
-  const isCronContext = executionFilter === 'cron';
+  // A launch is a cron launch if the filter is set to 'cron' OR if the specific
+  // drilled-into launch has no human creator (createdByUserId === null means cron/automation).
+  const isCronContext = executionFilter === 'cron' || drillLaunch?.createdByUserId === null;
 
   /** Updates the defectType slug on a suite item after the modal applies. */
   const handleDefectApplied = useCallback((overviewTestId: number, applied: OverviewTestDefect | null) => {
