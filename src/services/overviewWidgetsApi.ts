@@ -1,5 +1,4 @@
 import { apiService } from './api';
-import { projectsApiService, type ApiProject } from './projectsApi';
 
 export interface OverviewWidgetsWindow {
   from: string;
@@ -71,6 +70,7 @@ export async function fetchOverviewWidgets(): Promise<OverviewWidgetsResponse> {
 /** One Overview Launches tab row (joins test_run_executions with overview_* XML mirror). */
 export interface OverviewLaunchApiRow {
   testRunExecutionId: number;
+  projectId: number;
   displayName: string;
   /** Root suite row `overview_suites.name` (MIN suite_id where parent is null) for this robot. */
   rootOverviewSuiteName: string | null;
@@ -172,72 +172,23 @@ export interface FetchOverviewLaunchesParams {
   testRunExecutionId?: number;
 }
 
-/** Label + id for overview launch project filter (non-template projects). */
+/** Label + id for overview launch project filter (projects that have at least one launch). */
 export interface OverviewLaunchesProjectOption {
   id: number;
   name: string;
 }
 
-/** Session cache so revisiting the Launches tab does not re-fetch every project page. */
-let overviewLaunchesProjectOptionsCache: OverviewLaunchesProjectOption[] | null = null;
-/** Single in-flight load so concurrent callers share one network round-trip set. */
-let overviewLaunchesProjectOptionsInflight: Promise<OverviewLaunchesProjectOption[]> | null = null;
-
 /**
- * Maps `/projects` rows to Launches filter options (id + title).
- */
-function mapApiProjectsToOverviewOptions(data: ApiProject[]): OverviewLaunchesProjectOption[] {
-  return data.map((p: ApiProject) => ({
-    id: p.attributes.id,
-    name: p.attributes.title ?? '',
-  }));
-}
-
-/**
- * Fetches every page of non-template projects (paginated server-side) for the Launches tab filter.
- * Pages after the first are requested in parallel to reduce total wait time.
- */
-async function loadAllOverviewLaunchesProjectOptions(): Promise<OverviewLaunchesProjectOption[]> {
-  const perPage = 100;
-  const first = await projectsApiService.getProjectsWithSort(1, perPage);
-  const options: OverviewLaunchesProjectOption[] = mapApiProjectsToOverviewOptions(first.data);
-  const totalPages = Math.max(1, Math.ceil(first.meta.totalItems / first.meta.itemsPerPage));
-
-  if (totalPages > 1) {
-    const restPages = await Promise.all(
-      Array.from({ length: totalPages - 1 }, (_, i) =>
-        projectsApiService.getProjectsWithSort(i + 2, perPage),
-      ),
-    );
-    for (const res of restPages) {
-      options.push(...mapApiProjectsToOverviewOptions(res.data));
-    }
-  }
-
-  options.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-
-  return options;
-}
-
-/**
- * Loads all non-template projects for the Launches tab filter (cached for the SPA session).
+ * Fetches the list of projects that have at least one launch entry.
+ * Calls GET /widgets/overview/launches/projects (server returns [{id, name}] sorted by name).
  */
 export async function fetchAllOverviewLaunchesProjectOptions(): Promise<OverviewLaunchesProjectOption[]> {
-  if (overviewLaunchesProjectOptionsCache !== null) {
-    return overviewLaunchesProjectOptionsCache;
-  }
-  if (overviewLaunchesProjectOptionsInflight === null) {
-    overviewLaunchesProjectOptionsInflight = loadAllOverviewLaunchesProjectOptions()
-      .then(data => {
-        overviewLaunchesProjectOptionsCache = data;
-        return data;
-      })
-      .finally(() => {
-        overviewLaunchesProjectOptionsInflight = null;
-      });
-  }
-
-  return overviewLaunchesProjectOptionsInflight;
+  return apiService.authenticatedRequest('/widgets/overview/launches/projects', {
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+  }) as Promise<OverviewLaunchesProjectOption[]>;
 }
 
 /**
