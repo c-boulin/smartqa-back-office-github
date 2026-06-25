@@ -177,6 +177,8 @@ export interface FetchOverviewLaunchesParams {
 export interface OverviewLaunchesProjectOption {
   id: number;
   name: string;
+  country?: string;
+  project_type?: string;
 }
 
 const PER_PAGE = 200;
@@ -218,7 +220,15 @@ export async function fetchAllOverviewLaunchesProjectOptions(): Promise<Overview
 
   const options: OverviewLaunchesProjectOption[] = allProjects
     .filter(p => projectIds.has(p.attributes.id))
-    .map(p => ({ id: p.attributes.id, name: p.attributes.title ?? '' }));
+    .map(p => {
+      const pt = p.attributes.projectType ?? p.attributes.project_type;
+      return {
+        id: p.attributes.id,
+        name: p.attributes.title ?? '',
+        country: p.attributes.country ?? undefined,
+        project_type: typeof pt === 'string' ? pt : (pt as { name?: string })?.name ?? undefined,
+      };
+    });
 
   options.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
