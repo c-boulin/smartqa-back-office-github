@@ -1408,14 +1408,6 @@ const OverviewLaunchesTable: React.FC = () => {
   }, [rows]);
 
   useEffect(() => {
-    setSelectedLaunchRowIds(new Set());
-  }, [page, perPage, drillLaunch?.id]);
-
-  useEffect(() => {
-    setSelectedSuiteRowKeys(new Set());
-  }, [suiteListItems]);
-
-  useEffect(() => {
     setSuiteListItems(null);
     setSuiteItemsError(null);
     setSuiteSort({ column: 'start_time', direction: 'asc' });
