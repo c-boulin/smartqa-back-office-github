@@ -18,11 +18,14 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type {
+  OverviewDefectType,
+  OverviewTestDefect,
   OverviewTestLogItemApiRow,
   OverviewTestLogKeywordApiNode,
   OverviewTestLogTreeNode,
 } from '../../services/overviewWidgetsApi';
 import { buildAssetsUrlFromObjectKey } from '../../env';
+import { DefectSelectionModal } from './DefectSelectionModal';
 
 /** Identifiers for the test-detail sub-tabs (All logs / Item details have body content; others placeholder or empty). */
 export type OverviewTestLogDetailTabId = 'all_logs';
@@ -71,6 +74,14 @@ export interface OverviewTestLogViewProps {
   onRefresh: () => void;
   hoveredTimeRowKey: string | null;
   onHoverTimeRow: (key: string | null) => void;
+  /** When true and the test is failed, show an active "Make decision" button. */
+  isCronContext?: boolean;
+  /** The overviewTestId for this test log (null for suite-keyword logs). */
+  overviewTestId?: number | null;
+  /** Cached defect types from the parent (used in the modal). */
+  defectTypes?: OverviewDefectType[];
+  /** Called after a defect decision is applied so the parent can update the suite list row. */
+  onDefectApplied?: (overviewTestId: number, applied: OverviewTestDefect | null) => void;
 }
 
 /**
@@ -575,7 +586,16 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   onRefresh,
   hoveredTimeRowKey,
   onHoverTimeRow,
+  isCronContext = false,
+  overviewTestId = null,
+  defectTypes = [],
+  onDefectApplied,
 }) => {
+  const [defectModalOpen, setDefectModalOpen] = useState(false);
+
+  const isFailed = normalizeStatusBand(undefined, testStatusLabel) === 'failed'
+    || testStatusLabel.toUpperCase().includes('FAIL');
+  const canMakeDecision = isCronContext && isFailed && overviewTestId !== null;
 
   const showHistoryButtonTooltip = (
     button: OverviewTestLogViewProps['historyButtons'][number],
@@ -629,6 +649,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   const showNoResultsEmptyState = !loading && error === null && items.length === 0;
 
   return (
+    <>
     <div className="min-h-[12rem] p-4 text-sm text-slate-800 dark:text-slate-200">
       <div className="mb-4 flex justify-end">
         <div className="flex flex-wrap items-center gap-2">
@@ -748,8 +769,12 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
         <div className="flex flex-wrap items-center gap-3 border-l border-slate-300 pl-4 dark:border-slate-600">
           <button
             type="button"
-            disabled
-            className="cursor-not-allowed rounded border border-slate-300 bg-slate-200 px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-400"
+            disabled={!canMakeDecision}
+            onClick={() => { if (canMakeDecision) setDefectModalOpen(true); }}
+            data-mipqa="test-log-make-decision-btn"
+            className={canMakeDecision
+              ? 'rounded border border-cyan-500 bg-slate-800 px-3 py-1 text-xs font-medium text-cyan-400 hover:bg-slate-700 transition-colors'
+              : 'cursor-not-allowed rounded border border-slate-300 bg-slate-200 px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-400'}
           >
             Make decision
           </button>
@@ -891,6 +916,19 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
       </div>
 
     </div>
+    {defectModalOpen && overviewTestId !== null && (
+      <DefectSelectionModal
+        overviewTestId={overviewTestId}
+        testName={testDisplayName}
+        defectTypes={defectTypes}
+        onClose={() => setDefectModalOpen(false)}
+        onApplied={applied => {
+          onDefectApplied?.(overviewTestId, applied);
+          setDefectModalOpen(false);
+        }}
+      />
+    )}
+    </>
   );
 };
 

@@ -2349,6 +2349,10 @@ const OverviewLaunchesTable: React.FC = () => {
             onRefresh={() => void loadTestLog()}
             hoveredTimeRowKey={hoveredLogTimeRowKey}
             onHoverTimeRow={setHoveredLogTimeRowKey}
+            isCronContext={isCronContext}
+            overviewTestId={testLogTarget.kind === 'test' ? testLogTarget.overviewTestId : null}
+            defectTypes={defectTypes}
+            onDefectApplied={handleDefectApplied}
           />
         ) : inSuiteListView ? (
           <table className="w-full min-w-[900px] table-fixed text-sm">
