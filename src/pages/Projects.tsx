@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import {
   Plus, Search, SquarePen, Trash2, Copy, ChevronLeft, ChevronRight,
-  Loader, MoreVertical, List, LayoutGrid, ChevronUp, ChevronDown, CheckCircle, Upload
+  Loader, MoreVertical, List, LayoutGrid, ChevronUp, ChevronDown, CheckCircle
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Button from '../components/UI/Button';
@@ -21,7 +21,6 @@ import ProjectCard from '../components/Project/ProjectCard';
 import ProjectTitle from '../components/Project/ProjectTitle';
 import CreateProjectModal, { CreateProjectFormData } from '../components/Project/CreateProjectModal';
 import EditProjectModal, { EditProjectFormData } from '../components/Project/EditProjectModal';
-import ImportProjectModal from '../components/Project/ImportProjectModal';
 import SearchAutocomplete, { Suggestion } from '../components/UI/SearchAutocomplete';
 
 const ProjectFormModal: React.FC<{
@@ -356,7 +355,6 @@ const Projects: React.FC = () => {
   const [filterMode, setFilterMode] = useState<'all' | 'my-projects'>('all');
   const [sortBy, setSortBy] = useState('createdAt-desc');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -776,16 +774,6 @@ const Projects: React.FC = () => {
             Create new project
           </button>
         </PermissionGuard>
-        <PermissionGuard permission={PERMISSIONS.PROJECT.IMPORT}>
-          <button
-            data-mipqa="import-project-button"
-            onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 border border-cyan-500 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 text-sm font-medium rounded-xl transition-all"
-          >
-            <Upload className="w-4 h-4" />
-            Import from File
-          </button>
-        </PermissionGuard>
       </div>
 
       {/* Active filters */}
@@ -1050,15 +1038,6 @@ const Projects: React.FC = () => {
         templatesLoading={templatesLoadingForModal}
       />
 
-      <ImportProjectModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onSuccess={() => {
-          const sortOption = SORT_OPTIONS.find(o => o.value === sortBy);
-          fetchProjectsWithSort(1, sortOption?.param);
-          loadProjects();
-        }}
-      />
 
       <EditProjectModal
         isOpen={isEditModalOpen}
