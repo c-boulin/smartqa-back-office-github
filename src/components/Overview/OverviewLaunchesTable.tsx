@@ -14,7 +14,9 @@ import {
   Link2,
   Loader2,
   Menu,
+  Search,
   User,
+  X,
 } from 'lucide-react';
 import { endOfDay, format, isEqual, isSameDay, startOfDay } from 'date-fns';
 import { convertUtcToLocalDisplay } from '../../utils/dateHelpers';
@@ -891,6 +893,7 @@ const OverviewLaunchesTable: React.FC = () => {
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
   const [projectsDropdownOpen, setProjectsDropdownOpen] = useState(false);
+  const [projectsSearchTerm, setProjectsSearchTerm] = useState('');
   const projectsFilterDropdownRef = useRef<HTMLDivElement>(null);
   const [startTimePreset, setStartTimePreset] = useState<StartTimePreset>('any');
   const [customRangeStart, setCustomRangeStart] = useState<Date | null>(null);
@@ -1160,10 +1163,12 @@ const OverviewLaunchesTable: React.FC = () => {
         return;
       }
       setProjectsDropdownOpen(false);
+      setProjectsSearchTerm('');
     };
     const closeOnEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setProjectsDropdownOpen(false);
+        setProjectsSearchTerm('');
       }
     };
     document.addEventListener('pointerdown', closeOnOutsidePointer, true);
@@ -1915,13 +1920,19 @@ const OverviewLaunchesTable: React.FC = () => {
       return 'No projects';
     }
     if (selectedProjectIds.length === 0) {
-      return 'All';
+      return 'All projects';
     }
     if (selectedProjectIds.length === 1) {
       return projectOptions.find(o => o.id === selectedProjectIds[0])?.name ?? '1 project';
     }
     return `${selectedProjectIds.length} projects`;
   }, [projectsLoading, projectOptions, selectedProjectIds]);
+
+  const filteredProjectOptions = useMemo(() => {
+    if (!projectsSearchTerm) return projectOptions;
+    const lower = projectsSearchTerm.toLowerCase();
+    return projectOptions.filter(o => o.name.toLowerCase().includes(lower));
+  }, [projectOptions, projectsSearchTerm]);
 
   /**
    * Payload for {@link HistoryLaunchTooltip}: current drilled launch (suite list parent execution).
@@ -2015,46 +2026,124 @@ const OverviewLaunchesTable: React.FC = () => {
               Projects
             </span>
             <div ref={projectsFilterDropdownRef} className="relative">
-              <button
-                type="button"
-                id="ov-projects-filter-trigger"
-                aria-expanded={projectsDropdownOpen}
-                aria-haspopup="listbox"
-                aria-labelledby="ov-projects-filter-label ov-projects-filter-trigger"
-                onClick={() => setProjectsDropdownOpen(o => !o)}
-                className="flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-              >
-                <span className="min-w-0 truncate">{projectsDropdownSummary}</span>
-                <ChevronDown
-                  className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${projectsDropdownOpen ? 'rotate-180' : ''}`}
-                  aria-hidden
-                />
-              </button>
+              {/* Closed state: summary button; open state: search input */}
               {projectsDropdownOpen ? (
+                <div className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800/50 border border-cyan-500 dark:border-cyan-500/70 rounded-lg flex items-center gap-2">
+                  <Search className="w-4 h-4 text-slate-400 dark:text-gray-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search projects"
+                    value={projectsSearchTerm}
+                    onChange={e => setProjectsSearchTerm(e.target.value)}
+                    className="flex-1 min-w-0 bg-transparent text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none"
+                    autoFocus
+                    data-mipqa="ov-projects-search-input"
+                  />
+                  {projectsSearchTerm && (
+                    <button
+                      onClick={() => setProjectsSearchTerm('')}
+                      className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <ChevronDown
+                    className="w-4 h-4 text-slate-400 rotate-180 shrink-0 cursor-pointer"
+                    onClick={() => { setProjectsDropdownOpen(false); setProjectsSearchTerm(''); }}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  id="ov-projects-filter-trigger"
+                  aria-expanded={projectsDropdownOpen}
+                  aria-haspopup="listbox"
+                  aria-labelledby="ov-projects-filter-label ov-projects-filter-trigger"
+                  onClick={() => setProjectsDropdownOpen(true)}
+                  className={`w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 focus:border-transparent hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors text-left flex items-center justify-between ${
+                    selectedProjectIds.length > 0 ? 'border-cyan-500/50 dark:border-cyan-500/40 bg-slate-200 dark:bg-slate-700/50' : ''
+                  }`}
+                  data-mipqa="ov-projects-filter-trigger"
+                >
+                  <span className={`min-w-0 truncate text-sm font-medium ${selectedProjectIds.length > 0 ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-700 dark:text-gray-300'}`}>
+                    {projectsDropdownSummary}
+                  </span>
+                  {projectsLoading ? (
+                    <Loader2 className="w-4 h-4 text-slate-400 dark:text-gray-400 animate-spin shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400 dark:text-gray-400 shrink-0" />
+                  )}
+                </button>
+              )}
+
+              {/* Dropdown Menu */}
+              {projectsDropdownOpen && (
                 <div
                   role="listbox"
                   aria-labelledby="ov-projects-filter-label"
-                  className="absolute left-0 right-0 z-30 mt-1 max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-slate-300 bg-white p-2 text-sm shadow-lg dark:border-slate-600 dark:bg-slate-800"
+                  className="absolute left-0 right-0 z-30 mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-xl flex flex-col"
+                  style={{ maxHeight: '15rem' }}
                 >
-                  {projectsLoading ? (
-                    <p className="text-slate-500 dark:text-slate-400">Loading projects…</p>
-                  ) : projectOptions.length === 0 ? (
-                    <p className="text-slate-500 dark:text-slate-400">No projects available.</p>
-                  ) : (
-                    projectOptions.map(opt => (
-                      <label key={opt.id} className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedProjectIds.includes(opt.id)}
-                          onChange={() => toggleProjectFilter(opt.id)}
-                          className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-slate-600"
-                        />
-                        <span className="text-slate-800 dark:text-slate-200">{opt.name}</span>
-                      </label>
-                    ))
+                  <div className="overflow-y-auto flex-1" style={{ maxHeight: '12rem' }}>
+                    {projectsLoading ? (
+                      <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Loading projects…
+                      </div>
+                    ) : filteredProjectOptions.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
+                        {projectsSearchTerm ? `No projects found for "${projectsSearchTerm}"` : 'No projects available.'}
+                      </div>
+                    ) : (
+                      <>
+                        {filteredProjectOptions.length > 0 && (
+                          <div className="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500">
+                            {projectsSearchTerm ? `${filteredProjectOptions.length} result${filteredProjectOptions.length !== 1 ? 's' : ''}` : 'Projects'}
+                          </div>
+                        )}
+                        {filteredProjectOptions.map(opt => {
+                          const isSelected = selectedProjectIds.includes(opt.id);
+                          return (
+                            <button
+                              key={opt.id}
+                              role="option"
+                              aria-selected={isSelected}
+                              onClick={() => toggleProjectFilter(opt.id)}
+                              className={`w-full px-3 py-2.5 text-left transition-all duration-150 flex items-center gap-2 overflow-hidden ${
+                                isSelected
+                                  ? 'bg-cyan-500/10 dark:bg-cyan-500/15 border-l-[3px] border-cyan-500 dark:border-cyan-400'
+                                  : 'border-l-[3px] border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                              }`}
+                              title={opt.name}
+                              data-mipqa={`ov-project-option-${opt.id}`}
+                            >
+                              {isSelected && (
+                                <span className="text-cyan-500 dark:text-cyan-400 font-bold text-xs shrink-0">✓</span>
+                              )}
+                              <span className={`text-sm font-semibold leading-tight truncate min-w-0 ${isSelected ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-800 dark:text-gray-200'}`}>
+                                {opt.name}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Footer: clear selection */}
+                  {selectedProjectIds.length > 0 && (
+                    <div className="shrink-0 border-t border-slate-200 dark:border-slate-700">
+                      <button
+                        onClick={() => { setSelectedProjectIds([]); setPage(1); }}
+                        className="w-full px-4 py-2.5 text-left text-sm font-medium transition-colors flex items-center gap-2 rounded-b-lg text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 hover:text-cyan-600 dark:hover:text-cyan-400"
+                        data-mipqa="ov-projects-clear-filter"
+                      >
+                        Show all projects
+                      </button>
+                    </div>
                   )}
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
           <div className="flex w-full min-w-[12rem] max-w-[18rem] flex-col gap-1 sm:w-auto">
