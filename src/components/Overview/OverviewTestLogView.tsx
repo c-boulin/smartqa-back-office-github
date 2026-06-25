@@ -586,6 +586,8 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   onRefresh,
   hoveredTimeRowKey,
   onHoverTimeRow,
+  suiteListStatusLabel,
+  suiteListStatusBand,
   isCronContext = false,
   overviewTestId = null,
   defectTypes = [],
@@ -593,8 +595,12 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
 }) => {
   const [defectModalOpen, setDefectModalOpen] = useState(false);
 
-  const isFailed = normalizeStatusBand(undefined, testStatusLabel) === 'failed'
-    || testStatusLabel.toUpperCase().includes('FAIL');
+  // Use suite-list status as authoritative source (available immediately, before the log payload loads)
+  const isFailed =
+    normalizeStatusBand(suiteListStatusBand, suiteListStatusLabel) === 'failed' ||
+    suiteListStatusLabel.toUpperCase().includes('FAIL') ||
+    normalizeStatusBand(undefined, testStatusLabel) === 'failed' ||
+    testStatusLabel.toUpperCase().includes('FAIL');
   const canMakeDecision = isCronContext && isFailed && overviewTestId !== null;
 
   const showHistoryButtonTooltip = (
