@@ -487,7 +487,7 @@ function KeywordLogAccordionBlock(
 
   return (
     <React.Fragment key={`${rowKey}-frag`}>
-      <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+      <tr className={`${normalizeStatusBand(node.statusBand, node.statusLabel) === 'failed' ? 'bg-red-50/60 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}>
         <td
           className="min-w-0 break-words py-2.5 pr-2 align-top font-mono text-xs text-slate-800 dark:text-slate-200"
           style={{ paddingLeft: `${8 + depth * 16}px` }}
