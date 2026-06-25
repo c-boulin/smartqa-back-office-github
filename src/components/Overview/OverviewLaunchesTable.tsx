@@ -2472,10 +2472,14 @@ const OverviewLaunchesTable: React.FC = () => {
                           {item.durationLabel}
                         </span>
                       </div>
-                      {isFailed && item.failMessage != null && item.failMessage !== '' ? (
-                        <p className="mt-1.5 line-clamp-2 text-xs text-red-700 dark:text-red-300 font-mono [overflow-wrap:anywhere]">
-                          {item.failMessage}
-                        </p>
+                      {isFailed && item.errorMessages != null && item.errorMessages.length > 0 ? (
+                        <div className="mt-1.5 flex flex-col gap-0.5">
+                          {item.errorMessages.map((msg, i) => (
+                            <p key={i} className="line-clamp-2 text-xs text-red-700 dark:text-red-300 font-mono [overflow-wrap:anywhere]">
+                              {msg}
+                            </p>
+                          ))}
+                        </div>
                       ) : null}
                     </td>
                     <td className="whitespace-nowrap py-3 px-2 align-top text-slate-700 dark:text-slate-300">

@@ -331,8 +331,8 @@ export interface OverviewLaunchSuiteItemApiRow {
   startTimeDisplay: string;
   startTimeRaw: string | null;
   defectType: string | null;
-  /** Error/fail message text from the first failed log message; null when not present. */
-  failMessage: string | null;
+  /** Error messages from failed log entries; empty array when none. */
+  errorMessages: string[];
   /** `overview_tests.test_id` when this row is a test; otherwise null. */
   overviewTestId: number | null;
   /** Suite-level `overview_kws.kw_id` when this row is a suite keyword; otherwise null. */
