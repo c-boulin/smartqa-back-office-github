@@ -784,6 +784,10 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
           >
             Make decision
           </button>
+          {/* DEBUG: remove once button works */}
+          <span className="text-[10px] text-yellow-400 font-mono">
+            cron={String(isCronContext)} fail={String(isFailed)} id={String(overviewTestId)}
+          </span>
         </div>
       </div>
 
