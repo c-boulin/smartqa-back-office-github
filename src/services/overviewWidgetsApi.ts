@@ -82,6 +82,8 @@ export interface OverviewLaunchApiRow {
   runnedByLabel: string;
   /** `test_run_executions.created_by` when set. */
   createdByUserId: number | null;
+  /** "cron" when the launch was triggered by automation/scheduler, "app" when triggered by a user. */
+  source: string | null;
   attributeLine: string;
   /** Default Start time column: relative phrase from `overview_statuses.start` (e.g. "5 minutes ago"). */
   startTimeRelative: string;

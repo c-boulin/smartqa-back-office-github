@@ -92,6 +92,7 @@ function mapApiRowToRow(api: OverviewLaunchApiRow): OverviewLaunchRow {
     launchedBy: byLabel,
     runnedByLabel: byLabel,
     createdByUserId: api.createdByUserId,
+    source: api.source ?? null,
     attributeText: api.attributeLine,
     startTimeRelative: api.startTimeRelative,
     startTimeDisplay: api.startTimeDisplay,
@@ -411,6 +412,8 @@ export interface OverviewLaunchRow {
   runnedByLabel: string;
   /** null means the launch was triggered by cron / automation (no human creator). */
   createdByUserId: number | null;
+  /** "cron" when triggered by automation/scheduler, "app" when triggered by a user. */
+  source: string | null;
   attributeText: string;
   description?: string;
   testCasesLine?: string;
@@ -1823,7 +1826,7 @@ const OverviewLaunchesTable: React.FC = () => {
 
   // A launch is a cron launch if the filter is set to 'cron' OR if the specific
   // drilled-into launch has no human creator (createdByUserId === null means cron/automation).
-  const isCronContext = executionFilter === 'cron' || drillLaunch?.createdByUserId === null;
+  const isCronContext = executionFilter === 'cron' || drillLaunch?.source === 'cron';
 
   /** Updates the defectType slug on a suite item after the modal applies. */
   const handleDefectApplied = useCallback((overviewTestId: number, applied: OverviewTestDefect | null) => {
