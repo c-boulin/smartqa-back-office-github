@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { Check, ChevronDown, Search, X } from 'lucide-react';
 import {
   deleteOverviewTestDefect,
   fetchOverviewTestDefect,
@@ -32,7 +33,7 @@ interface DefectSelectionModalProps {
   onApplied: (results: DefectAppliedResult[]) => void;
 }
 
-// ─── Per-row defect type dropdown ────────────────────────────────────────────
+// ─── Per-row defect type dropdown (portalled to escape overflow) ──────────────
 
 interface DefectTypeDropdownProps {
   value: number | null;
@@ -42,23 +43,92 @@ interface DefectTypeDropdownProps {
 
 function DefectTypeDropdown({ value, defectTypes, onChange }: DefectTypeDropdownProps): React.ReactElement {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [search, setSearch] = useState('');
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+
   const selected = value !== null ? defectTypes.find(d => d.id === value) : undefined;
+
+  const filtered = useMemo(
+    () => defectTypes.filter(dt => dt.name.toLowerCase().includes(search.toLowerCase())),
+    [defectTypes, search],
+  );
+
+  const openDropdown = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 220) });
+    setSearch('');
+    setOpen(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (
+        buttonRef.current?.contains(e.target as Node) ||
+        dropdownRef.current?.contains(e.target as Node)
+      ) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  const dropdown = open
+    ? createPortal(
+        <div
+          ref={dropdownRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 9999 }}
+          className="rounded-lg border border-slate-600 bg-slate-800 shadow-2xl"
+        >
+          {/* Search */}
+          <div className="flex items-center gap-1.5 border-b border-slate-700 px-2.5 py-2">
+            <Search className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+            <input
+              type="text"
+              value={search}
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search defect types…"
+              className="flex-1 bg-transparent text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
+            />
+          </div>
+          {/* Options */}
+          <div className="max-h-52 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <p className="px-3 py-2 text-xs text-slate-500">No results</p>
+            ) : (
+              filtered.map(dt => (
+                <button
+                  key={dt.id}
+                  type="button"
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => { onChange(dt.id); setOpen(false); setSearch(''); }}
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-slate-700 ${
+                    value === dt.id ? 'text-cyan-400' : 'text-slate-300'
+                  }`}
+                >
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dt.color }} />
+                  <span className="flex-1 truncate text-left">{dt.name}</span>
+                  {value === dt.id && <Check className="ml-auto h-3 w-3 shrink-0" />}
+                </button>
+              ))
+            )}
+          </div>
+        </div>,
+        document.body,
+      )
+    : null;
+
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen(v => !v)}
+        onClick={openDropdown}
         className={`inline-flex w-full items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
           selected
             ? 'border-slate-600 bg-slate-700 text-slate-200 hover:border-slate-500'
@@ -75,43 +145,48 @@ function DefectTypeDropdown({ value, defectTypes, onChange }: DefectTypeDropdown
         )}
         <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
       </button>
-
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-48 rounded-lg border border-slate-600 bg-slate-800 py-1 shadow-xl">
-          {defectTypes.map(dt => (
-            <button
-              key={dt.id}
-              type="button"
-              onClick={() => { onChange(dt.id); setOpen(false); }}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-slate-700 transition-colors ${
-                value === dt.id ? 'text-cyan-400' : 'text-slate-300'
-              }`}
-            >
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dt.color }} />
-              <span className="truncate">{dt.name}</span>
-              {value === dt.id && <Check className="ml-auto h-3 w-3 shrink-0 text-cyan-400" />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {dropdown}
+    </>
   );
 }
 
-// ─── Single-target grid layout (unchanged look) ───────────────────────────────
+// ─── Single-target grid layout ────────────────────────────────────────────────
 
 interface SingleTargetBodyProps {
-  target: DefectModalTarget;
   defectTypes: OverviewDefectType[];
   state: RowState;
   onStateChange: (patch: Partial<RowState>) => void;
 }
 
 function SingleTargetBody({ defectTypes, state, onStateChange }: SingleTargetBodyProps): React.ReactElement {
+  const [search, setSearch] = useState('');
+  const filtered = useMemo(
+    () => defectTypes.filter(dt => dt.name.toLowerCase().includes(search.toLowerCase())),
+    [defectTypes, search],
+  );
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Search */}
+      <div className="flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2">
+        <Search className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search defect types…"
+          className="flex-1 bg-transparent text-sm text-slate-200 placeholder-slate-500 focus:outline-none"
+        />
+        {search && (
+          <button type="button" onClick={() => setSearch('')} className="text-slate-500 hover:text-slate-300">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Defect type grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-        {defectTypes.map(dt => {
+        {filtered.map(dt => {
           const isSelected = state.defectTypeId === dt.id;
           return (
             <button
@@ -130,6 +205,9 @@ function SingleTargetBody({ defectTypes, state, onStateChange }: SingleTargetBod
             </button>
           );
         })}
+        {filtered.length === 0 && (
+          <p className="col-span-4 py-4 text-center text-xs text-slate-500">No defect types match.</p>
+        )}
       </div>
 
       <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-300" data-mipqa="defect-ignore-label">
@@ -176,8 +254,7 @@ function MultiTargetBody({ targets, defectTypes, rowStates, onRowChange }: Multi
       {targets.map(target => {
         const state = rowStates.get(target.overviewTestId) ?? { defectTypeId: null, comment: '', ignoreInAutoAnalysis: false };
         return (
-          <div key={target.overviewTestId} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
-            {/* Test name */}
+          <div key={target.overviewTestId} className="flex flex-col gap-2.5 py-4 first:pt-0 last:pb-0">
             <p
               className="truncate text-sm font-semibold text-slate-200"
               title={target.testName}
@@ -185,10 +262,9 @@ function MultiTargetBody({ targets, defectTypes, rowStates, onRowChange }: Multi
             >
               {target.testName}
             </p>
-            {/* Controls row */}
-            <div className="flex items-start gap-2">
-              {/* Defect type (takes ~40% width) */}
-              <div className="w-40 shrink-0">
+            <div className="flex items-start gap-3">
+              {/* Defect type dropdown — portalled, won't clip */}
+              <div className="w-48 shrink-0">
                 <DefectTypeDropdown
                   value={state.defectTypeId}
                   defectTypes={defectTypes}
@@ -204,9 +280,9 @@ function MultiTargetBody({ targets, defectTypes, rowStates, onRowChange }: Multi
                 data-mipqa={`defect-comment-input-${target.overviewTestId}`}
                 className="min-w-0 flex-1 rounded-md border border-slate-600 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
               />
-              {/* Ignore in Auto Analysis */}
+              {/* Ignore */}
               <label
-                className="flex shrink-0 cursor-pointer items-center gap-1.5 pt-1 text-xs text-slate-400"
+                className="flex shrink-0 cursor-pointer items-center gap-1.5 pt-1.5 text-xs text-slate-400 whitespace-nowrap"
                 title="Ignore in Auto Analysis"
                 data-mipqa={`defect-ignore-label-${target.overviewTestId}`}
               >
@@ -240,11 +316,9 @@ export function DefectSelectionModal({
   const [applying, setApplying] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
 
-  // Pre-fetch existing defect for every target
   useEffect(() => {
     let cancelled = false;
     setLoadingCurrent(true);
-
     const defaultDt = defectTypes.find(d => d.isDefault);
 
     Promise.all(
@@ -257,19 +331,13 @@ export function DefectSelectionModal({
       const map = new Map<number, RowState>();
       results.forEach(({ id, existing }) => {
         if (existing !== null && existing !== undefined) {
-          map.set(id, {
-            defectTypeId: existing.defectType.id,
-            comment: existing.comment ?? '',
-            ignoreInAutoAnalysis: existing.ignoreInAutoAnalysis,
-          });
+          map.set(id, { defectTypeId: existing.defectType.id, comment: existing.comment ?? '', ignoreInAutoAnalysis: existing.ignoreInAutoAnalysis });
         } else {
           map.set(id, { defectTypeId: defaultDt?.id ?? null, comment: '', ignoreInAutoAnalysis: false });
         }
       });
       setRowStates(map);
-    }).finally(() => {
-      if (!cancelled) setLoadingCurrent(false);
-    });
+    }).finally(() => { if (!cancelled) setLoadingCurrent(false); });
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -288,7 +356,8 @@ export function DefectSelectionModal({
   const handleRowChange = useCallback((overviewTestId: number, patch: Partial<RowState>) => {
     setRowStates(prev => {
       const next = new Map(prev);
-      next.set(overviewTestId, { ...(prev.get(overviewTestId) ?? { defectTypeId: null, comment: '', ignoreInAutoAnalysis: false }), ...patch });
+      const cur = prev.get(overviewTestId) ?? { defectTypeId: null, comment: '', ignoreInAutoAnalysis: false };
+      next.set(overviewTestId, { ...cur, ...patch });
       return next;
     });
   }, []);
@@ -338,7 +407,9 @@ export function DefectSelectionModal({
     }
   }, [targets, isSingle, onApplied, onClose]);
 
-  const singleState = isSingle ? (rowStates.get(targets[0].overviewTestId) ?? { defectTypeId: null, comment: '', ignoreInAutoAnalysis: false }) : null;
+  const singleState = isSingle
+    ? (rowStates.get(targets[0].overviewTestId) ?? { defectTypeId: null, comment: '', ignoreInAutoAnalysis: false })
+    : null;
   const canApply = targets.some(t => (rowStates.get(t.overviewTestId)?.defectTypeId ?? null) !== null);
 
   return (
@@ -350,20 +421,21 @@ export function DefectSelectionModal({
     >
       <div
         data-mipqa="defect-modal"
-        className={`relative w-full rounded-xl bg-slate-900 shadow-2xl border border-slate-700 flex flex-col max-h-[90vh] ${isSingle ? 'max-w-2xl' : 'max-w-3xl'}`}
+        className={`relative flex w-full flex-col rounded-xl border border-slate-700 bg-slate-900 shadow-2xl ${
+          isSingle ? 'max-w-2xl max-h-[85vh]' : 'max-w-4xl max-h-[85vh]'
+        }`}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-slate-700">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-700 px-6 pt-5 pb-4">
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-slate-100" data-mipqa="defect-modal-title">
               {isSingle ? 'Select defect' : `Select defects — ${targets.length} test cases`}
             </h2>
-            {isSingle && (
+            {isSingle ? (
               <p className="mt-0.5 truncate text-xs text-slate-400" title={targets[0].testName}>
                 {targets[0].testName}
               </p>
-            )}
-            {!isSingle && (
+            ) : (
               <p className="mt-0.5 text-xs text-slate-400">
                 Set a defect type and comment for each test case individually.
               </p>
@@ -373,21 +445,20 @@ export function DefectSelectionModal({
             type="button"
             data-mipqa="defect-modal-close-btn"
             onClick={onClose}
-            className="shrink-0 rounded-md p-1.5 text-slate-400 hover:bg-slate-700 hover:text-slate-100 transition-colors"
+            className="shrink-0 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-700 hover:text-slate-100"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        {/* Body — scrollable, dropdowns escape via portal */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
           {loadingCurrent ? (
-            <div className="flex items-center justify-center py-10">
+            <div className="flex items-center justify-center py-12">
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
             </div>
           ) : isSingle && singleState !== null ? (
             <SingleTargetBody
-              target={targets[0]}
               defectTypes={defectTypes}
               state={singleState}
               onStateChange={handleSingleStateChange}
@@ -403,11 +474,11 @@ export function DefectSelectionModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-slate-700 px-5 py-3">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-700 px-6 py-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-4 py-1.5 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
+            className="rounded-md px-4 py-1.5 text-sm text-slate-300 transition-colors hover:bg-slate-700"
             data-mipqa="defect-modal-cancel-btn"
           >
             Cancel
@@ -416,7 +487,7 @@ export function DefectSelectionModal({
             type="button"
             onClick={handleRemove}
             disabled={applying || loadingCurrent}
-            className="rounded-md border border-slate-600 px-4 py-1.5 text-sm text-slate-300 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="rounded-md border border-slate-600 px-4 py-1.5 text-sm text-slate-300 transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             data-mipqa="defect-modal-remove-btn"
           >
             Remove
@@ -425,7 +496,7 @@ export function DefectSelectionModal({
             type="button"
             onClick={handleApply}
             disabled={applying || loadingCurrent || !canApply}
-            className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
             data-mipqa="defect-modal-apply-btn"
           >
             {applying ? (
