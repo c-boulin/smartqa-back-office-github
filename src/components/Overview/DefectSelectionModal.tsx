@@ -23,7 +23,6 @@ export interface DefectAppliedResult {
 interface RowState {
   defectTypeId: number | null;
   comment: string;
-  ignoreInAutoAnalysis: boolean;
 }
 
 interface DefectSelectionModalProps {
@@ -210,17 +209,6 @@ function SingleTargetBody({ defectTypes, state, onStateChange }: SingleTargetBod
         )}
       </div>
 
-      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-300" data-mipqa="defect-ignore-label">
-        <input
-          type="checkbox"
-          data-mipqa="defect-ignore-checkbox"
-          checked={state.ignoreInAutoAnalysis}
-          onChange={e => onStateChange({ ignoreInAutoAnalysis: e.target.checked })}
-          className="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-cyan-500"
-        />
-        Ignore in Auto Analysis
-      </label>
-
       <div>
         <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-400" htmlFor="defect-comment">
           Comment
@@ -252,7 +240,7 @@ function MultiTargetBody({ targets, defectTypes, rowStates, onRowChange }: Multi
   return (
     <div className="flex flex-col divide-y divide-slate-700/60">
       {targets.map(target => {
-        const state = rowStates.get(target.overviewTestId) ?? { defectTypeId: null, comment: '', ignoreInAutoAnalysis: false };
+        const state = rowStates.get(target.overviewTestId) ?? { defectTypeId: null, comment: '' };
         return (
           <div key={target.overviewTestId} className="flex flex-col gap-2.5 py-4 first:pt-0 last:pb-0">
             <p
@@ -280,20 +268,6 @@ function MultiTargetBody({ targets, defectTypes, rowStates, onRowChange }: Multi
                 data-mipqa={`defect-comment-input-${target.overviewTestId}`}
                 className="min-w-0 flex-1 rounded-md border border-slate-600 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
               />
-              {/* Ignore */}
-              <label
-                className="flex shrink-0 cursor-pointer items-center gap-1.5 pt-1.5 text-xs text-slate-400 whitespace-nowrap"
-                title="Ignore in Auto Analysis"
-                data-mipqa={`defect-ignore-label-${target.overviewTestId}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={state.ignoreInAutoAnalysis}
-                  onChange={e => onRowChange(target.overviewTestId, { ignoreInAutoAnalysis: e.target.checked })}
-                  className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-800 accent-cyan-500"
-                />
-                Ignore
-              </label>
             </div>
           </div>
         );
@@ -331,9 +305,9 @@ export function DefectSelectionModal({
       const map = new Map<number, RowState>();
       results.forEach(({ id, existing }) => {
         if (existing !== null && existing !== undefined) {
-          map.set(id, { defectTypeId: existing.defectType.id, comment: existing.comment ?? '', ignoreInAutoAnalysis: existing.ignoreInAutoAnalysis });
+          map.set(id, { defectTypeId: existing.defectType.id, comment: existing.comment ?? '' });
         } else {
-          map.set(id, { defectTypeId: defaultDt?.id ?? null, comment: '', ignoreInAutoAnalysis: false });
+          map.set(id, { defectTypeId: defaultDt?.id ?? null, comment: '' });
         }
       });
       setRowStates(map);
@@ -356,7 +330,7 @@ export function DefectSelectionModal({
   const handleRowChange = useCallback((overviewTestId: number, patch: Partial<RowState>) => {
     setRowStates(prev => {
       const next = new Map(prev);
-      const cur = prev.get(overviewTestId) ?? { defectTypeId: null, comment: '', ignoreInAutoAnalysis: false };
+      const cur = prev.get(overviewTestId) ?? { defectTypeId: null, comment: '' };
       next.set(overviewTestId, { ...cur, ...patch });
       return next;
     });
@@ -377,7 +351,6 @@ export function DefectSelectionModal({
           const defect = await putOverviewTestDefect(t.overviewTestId, {
             defect_type_id: state.defectTypeId,
             comment: state.comment,
-            ignore_in_auto_analysis: state.ignoreInAutoAnalysis,
           });
           return { overviewTestId: t.overviewTestId, defect };
         }),
@@ -408,7 +381,7 @@ export function DefectSelectionModal({
   }, [targets, isSingle, onApplied, onClose]);
 
   const singleState = isSingle
-    ? (rowStates.get(targets[0].overviewTestId) ?? { defectTypeId: null, comment: '', ignoreInAutoAnalysis: false })
+    ? (rowStates.get(targets[0].overviewTestId) ?? { defectTypeId: null, comment: '' })
     : null;
   const canApply = targets.some(t => (rowStates.get(t.overviewTestId)?.defectTypeId ?? null) !== null);
 
