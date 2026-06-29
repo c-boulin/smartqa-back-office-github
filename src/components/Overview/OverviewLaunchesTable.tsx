@@ -882,6 +882,7 @@ const OverviewLaunchesTable: React.FC = () => {
   const [testLogPayload, setTestLogPayload] = useState<OverviewTestLogItemsResponse | null>(null);
   const [testLogLoading, setTestLogLoading] = useState(false);
   const [testLogError, setTestLogError] = useState<string | null>(null);
+  const [expandedErrorRows, setExpandedErrorRows] = useState<Set<string>>(new Set());
   const [historyAnchorLaunch, setHistoryAnchorLaunch] = useState<OverviewLaunchRow | null>(null);
   const [historyAnchorTarget, setHistoryAnchorTarget] = useState<OverviewSuiteListLogTarget | null>(null);
   const [historyLaunches, setHistoryLaunches] = useState<HistoryLaunchEntry[]>([]);
@@ -1296,6 +1297,7 @@ const OverviewLaunchesTable: React.FC = () => {
       setTestLogPayload(null);
       setTestLogError(null);
       setHoveredLogTimeRowKey(null);
+      setExpandedErrorRows(new Set());
       historyLaunchTargetCacheRef.current = new Map();
     };
 
@@ -2521,13 +2523,36 @@ const OverviewLaunchesTable: React.FC = () => {
                         </span>
                       </div>
                       {isFailed && item.errorMessages != null && item.errorMessages.length > 0 ? (
-                        <div className="mt-1.5 flex flex-col gap-0.5">
-                          {item.errorMessages.map((msg, i) => (
-                            <p key={i} className="line-clamp-2 text-xs text-red-700 dark:text-red-300 font-mono [overflow-wrap:anywhere]">
-                              {msg}
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setExpandedErrorRows(prev => {
+                              const next = new Set(prev);
+                              if (next.has(rowKey)) {
+                                next.delete(rowKey);
+                              } else {
+                                next.add(rowKey);
+                              }
+                              return next;
+                            });
+                          }}
+                          className="mt-1.5 block w-full text-left"
+                        >
+                          {expandedErrorRows.has(rowKey) ? (
+                            <div className="flex flex-col gap-0.5">
+                              {item.errorMessages.map((msg, i) => (
+                                <p key={i} className="text-xs text-red-700 dark:text-red-300 font-mono [overflow-wrap:anywhere]">
+                                  {msg}
+                                </p>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="truncate text-xs text-red-700 dark:text-red-300 font-mono">
+                              {item.errorMessages[0]}
                             </p>
-                          ))}
-                        </div>
+                          )}
+                        </button>
                       ) : null}
                     </td>
                     <td className="whitespace-nowrap py-3 px-2 align-top text-slate-700 dark:text-slate-300">
