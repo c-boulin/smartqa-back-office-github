@@ -9,35 +9,49 @@ import {
   type OverviewTestDefect,
 } from '../../services/overviewWidgetsApi';
 
-interface DefectSelectionModalProps {
+export interface DefectModalTarget {
   overviewTestId: number;
   testName: string;
+}
+
+export interface DefectAppliedResult {
+  overviewTestId: number;
+  defect: OverviewTestDefect | null;
+}
+
+interface DefectSelectionModalProps {
+  targets: DefectModalTarget[];
   /** All known defect types — passed from the parent to avoid re-fetching each open. */
   defectTypes: OverviewDefectType[];
   onClose: () => void;
-  /** Called after a successful PUT so the parent can update the row in-place. */
-  onApplied: (defect: OverviewTestDefect | null) => void;
+  /** Called after a successful apply/remove so the parent can update rows in-place. */
+  onApplied: (results: DefectAppliedResult[]) => void;
 }
 
 export function DefectSelectionModal({
-  overviewTestId,
-  testName,
+  targets,
   defectTypes,
   onClose,
   onApplied,
 }: DefectSelectionModalProps): React.ReactElement {
-  const [loadingCurrent, setLoadingCurrent] = useState(true);
+  const isSingle = targets.length === 1;
+  const [loadingCurrent, setLoadingCurrent] = useState(isSingle);
   const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
   const [comment, setComment] = useState('');
   const [ignoreInAutoAnalysis, setIgnoreInAutoAnalysis] = useState(false);
   const [applying, setApplying] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
 
-  // Pre-fill from the current defect assignment on mount
+  // Pre-fill from existing defect when there is exactly one target
   useEffect(() => {
+    if (!isSingle) {
+      const def = defectTypes.find(d => d.isDefault);
+      if (def !== undefined) setSelectedTypeId(def.id);
+      return;
+    }
     let cancelled = false;
     setLoadingCurrent(true);
-    fetchOverviewTestDefect(overviewTestId)
+    fetchOverviewTestDefect(targets[0].overviewTestId)
       .then(existing => {
         if (cancelled) return;
         if (existing !== null) {
@@ -60,7 +74,7 @@ export function DefectSelectionModal({
       });
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overviewTestId]);
+  }, [targets[0]?.overviewTestId, isSingle]);
 
   // Esc to close
   useEffect(() => {
@@ -79,34 +93,39 @@ export function DefectSelectionModal({
     if (selectedTypeId === null) return;
     setApplying(true);
     try {
-      const result = await putOverviewTestDefect(overviewTestId, {
-        defect_type_id: selectedTypeId,
-        comment,
-        ignore_in_auto_analysis: ignoreInAutoAnalysis,
-      });
-      toast.success('Defect decision saved.');
-      onApplied(result);
+      const results = await Promise.all(
+        targets.map(async t => {
+          const defect = await putOverviewTestDefect(t.overviewTestId, {
+            defect_type_id: selectedTypeId,
+            comment,
+            ignore_in_auto_analysis: ignoreInAutoAnalysis,
+          });
+          return { overviewTestId: t.overviewTestId, defect };
+        }),
+      );
+      toast.success(isSingle ? 'Defect decision saved.' : `Defect decision saved for ${targets.length} test cases.`);
+      onApplied(results);
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save decision.');
     } finally {
       setApplying(false);
     }
-  }, [selectedTypeId, comment, ignoreInAutoAnalysis, overviewTestId, onApplied, onClose]);
+  }, [selectedTypeId, comment, ignoreInAutoAnalysis, targets, isSingle, onApplied, onClose]);
 
   const handleRemove = useCallback(async () => {
     setApplying(true);
     try {
-      await deleteOverviewTestDefect(overviewTestId);
-      toast.success('Defect decision removed.');
-      onApplied(null);
+      await Promise.all(targets.map(t => deleteOverviewTestDefect(t.overviewTestId)));
+      toast.success(isSingle ? 'Defect decision removed.' : `Defect decision removed for ${targets.length} test cases.`);
+      onApplied(targets.map(t => ({ overviewTestId: t.overviewTestId, defect: null })));
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to remove decision.');
     } finally {
       setApplying(false);
     }
-  }, [overviewTestId, onApplied, onClose]);
+  }, [targets, isSingle, onApplied, onClose]);
 
   return (
     <div
@@ -125,7 +144,15 @@ export function DefectSelectionModal({
             <h2 className="text-base font-semibold text-slate-100" data-mipqa="defect-modal-title">
               Select defect
             </h2>
-            <p className="mt-0.5 truncate text-xs text-slate-400" title={testName}>{testName}</p>
+            {isSingle ? (
+              <p className="mt-0.5 truncate text-xs text-slate-400" title={targets[0].testName}>
+                {targets[0].testName}
+              </p>
+            ) : (
+              <p className="mt-0.5 text-xs text-slate-400">
+                Applying to <span className="font-semibold text-slate-300">{targets.length}</span> test cases
+              </p>
+            )}
           </div>
           <button
             type="button"

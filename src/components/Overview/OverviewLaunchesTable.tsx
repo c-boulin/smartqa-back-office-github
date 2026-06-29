@@ -912,11 +912,13 @@ const OverviewLaunchesTable: React.FC = () => {
     () => new Map(defectTypes.map(d => [d.slug, d])),
     [defectTypes],
   );
-  // Modal state
-  const [defectModalTarget, setDefectModalTarget] = useState<{
+  // Suite item row selection (multi-select for bulk Make Decision)
+  const [selectedTestIds, setSelectedTestIds] = useState<Set<number>>(new Set());
+  // Modal state — array of targets (single or bulk)
+  const [defectModalTarget, setDefectModalTarget] = useState<Array<{
     overviewTestId: number;
     testName: string;
-  } | null>(null);
+  }> | null>(null);
 
   const customFromApi = useMemo(() => {
     if (startTimePreset !== 'custom' || customRangeStart === null || customRangeEnd === null) {
@@ -1298,6 +1300,7 @@ const OverviewLaunchesTable: React.FC = () => {
       setTestLogError(null);
       setHoveredLogTimeRowKey(null);
       setExpandedErrorRows(new Set());
+      setSelectedTestIds(new Set());
       historyLaunchTargetCacheRef.current = new Map();
     };
 
@@ -1429,6 +1432,7 @@ const OverviewLaunchesTable: React.FC = () => {
     setTestLogTarget(null);
     setTestLogPayload(null);
     setTestLogError(null);
+    setSelectedTestIds(new Set());
     historyLaunchTargetCacheRef.current = new Map();
   }, [page, perPage]);
 
@@ -1444,6 +1448,7 @@ const OverviewLaunchesTable: React.FC = () => {
     setTestLogTarget(null);
     setTestLogPayload(null);
     setTestLogError(null);
+    setSelectedTestIds(new Set());
     historyLaunchTargetCacheRef.current = new Map();
   }, [drillLaunch?.id]);
 
@@ -1830,16 +1835,48 @@ const OverviewLaunchesTable: React.FC = () => {
   // drilled-into launch has no human creator (createdByUserId === null means cron/automation).
   const isCronContext = executionFilter === 'cron' || drillLaunch?.source === 'cron';
 
-  /** Updates the defectType slug on a suite item after the modal applies. */
-  const handleDefectApplied = useCallback((overviewTestId: number, applied: OverviewTestDefect | null) => {
+  // Items eligible for checkbox selection: failed cron rows with an overviewTestId
+  const selectableItems = useMemo(
+    () => filteredSuiteItems.filter(
+      item => isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null,
+    ),
+    [filteredSuiteItems, isCronContext],
+  );
+  const allSelectableSelected = selectableItems.length > 0 && selectableItems.every(item => selectedTestIds.has(item.overviewTestId!));
+  const someSelectableSelected = selectableItems.some(item => selectedTestIds.has(item.overviewTestId!));
+
+  const toggleSelectAll = useCallback(() => {
+    if (allSelectableSelected) {
+      setSelectedTestIds(new Set());
+    } else {
+      setSelectedTestIds(new Set(selectableItems.map(item => item.overviewTestId!)));
+    }
+  }, [allSelectableSelected, selectableItems]);
+
+  const toggleSelectItem = useCallback((id: number) => {
+    setSelectedTestIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  /** Updates the defectType slug on suite items after the modal applies. */
+  const handleDefectApplied = useCallback((results: Array<{ overviewTestId: number; defect: OverviewTestDefect | null }>) => {
     setSuiteListItems(prev => {
       if (prev === null) return prev;
+      const map = new Map(results.map(r => [r.overviewTestId, r.defect]));
       return prev.map(item =>
-        item.overviewTestId === overviewTestId
-          ? { ...item, defectType: applied !== null ? applied.defectType.slug : null }
+        item.overviewTestId !== null && map.has(item.overviewTestId)
+          ? { ...item, defectType: map.get(item.overviewTestId)?.defectType.slug ?? null }
           : item,
       );
     });
+    setSelectedTestIds(new Set());
   }, []);
 
   /**
@@ -2290,12 +2327,35 @@ const OverviewLaunchesTable: React.FC = () => {
           ) : null}
         </nav>
         {drillLaunch !== null && !inTestLogView ? (
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-            <span className="font-medium text-teal-600 dark:text-teal-400">
-              Passed {passRatePercentFromLaunch(drillLaunch)}%
-            </span>
-            <span className="text-slate-400">|</span>
-            <span>Total: {drillLaunch.total}</span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+              <span className="font-medium text-teal-600 dark:text-teal-400">
+                Passed {passRatePercentFromLaunch(drillLaunch)}%
+              </span>
+              <span className="text-slate-400">|</span>
+              <span>Total: {drillLaunch.total}</span>
+            </div>
+            {isCronContext && selectedTestIds.size > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 dark:text-slate-500"
+                  data-mipqa="suite-selected-count">
+                  {selectedTestIds.size} selected
+                </span>
+                <button
+                  type="button"
+                  data-mipqa="suite-make-decision-btn"
+                  onClick={() => {
+                    const targets = selectableItems
+                      .filter(item => selectedTestIds.has(item.overviewTestId!))
+                      .map(item => ({ overviewTestId: item.overviewTestId!, testName: item.name }));
+                    if (targets.length > 0) setDefectModalTarget(targets);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors"
+                >
+                  Make Decision
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -2359,7 +2419,7 @@ const OverviewLaunchesTable: React.FC = () => {
             isCronContext={isCronContext}
             overviewTestId={testLogTarget.kind === 'test' ? testLogTarget.overviewTestId : null}
             defectTypes={defectTypes}
-            onDefectApplied={handleDefectApplied}
+            onDefectApplied={(overviewTestId, applied) => handleDefectApplied([{ overviewTestId, defect: applied }])}
           />
         ) : inSuiteListView ? (
           <table className="w-full min-w-[900px] table-fixed text-sm">
@@ -2375,7 +2435,18 @@ const OverviewLaunchesTable: React.FC = () => {
             <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
               <tr className="text-left">
                 <th className="py-3 pl-4 pr-2">
-                  <Link2 className="h-4 w-4 text-slate-400" aria-hidden />
+                  {isCronContext && selectableItems.length > 0 ? (
+                    <input
+                      type="checkbox"
+                      data-mipqa="suite-select-all-checkbox"
+                      checked={allSelectableSelected}
+                      ref={el => { if (el) el.indeterminate = someSelectableSelected && !allSelectableSelected; }}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 cursor-pointer rounded border-slate-500 bg-slate-700 accent-cyan-500"
+                    />
+                  ) : (
+                    <Link2 className="h-4 w-4 text-slate-400" aria-hidden />
+                  )}
                 </th>
                 <SuiteListSortableTh
                   column="method_type"
@@ -2439,7 +2510,18 @@ const OverviewLaunchesTable: React.FC = () => {
                     className={`transition-colors ${isFailed ? 'bg-red-100 dark:bg-red-900/40 hover:bg-red-200/70 dark:hover:bg-red-900/60' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
                   >
                     <td className="py-3 pl-4 pr-2 align-top text-slate-400">
-                      <span className="inline-flex p-1" aria-hidden="true" />
+                      {isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
+                        <input
+                          type="checkbox"
+                          data-mipqa={`suite-row-checkbox-${item.overviewTestId}`}
+                          checked={selectedTestIds.has(item.overviewTestId)}
+                          onChange={() => toggleSelectItem(item.overviewTestId!)}
+                          onClick={e => e.stopPropagation()}
+                          className="h-4 w-4 cursor-pointer rounded border-slate-500 bg-slate-700 accent-cyan-500"
+                        />
+                      ) : (
+                        <span className="inline-flex p-1" aria-hidden="true" />
+                      )}
                     </td>
                     <td className="py-3 pr-2 align-top text-slate-700 dark:text-slate-300 whitespace-nowrap">
                       {item.methodType}
@@ -2585,7 +2667,7 @@ const OverviewLaunchesTable: React.FC = () => {
                             <button
                               type="button"
                               data-mipqa="defect-badge-btn"
-                              onClick={() => setDefectModalTarget({ overviewTestId: item.overviewTestId!, testName: item.name })}
+                              onClick={() => setDefectModalTarget([{ overviewTestId: item.overviewTestId!, testName: item.name }])}
                               className="inline-flex items-center gap-1.5 rounded-full border border-slate-600 bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-200 hover:border-slate-400 hover:bg-slate-700 transition-colors"
                             >
                               <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: resolved.color }} />
@@ -2595,7 +2677,7 @@ const OverviewLaunchesTable: React.FC = () => {
                             <button
                               type="button"
                               data-mipqa="defect-make-decision-btn"
-                              onClick={() => setDefectModalTarget({ overviewTestId: item.overviewTestId!, testName: item.name })}
+                              onClick={() => setDefectModalTarget([{ overviewTestId: item.overviewTestId!, testName: item.name }])}
                               className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-600 bg-transparent px-2.5 py-0.5 text-xs font-medium text-slate-400 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
                             >
                               Make Decision
@@ -3029,11 +3111,10 @@ const OverviewLaunchesTable: React.FC = () => {
     </div>
     {defectModalTarget !== null && (
       <DefectSelectionModal
-        overviewTestId={defectModalTarget.overviewTestId}
-        testName={defectModalTarget.testName}
+        targets={defectModalTarget}
         defectTypes={defectTypes}
         onClose={() => setDefectModalTarget(null)}
-        onApplied={applied => handleDefectApplied(defectModalTarget.overviewTestId, applied)}
+        onApplied={results => handleDefectApplied(results)}
       />
     )}
     </>

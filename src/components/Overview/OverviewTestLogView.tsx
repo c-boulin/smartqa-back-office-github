@@ -924,12 +924,11 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
     </div>
     {defectModalOpen && overviewTestId !== null && (
       <DefectSelectionModal
-        overviewTestId={overviewTestId}
-        testName={testDisplayName}
+        targets={[{ overviewTestId, testName: testDisplayName }]}
         defectTypes={defectTypes}
         onClose={() => setDefectModalOpen(false)}
-        onApplied={applied => {
-          onDefectApplied?.(overviewTestId, applied);
+        onApplied={results => {
+          results.forEach(r => onDefectApplied?.(r.overviewTestId, r.defect));
           setDefectModalOpen(false);
         }}
       />
