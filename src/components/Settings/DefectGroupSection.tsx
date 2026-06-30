@@ -499,6 +499,3 @@ export function DefectGroupSection({ group, onGroupUpdated, onGroupDeleted }: De
     </>
   );
 }
-
-
-export { DefectGroupSection }
