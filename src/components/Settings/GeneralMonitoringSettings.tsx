@@ -4,19 +4,9 @@ import toast from 'react-hot-toast';
 import {
   fetchMonitoringSettings,
   saveMonitoringSettings,
-  type MonitoringSettingsData,
 } from '../../services/monitoringSettingsApi';
 
 // ─── Option lists ─────────────────────────────────────────────────────────────
-
-const INACTIVITY_OPTIONS: { value: number; label: string }[] = [
-  { value: 1, label: '1 hour' },
-  { value: 2, label: '2 hours' },
-  { value: 4, label: '4 hours' },
-  { value: 8, label: '8 hours' },
-  { value: 12, label: '12 hours' },
-  { value: 24, label: '24 hours' },
-];
 
 const KEEP_LAUNCHES_OPTIONS: { value: number | null; label: string }[] = [
   { value: 7, label: '7 days' },
@@ -56,14 +46,15 @@ interface SettingRowProps {
 
 function SettingRow({ label, description, mipqa, children }: SettingRowProps): React.ReactElement {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-6 py-5 border-b border-slate-200 dark:border-slate-700 last:border-0" data-mipqa={mipqa}>
+    <div
+      className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-6 py-5 border-b border-slate-200 dark:border-slate-700 last:border-0"
+      data-mipqa={mipqa}
+    >
       <div className="sm:w-56 shrink-0">
         <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{label}</p>
         <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{description}</p>
       </div>
-      <div className="flex-1 flex items-center">
-        {children}
-      </div>
+      <div className="flex-1 flex items-center">{children}</div>
     </div>
   );
 }
@@ -73,20 +64,30 @@ const selectClass =
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+interface FormState {
+  keepLaunchesDays: number | null;
+  keepLogsDays: number;
+  keepAttachmentsDays: number;
+}
+
 export function GeneralMonitoringSettings(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<MonitoringSettingsData>({
+  const [form, setForm] = useState<FormState>({
     keepLaunchesDays: 180,
     keepLogsDays: 90,
     keepAttachmentsDays: 30,
-    launchInactivityTimeoutHours: 1,
   });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setForm(await fetchMonitoringSettings());
+      const data = await fetchMonitoringSettings();
+      setForm({
+        keepLaunchesDays: data.keepLaunchesDays,
+        keepLogsDays: data.keepLogsDays,
+        keepAttachmentsDays: data.keepAttachmentsDays,
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load settings');
     } finally {
@@ -104,9 +105,13 @@ export function GeneralMonitoringSettings(): React.ReactElement {
         keep_launches_days: form.keepLaunchesDays,
         keep_logs_days: form.keepLogsDays,
         keep_attachments_days: form.keepAttachmentsDays,
-        launch_inactivity_timeout_hours: form.launchInactivityTimeoutHours,
+        launch_inactivity_timeout_hours: 1,
       });
-      setForm(updated);
+      setForm({
+        keepLaunchesDays: updated.keepLaunchesDays,
+        keepLogsDays: updated.keepLogsDays,
+        keepAttachmentsDays: updated.keepAttachmentsDays,
+      });
       toast.success('Settings saved');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save settings');
@@ -126,23 +131,6 @@ export function GeneralMonitoringSettings(): React.ReactElement {
   return (
     <form onSubmit={handleSubmit} className="px-6 py-4">
       <SettingRow
-        label="Launch inactivity timeout"
-        description="Schedule time for job to interrupt inactive launches."
-        mipqa="setting-row-inactivity-timeout"
-      >
-        <select
-          data-mipqa="inactivity-timeout-select"
-          value={form.launchInactivityTimeoutHours}
-          onChange={e => setForm(f => ({ ...f, launchInactivityTimeoutHours: Number(e.target.value) }))}
-          className={selectClass}
-        >
-          {INACTIVITY_OPTIONS.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </SettingRow>
-
-      <SettingRow
         label="Keep launches"
         description="How long to keep old launches. A launch and all its descendants (suites, tests, steps, logs) will be deleted."
         mipqa="setting-row-keep-launches"
@@ -150,11 +138,15 @@ export function GeneralMonitoringSettings(): React.ReactElement {
         <select
           data-mipqa="keep-launches-select"
           value={form.keepLaunchesDays === null ? 'forever' : form.keepLaunchesDays}
-          onChange={e => setForm(f => ({ ...f, keepLaunchesDays: e.target.value === 'forever' ? null : Number(e.target.value) }))}
+          onChange={e =>
+            setForm(f => ({ ...f, keepLaunchesDays: e.target.value === 'forever' ? null : Number(e.target.value) }))
+          }
           className={selectClass}
         >
           {KEEP_LAUNCHES_OPTIONS.map(o => (
-            <option key={String(o.value)} value={o.value === null ? 'forever' : o.value}>{o.label}</option>
+            <option key={String(o.value)} value={o.value === null ? 'forever' : o.value}>
+              {o.label}
+            </option>
           ))}
         </select>
       </SettingRow>
