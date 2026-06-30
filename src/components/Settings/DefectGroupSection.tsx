@@ -80,7 +80,7 @@ function AddRow({ groupId, nextPosition, onSaved, onCancel }: AddRowProps): Reac
     <tr className="bg-slate-50 dark:bg-slate-800/40">
       <td className="px-4 py-2 pl-10">
         <div className="flex items-center gap-2">
-          <div className="relative h-6 w-6 shrink-0 rounded-full overflow-hidden border border-slate-300 dark:border-slate-500 cursor-pointer" style={{ backgroundColor: color }} data-mipqa="add-type-color-input">
+          <div className="relative h-5 w-5 shrink-0 rounded-full overflow-hidden border border-slate-300 dark:border-slate-500 cursor-pointer" style={{ backgroundColor: color }} data-mipqa="add-type-color-input">
             <input type="color" value={color} onChange={e => setColor(e.target.value)} className="absolute inset-0 h-full w-full opacity-0 cursor-pointer" />
           </div>
           <input
@@ -189,7 +189,7 @@ function TypeRow({ type, onUpdated, onDeleted }: TypeRowProps): React.ReactEleme
       <tr className="bg-cyan-50/30 dark:bg-cyan-900/10">
         <td className="px-4 py-2 pl-10">
           <div className="flex items-center gap-2">
-            <div className="relative h-6 w-6 shrink-0 rounded-full overflow-hidden border border-slate-300 dark:border-slate-500 cursor-pointer" style={{ backgroundColor: color }}>
+            <div className="relative h-5 w-5 shrink-0 rounded-full overflow-hidden border border-slate-300 dark:border-slate-500 cursor-pointer" style={{ backgroundColor: color }}>
               <input type="color" value={color} onChange={e => setColor(e.target.value)} className="absolute inset-0 h-full w-full opacity-0 cursor-pointer" />
             </div>
             <input
