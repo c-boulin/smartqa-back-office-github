@@ -305,7 +305,7 @@ interface DefectGroupSectionProps {
   onGroupDeleted: (id: number) => void;
 }
 
-export function DefectGroupSection({ group, onGroupUpdated, onGroupDeleted }: DefectGroupSectionProps): React.ReactElement {
+function DefectGroupSection({ group, onGroupUpdated, onGroupDeleted }: DefectGroupSectionProps): React.ReactElement {
   const [showAddRow, setShowAddRow] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(group.name);
@@ -493,5 +493,4 @@ export function DefectGroupSection({ group, onGroupUpdated, onGroupDeleted }: De
   );
 }
 
-
-export { DefectGroupSection }
+export { DefectGroupSection };
