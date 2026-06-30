@@ -3,6 +3,7 @@ import { Activity, Loader, Settings2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../UI/Card';
 import { DefectGroupSection } from './DefectGroupSection';
+import { GeneralMonitoringSettings } from './GeneralMonitoringSettings';
 import { fetchDefectGroups, type DefectGroupData } from '../../services/defectGroupsApi';
 
 type MonitoringTab = 'general' | 'defect-types';
@@ -121,11 +122,7 @@ export function MonitoringSettings(): React.ReactElement {
           ))}
         </div>
 
-        {activeTab === 'general' && (
-          <div className="flex items-center justify-center py-20 text-slate-400 dark:text-slate-500">
-            <p className="text-sm">General settings coming soon.</p>
-          </div>
-        )}
+        {activeTab === 'general' && <GeneralMonitoringSettings />}
 
         {activeTab === 'defect-types' && <DefectTypesTab />}
       </Card>
