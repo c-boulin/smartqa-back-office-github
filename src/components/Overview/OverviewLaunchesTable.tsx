@@ -2435,14 +2435,22 @@ const OverviewLaunchesTable: React.FC = () => {
               <tr className="text-left">
                 <th className="py-3 pl-4 pr-2">
                   {isCronContext && selectableItems.length > 0 ? (
-                    <input
-                      type="checkbox"
-                      data-mipqa="suite-select-all-checkbox"
-                      checked={allSelectableSelected}
-                      ref={el => { if (el) el.indeterminate = someSelectableSelected && !allSelectableSelected; }}
-                      onChange={toggleSelectAll}
-                      className="h-4 w-4 cursor-pointer rounded border-slate-500 bg-slate-700 accent-cyan-500"
-                    />
+                    <label data-mipqa="suite-select-all-checkbox" className="relative inline-flex h-4 w-4 cursor-pointer select-none items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={allSelectableSelected}
+                        ref={el => { if (el) el.indeterminate = someSelectableSelected && !allSelectableSelected; }}
+                        onChange={toggleSelectAll}
+                        className="sr-only"
+                      />
+                      <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${allSelectableSelected ? 'border-cyan-500 bg-cyan-500' : someSelectableSelected ? 'border-cyan-500 bg-cyan-500/30' : 'border-slate-500 bg-slate-700/60 hover:border-slate-400'}`}>
+                        {someSelectableSelected && !allSelectableSelected ? (
+                          <span className="block h-0.5 w-2 rounded-full bg-cyan-400" />
+                        ) : allSelectableSelected ? (
+                          <svg viewBox="0 0 10 8" className="h-2.5 w-2.5 fill-none stroke-white stroke-2"><polyline points="1,4 4,7 9,1" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        ) : null}
+                      </span>
+                    </label>
                   ) : (
                     <Link2 className="h-4 w-4 text-slate-400" aria-hidden />
                   )}
@@ -2510,14 +2518,23 @@ const OverviewLaunchesTable: React.FC = () => {
                   >
                     <td className="py-3 pl-4 pr-2 align-top text-slate-400">
                       {isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
-                        <input
-                          type="checkbox"
+                        <label
                           data-mipqa={`suite-row-checkbox-${item.overviewTestId}`}
-                          checked={selectedTestIds.has(item.overviewTestId)}
-                          onChange={() => toggleSelectItem(item.overviewTestId!)}
+                          className="relative inline-flex h-4 w-4 cursor-pointer select-none items-center justify-center"
                           onClick={e => e.stopPropagation()}
-                          className="h-4 w-4 cursor-pointer rounded border-slate-500 bg-slate-700 accent-cyan-500"
-                        />
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedTestIds.has(item.overviewTestId)}
+                            onChange={() => toggleSelectItem(item.overviewTestId!)}
+                            className="sr-only"
+                          />
+                          <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${selectedTestIds.has(item.overviewTestId) ? 'border-cyan-500 bg-cyan-500' : 'border-slate-500 bg-slate-700/60 hover:border-slate-400'}`}>
+                            {selectedTestIds.has(item.overviewTestId) && (
+                              <svg viewBox="0 0 10 8" className="h-2.5 w-2.5 fill-none stroke-white stroke-2"><polyline points="1,4 4,7 9,1" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            )}
+                          </span>
+                        </label>
                       ) : (
                         <span className="inline-flex p-1" aria-hidden="true" />
                       )}
