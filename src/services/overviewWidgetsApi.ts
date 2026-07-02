@@ -57,7 +57,7 @@ export interface OverviewWidgetsResponse {
 /**
  * Fetches overview widget aggregates (SmartQA API).
  * Weekly pass/fail totals come from test case executions; defect mix from Robot XML mirror (overview_*).
- * `defectSeriesByProject` is one row per service (test suite) with server-generated placeholder stacked counts.
+ * `defectSeriesByProject` is one row per service (test suite) with server-generated stacked counts.
  */
 export async function fetchOverviewWidgets(): Promise<OverviewWidgetsResponse> {
   return apiService.authenticatedRequest('/widgets/overview', {
@@ -98,6 +98,7 @@ export interface OverviewLaunchApiRow {
   productBug: number;
   autoBug: number;
   systemIssue: number;
+  noDefect: number;
   toInvestigate: number;
 }
 
@@ -150,6 +151,7 @@ export type OverviewLaunchesSortColumn =
   | 'product_bug'
   | 'auto_bug'
   | 'system_issue'
+  | 'no_defect'
   | 'to_investigate';
 
 export interface FetchOverviewLaunchesParams {
