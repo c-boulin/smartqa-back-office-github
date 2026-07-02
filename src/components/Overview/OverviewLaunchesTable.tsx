@@ -2443,7 +2443,7 @@ const OverviewLaunchesTable: React.FC = () => {
                         onChange={toggleSelectAll}
                         className="sr-only"
                       />
-                      <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${allSelectableSelected ? 'border-cyan-500 bg-cyan-500' : someSelectableSelected ? 'border-cyan-500 bg-cyan-500/30' : 'border-slate-500 bg-slate-700/60 hover:border-slate-400'}`}>
+                      <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${allSelectableSelected ? 'border-cyan-500 bg-cyan-500' : someSelectableSelected ? 'border-cyan-500 bg-cyan-500/20 dark:bg-cyan-500/30' : 'border-slate-300 bg-white hover:border-slate-400 dark:border-slate-500 dark:bg-slate-700/60 dark:hover:border-slate-400'}`}>
                         {someSelectableSelected && !allSelectableSelected ? (
                           <span className="block h-0.5 w-2 rounded-full bg-cyan-400" />
                         ) : allSelectableSelected ? (
@@ -2529,7 +2529,7 @@ const OverviewLaunchesTable: React.FC = () => {
                             onChange={() => toggleSelectItem(item.overviewTestId!)}
                             className="sr-only"
                           />
-                          <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${selectedTestIds.has(item.overviewTestId) ? 'border-cyan-500 bg-cyan-500' : 'border-slate-500 bg-slate-700/60 hover:border-slate-400'}`}>
+                          <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${selectedTestIds.has(item.overviewTestId) ? 'border-cyan-500 bg-cyan-500' : 'border-slate-300 bg-white hover:border-slate-400 dark:border-slate-500 dark:bg-slate-700/60 dark:hover:border-slate-400'}`}>
                             {selectedTestIds.has(item.overviewTestId) && (
                               <svg viewBox="0 0 10 8" className="h-2.5 w-2.5 fill-none stroke-white stroke-2"><polyline points="1,4 4,7 9,1" strokeLinecap="round" strokeLinejoin="round" /></svg>
                             )}
