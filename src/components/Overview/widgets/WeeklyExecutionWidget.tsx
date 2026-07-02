@@ -27,12 +27,9 @@ const PASSED_COLOR = '#10B981';
 const FAILED_COLOR = '#EF4444';
 const FALLBACK_COLOR = '#94A3B8';
 
-/** Pre-built map: kebab-slug → color, derived from DEFECT_CHART_TYPES camelCase keys. */
+/** Pre-built map: API slug → color, using the explicit slug field from DEFECT_CHART_TYPES. */
 const DEFECT_COLOR_BY_SLUG: Record<string, string> = Object.fromEntries(
-  DEFECT_CHART_TYPES.map(d => [
-    d.key.replace(/([A-Z])/g, c => `-${c.toLowerCase()}`),
-    d.color,
-  ]),
+  DEFECT_CHART_TYPES.map(d => [d.slug, d.color]),
 );
 
 function defectColor(tag: string): string {
