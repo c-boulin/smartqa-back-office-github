@@ -64,7 +64,7 @@ const OverviewWidgetsPanel: React.FC = () => {
 
   return (
     <DashboardPage title="Widgets Tab">
-      <WeeklyExecutionWidget weeklyTotals={data.weeklyTotals} window={data.window} />
+      <WeeklyExecutionWidget weeklyTotals={data.weeklyTotals} window={data.window} defectMix={data.defectMix} />
       <ServiceCountryExecutionWidget
         executionByService={data.executionByService}
         executionByCountry={data.executionByCountry}
