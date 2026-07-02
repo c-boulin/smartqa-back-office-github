@@ -104,7 +104,6 @@ function mapApiRowToRow(api: OverviewLaunchApiRow): OverviewLaunchRow {
     productBug: api.productBug,
     autoBug: api.autoBug,
     systemIssue: api.systemIssue,
-    noDefect: api.noDefect,
     toInvestigate: api.toInvestigate,
   };
 }
@@ -428,7 +427,6 @@ export interface OverviewLaunchRow {
   productBug?: number;
   autoBug?: number;
   systemIssue?: number;
-  noDefect?: number;
   toInvestigate?: number;
   /** Drill-down row: root suite name as title, duration only under name. */
   suiteDrillDown?: boolean;
@@ -1088,7 +1086,6 @@ const OverviewLaunchesTable: React.FC = () => {
       'product_bug',
       'auto_bug',
       'system_issue',
-      'no_defect',
       'to_investigate',
     ];
     const parsedSort: OverviewLaunchesSortColumn =
@@ -2855,21 +2852,6 @@ const OverviewLaunchesTable: React.FC = () => {
                   thClassName="px-1 text-right"
                 />
                 <LaunchSortableTh
-                  column="no_defect"
-                  label={
-                    <span className="block text-right leading-tight">
-                      No
-                      <br />
-                      defect
-                    </span>
-                  }
-                  activeColumn={launchSort.column}
-                  direction={launchSort.direction}
-                  onSort={toggleLaunchSort}
-                  align="right"
-                  thClassName="px-1 text-right"
-                />
-                <LaunchSortableTh
                   column="to_investigate"
                   label={
                     <span className="block text-right leading-tight">
@@ -3004,9 +2986,6 @@ const OverviewLaunchesTable: React.FC = () => {
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     {renderCountCell(row.systemIssue)}
-                  </td>
-                  <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
-                    {renderCountCell(row.noDefect)}
                   </td>
                   <td className="py-3 px-2 pl-3 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     {renderCountCell(row.toInvestigate)}

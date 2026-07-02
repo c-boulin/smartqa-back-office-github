@@ -151,7 +151,6 @@ export type OverviewLaunchesSortColumn =
   | 'product_bug'
   | 'auto_bug'
   | 'system_issue'
-  | 'no_defect'
   | 'to_investigate';
 
 export interface FetchOverviewLaunchesParams {
