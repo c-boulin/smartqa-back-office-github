@@ -27,13 +27,16 @@ const PASSED_COLOR = '#10B981';
 const FAILED_COLOR = '#EF4444';
 const FALLBACK_COLOR = '#94A3B8';
 
-function slugToCamel(slug: string): string {
-  return slug.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
-}
+/** Pre-built map: kebab-slug → color, derived from DEFECT_CHART_TYPES camelCase keys. */
+const DEFECT_COLOR_BY_SLUG: Record<string, string> = Object.fromEntries(
+  DEFECT_CHART_TYPES.map(d => [
+    d.key.replace(/([A-Z])/g, c => `-${c.toLowerCase()}`),
+    d.color,
+  ]),
+);
 
 function defectColor(tag: string): string {
-  const key = slugToCamel(tag);
-  return DEFECT_CHART_TYPES.find(d => d.key === key)?.color ?? FALLBACK_COLOR;
+  return DEFECT_COLOR_BY_SLUG[tag] ?? FALLBACK_COLOR;
 }
 
 const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({ weeklyTotals, window, defectMix }) => {
