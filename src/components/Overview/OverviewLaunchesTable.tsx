@@ -2430,7 +2430,6 @@ const OverviewLaunchesTable: React.FC = () => {
               <col className="w-[13%]" />
               <col className="w-[14%]" />
               <col className="w-[12%]" />
-              <col className="w-10" />
             </colgroup>
             <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
               <tr className="text-left">
