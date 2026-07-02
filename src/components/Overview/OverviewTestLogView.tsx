@@ -770,23 +770,6 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
         />
       ) : null}
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-100 px-3 py-2.5 dark:bg-slate-700/50">
-        <div className="min-h-[1px] flex-1" />
-        <div className="flex flex-wrap items-center gap-3 border-l border-slate-300 pl-4 dark:border-slate-600">
-          <button
-            type="button"
-            disabled={!canMakeDecision}
-            onClick={() => { if (canMakeDecision) setDefectModalOpen(true); }}
-            data-mipqa="test-log-make-decision-btn"
-            className={canMakeDecision
-              ? 'rounded border border-cyan-500 bg-slate-800 px-3 py-1 text-xs font-medium text-cyan-400 hover:bg-slate-700 transition-colors'
-              : 'cursor-not-allowed rounded border border-slate-300 bg-slate-200 px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-400'}
-          >
-            Make decision
-          </button>
-        </div>
-      </div>
-
       <div className="mb-3 border-b border-slate-200 dark:border-slate-700">
         <nav aria-label="Test log sections">
           <div
