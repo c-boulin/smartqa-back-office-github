@@ -3185,6 +3185,7 @@ const OverviewLaunchesTable: React.FC = () => {
       <DefectSelectionModal
         targets={defectModalTarget}
         defectTypes={defectTypes}
+        defectGroups={defectGroups}
         onClose={() => setDefectModalTarget(null)}
         onApplied={results => handleDefectApplied(results)}
       />

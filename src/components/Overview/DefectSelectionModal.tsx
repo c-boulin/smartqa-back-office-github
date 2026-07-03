@@ -9,6 +9,7 @@ import {
   type OverviewDefectType,
   type OverviewTestDefect,
 } from '../../services/overviewWidgetsApi';
+import type { DefectGroupData } from '../../services/defectGroupsApi';
 
 export interface DefectModalTarget {
   overviewTestId: number;
@@ -28,6 +29,7 @@ interface RowState {
 interface DefectSelectionModalProps {
   targets: DefectModalTarget[];
   defectTypes: OverviewDefectType[];
+  defectGroups?: DefectGroupData[];
   onClose: () => void;
   onApplied: (results: DefectAppliedResult[]) => void;
 }
@@ -37,10 +39,11 @@ interface DefectSelectionModalProps {
 interface DefectTypeDropdownProps {
   value: number | null;
   defectTypes: OverviewDefectType[];
+  defectGroups?: DefectGroupData[];
   onChange: (id: number) => void;
 }
 
-function DefectTypeDropdown({ value, defectTypes, onChange }: DefectTypeDropdownProps): React.ReactElement {
+function DefectTypeDropdown({ value, defectTypes, defectGroups, onChange }: DefectTypeDropdownProps): React.ReactElement {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -75,6 +78,8 @@ function DefectTypeDropdown({ value, defectTypes, onChange }: DefectTypeDropdown
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  const filteredIdSet = useMemo(() => new Set(filtered.map(d => d.id)), [filtered]);
+
   const dropdown = open
     ? createPortal(
         <div
@@ -99,6 +104,33 @@ function DefectTypeDropdown({ value, defectTypes, onChange }: DefectTypeDropdown
           <div className="max-h-52 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <p className="px-3 py-2 text-xs text-slate-500">No results</p>
+            ) : defectGroups && defectGroups.length > 0 ? (
+              defectGroups.map(group => {
+                const groupItems = group.defectTypes.filter(dt => filteredIdSet.has(dt.id));
+                if (groupItems.length === 0) return null;
+                return (
+                  <div key={group.id}>
+                    <p className="px-3 pb-0.5 pt-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                      {group.name}
+                    </p>
+                    {groupItems.map(dt => (
+                      <button
+                        key={dt.id}
+                        type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => { onChange(dt.id); setOpen(false); setSearch(''); }}
+                        className={`flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-slate-700 ${
+                          value === dt.id ? 'text-cyan-400' : 'text-slate-300'
+                        }`}
+                      >
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dt.color }} />
+                        <span className="flex-1 truncate text-left">{dt.name}</span>
+                        {value === dt.id && <Check className="ml-auto h-3 w-3 shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })
             ) : (
               filtered.map(dt => (
                 <button
@@ -153,16 +185,38 @@ function DefectTypeDropdown({ value, defectTypes, onChange }: DefectTypeDropdown
 
 interface SingleTargetBodyProps {
   defectTypes: OverviewDefectType[];
+  defectGroups?: DefectGroupData[];
   state: RowState;
   onStateChange: (patch: Partial<RowState>) => void;
 }
 
-function SingleTargetBody({ defectTypes, state, onStateChange }: SingleTargetBodyProps): React.ReactElement {
+function SingleTargetBody({ defectTypes, defectGroups, state, onStateChange }: SingleTargetBodyProps): React.ReactElement {
   const [search, setSearch] = useState('');
-  const filtered = useMemo(
-    () => defectTypes.filter(dt => dt.name.toLowerCase().includes(search.toLowerCase())),
-    [defectTypes, search],
+
+  const defectTypeById = useMemo(
+    () => new Map(defectTypes.map(d => [d.id, d])),
+    [defectTypes],
   );
+
+  const filteredIds = useMemo(() => {
+    if (!search) return null;
+    const q = search.toLowerCase();
+    return new Set(defectTypes.filter(dt => dt.name.toLowerCase().includes(q)).map(dt => dt.id));
+  }, [defectTypes, search]);
+
+  const columns: Array<{ name: string; items: OverviewDefectType[] }> = useMemo(() => {
+    if (defectGroups && defectGroups.length > 0) {
+      return defectGroups.map(g => ({
+        name: g.name,
+        items: g.defectTypes
+          .map(dt => defectTypeById.get(dt.id))
+          .filter((dt): dt is OverviewDefectType => dt !== undefined)
+          .filter(dt => filteredIds === null || filteredIds.has(dt.id)),
+      })).filter(col => col.items.length > 0);
+    }
+    const items = defectTypes.filter(dt => filteredIds === null || filteredIds.has(dt.id));
+    return items.length > 0 ? [{ name: '', items }] : [];
+  }, [defectGroups, defectTypes, defectTypeById, filteredIds]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -183,31 +237,41 @@ function SingleTargetBody({ defectTypes, state, onStateChange }: SingleTargetBod
         )}
       </div>
 
-      {/* Defect type grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-        {filtered.map(dt => {
-          const isSelected = state.defectTypeId === dt.id;
-          return (
-            <button
-              key={dt.id}
-              type="button"
-              data-mipqa={`defect-type-btn-${dt.slug}`}
-              onClick={() => onStateChange({ defectTypeId: dt.id })}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-all ${
-                isSelected
-                  ? 'border-cyan-400 bg-slate-700 text-slate-100 shadow-[0_0_0_1px_theme(colors.cyan.400)]'
-                  : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-500 hover:text-slate-100'
-              }`}
-            >
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: dt.color }} />
-              <span className="truncate leading-snug">{dt.name}</span>
-            </button>
-          );
-        })}
-        {filtered.length === 0 && (
-          <p className="col-span-4 py-4 text-center text-xs text-slate-500">No defect types match.</p>
-        )}
-      </div>
+      {/* Defect types — one column per group */}
+      {columns.length === 0 ? (
+        <p className="py-4 text-center text-xs text-slate-500">No defect types match.</p>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto pb-1">
+          {columns.map(col => (
+            <div key={col.name} className="flex min-w-[160px] flex-1 flex-col gap-1.5">
+              {col.name && (
+                <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  {col.name}
+                </p>
+              )}
+              {col.items.map(dt => {
+                const isSelected = state.defectTypeId === dt.id;
+                return (
+                  <button
+                    key={dt.id}
+                    type="button"
+                    data-mipqa={`defect-type-btn-${dt.slug}`}
+                    onClick={() => onStateChange({ defectTypeId: dt.id })}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-all ${
+                      isSelected
+                        ? 'border-cyan-400 bg-slate-700 text-slate-100 shadow-[0_0_0_1px_theme(colors.cyan.400)]'
+                        : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-500 hover:text-slate-100'
+                    }`}
+                  >
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: dt.color }} />
+                    <span className="truncate leading-snug">{dt.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div>
         <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-400" htmlFor="defect-comment">
@@ -232,11 +296,12 @@ function SingleTargetBody({ defectTypes, state, onStateChange }: SingleTargetBod
 interface MultiTargetBodyProps {
   targets: DefectModalTarget[];
   defectTypes: OverviewDefectType[];
+  defectGroups?: DefectGroupData[];
   rowStates: Map<number, RowState>;
   onRowChange: (overviewTestId: number, patch: Partial<RowState>) => void;
 }
 
-function MultiTargetBody({ targets, defectTypes, rowStates, onRowChange }: MultiTargetBodyProps): React.ReactElement {
+function MultiTargetBody({ targets, defectTypes, defectGroups, rowStates, onRowChange }: MultiTargetBodyProps): React.ReactElement {
   return (
     <div className="flex flex-col divide-y divide-slate-700/60">
       {targets.map(target => {
@@ -256,6 +321,7 @@ function MultiTargetBody({ targets, defectTypes, rowStates, onRowChange }: Multi
                 <DefectTypeDropdown
                   value={state.defectTypeId}
                   defectTypes={defectTypes}
+                  defectGroups={defectGroups}
                   onChange={id => onRowChange(target.overviewTestId, { defectTypeId: id })}
                 />
               </div>
@@ -281,6 +347,7 @@ function MultiTargetBody({ targets, defectTypes, rowStates, onRowChange }: Multi
 export function DefectSelectionModal({
   targets,
   defectTypes,
+  defectGroups,
   onClose,
   onApplied,
 }: DefectSelectionModalProps): React.ReactElement {
@@ -433,6 +500,7 @@ export function DefectSelectionModal({
           ) : isSingle && singleState !== null ? (
             <SingleTargetBody
               defectTypes={defectTypes}
+              defectGroups={defectGroups}
               state={singleState}
               onStateChange={handleSingleStateChange}
             />
@@ -440,6 +508,7 @@ export function DefectSelectionModal({
             <MultiTargetBody
               targets={targets}
               defectTypes={defectTypes}
+              defectGroups={defectGroups}
               rowStates={rowStates}
               onRowChange={handleRowChange}
             />
