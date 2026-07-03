@@ -171,7 +171,7 @@ export function ColorPickerPopup({
     <div className={isDark ? 'dark' : ''}>
       <div
         ref={popupRef}
-        className="fixed z-[9999] rounded-xl shadow-2xl overflow-hidden border border-white/10 bg-[#1a2437]"
+        className="fixed z-[9999] rounded-xl shadow-2xl overflow-hidden border border-slate-200 bg-white dark:border-white/10 dark:bg-[#1a2437]"
         style={{ top, left, width: popupW }}
         onMouseDown={e => e.stopPropagation()}
       >
@@ -179,7 +179,7 @@ export function ColorPickerPopup({
 
           {/* Swatches */}
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500 mb-2">
               Pick a swatch:
             </p>
             <div className="grid grid-cols-10 gap-[4px]">
@@ -193,7 +193,7 @@ export function ColorPickerPopup({
                     className="h-[20px] w-[20px] rounded-full transition-transform hover:scale-110 focus:outline-none"
                     style={{
                       backgroundColor: sw,
-                      outline: isActive ? '2px solid white' : '2px solid transparent',
+                      outline: isActive ? '2px solid #6366f1' : '2px solid transparent',
                       outlineOffset: '2px',
                     }}
                     data-mipqa="color-picker-swatch"
@@ -203,11 +203,11 @@ export function ColorPickerPopup({
             </div>
           </div>
 
-          <div className="h-px bg-slate-700/60" />
+          <div className="h-px bg-slate-200 dark:bg-slate-700/60" />
 
           {/* Color picker */}
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500 mb-2">
               Select your color:
             </p>
 
@@ -240,7 +240,7 @@ export function ColorPickerPopup({
             {/* Hue slider */}
             <div className="mt-2.5 flex items-center gap-2">
               <div
-                className="h-5 w-5 rounded-full shrink-0 border border-white/15 shadow"
+                className="h-5 w-5 rounded-full shrink-0 border border-slate-300 dark:border-white/15 shadow"
                 style={{ backgroundColor: currentHex }}
               />
               <div
@@ -270,18 +270,18 @@ export function ColorPickerPopup({
 
             {/* Hex input */}
             <div className="mt-3">
-              <div className="rounded-lg bg-slate-800/80 border border-slate-700/70 px-3 py-1.5">
+              <div className="rounded-lg bg-slate-100 border border-slate-200 dark:bg-slate-800/80 dark:border-slate-700/70 px-3 py-1.5">
                 <input
                   type="text"
                   value={hexInput}
                   onChange={e => handleHexInput(e.target.value)}
-                  className="w-full bg-transparent text-center text-sm font-bold text-white tracking-[0.22em] focus:outline-none uppercase caret-white"
+                  className="w-full bg-transparent text-center text-sm font-bold text-slate-800 dark:text-white tracking-[0.22em] focus:outline-none uppercase caret-slate-800 dark:caret-white"
                   maxLength={6}
                   spellCheck={false}
                   data-mipqa="color-picker-hex-input"
                 />
               </div>
-              <p className="text-center text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 mt-1.5">
+              <p className="text-center text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500 mt-1.5">
                 Hex
               </p>
             </div>
