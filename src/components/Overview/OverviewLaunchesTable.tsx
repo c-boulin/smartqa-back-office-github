@@ -3018,26 +3018,26 @@ const OverviewLaunchesTable: React.FC = () => {
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut group={defectGroupByColumn.productBug} />}
-                      {renderCountCell(row.productBug)}
+                      {row.source === 'cron' && row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut group={defectGroupByColumn.productBug} />}
+                      {row.source === 'cron' ? renderCountCell(row.productBug) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut group={defectGroupByColumn.autoBug} />}
-                      {renderCountCell(row.autoBug)}
+                      {row.source === 'cron' && row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut group={defectGroupByColumn.autoBug} />}
+                      {row.source === 'cron' ? renderCountCell(row.autoBug) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut group={defectGroupByColumn.systemIssue} />}
-                      {renderCountCell(row.systemIssue)}
+                      {row.source === 'cron' && row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut group={defectGroupByColumn.systemIssue} />}
+                      {row.source === 'cron' ? renderCountCell(row.systemIssue) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 pl-3 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut group={defectGroupByColumn.toInvestigate} />}
-                      {renderCountCell(row.toInvestigate)}
+                      {row.source === 'cron' && row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut group={defectGroupByColumn.toInvestigate} />}
+                      {row.source === 'cron' ? renderCountCell(row.toInvestigate) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                 </tr>
