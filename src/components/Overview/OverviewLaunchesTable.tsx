@@ -45,6 +45,7 @@ import {
 } from './OverviewLaunchHistoryTooltip';
 import OverviewTestLogView from './OverviewTestLogView';
 import { DefectSelectionModal } from './DefectSelectionModal';
+import { fetchDefectGroups, type DefectGroupData } from '../../services/defectGroupsApi';
 
 /**
  * Suite list row opens either test log or suite-keyword log (ReportPortal: every name is a link).
@@ -495,6 +496,23 @@ function renderCountCell(value: number | undefined): React.ReactNode {
   return value;
 }
 
+function MiniGroupDonut({ group }: { group: DefectGroupData | undefined }): React.ReactElement | null {
+  if (!group || group.defectTypes.length === 0) return null;
+  const segments = group.defectTypes.map((t, i) => {
+    const start = (i / group.defectTypes.length) * 100;
+    const end = ((i + 1) / group.defectTypes.length) * 100;
+    return `${t.color} ${start}% ${end}%`;
+  });
+  return (
+    <div
+      className="relative h-5 w-5 shrink-0 rounded-full"
+      style={{ background: `conic-gradient(${segments.join(', ')})` }}
+    >
+      <div className="absolute inset-[4px] rounded-full bg-white dark:bg-slate-900" />
+    </div>
+  );
+}
+
 const PER_PAGE_OPTIONS = [15, 25, 50, 100] as const;
 
 type StartTimePreset = 'any' | 'today' | '2d' | '7d' | '30d' | 'custom';
@@ -907,6 +925,8 @@ const OverviewLaunchesTable: React.FC = () => {
 
   // Defect types (cached once)
   const [defectTypes, setDefectTypes] = useState<OverviewDefectType[]>([]);
+  // Defect groups (for per-column donuts)
+  const [defectGroups, setDefectGroups] = useState<DefectGroupData[]>([]);
   // Map slug → defect type for fast look-up in the suite items table
   const defectTypeBySlug = useMemo<Map<string, OverviewDefectType>>(
     () => new Map(defectTypes.map(d => [d.slug, d])),
@@ -960,6 +980,9 @@ const OverviewLaunchesTable: React.FC = () => {
     fetchOverviewDefectTypes()
       .then(data => setDefectTypes(data))
       .catch(() => { /* non-critical — table still works without colors */ });
+    fetchDefectGroups()
+      .then(data => setDefectGroups(data.slice().sort((a, b) => a.position - b.position)))
+      .catch(() => { /* non-critical */ });
   }, []);
 
   const historySelectedLaunchIdFromSearch = useMemo(
@@ -2982,16 +3005,28 @@ const OverviewLaunchesTable: React.FC = () => {
                     {row.skipped}
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
-                    {renderCountCell(row.productBug)}
+                    <div className="flex items-center justify-end gap-1.5">
+                      {row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut group={defectGroups[0]} />}
+                      {renderCountCell(row.productBug)}
+                    </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
-                    {renderCountCell(row.autoBug)}
+                    <div className="flex items-center justify-end gap-1.5">
+                      {row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut group={defectGroups[1]} />}
+                      {renderCountCell(row.autoBug)}
+                    </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
-                    {renderCountCell(row.systemIssue)}
+                    <div className="flex items-center justify-end gap-1.5">
+                      {row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut group={defectGroups[2]} />}
+                      {renderCountCell(row.systemIssue)}
+                    </div>
                   </td>
                   <td className="py-3 px-2 pl-3 align-top text-right tabular-nums text-slate-900 dark:text-white">
-                    {renderCountCell(row.toInvestigate)}
+                    <div className="flex items-center justify-end gap-1.5">
+                      {row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut group={defectGroups[3]} />}
+                      {renderCountCell(row.toInvestigate)}
+                    </div>
                   </td>
                 </tr>
               ))}
