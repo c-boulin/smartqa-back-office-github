@@ -1,98 +1,18 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Activity, Check, Loader, Plus, Settings2, X } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Activity, Loader, Settings2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../UI/Card';
 import { DefectGroupSection } from './DefectGroupSection';
 import { GeneralMonitoringSettings } from './GeneralMonitoringSettings';
-import { createDefectGroup, fetchDefectGroups, slugify, type DefectGroupData } from '../../services/defectGroupsApi';
+import { fetchDefectGroups, type DefectGroupData } from '../../services/defectGroupsApi';
 
 type MonitoringTab = 'general' | 'defect-types';
-
-// ─── Inline "Add Group" form ──────────────────────────────────────────────────
-
-interface AddGroupRowProps {
-  nextPosition: number;
-  onSaved: (group: DefectGroupData) => void;
-  onCancel: () => void;
-}
-
-function AddGroupRow({ nextPosition, onSaved, onCancel }: AddGroupRowProps): React.ReactElement {
-  const [name, setName] = useState('');
-  const [saving, setSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { inputRef.current?.focus(); }, []);
-
-  const handleSave = useCallback(async () => {
-    const trimmed = name.trim();
-    if (!trimmed) { toast.error('Group name is required'); return; }
-    setSaving(true);
-    try {
-      const created = await createDefectGroup({
-        name: trimmed,
-        slug: slugify(trimmed),
-        position: nextPosition,
-      });
-      onSaved(created);
-      toast.success('Group created');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create group');
-    } finally {
-      setSaving(false);
-    }
-  }, [name, nextPosition, onSaved]);
-
-  return (
-    <div className="flex items-center gap-3 border-t border-slate-200 dark:border-slate-700 px-4 py-3 bg-slate-50 dark:bg-slate-800/40">
-      <div className="flex flex-1 items-center gap-2">
-        <input
-          ref={inputRef}
-          type="text"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') handleSave();
-            if (e.key === 'Escape') onCancel();
-          }}
-          placeholder="Group name…"
-          className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2 py-1.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 w-64"
-          data-mipqa="add-group-name-input"
-        />
-        <span className="text-xs text-slate-400 dark:text-slate-500">
-          slug: <span className="font-mono">{slugify(name) || '…'}</span>
-        </span>
-      </div>
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="rounded p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 disabled:opacity-50"
-          data-mipqa="add-group-save-btn"
-        >
-          {saving
-            ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent inline-block" />
-            : <Check className="h-4 w-4" />}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded p-1.5 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-          data-mipqa="add-group-cancel-btn"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ─── Defect Types Tab ─────────────────────────────────────────────────────────
 
 function DefectTypesTab(): React.ReactElement {
   const [groups, setGroups] = useState<DefectGroupData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddGroup, setShowAddGroup] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -115,11 +35,6 @@ function DefectTypesTab(): React.ReactElement {
     setGroups(prev => prev.filter(g => g.id !== id));
   }, []);
 
-  const handleGroupCreated = useCallback((group: DefectGroupData) => {
-    setGroups(prev => [...prev, group]);
-    setShowAddGroup(false);
-  }, []);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -130,7 +45,7 @@ function DefectTypesTab(): React.ReactElement {
 
   return (
     <div className="overflow-x-auto">
-      {groups.length === 0 && !showAddGroup ? (
+      {groups.length === 0 ? (
         <div className="py-16 text-center">
           <Activity className="mx-auto mb-3 w-10 h-10 text-slate-300 dark:text-slate-600" />
           <p className="text-sm text-slate-500 dark:text-slate-400">No defect groups found.</p>
@@ -165,28 +80,6 @@ function DefectTypesTab(): React.ReactElement {
             />
           ))}
         </table>
-      )}
-
-      {showAddGroup && (
-        <AddGroupRow
-          nextPosition={groups.length + 1}
-          onSaved={handleGroupCreated}
-          onCancel={() => setShowAddGroup(false)}
-        />
-      )}
-
-      {!showAddGroup && (
-        <div className="border-t border-slate-200 dark:border-slate-700 px-4 py-3">
-          <button
-            type="button"
-            onClick={() => setShowAddGroup(true)}
-            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition-colors"
-            data-mipqa="add-group-btn"
-          >
-            <Plus className="h-4 w-4" />
-            Add Group
-          </button>
-        </div>
       )}
     </div>
   );
