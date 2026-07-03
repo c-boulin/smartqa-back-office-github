@@ -686,6 +686,16 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+          {canMakeDecision && (
+            <button
+              type="button"
+              onClick={() => setDefectModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded border border-red-400/60 bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-500/20 dark:border-red-400/40 dark:bg-red-500/15 dark:text-red-400 dark:hover:bg-red-500/25"
+              data-mipqa="make-decision-button"
+            >
+              Make decision
+            </button>
+          )}
         </div>
       </div>
 
