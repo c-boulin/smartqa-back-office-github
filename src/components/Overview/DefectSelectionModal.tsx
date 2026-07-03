@@ -241,7 +241,7 @@ function SingleTargetBody({ defectTypes, defectGroups, state, onStateChange }: S
       {columns.length === 0 ? (
         <p className="py-4 text-center text-xs text-slate-500">No defect types match.</p>
       ) : (
-        <div className="flex gap-3 overflow-x-auto pb-1">
+        <div className="flex gap-3">
           {columns.map(col => (
             <div key={col.name} className="flex min-w-[160px] flex-1 flex-col gap-1.5">
               {col.name && (
@@ -462,7 +462,7 @@ export function DefectSelectionModal({
       <div
         data-mipqa="defect-modal"
         className={`relative flex w-full flex-col rounded-xl border border-slate-700 bg-slate-900 shadow-2xl ${
-          isSingle ? 'max-w-2xl max-h-[85vh]' : 'max-w-4xl max-h-[85vh]'
+          isSingle ? 'max-w-4xl max-h-[85vh]' : 'max-w-4xl max-h-[85vh]'
         }`}
       >
         {/* Header */}
