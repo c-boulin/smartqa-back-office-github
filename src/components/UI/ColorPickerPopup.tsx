@@ -157,13 +157,13 @@ export function ColorPickerPopup({
   const currentHex = rgbToHex(...hsvToRgb(hue, sat, val));
   const isDark = document.documentElement.classList.contains('dark');
 
-  const popupW = 380;
-  const popupH = 650;
+  const popupW = 272;
+  const popupH = 480;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  let top = anchorRect.bottom + 10;
-  let left = anchorRect.left - 20;
-  if (top + popupH > vh - 8) top = Math.max(8, anchorRect.top - popupH - 10);
+  let top = anchorRect.bottom + 8;
+  let left = anchorRect.left - 12;
+  if (top + popupH > vh - 8) top = Math.max(8, anchorRect.top - popupH - 8);
   if (left + popupW > vw - 8) left = vw - popupW - 8;
   if (left < 8) left = 8;
 
@@ -171,18 +171,18 @@ export function ColorPickerPopup({
     <div className={isDark ? 'dark' : ''}>
       <div
         ref={popupRef}
-        className="fixed z-[9999] rounded-2xl shadow-2xl overflow-hidden border border-white/10 dark:border-white/10 bg-[#1a2437] dark:bg-[#1a2437]"
+        className="fixed z-[9999] rounded-xl shadow-2xl overflow-hidden border border-white/10 bg-[#1a2437]"
         style={{ top, left, width: popupW }}
         onMouseDown={e => e.stopPropagation()}
       >
-        <div className="p-5 space-y-4">
+        <div className="p-3.5 space-y-3">
 
           {/* Swatches */}
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-3">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">
               Pick a swatch:
             </p>
-            <div className="grid grid-cols-10 gap-[6px]">
+            <div className="grid grid-cols-10 gap-[4px]">
               {SWATCHES.map(sw => {
                 const isActive = sw.toLowerCase() === currentHex.toLowerCase();
                 return (
@@ -190,7 +190,7 @@ export function ColorPickerPopup({
                     key={sw}
                     type="button"
                     onClick={() => handleSwatchClick(sw)}
-                    className="h-[28px] w-[28px] rounded-full transition-transform hover:scale-110 focus:outline-none"
+                    className="h-[20px] w-[20px] rounded-full transition-transform hover:scale-110 focus:outline-none"
                     style={{
                       backgroundColor: sw,
                       outline: isActive ? '2px solid white' : '2px solid transparent',
@@ -207,16 +207,16 @@ export function ColorPickerPopup({
 
           {/* Color picker */}
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-3">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">
               Select your color:
             </p>
 
             {/* 2D gradient */}
             <div
               ref={gradRef}
-              className="relative w-full rounded-xl overflow-hidden cursor-crosshair select-none touch-none"
+              className="relative w-full rounded-lg overflow-hidden cursor-crosshair select-none touch-none"
               style={{
-                height: '230px',
+                height: '160px',
                 background: `linear-gradient(to bottom, transparent, #000),linear-gradient(to right, #fff, ${hueColor})`,
               }}
               onPointerDown={handleGradDown}
@@ -231,23 +231,23 @@ export function ColorPickerPopup({
                 }}
               >
                 <div
-                  className="h-[18px] w-[18px] rounded-full border-[2.5px] border-white shadow-lg"
+                  className="h-3.5 w-3.5 rounded-full border-2 border-white shadow-lg"
                   style={{ backgroundColor: currentHex }}
                 />
               </div>
             </div>
 
             {/* Hue slider */}
-            <div className="mt-4 flex items-center gap-3">
+            <div className="mt-2.5 flex items-center gap-2">
               <div
-                className="h-7 w-7 rounded-full shrink-0 border border-white/15 shadow"
+                className="h-5 w-5 rounded-full shrink-0 border border-white/15 shadow"
                 style={{ backgroundColor: currentHex }}
               />
               <div
                 ref={hueRef}
                 className="relative flex-1 rounded-full cursor-pointer select-none touch-none"
                 style={{
-                  height: '16px',
+                  height: '12px',
                   background: 'linear-gradient(to right,#f00 0%,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,#f00 100%)',
                 }}
                 onPointerDown={handleHueDown}
@@ -261,7 +261,7 @@ export function ColorPickerPopup({
                   }}
                 >
                   <div
-                    className="h-[22px] w-[22px] rounded-full border-[3px] border-white shadow-md"
+                    className="h-[17px] w-[17px] rounded-full border-2 border-white shadow-md"
                     style={{ backgroundColor: `hsl(${hue},100%,50%)` }}
                   />
                 </div>
@@ -269,19 +269,19 @@ export function ColorPickerPopup({
             </div>
 
             {/* Hex input */}
-            <div className="mt-4">
-              <div className="rounded-xl bg-slate-800/80 border border-slate-700/70 px-4 py-3">
+            <div className="mt-3">
+              <div className="rounded-lg bg-slate-800/80 border border-slate-700/70 px-3 py-1.5">
                 <input
                   type="text"
                   value={hexInput}
                   onChange={e => handleHexInput(e.target.value)}
-                  className="w-full bg-transparent text-center text-xl font-bold text-white tracking-[0.22em] focus:outline-none uppercase caret-white"
+                  className="w-full bg-transparent text-center text-sm font-bold text-white tracking-[0.22em] focus:outline-none uppercase caret-white"
                   maxLength={6}
                   spellCheck={false}
                   data-mipqa="color-picker-hex-input"
                 />
               </div>
-              <p className="text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 mt-2">
+              <p className="text-center text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 mt-1.5">
                 Hex
               </p>
             </div>
