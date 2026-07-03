@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Pencil, Plus, Trash2, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../UI/ConfirmDialog';
+import { ColorPickerPopup } from '../UI/ColorPickerPopup';
 import {
   DefectGroupData,
   DefectTypeData,
@@ -31,28 +32,41 @@ function GroupDonut({ types }: { types: DefectTypeData[] }): React.ReactElement 
   );
 }
 
-// ─── Shared color dot + hidden color input ────────────────────────────────────
+// ─── Shared color dot → opens custom color picker popup ──────────────────────
 
 function ColorDot({ color, size, onChange, mipqa }: { color: string; size: 'sm' | 'md'; onChange: (v: string) => void; mipqa?: string }): React.ReactElement {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const dotRef = useRef<HTMLSpanElement>(null);
   const cls = size === 'sm' ? 'h-2.5 w-2.5' : 'h-5 w-5';
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (dotRef.current) {
+      setAnchorRect(dotRef.current.getBoundingClientRect());
+      setOpen(v => !v);
+    }
+  };
+
   return (
-    <span
-      className={`${cls} shrink-0 rounded-full cursor-pointer border border-slate-300 dark:border-slate-500 inline-block`}
-      style={{ backgroundColor: color }}
-      onClick={() => inputRef.current?.click()}
-      title="Pick color"
-      data-mipqa={mipqa}
-    >
-      <input
-        ref={inputRef}
-        type="color"
-        value={color}
-        onChange={e => onChange(e.target.value)}
-        className="sr-only"
-        tabIndex={-1}
+    <>
+      <span
+        ref={dotRef}
+        className={`${cls} shrink-0 rounded-full cursor-pointer inline-block border border-slate-300 dark:border-slate-500`}
+        style={{ backgroundColor: color }}
+        onClick={handleClick}
+        title="Pick color"
+        data-mipqa={mipqa}
       />
-    </span>
+      {open && anchorRect && (
+        <ColorPickerPopup
+          color={color}
+          onChange={onChange}
+          onClose={() => setOpen(false)}
+          anchorRect={anchorRect}
+        />
+      )}
+    </>
   );
 }
 
