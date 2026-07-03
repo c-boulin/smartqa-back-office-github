@@ -690,7 +690,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
             <button
               type="button"
               onClick={() => setDefectModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded border border-red-400/60 bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-500/20 dark:border-red-400/40 dark:bg-red-500/15 dark:text-red-400 dark:hover:bg-red-500/25"
+              className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-600 bg-transparent px-2.5 py-0.5 text-xs font-medium text-slate-400 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
               data-mipqa="make-decision-button"
             >
               Make decision
