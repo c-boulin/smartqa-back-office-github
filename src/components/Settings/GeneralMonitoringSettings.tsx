@@ -9,15 +9,6 @@ import {
 
 // ─── Option lists ─────────────────────────────────────────────────────────────
 
-const INACTIVITY_OPTIONS: { value: number; label: string }[] = [
-  { value: 1, label: '1 hour' },
-  { value: 2, label: '2 hours' },
-  { value: 4, label: '4 hours' },
-  { value: 8, label: '8 hours' },
-  { value: 12, label: '12 hours' },
-  { value: 24, label: '24 hours' },
-];
-
 const KEEP_LAUNCHES_OPTIONS: { value: number | null; label: string }[] = [
   { value: 7, label: '7 days' },
   { value: 14, label: '14 days' },
@@ -80,7 +71,6 @@ export function GeneralMonitoringSettings(): React.ReactElement {
     keepLaunchesDays: 180,
     keepLogsDays: 90,
     keepAttachmentsDays: 30,
-    launchInactivityTimeoutHours: 1,
   });
 
   const load = useCallback(async () => {
@@ -104,7 +94,6 @@ export function GeneralMonitoringSettings(): React.ReactElement {
         keep_launches_days: form.keepLaunchesDays,
         keep_logs_days: form.keepLogsDays,
         keep_attachments_days: form.keepAttachmentsDays,
-        launch_inactivity_timeout_hours: form.launchInactivityTimeoutHours,
       });
       setForm(updated);
       toast.success('Settings saved');
@@ -125,23 +114,6 @@ export function GeneralMonitoringSettings(): React.ReactElement {
 
   return (
     <form onSubmit={handleSubmit} className="px-6 py-4">
-      <SettingRow
-        label="Launch inactivity timeout"
-        description="Schedule time for job to interrupt inactive launches."
-        mipqa="setting-row-inactivity-timeout"
-      >
-        <select
-          data-mipqa="inactivity-timeout-select"
-          value={form.launchInactivityTimeoutHours}
-          onChange={e => setForm(f => ({ ...f, launchInactivityTimeoutHours: Number(e.target.value) }))}
-          className={selectClass}
-        >
-          {INACTIVITY_OPTIONS.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </SettingRow>
-
       <SettingRow
         label="Keep launches"
         description="How long to keep old launches. A launch and all its descendants (suites, tests, steps, logs) will be deleted."

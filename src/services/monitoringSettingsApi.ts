@@ -4,7 +4,6 @@ export interface MonitoringSettingsData {
   keepLaunchesDays: number | null;
   keepLogsDays: number;
   keepAttachmentsDays: number;
-  launchInactivityTimeoutHours: number;
 }
 
 interface MonitoringSettingsResponse {
@@ -22,7 +21,6 @@ export async function saveMonitoringSettings(payload: {
   keep_launches_days: number | null;
   keep_logs_days: number;
   keep_attachments_days: number;
-  launch_inactivity_timeout_hours: number;
 }): Promise<MonitoringSettingsData> {
   const res = await apiService.authenticatedRequest('/monitoring-settings', {
     method: 'PUT',
