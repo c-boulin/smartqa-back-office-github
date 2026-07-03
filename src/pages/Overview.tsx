@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LayoutGrid, Rocket, Shield } from 'lucide-react';
+import { Download, LayoutGrid, Rocket, Shield } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PERMISSIONS } from '../utils/permissions';
@@ -63,63 +63,76 @@ const Overview: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h1 data-mipqa="overview-title" className="text-3xl font-bold text-slate-900 dark:text-white">Overview</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Scheduled Automation tests - Last 7 days</p>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="border-b border-slate-200 dark:border-slate-700">
-          <nav className="flex -mb-px">
-            <button
-              data-mipqa="overview-tab-widgets"
-              type="button"
-              onClick={() => {
-                if (activeTab === 'widgets') {
-                  return;
-                }
-                setActiveTab('widgets');
-                setSearchParams(prev => {
-                  const next = new URLSearchParams(prev);
-                  next.delete('tab');
-                  return next;
-                }, { replace: true });
-                navigate('/overview', { replace: true });
-              }}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'widgets'
-                  ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
-                  : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-              Widgets
-            </button>
-            <button
-              data-mipqa="overview-tab-launches"
-              type="button"
-              onClick={() => {
-                if (activeTab === 'launches') {
-                  return;
-                }
-                setActiveTab('launches');
-                setSearchParams(prev => {
-                  const next = new URLSearchParams(prev);
-                  next.set('tab', 'launches');
-                  return next;
-                }, { replace: true });
-                navigate({
-                  pathname: '/overview/launches',
-                  search: searchParams.toString() !== '' ? `?${searchParams.toString()}` : '',
-                }, { replace: true });
-              }}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'launches'
-                  ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
-                  : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
-              }`}
-            >
-              <Rocket className="w-4 h-4" />
-              Launches
-            </button>
-          </nav>
+          <div className="flex items-center justify-between">
+            <nav className="flex -mb-px">
+              <button
+                data-mipqa="overview-tab-widgets"
+                type="button"
+                onClick={() => {
+                  if (activeTab === 'widgets') {
+                    return;
+                  }
+                  setActiveTab('widgets');
+                  setSearchParams(prev => {
+                    const next = new URLSearchParams(prev);
+                    next.delete('tab');
+                    return next;
+                  }, { replace: true });
+                  navigate('/overview', { replace: true });
+                }}
+                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'widgets'
+                    ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Widget
+              </button>
+              <button
+                data-mipqa="overview-tab-launches"
+                type="button"
+                onClick={() => {
+                  if (activeTab === 'launches') {
+                    return;
+                  }
+                  setActiveTab('launches');
+                  setSearchParams(prev => {
+                    const next = new URLSearchParams(prev);
+                    next.set('tab', 'launches');
+                    return next;
+                  }, { replace: true });
+                  navigate({
+                    pathname: '/overview/launches',
+                    search: searchParams.toString() !== '' ? `?${searchParams.toString()}` : '',
+                  }, { replace: true });
+                }}
+                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'launches'
+                    ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+              >
+                <Rocket className="w-4 h-4" />
+                Launches
+              </button>
+            </nav>
+            <div className="pr-4">
+              <button
+                type="button"
+                data-mipqa="overview-export-report-btn"
+                className="flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-cyan-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+              >
+                <Download className="h-4 w-4" />
+                Export report
+              </button>
+            </div>
+          </div>
         </div>
 
         {activeTab === 'widgets' ? (

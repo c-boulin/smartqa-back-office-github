@@ -1,14 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Loader } from 'lucide-react';
 import { fetchOverviewWidgets, type OverviewWidgetsResponse } from '../../../services/overviewWidgetsApi';
+import OverviewSummaryCards from './OverviewSummaryCards';
 import WeeklyExecutionWidget from './WeeklyExecutionWidget';
 import ServiceCountryExecutionWidget from './ServiceCountryExecutionWidget';
 import DefectBreakdownByServiceWidget from './DefectBreakdownByServiceWidget';
-import { DashboardPage } from './dashboard';
+import NoErrorThisWeek from './NoErrorThisWeek';
 
-/**
- * Loads overview widget payload and renders the three dashboard blocks.
- */
 const OverviewWidgetsPanel: React.FC = () => {
   const [data, setData] = useState<OverviewWidgetsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,11 +38,20 @@ const OverviewWidgetsPanel: React.FC = () => {
     };
   }, []);
 
+  const summaryStats = useMemo(() => {
+    if (!data) return null;
+    const { pass, fail, passRate } = data.weeklyTotals;
+    const totalTests = pass + fail;
+    const failedRate = passRate != null ? Math.round((100 - passRate) * 10) / 10 : null;
+    const totalIssues = data.defectMix.reduce((sum, item) => sum + item.failCount, 0);
+    return { totalTests, passRate, failedRate, totalIssues };
+  }, [data]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <Loader className="w-10 h-10 text-cyan-500 animate-spin" aria-hidden />
-        <p className="text-slate-600 dark:text-slate-400 text-sm">Loading widgets…</p>
+        <p className="text-slate-600 dark:text-slate-400 text-sm">Loading widgets...</p>
       </div>
     );
   }
@@ -63,7 +70,15 @@ const OverviewWidgetsPanel: React.FC = () => {
   }
 
   return (
-    <DashboardPage title="Widgets Tab">
+    <div className="space-y-6">
+      {summaryStats && (
+        <OverviewSummaryCards
+          totalTests={summaryStats.totalTests}
+          passRate={summaryStats.passRate}
+          failedRate={summaryStats.failedRate}
+          totalIssues={summaryStats.totalIssues}
+        />
+      )}
       <WeeklyExecutionWidget weeklyTotals={data.weeklyTotals} window={data.window} defectMix={data.defectMix} />
       <ServiceCountryExecutionWidget
         executionByService={data.executionByService}
@@ -74,7 +89,8 @@ const OverviewWidgetsPanel: React.FC = () => {
         defectSeriesByProject={data.defectSeriesByProject}
         window={data.window}
       />
-    </DashboardPage>
+      <NoErrorThisWeek executionByService={data.executionByService} />
+    </div>
   );
 };
 

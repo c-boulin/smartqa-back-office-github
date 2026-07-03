@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import { Calendar, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type {
   OverviewDefectSeriesProject,
@@ -6,116 +7,224 @@ import type {
 } from '../../../services/overviewWidgetsApi';
 import {
   formatOverviewWindowRangeShort,
-  overviewWidgetsLastWeekTrendLabel,
 } from '../../../utils/formatOverviewWindowRange';
 import { DEFECT_BREAKDOWN_STACK_TYPES } from '../../../constants/defectChartTypes';
-import {
-  BarChartCard,
-  DashboardSection,
-  DateFilter,
-  SectionToolbar,
-  TwoColumnGrid,
-  ViewMeta,
-  WidgetContentBody,
-  WidgetContentHeader,
-} from './dashboard';
 
 interface DefectBreakdownByServiceWidgetProps {
   defectSeriesByProject: OverviewDefectSeriesProject[];
   window: OverviewWidgetsWindow;
 }
 
-/**
- * Full legend rows (12 defect types) for each service card, colours from {@link DEFECT_BREAKDOWN_STACK_TYPES}.
- */
-function DefectBreakdownLegend(): React.ReactElement {
+interface ServiceSummary {
+  projectId: number;
+  label: string;
+  totalIssues: number;
+  passRate: number;
+  testCases: number;
+  topIssueCategory: string;
+  topIssueCategoryCount: number;
+  affectedCountries: string;
+  issuesByCategory: { name: string; count: number; color: string }[];
+}
+
+function deriveServiceSummaries(projects: OverviewDefectSeriesProject[]): ServiceSummary[] {
+  return projects.map(proj => {
+    const totals: Record<string, number> = {};
+    let grandTotal = 0;
+
+    for (const row of proj.series) {
+      for (const defect of DEFECT_BREAKDOWN_STACK_TYPES) {
+        const val = Number(row[defect.key]) || 0;
+        totals[defect.key] = (totals[defect.key] ?? 0) + val;
+        grandTotal += val;
+      }
+    }
+
+    const issuesByCategory = DEFECT_BREAKDOWN_STACK_TYPES
+      .map(d => ({ name: d.label, count: totals[d.key] ?? 0, color: d.color }))
+      .filter(c => c.count > 0)
+      .sort((a, b) => b.count - a.count);
+
+    const topCategory = issuesByCategory[0];
+
+    const mockTestCases = Math.max(grandTotal * 5, 28);
+    const mockPassRate = grandTotal > 0
+      ? Math.round(((mockTestCases - grandTotal) / mockTestCases) * 10000) / 100
+      : 100;
+
+    return {
+      projectId: proj.projectId,
+      label: proj.label,
+      totalIssues: grandTotal,
+      passRate: mockPassRate,
+      testCases: mockTestCases,
+      topIssueCategory: topCategory?.name ?? 'None',
+      topIssueCategoryCount: topCategory?.count ?? 0,
+      affectedCountries: 'FR, BR, EZ',
+      issuesByCategory,
+    };
+  });
+}
+
+function StatCell({ label, value, subValue, mocked }: { label: string; value: string; subValue?: string; mocked?: boolean }) {
   return (
-    <div
-      className="mb-4 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs sm:grid-cols-4"
-      aria-label="Defect type legend"
-    >
-      {DEFECT_BREAKDOWN_STACK_TYPES.map(d => (
-        <div key={d.key} className="flex min-w-0 items-center gap-1.5">
-          <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: d.color }}
-            aria-hidden
-          />
-          <span className="leading-tight text-slate-600 dark:text-slate-400">{d.label}</span>
-        </div>
-      ))}
+    <div className="relative">
+      {mocked && (
+        <span className="absolute -top-1 right-0 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-bold uppercase text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">
+          mocked
+        </span>
+      )}
+      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="text-sm font-bold text-slate-900 dark:text-white">{value}</p>
+      {subValue && <p className="text-xs text-slate-500 dark:text-slate-400">{subValue}</p>}
     </div>
   );
 }
 
-/**
- * Stacked defect bars per service; series and `projectId` come from the overview API (fake counts server-side).
- */
 const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetProps> = ({
   defectSeriesByProject,
   window,
 }) => {
   const rangeShort = formatOverviewWindowRangeShort(window.from, window.to);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const summaries = useMemo(() => deriveServiceSummaries(defectSeriesByProject), [defectSeriesByProject]);
+
+  const selected = summaries[selectedIndex] ?? null;
+  const selectedProject = defectSeriesByProject[selectedIndex] ?? null;
+
+  if (defectSeriesByProject.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h3 className="text-base font-bold text-slate-900 dark:text-white">Defect Breakdown by Service</h3>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Defect types per service for {rangeShort}</p>
+        <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+          No services with test activity in this period.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <DashboardSection
-      title="Defect Breakdown by Service"
-      description={`Defect types per service for ${rangeShort} (same previous calendar week as the execution summary above).`}
-      icon="bug"
-    >
-      <WidgetContentHeader>
-        <SectionToolbar split>
-          <DateFilter value={overviewWidgetsLastWeekTrendLabel(window)} />
-          <ViewMeta label="Launch statistics" />
-        </SectionToolbar>
-      </WidgetContentHeader>
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="mb-6">
+        <h3 className="text-base font-bold text-slate-900 dark:text-white">Defect Breakdown by Service</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Defect types per service for {rangeShort}</p>
+      </div>
 
-      <WidgetContentBody>
-        {defectSeriesByProject.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-            No services with test activity in this period.
-          </p>
-        ) : (
-          <TwoColumnGrid>
-            {defectSeriesByProject.map((proj, index) => (
-              <BarChartCard
-                key={proj.projectId}
-                title={`${proj.label} Last week defects`}
-                subtitle="Launch statistics chart"
-                viewLabel="Bar view"
-                showRefresh={index === 1}
-              >
-                <DefectBreakdownLegend />
-                <div className="h-72">
+      <div className="flex flex-col gap-6 lg:flex-row">
+        {/* Left: Service table */}
+        <div className="w-full shrink-0 lg:w-[380px]">
+          <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="grid grid-cols-[1fr_80px_90px] gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+              <span>Service</span>
+              <span className="text-center">Total issue</span>
+              <span className="text-right">Pass rate</span>
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-700">
+              {summaries.map((s, idx) => (
+                <button
+                  key={s.projectId}
+                  type="button"
+                  onClick={() => setSelectedIndex(idx)}
+                  className={`grid w-full grid-cols-[1fr_80px_90px] items-center gap-2 px-4 py-3 text-left text-sm transition-colors ${
+                    idx === selectedIndex
+                      ? 'bg-cyan-50 dark:bg-cyan-950/30'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'
+                  }`}
+                  data-mipqa={`defect-service-row-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  <span className="truncate font-medium text-slate-900 dark:text-white">{s.label}</span>
+                  <span className="text-center font-bold text-red-500">{s.totalIssues}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500"
+                        style={{ width: `${Math.min(s.passRate, 100)}%` }}
+                      />
+                    </div>
+                    <span className="w-12 text-right text-xs font-medium text-slate-700 dark:text-slate-300">
+                      {s.passRate}%
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+          {summaries.length > 6 && (
+            <button
+              type="button"
+              className="mt-2 flex items-center gap-1 text-xs text-cyan-500 hover:text-cyan-400"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+              Show more
+            </button>
+          )}
+        </div>
+
+        {/* Right: Detail panel */}
+        {selected && selectedProject && (
+          <div className="min-w-0 flex-1">
+            <div className="mb-4 flex items-center justify-between">
+              <h4 className="text-lg font-bold text-slate-900 dark:text-white">{selected.label}</h4>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <Calendar className="h-3.5 w-3.5" />
+                {rangeShort}
+              </div>
+            </div>
+
+            <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
+              <StatCell label="Total issues" value={String(selected.totalIssues)} />
+              <StatCell
+                label="Top issue category"
+                value={selected.topIssueCategory}
+                subValue={`${selected.topIssueCategoryCount} (${selected.totalIssues > 0 ? Math.round((selected.topIssueCategoryCount / selected.totalIssues) * 100) : 0}%)`}
+                mocked
+              />
+              <StatCell label="Pass rate" value={`${selected.passRate}%`} mocked />
+              <StatCell label="Test cases" value={String(selected.testCases)} mocked />
+              <StatCell label="Affected countries" value={selected.affectedCountries} mocked />
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div>
+                <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by category</h5>
+                <div className="flex flex-col gap-2">
+                  {selected.issuesByCategory.slice(0, 6).map(cat => (
+                    <div key={cat.name} className="flex items-center gap-2 text-xs">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                      <span className="text-slate-700 dark:text-slate-300">{cat.name}</span>
+                      <span className="ml-auto font-medium text-slate-900 dark:text-white">
+                        {cat.count} ({selected.totalIssues > 0 ? Math.round((cat.count / selected.totalIssues) * 100) : 0}%)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by day</h5>
+                <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={proj.series}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.25} />
+                    <BarChart data={selectedProject.series}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
                       <XAxis
                         dataKey="label"
                         tick={{ fill: '#9CA3AF', fontSize: 10 }}
                         interval={0}
                         angle={-25}
                         textAnchor="end"
-                        height={60}
+                        height={50}
                       />
-                      <YAxis tick={{ fill: '#9CA3AF', fontSize: 11 }} allowDecimals={false} />
+                      <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} allowDecimals={false} />
                       <Tooltip
                         content={({ active, payload, label }) => {
-                          if (!active || !payload?.length) {
-                            return null;
-                          }
+                          if (!active || !payload?.length) return null;
                           const total = payload.reduce((s, p) => s + (Number(p.value) || 0), 0);
                           return (
-                            <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-lg dark:border-slate-600 dark:bg-slate-800">
+                            <div className="rounded-lg border border-slate-200 bg-white p-2 text-xs shadow-lg dark:border-slate-600 dark:bg-slate-800">
                               <p className="mb-1 font-medium text-slate-900 dark:text-white">{label}</p>
-                              <p className="mb-2 text-slate-500 dark:text-slate-400">Total: {total}</p>
-                              {payload
-                                .filter(p => Number(p.value) > 0)
-                                .map(p => (
-                                  <p key={String(p.dataKey)} style={{ color: p.color }}>
-                                    {p.name}: {p.value}
-                                  </p>
-                                ))}
+                              <p className="text-slate-500 dark:text-slate-400">Total: {total}</p>
                             </div>
                           );
                         }}
@@ -132,12 +241,12 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              </BarChartCard>
-            ))}
-          </TwoColumnGrid>
+              </div>
+            </div>
+          </div>
         )}
-      </WidgetContentBody>
-    </DashboardSection>
+      </div>
+    </div>
   );
 };
 
