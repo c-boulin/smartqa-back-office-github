@@ -932,6 +932,18 @@ const OverviewLaunchesTable: React.FC = () => {
     () => new Map(defectTypes.map(d => [d.slug, d])),
     [defectTypes],
   );
+  const defectGroupByColumn = useMemo(() => {
+    const find = (...terms: string[]) =>
+      defectGroups.find(g =>
+        terms.some(t => g.slug.toLowerCase().includes(t) || g.name.toLowerCase().includes(t)),
+      );
+    return {
+      productBug: find('product'),
+      autoBug: find('auto'),
+      systemIssue: find('system'),
+      toInvestigate: find('investigate'),
+    };
+  }, [defectGroups]);
   // Suite item row selection (multi-select for bulk Make Decision)
   const [selectedTestIds, setSelectedTestIds] = useState<Set<number>>(new Set());
   // Modal state — array of targets (single or bulk)
@@ -3006,25 +3018,25 @@ const OverviewLaunchesTable: React.FC = () => {
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut group={defectGroups[0]} />}
+                      {row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut group={defectGroupByColumn.productBug} />}
                       {renderCountCell(row.productBug)}
                     </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut group={defectGroups[1]} />}
+                      {row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut group={defectGroupByColumn.autoBug} />}
                       {renderCountCell(row.autoBug)}
                     </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut group={defectGroups[2]} />}
+                      {row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut group={defectGroupByColumn.systemIssue} />}
                       {renderCountCell(row.systemIssue)}
                     </div>
                   </td>
                   <td className="py-3 px-2 pl-3 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut group={defectGroups[3]} />}
+                      {row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut group={defectGroupByColumn.toInvestigate} />}
                       {renderCountCell(row.toInvestigate)}
                     </div>
                   </td>
