@@ -2335,18 +2335,21 @@ const OverviewLaunchesTable: React.FC = () => {
               <span className="text-slate-400">|</span>
               <span>Total: {drillLaunch.total}</span>
             </div>
-            {isCronContext && selectedTestIds.size > 0 ? (
+            {isCronContext && selectableItems.length > 0 ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400 dark:text-slate-500"
-                  data-mipqa="suite-selected-count">
-                  {selectedTestIds.size} selected
-                </span>
+                {selectedTestIds.size > 0 && (
+                  <span className="text-xs text-slate-400 dark:text-slate-500"
+                    data-mipqa="suite-selected-count">
+                    {selectedTestIds.size} selected
+                  </span>
+                )}
                 <button
                   type="button"
                   data-mipqa="suite-make-decision-btn"
                   onClick={() => {
+                    const activeIds = selectedTestIds.size > 0 ? selectedTestIds : new Set(selectableItems.map(item => item.overviewTestId!));
                     const targets = selectableItems
-                      .filter(item => selectedTestIds.has(item.overviewTestId!))
+                      .filter(item => activeIds.has(item.overviewTestId!))
                       .map(item => ({ overviewTestId: item.overviewTestId!, testName: item.name }));
                     if (targets.length > 0) setDefectModalTarget(targets);
                   }}
