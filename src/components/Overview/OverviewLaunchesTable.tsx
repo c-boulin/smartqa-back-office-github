@@ -909,6 +909,7 @@ const OverviewLaunchesTable: React.FC = () => {
   const [historyLaunchesNextBeforeId, setHistoryLaunchesNextBeforeId] = useState<number | null>(null);
   const [hoveredLogTimeRowKey, setHoveredLogTimeRowKey] = useState<string | null>(null);
   const historyLaunchTargetCacheRef = useRef<Map<string, OverviewSuiteListLogTarget | null>>(new Map());
+  const pendingLaunchesRefreshRef = useRef(false);
   const skipNextLaunchesSearchSyncRef = useRef(false);
 
   const [projectOptions, setProjectOptions] = useState<OverviewLaunchesProjectOption[]>([]);
@@ -1342,6 +1343,10 @@ const OverviewLaunchesTable: React.FC = () => {
     const run = async (): Promise<void> => {
       if (routeState.kind === 'list') {
         clearLocalSelection();
+        if (pendingLaunchesRefreshRef.current) {
+          pendingLaunchesRefreshRef.current = false;
+          void load(page, perPage);
+        }
         return;
       }
 
@@ -1455,7 +1460,7 @@ const OverviewLaunchesTable: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [fetchLaunchRowById, historySelectedLaunchIdFromSearch, navigateToLaunchesRoute, routeState]);
+  }, [fetchLaunchRowById, historySelectedLaunchIdFromSearch, load, navigateToLaunchesRoute, page, perPage, routeState]);
 
   useEffect(() => {
     setDrillLaunch(null);
@@ -1912,6 +1917,7 @@ const OverviewLaunchesTable: React.FC = () => {
       );
     });
     setSelectedTestIds(new Set());
+    pendingLaunchesRefreshRef.current = true;
   }, []);
 
   /**
