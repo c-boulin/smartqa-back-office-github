@@ -98,7 +98,6 @@ export interface OverviewLaunchApiRow {
   productBug: number;
   autoBug: number;
   systemIssue: number;
-  noDefect: number;
   toInvestigate: number;
 }
 
