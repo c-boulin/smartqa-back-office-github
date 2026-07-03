@@ -2463,6 +2463,7 @@ const OverviewLaunchesTable: React.FC = () => {
             isCronContext={isCronContext}
             overviewTestId={testLogTarget.kind === 'test' ? testLogTarget.overviewTestId : null}
             defectTypes={defectTypes}
+            defectGroups={defectGroups}
             onDefectApplied={(overviewTestId, applied) => handleDefectApplied([{ overviewTestId, defect: applied }])}
           />
         ) : inSuiteListView ? (

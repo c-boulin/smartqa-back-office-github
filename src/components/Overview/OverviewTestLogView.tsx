@@ -80,6 +80,8 @@ export interface OverviewTestLogViewProps {
   overviewTestId?: number | null;
   /** Cached defect types from the parent (used in the modal). */
   defectTypes?: OverviewDefectType[];
+  /** Cached defect groups from the parent (used in the modal for grouped layout). */
+  defectGroups?: import('../../services/defectGroupsApi').DefectGroupData[];
   /** Called after a defect decision is applied so the parent can update the suite list row. */
   onDefectApplied?: (overviewTestId: number, applied: OverviewTestDefect | null) => void;
 }
@@ -591,6 +593,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   isCronContext = false,
   overviewTestId = null,
   defectTypes = [],
+  defectGroups,
   onDefectApplied,
 }) => {
   const [defectModalOpen, setDefectModalOpen] = useState(false);
@@ -690,7 +693,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
             <button
               type="button"
               onClick={() => setDefectModalOpen(true)}
-              className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-600 bg-transparent px-2.5 py-0.5 text-xs font-medium text-slate-400 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors"
               data-mipqa="make-decision-button"
             >
               Make decision
@@ -919,6 +922,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
       <DefectSelectionModal
         targets={[{ overviewTestId, testName: testDisplayName }]}
         defectTypes={defectTypes}
+        defectGroups={defectGroups}
         onClose={() => setDefectModalOpen(false)}
         onApplied={results => {
           results.forEach(r => onDefectApplied?.(r.overviewTestId, r.defect));
