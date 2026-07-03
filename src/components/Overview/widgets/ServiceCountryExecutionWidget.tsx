@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ChevronLeft } from 'lucide-react';
 import type { OverviewExecutionRow } from '../../../services/overviewWidgetsApi';
 import {
   DashboardSection,
@@ -136,33 +137,50 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
 
       <WidgetContentBody>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label="Execution scope">
-            {scope === 'services' ? (
-              <span className="font-medium text-cyan-600 dark:text-cyan-400">service</span>
-            ) : (
+          {scope === 'serviceByCountry' ? (
+            <div className="flex min-w-0 flex-col gap-0.5">
               <button
                 type="button"
                 onClick={goToServices}
-                className="font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-white"
+                className="flex items-center gap-1 text-xs font-medium text-cyan-500 hover:text-cyan-400 transition-colors"
+                data-mipqa="back-to-services-btn"
               >
-                service
+                <ChevronLeft className="h-3.5 w-3.5" />
+                Back to services
               </button>
-            )}
-            <span className="select-none text-slate-400 dark:text-slate-500" aria-hidden>
-              &gt;
-            </span>
-            {scope === 'services' ? (
-              <button
-                type="button"
-                onClick={goToCountries}
-                className="font-medium text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
-              >
-                country
-              </button>
-            ) : (
-              <span className="font-medium text-cyan-600 dark:text-cyan-400">country</span>
-            )}
-          </nav>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                {selectedServiceLabel} - Country breakdown
+              </p>
+            </div>
+          ) : (
+            <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label="Execution scope">
+              {scope === 'services' ? (
+                <span className="font-medium text-cyan-600 dark:text-cyan-400">service</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={goToServices}
+                  className="font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-white"
+                >
+                  service
+                </button>
+              )}
+              <span className="select-none text-slate-400 dark:text-slate-500" aria-hidden>
+                &gt;
+              </span>
+              {scope === 'services' ? (
+                <button
+                  type="button"
+                  onClick={goToCountries}
+                  className="font-medium text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
+                >
+                  country
+                </button>
+              ) : (
+                <span className="font-medium text-cyan-600 dark:text-cyan-400">country</span>
+              )}
+            </nav>
+          )}
           <div className="flex shrink-0 justify-end">{passRateLegend}</div>
         </div>
 
@@ -172,7 +190,11 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
           </p>
         ) : (
           <StatusBoard>
-            <StatusGroup title="Failed" count={failed.length} status="failed">
+            <StatusGroup
+              title={scope === 'serviceByCountry' ? 'Failed countries' : 'Failed'}
+              count={failed.length}
+              status="failed"
+            >
               {failed.length === 0 ? (
                 <p className="text-sm text-slate-500 dark:text-slate-400">None</p>
               ) : (
@@ -193,7 +215,11 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
                 </div>
               )}
             </StatusGroup>
-            <StatusGroup title="Passed" count={passed.length} status="passed">
+            <StatusGroup
+              title={scope === 'serviceByCountry' ? 'Healthy countries' : 'Passed'}
+              count={passed.length}
+              status="passed"
+            >
               {passed.length === 0 ? (
                 <p className="text-sm text-slate-500 dark:text-slate-400">None</p>
               ) : (
