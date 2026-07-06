@@ -56,6 +56,7 @@ export interface OverviewWidgetsResponse {
 
 export interface FetchOverviewWidgetsParams {
   projectIds?: number[];
+  gitlabProjectName?: string;
 }
 
 /**
@@ -67,6 +68,9 @@ export async function fetchOverviewWidgets(params?: FetchOverviewWidgetsParams):
   const search = new URLSearchParams();
   if (params?.projectIds != null && params.projectIds.length > 0) {
     search.set('project_ids', params.projectIds.join(','));
+  }
+  if (params?.gitlabProjectName != null && params.gitlabProjectName !== '') {
+    search.set('gitlab_project_name', params.gitlabProjectName);
   }
   const qs = search.toString();
   const path = qs ? `/widgets/overview?${qs}` : '/widgets/overview';
@@ -139,6 +143,7 @@ export interface FetchOverviewLaunchHistoryParams {
   testRunExecutionId: number;
   perPage?: number;
   projectIds?: number[];
+  gitlabProjectName?: string;
   startFrom?: string;
   startTo?: string;
   executionFilter?: OverviewLaunchesExecutionFilter;
@@ -170,6 +175,8 @@ export interface FetchOverviewLaunchesParams {
   direction?: 'asc' | 'desc';
   /** Restrict to these SmartQA project ids; omit or empty = all projects. */
   projectIds?: number[];
+  /** Filter by GitLab repository name (exact match on project.gitlab_project_name). */
+  gitlabProjectName?: string;
   /**
    * Lower bound for launch `start` time. Pass `Y-m-d` for a calendar day or `Y-m-d H:i:s` / ISO-like
    * strings for an exact bound (server parses in app timezone unless offset is present).
@@ -273,6 +280,9 @@ export async function fetchOverviewLaunches(
   if (params.projectIds != null && params.projectIds.length > 0) {
     search.set('project_ids', params.projectIds.join(','));
   }
+  if (params.gitlabProjectName != null && params.gitlabProjectName !== '') {
+    search.set('gitlab_project_name', params.gitlabProjectName);
+  }
   if (params.startFrom != null && params.startFrom !== '') {
     search.set('start_from', params.startFrom);
   }
@@ -307,6 +317,9 @@ export async function fetchOverviewLaunchHistory(
   }
   if (params.projectIds != null && params.projectIds.length > 0) {
     search.set('project_ids', params.projectIds.join(','));
+  }
+  if (params.gitlabProjectName != null && params.gitlabProjectName !== '') {
+    search.set('gitlab_project_name', params.gitlabProjectName);
   }
   if (params.startFrom != null && params.startFrom !== '') {
     search.set('start_from', params.startFrom);

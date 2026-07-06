@@ -17,16 +17,9 @@ const Overview: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
-  const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
 
-  const projectIds = useMemo(
-    () => (selectedProjectIds.length > 0 ? selectedProjectIds : undefined),
-    [selectedProjectIds],
-  );
-
-  const handleSelectRepo = useCallback((repoSlug: string | null, ids: number[]) => {
+  const handleSelectRepo = useCallback((repoSlug: string | null) => {
     setSelectedRepo(repoSlug);
-    setSelectedProjectIds(ids);
   }, []);
 
   const isLaunchesPath = useMemo(() => {
@@ -154,11 +147,11 @@ const Overview: React.FC = () => {
 
           {activeTab === 'widgets' ? (
             <div className="p-6 bg-slate-50 dark:bg-slate-900/40">
-              <OverviewWidgetsPanel projectIds={projectIds} />
+              <OverviewWidgetsPanel gitlabProjectName={selectedRepo ?? undefined} />
             </div>
           ) : (
             <div className="p-6 min-h-[12rem] bg-slate-50 dark:bg-slate-900/40">
-              <OverviewLaunchesTable externalProjectIds={projectIds} />
+              <OverviewLaunchesTable gitlabProjectName={selectedRepo ?? undefined} />
             </div>
           )}
         </div>

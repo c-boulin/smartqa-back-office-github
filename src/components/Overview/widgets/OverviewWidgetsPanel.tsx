@@ -9,9 +9,10 @@ import NoErrorThisWeek from './NoErrorThisWeek';
 
 interface OverviewWidgetsPanelProps {
   projectIds?: number[];
+  gitlabProjectName?: string;
 }
 
-const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds }) => {
+const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds, gitlabProjectName }) => {
   const [data, setData] = useState<OverviewWidgetsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,9 +23,12 @@ const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds 
       try {
         setLoading(true);
         setError(null);
-        const res = await fetchOverviewWidgets(
-          projectIds && projectIds.length > 0 ? { projectIds } : undefined,
-        );
+        const hasProjectIds = projectIds && projectIds.length > 0;
+        const hasRepoFilter = gitlabProjectName != null && gitlabProjectName !== '';
+        const params = (hasProjectIds || hasRepoFilter)
+          ? { projectIds: hasProjectIds ? projectIds : undefined, gitlabProjectName: hasRepoFilter ? gitlabProjectName : undefined }
+          : undefined;
+        const res = await fetchOverviewWidgets(params);
         if (!cancelled) {
           setData(res);
         }
@@ -42,7 +46,7 @@ const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds 
     return () => {
       cancelled = true;
     };
-  }, [projectIds]);
+  }, [projectIds, gitlabProjectName]);
 
   const summaryStats = useMemo(() => {
     if (!data) return null;

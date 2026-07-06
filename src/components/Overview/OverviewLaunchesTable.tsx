@@ -863,9 +863,10 @@ function SuiteListSortableTh({
 
 interface OverviewLaunchesTableProps {
   externalProjectIds?: number[];
+  gitlabProjectName?: string;
 }
 
-const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds }) => {
+const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, gitlabProjectName }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1277,6 +1278,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
           sort: launchSort.column,
           direction: launchSort.direction,
           projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
+          gitlabProjectName: gitlabProjectName || undefined,
           startFrom: resolvedStartFrom ?? undefined,
           startTo: resolvedStartTo ?? undefined,
           executionFilter: executionFilter === 'all' ? undefined : executionFilter,
@@ -1295,6 +1297,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       launchSort.column,
       launchSort.direction,
       effectiveProjectIds,
+      gitlabProjectName,
       resolvedStartFrom,
       resolvedStartTo,
       executionFilter,
@@ -1320,6 +1323,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         testRunExecutionId: launchId,
         perPage: 1,
         projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
+        gitlabProjectName: gitlabProjectName || undefined,
         startFrom: resolvedStartFrom ?? undefined,
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
@@ -1329,7 +1333,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
 
       return row !== undefined ? mapApiRowToRow(row) : null;
     },
-    [effectiveProjectIds, resolvedStartFrom, resolvedStartTo, executionFilter],
+    [effectiveProjectIds, gitlabProjectName, resolvedStartFrom, resolvedStartTo, executionFilter],
   );
 
   useEffect(() => {
@@ -1644,6 +1648,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         testRunExecutionId: Number(historyAnchorLaunch.id),
         perPage: HISTORY_BUTTON_BATCH_SIZE,
         projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
+        gitlabProjectName: gitlabProjectName || undefined,
         startFrom: resolvedStartFrom ?? undefined,
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
@@ -1667,6 +1672,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     historyAnchorLaunch,
     historyAnchorTarget,
     effectiveProjectIds,
+    gitlabProjectName,
     resolvedStartFrom,
     resolvedStartTo,
     executionFilter,
@@ -1765,6 +1771,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         testRunExecutionId: Number(historyAnchorLaunch.id),
         perPage: Math.min(HISTORY_BUTTON_BATCH_SIZE, remainingSlots),
         projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
+        gitlabProjectName: gitlabProjectName || undefined,
         startFrom: resolvedStartFrom ?? undefined,
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
@@ -1799,6 +1806,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     historyLaunchesNextBeforeId,
     historyLaunches.length,
     effectiveProjectIds,
+    gitlabProjectName,
     resolvedStartFrom,
     resolvedStartTo,
     executionFilter,
