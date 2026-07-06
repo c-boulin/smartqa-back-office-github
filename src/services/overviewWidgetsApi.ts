@@ -54,13 +54,24 @@ export interface OverviewWidgetsResponse {
   defectSeriesByProject: OverviewDefectSeriesProject[];
 }
 
+export interface FetchOverviewWidgetsParams {
+  projectIds?: number[];
+}
+
 /**
  * Fetches overview widget aggregates (SmartQA API).
  * Weekly pass/fail totals come from test case executions; defect mix from Robot XML mirror (overview_*).
  * `defectSeriesByProject` is one row per service (test suite) with server-generated stacked counts.
  */
-export async function fetchOverviewWidgets(): Promise<OverviewWidgetsResponse> {
-  return apiService.authenticatedRequest('/widgets/overview', {
+export async function fetchOverviewWidgets(params?: FetchOverviewWidgetsParams): Promise<OverviewWidgetsResponse> {
+  const search = new URLSearchParams();
+  if (params?.projectIds != null && params.projectIds.length > 0) {
+    search.set('project_ids', params.projectIds.join(','));
+  }
+  const qs = search.toString();
+  const path = qs ? `/widgets/overview?${qs}` : '/widgets/overview';
+
+  return apiService.authenticatedRequest(path, {
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',

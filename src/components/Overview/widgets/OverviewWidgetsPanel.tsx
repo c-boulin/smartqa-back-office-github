@@ -7,7 +7,11 @@ import ServiceCountryExecutionWidget from './ServiceCountryExecutionWidget';
 import DefectBreakdownByServiceWidget from './DefectBreakdownByServiceWidget';
 import NoErrorThisWeek from './NoErrorThisWeek';
 
-const OverviewWidgetsPanel: React.FC = () => {
+interface OverviewWidgetsPanelProps {
+  projectIds?: number[];
+}
+
+const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds }) => {
   const [data, setData] = useState<OverviewWidgetsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +22,9 @@ const OverviewWidgetsPanel: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetchOverviewWidgets();
+        const res = await fetchOverviewWidgets(
+          projectIds && projectIds.length > 0 ? { projectIds } : undefined,
+        );
         if (!cancelled) {
           setData(res);
         }
@@ -36,7 +42,7 @@ const OverviewWidgetsPanel: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [projectIds]);
 
   const summaryStats = useMemo(() => {
     if (!data) return null;

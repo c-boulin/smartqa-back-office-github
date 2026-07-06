@@ -861,7 +861,11 @@ function SuiteListSortableTh({
   );
 }
 
-const OverviewLaunchesTable: React.FC = () => {
+interface OverviewLaunchesTableProps {
+  externalProjectIds?: number[];
+}
+
+const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -918,6 +922,17 @@ const OverviewLaunchesTable: React.FC = () => {
   const [projectsDropdownOpen, setProjectsDropdownOpen] = useState(false);
   const [projectsSearchTerm, setProjectsSearchTerm] = useState('');
   const projectsFilterDropdownRef = useRef<HTMLDivElement>(null);
+
+  const effectiveProjectIds = useMemo(() => {
+    if (externalProjectIds && externalProjectIds.length > 0) {
+      if (selectedProjectIds.length > 0) {
+        return selectedProjectIds.filter(id => externalProjectIds.includes(id));
+      }
+      return externalProjectIds;
+    }
+    return selectedProjectIds;
+  }, [externalProjectIds, selectedProjectIds]);
+
   const [startTimePreset, setStartTimePreset] = useState<StartTimePreset>('any');
   const [customRangeStart, setCustomRangeStart] = useState<Date | null>(null);
   const [customRangeEnd, setCustomRangeEnd] = useState<Date | null>(null);
@@ -1261,7 +1276,7 @@ const OverviewLaunchesTable: React.FC = () => {
           perPage: size,
           sort: launchSort.column,
           direction: launchSort.direction,
-          projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+          projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
           startFrom: resolvedStartFrom ?? undefined,
           startTo: resolvedStartTo ?? undefined,
           executionFilter: executionFilter === 'all' ? undefined : executionFilter,
@@ -1279,7 +1294,7 @@ const OverviewLaunchesTable: React.FC = () => {
     [
       launchSort.column,
       launchSort.direction,
-      selectedProjectIds,
+      effectiveProjectIds,
       resolvedStartFrom,
       resolvedStartTo,
       executionFilter,
@@ -1304,7 +1319,7 @@ const OverviewLaunchesTable: React.FC = () => {
       const res = await fetchOverviewLaunches({
         testRunExecutionId: launchId,
         perPage: 1,
-        projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+        projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
         startFrom: resolvedStartFrom ?? undefined,
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
@@ -1314,7 +1329,7 @@ const OverviewLaunchesTable: React.FC = () => {
 
       return row !== undefined ? mapApiRowToRow(row) : null;
     },
-    [selectedProjectIds, resolvedStartFrom, resolvedStartTo, executionFilter],
+    [effectiveProjectIds, resolvedStartFrom, resolvedStartTo, executionFilter],
   );
 
   useEffect(() => {
@@ -1628,7 +1643,7 @@ const OverviewLaunchesTable: React.FC = () => {
       const res = await fetchOverviewLaunchHistory({
         testRunExecutionId: Number(historyAnchorLaunch.id),
         perPage: HISTORY_BUTTON_BATCH_SIZE,
-        projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+        projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
         startFrom: resolvedStartFrom ?? undefined,
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
@@ -1651,7 +1666,7 @@ const OverviewLaunchesTable: React.FC = () => {
   }, [
     historyAnchorLaunch,
     historyAnchorTarget,
-    selectedProjectIds,
+    effectiveProjectIds,
     resolvedStartFrom,
     resolvedStartTo,
     executionFilter,
@@ -1749,7 +1764,7 @@ const OverviewLaunchesTable: React.FC = () => {
       const res = await fetchOverviewLaunchHistory({
         testRunExecutionId: Number(historyAnchorLaunch.id),
         perPage: Math.min(HISTORY_BUTTON_BATCH_SIZE, remainingSlots),
-        projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+        projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
         startFrom: resolvedStartFrom ?? undefined,
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
@@ -1783,7 +1798,7 @@ const OverviewLaunchesTable: React.FC = () => {
     historyLaunchesHiddenCount,
     historyLaunchesNextBeforeId,
     historyLaunches.length,
-    selectedProjectIds,
+    effectiveProjectIds,
     resolvedStartFrom,
     resolvedStartTo,
     executionFilter,
