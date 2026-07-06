@@ -1337,6 +1337,10 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   );
 
   useEffect(() => {
+    setPage(1);
+  }, [gitlabProjectName]);
+
+  useEffect(() => {
     void load(page, perPage);
   }, [load, page, perPage]);
 
