@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Download, LayoutGrid, Rocket, Shield } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -16,12 +16,18 @@ const Overview: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
 
   const projectIds = useMemo(
-    () => (selectedProjectId !== null ? [selectedProjectId] : undefined),
-    [selectedProjectId],
+    () => (selectedProjectIds.length > 0 ? selectedProjectIds : undefined),
+    [selectedProjectIds],
   );
+
+  const handleSelectRepo = useCallback((repoSlug: string | null, ids: number[]) => {
+    setSelectedRepo(repoSlug);
+    setSelectedProjectIds(ids);
+  }, []);
 
   const isLaunchesPath = useMemo(() => {
     const normalized = location.pathname.replace(/\/+$/, '');
@@ -73,8 +79,8 @@ const Overview: React.FC = () => {
 
       <div className="flex gap-6">
         <OverviewProjectSidebar
-          selectedProjectId={selectedProjectId}
-          onSelectProject={setSelectedProjectId}
+          selectedRepo={selectedRepo}
+          onSelectRepo={handleSelectRepo}
         />
 
         <div className="flex-1 min-w-0 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
