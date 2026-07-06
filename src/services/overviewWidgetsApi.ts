@@ -192,6 +192,7 @@ export interface OverviewLaunchesProjectOption {
   name: string;
   country?: string;
   project_type?: string;
+  gitlab_project_name?: string;
 }
 
 const PER_PAGE = 200;
@@ -240,6 +241,7 @@ export async function fetchAllOverviewLaunchesProjectOptions(): Promise<Overview
         name: t.name ?? '',
         country: t.country ?? undefined,
         project_type: t.project_type ?? undefined,
+        gitlab_project_name: t.gitlab_project_name ?? undefined,
       };
     });
 

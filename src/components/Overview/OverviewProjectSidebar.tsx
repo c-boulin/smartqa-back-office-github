@@ -45,7 +45,7 @@ const OverviewProjectSidebar: React.FC<OverviewProjectSidebarProps> = ({
         const map: Record<string, number[]> = {};
         for (const repo of GITLAB_REPOS) {
           map[repo.slug] = options
-            .filter(p => p.name.toLowerCase().includes(repo.slug.toLowerCase()))
+            .filter(p => p.gitlab_project_name === repo.slug)
             .map(p => p.id);
         }
         setRepoProjectMap(map);
