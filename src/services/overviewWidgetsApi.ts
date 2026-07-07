@@ -38,8 +38,22 @@ export interface OverviewDefectSeriesRow {
 }
 
 export interface OverviewDefectSeriesProject {
+  /** Same value as `executionByService[].key` for the same service. */
+  key: string;
   projectId: number;
   label: string;
+  /** Total defect assignments in the window for this service. */
+  totalIssues: number;
+  /** Dominant defect category label; null when there are no issues. */
+  topIssueCategory: string | null;
+  topIssueCategoryCount: number;
+  topIssueCategoryPercent: number | null;
+  /** Real pass rate from Robot XML stats: pass / (pass + fail). null when no executions. */
+  passRate: number | null;
+  /** Executed tests in the window (pass + fail), not distinct test-case definitions. */
+  testCases: number;
+  /** Countries with failures; falls back to countries with any executions when none failed. */
+  affectedCountries: string[];
   series: OverviewDefectSeriesRow[];
 }
 

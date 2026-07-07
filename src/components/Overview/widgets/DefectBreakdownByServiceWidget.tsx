@@ -19,24 +19,23 @@ interface ServiceSummary {
   projectId: number;
   label: string;
   totalIssues: number;
-  passRate: number;
+  passRate: number | null;
   testCases: number;
-  topIssueCategory: string;
+  topIssueCategory: string | null;
   topIssueCategoryCount: number;
-  affectedCountries: string;
+  topIssueCategoryPercent: number | null;
+  affectedCountries: string[];
   issuesByCategory: { name: string; count: number; color: string }[];
 }
 
 function deriveServiceSummaries(projects: OverviewDefectSeriesProject[]): ServiceSummary[] {
   return projects.map(proj => {
     const totals: Record<string, number> = {};
-    let grandTotal = 0;
 
     for (const row of proj.series) {
       for (const defect of DEFECT_BREAKDOWN_STACK_TYPES) {
         const val = Number(row[defect.key]) || 0;
         totals[defect.key] = (totals[defect.key] ?? 0) + val;
-        grandTotal += val;
       }
     }
 
@@ -45,35 +44,32 @@ function deriveServiceSummaries(projects: OverviewDefectSeriesProject[]): Servic
       .filter(c => c.count > 0)
       .sort((a, b) => b.count - a.count);
 
-    const topCategory = issuesByCategory[0];
-
-    const mockTestCases = Math.max(grandTotal * 5, 28);
-    const mockPassRate = grandTotal > 0
-      ? Math.round(((mockTestCases - grandTotal) / mockTestCases) * 10000) / 100
-      : 100;
-
     return {
       projectId: proj.projectId,
       label: proj.label,
-      totalIssues: grandTotal,
-      passRate: mockPassRate,
-      testCases: mockTestCases,
-      topIssueCategory: topCategory?.name ?? 'None',
-      topIssueCategoryCount: topCategory?.count ?? 0,
-      affectedCountries: 'FR, BR, EZ',
+      totalIssues: proj.totalIssues,
+      passRate: proj.passRate,
+      testCases: proj.testCases,
+      topIssueCategory: proj.topIssueCategory,
+      topIssueCategoryCount: proj.topIssueCategoryCount,
+      topIssueCategoryPercent: proj.topIssueCategoryPercent,
+      affectedCountries: proj.affectedCountries,
       issuesByCategory,
     };
   });
 }
 
-function StatCell({ label, value, subValue, mocked }: { label: string; value: string; subValue?: string; mocked?: boolean }) {
+function formatPassRate(rate: number | null): string {
+  return rate === null ? '—' : `${rate}%`;
+}
+
+function formatAffectedCountries(countries: string[]): string {
+  return countries.length === 0 ? '—' : countries.join(', ');
+}
+
+function StatCell({ label, value, subValue }: { label: string; value: string; subValue?: string }) {
   return (
-    <div className="relative">
-      {mocked && (
-        <span className="absolute -top-1 right-0 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-bold uppercase text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">
-          mocked
-        </span>
-      )}
+    <div>
       <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
       <p className="text-sm font-bold text-slate-900 dark:text-white">{value}</p>
       {subValue && <p className="text-xs text-slate-500 dark:text-slate-400">{subValue}</p>}
@@ -140,11 +136,11 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500"
-                        style={{ width: `${Math.min(s.passRate, 100)}%` }}
+                        style={{ width: `${Math.min(s.passRate ?? 0, 100)}%` }}
                       />
                     </div>
                     <span className="w-12 text-right text-xs font-medium text-slate-700 dark:text-slate-300">
-                      {s.passRate}%
+                      {formatPassRate(s.passRate)}
                     </span>
                   </div>
                 </button>
@@ -177,13 +173,16 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               <StatCell label="Total issues" value={String(selected.totalIssues)} />
               <StatCell
                 label="Top issue category"
-                value={selected.topIssueCategory}
-                subValue={`${selected.topIssueCategoryCount} (${selected.totalIssues > 0 ? Math.round((selected.topIssueCategoryCount / selected.totalIssues) * 100) : 0}%)`}
-                mocked
+                value={selected.totalIssues === 0 || selected.topIssueCategory === null ? '—' : selected.topIssueCategory}
+                subValue={
+                  selected.totalIssues === 0 || selected.topIssueCategory === null
+                    ? undefined
+                    : `${selected.topIssueCategoryCount} (${selected.topIssueCategoryPercent ?? 0}%)`
+                }
               />
-              <StatCell label="Pass rate" value={`${selected.passRate}%`} mocked />
-              <StatCell label="Test cases" value={String(selected.testCases)} mocked />
-              <StatCell label="Affected countries" value={selected.affectedCountries} mocked />
+              <StatCell label="Pass rate" value={formatPassRate(selected.passRate)} />
+              <StatCell label="Test cases" value={String(selected.testCases)} />
+              <StatCell label="Affected countries" value={formatAffectedCountries(selected.affectedCountries)} />
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
