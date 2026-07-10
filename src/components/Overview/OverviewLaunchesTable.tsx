@@ -2028,7 +2028,16 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     });
     setSelectedTestIds(new Set());
     pendingLaunchesRefreshRef.current = true;
-  }, []);
+    const drilledId = drillLaunch !== null ? Number(drillLaunch.id) : null;
+    if (drilledId !== null && Number.isFinite(drilledId)) {
+      setDefectSlugsByLaunchId(prev => {
+        if (!prev.has(drilledId)) return prev;
+        const next = new Map(prev);
+        next.delete(drilledId);
+        return next;
+      });
+    }
+  }, [drillLaunch]);
 
   /**
    * Toggles suite List view sort (client-side); new text columns default A→Z, start time chronological.
