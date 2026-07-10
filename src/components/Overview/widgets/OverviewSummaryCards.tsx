@@ -1,11 +1,15 @@
 import React from 'react';
 import { FileText, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { navigateToFilteredLaunches } from './navigateToFilteredLaunches';
 
 interface OverviewSummaryCardsProps {
   totalTests: number;
   passRate: number | null;
   failedRate: number | null;
   totalIssues: number;
+  windowStartFrom: string;
+  windowStartTo: string;
 }
 
 interface StatCardConfig {
@@ -20,7 +24,11 @@ const OverviewSummaryCards: React.FC<OverviewSummaryCardsProps> = ({
   passRate,
   failedRate,
   totalIssues,
+  windowStartFrom,
+  windowStartTo,
 }) => {
+  const navigate = useNavigate();
+
   const formatNumber = (n: number): string => {
     if (n >= 1000) {
       return n.toLocaleString('en-US').replace(/,/g, '.');
@@ -55,13 +63,32 @@ const OverviewSummaryCards: React.FC<OverviewSummaryCardsProps> = ({
     },
   ];
 
+  const handleClick = (): void => {
+    navigateToFilteredLaunches(navigate, {
+      startFrom: windowStartFrom,
+      startTo: windowStartTo,
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
         <div
           key={card.label}
+          role="button"
+          tabIndex={0}
+          onClick={handleClick}
+          onKeyDown={handleKeyDown}
+          aria-label={`View launches for ${card.label}`}
           data-mipqa={`overview-stat-${card.label.toLowerCase().replace(/\s+/g, '-')}`}
-          className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+          className="flex cursor-pointer items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-cyan-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-cyan-500 dark:focus-visible:ring-cyan-400"
         >
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${card.accentClass}`}>
             {card.icon}

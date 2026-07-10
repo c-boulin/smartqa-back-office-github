@@ -1,13 +1,18 @@
 import React, { useMemo } from 'react';
 import { ResponsiveContainer } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import type { OverviewDefectMixItem, OverviewWeeklyTotals, OverviewWidgetsWindow } from '../../../services/overviewWidgetsApi';
 import { DEFECT_CHART_TYPES } from '../../../constants/defectChartTypes';
 import { DashboardStyleDonutPie } from '../../Charts/DashboardStyleDonutPie';
+import { navigateToFilteredLaunches } from './navigateToFilteredLaunches';
+import { DEFECT_TAG_TO_SORT_COLUMN } from './defectSortColumns';
 
 interface WeeklyExecutionWidgetProps {
   weeklyTotals: OverviewWeeklyTotals;
   window: OverviewWidgetsWindow;
   defectMix: OverviewDefectMixItem[];
+  windowStartFrom: string;
+  windowStartTo: string;
 }
 
 const PASSED_COLOR = '#10B981';
@@ -22,7 +27,13 @@ function defectColor(tag: string): string {
   return DEFECT_COLOR_BY_SLUG[tag] ?? FALLBACK_COLOR;
 }
 
-const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({ weeklyTotals, defectMix }) => {
+const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
+  weeklyTotals,
+  defectMix,
+  windowStartFrom,
+  windowStartTo,
+}) => {
+  const navigate = useNavigate();
   const { pass, fail } = weeklyTotals;
   const totalTests = pass + fail;
 
@@ -38,10 +49,36 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({ weeklyTot
     [defectMix],
   );
 
+  const defectTagByLabel = useMemo(
+    () => new Map(defectMix.map(item => [item.label, item.tag])),
+    [defectMix],
+  );
+
   const totalIssues = useMemo(() => defectMix.reduce((sum, item) => sum + item.failCount, 0), [defectMix]);
 
   const passPercent = totalTests > 0 ? ((pass / totalTests) * 100).toFixed(1) : '0';
   const failPercent = totalTests > 0 ? ((fail / totalTests) * 100).toFixed(1) : '0';
+
+  const handleOverallSliceClick = (data: { name: string; value: number }): void => {
+    const isPassed = data.name.toLowerCase().startsWith('pass');
+    navigateToFilteredLaunches(navigate, {
+      startFrom: windowStartFrom,
+      startTo: windowStartTo,
+      sort: isPassed ? 'passed' : 'failed',
+      direction: 'desc',
+    });
+  };
+
+  const handleDefectSliceClick = (data: { name: string; value: number }): void => {
+    const tag = defectTagByLabel.get(data.name);
+    const sortColumn = tag != null ? DEFECT_TAG_TO_SORT_COLUMN[tag] : undefined;
+    navigateToFilteredLaunches(navigate, {
+      startFrom: windowStartFrom,
+      startTo: windowStartTo,
+      sort: sortColumn,
+      direction: sortColumn ? 'desc' : undefined,
+    });
+  };
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -61,6 +98,7 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({ weeklyTot
                   data={overallData}
                   centerValue={totalTests.toLocaleString()}
                   centerSubtitle="TOTAL TESTS"
+                  onSliceClick={handleOverallSliceClick}
                 />
               </ResponsiveContainer>
             ) : (
@@ -104,6 +142,7 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({ weeklyTot
                   data={defectData}
                   centerValue={totalIssues.toLocaleString()}
                   centerSubtitle="ISSUES"
+                  onSliceClick={handleDefectSliceClick}
                 />
               </ResponsiveContainer>
             ) : (

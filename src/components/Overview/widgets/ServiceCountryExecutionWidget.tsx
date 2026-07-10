@@ -1,12 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { OverviewExecutionRow } from '../../../services/overviewWidgetsApi';
 import { ServiceStatCard, StatusBoard, StatusGroup } from './dashboard';
+import { navigateToFilteredLaunches } from './navigateToFilteredLaunches';
 
 interface ServiceCountryExecutionWidgetProps {
   executionByService: OverviewExecutionRow[];
   executionByCountry: OverviewExecutionRow[];
   executionByCountryByService: Record<string, OverviewExecutionRow[]>;
+  windowStartFrom: string;
+  windowStartTo: string;
 }
 
 type ScopeView = 'services' | 'countries' | 'serviceByCountry';
@@ -34,7 +38,10 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
   executionByService,
   executionByCountry,
   executionByCountryByService,
+  windowStartFrom,
+  windowStartTo,
 }) => {
+  const navigate = useNavigate();
   const [scope, setScope] = useState<ScopeView>('services');
   const [selectedServiceKey, setSelectedServiceKey] = useState<string | null>(null);
 
@@ -67,6 +74,14 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
   const openServiceByCountry = (serviceKey: string): void => {
     setSelectedServiceKey(serviceKey);
     setScope('serviceByCountry');
+  };
+
+  const handleViewLaunches = (row: OverviewExecutionRow): void => {
+    navigateToFilteredLaunches(navigate, {
+      projectIds: row.projectIds,
+      startFrom: windowStartFrom,
+      startTo: windowStartTo,
+    });
   };
 
   return (
@@ -162,6 +177,7 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
                     testCases={row.pass + row.fail}
                     status="failed"
                     onClick={scope === 'services' ? () => openServiceByCountry(row.key) : undefined}
+                    onViewLaunches={() => handleViewLaunches(row)}
                   />
                 ))}
               </div>
@@ -185,6 +201,7 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
                     testCases={row.pass + row.fail}
                     status="passed"
                     onClick={scope === 'services' ? () => openServiceByCountry(row.key) : undefined}
+                    onViewLaunches={() => handleViewLaunches(row)}
                   />
                 ))}
               </div>

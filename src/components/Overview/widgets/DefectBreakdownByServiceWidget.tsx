@@ -1,21 +1,29 @@
 import React, { useMemo, useState } from 'react';
-import { Calendar, ChevronRight } from 'lucide-react';
+import { ArrowUpRight, Calendar, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import type {
   OverviewDefectSeriesProject,
+  OverviewExecutionRow,
   OverviewWidgetsWindow,
 } from '../../../services/overviewWidgetsApi';
 import {
   formatOverviewWindowRangeShort,
 } from '../../../utils/formatOverviewWindowRange';
 import { DEFECT_BREAKDOWN_STACK_TYPES } from '../../../constants/defectChartTypes';
+import { navigateToFilteredLaunches } from './navigateToFilteredLaunches';
+import { DEFECT_TAG_TO_SORT_COLUMN } from './defectSortColumns';
 
 interface DefectBreakdownByServiceWidgetProps {
   defectSeriesByProject: OverviewDefectSeriesProject[];
+  executionByService: OverviewExecutionRow[];
   window: OverviewWidgetsWindow;
+  windowStartFrom: string;
+  windowStartTo: string;
 }
 
 interface ServiceSummary {
+  key: string;
   projectId: number;
   label: string;
   totalIssues: number;
@@ -45,6 +53,7 @@ function deriveServiceSummaries(projects: OverviewDefectSeriesProject[]): Servic
       .sort((a, b) => b.count - a.count);
 
     return {
+      key: proj.key,
       projectId: proj.projectId,
       label: proj.label,
       totalIssues: proj.totalIssues,
@@ -79,15 +88,35 @@ function StatCell({ label, value, subValue }: { label: string; value: string; su
 
 const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetProps> = ({
   defectSeriesByProject,
+  executionByService,
   window,
+  windowStartFrom,
+  windowStartTo,
 }) => {
+  const navigate = useNavigate();
   const rangeShort = formatOverviewWindowRangeShort(window.from, window.to);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const summaries = useMemo(() => deriveServiceSummaries(defectSeriesByProject), [defectSeriesByProject]);
 
+  const projectIdsByServiceKey = useMemo(
+    () => new Map(executionByService.map(row => [row.key, row.projectIds])),
+    [executionByService],
+  );
+
   const selected = summaries[selectedIndex] ?? null;
   const selectedProject = defectSeriesByProject[selectedIndex] ?? null;
+
+  const openLaunchesForService = (serviceKey: string, extra?: { startFrom?: string; startTo?: string; sort?: string }): void => {
+    const projectIds = projectIdsByServiceKey.get(serviceKey) ?? [];
+    navigateToFilteredLaunches(navigate, {
+      projectIds,
+      startFrom: extra?.startFrom ?? windowStartFrom,
+      startTo: extra?.startTo ?? windowStartTo,
+      sort: extra?.sort,
+      direction: extra?.sort ? 'desc' : undefined,
+    });
+  };
 
   if (defectSeriesByProject.length === 0) {
     return (
@@ -118,33 +147,57 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               <span className="text-right">Pass rate</span>
             </div>
             <div className="divide-y divide-slate-100 dark:divide-slate-700">
-              {summaries.map((s, idx) => (
-                <button
-                  key={s.projectId}
-                  type="button"
-                  onClick={() => setSelectedIndex(idx)}
-                  className={`grid w-full grid-cols-[1fr_80px_90px] items-center gap-2 px-4 py-3 text-left text-sm transition-colors ${
-                    idx === selectedIndex
-                      ? 'bg-cyan-50 dark:bg-cyan-950/30'
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'
-                  }`}
-                  data-mipqa={`defect-service-row-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  <span className="truncate font-medium text-slate-900 dark:text-white">{s.label}</span>
-                  <span className="text-center font-bold text-red-500">{s.totalIssues}</span>
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500"
-                        style={{ width: `${Math.min(s.passRate ?? 0, 100)}%` }}
-                      />
+              {summaries.map((s, idx) => {
+                const handleSelect = (): void => setSelectedIndex(idx);
+                const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSelect();
+                  }
+                };
+                return (
+                  <div
+                    key={s.projectId}
+                    role="button"
+                    tabIndex={0}
+                    onClick={handleSelect}
+                    onKeyDown={handleKeyDown}
+                    className={`relative grid w-full cursor-pointer grid-cols-[1fr_80px_90px] items-center gap-2 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400 ${
+                      idx === selectedIndex
+                        ? 'bg-cyan-50 dark:bg-cyan-950/30'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'
+                    }`}
+                    data-mipqa={`defect-service-row-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <span className="truncate pr-8 font-medium text-slate-900 dark:text-white">{s.label}</span>
+                    <span className="text-center font-bold text-red-500">{s.totalIssues}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500"
+                          style={{ width: `${Math.min(s.passRate ?? 0, 100)}%` }}
+                        />
+                      </div>
+                      <span className="w-12 text-right text-xs font-medium text-slate-700 dark:text-slate-300">
+                        {formatPassRate(s.passRate)}
+                      </span>
                     </div>
-                    <span className="w-12 text-right text-xs font-medium text-slate-700 dark:text-slate-300">
-                      {formatPassRate(s.passRate)}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openLaunchesForService(s.key);
+                      }}
+                      title="View launches"
+                      aria-label={`View launches for ${s.label}`}
+                      data-mipqa={`defect-service-view-launches-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-cyan-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:hover:bg-slate-700 dark:hover:text-cyan-400 dark:focus-visible:ring-cyan-400"
+                    >
+                      <ArrowUpRight className="h-4 w-4" />
+                    </button>
                   </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
           </div>
           {summaries.length > 6 && (
@@ -235,6 +288,16 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           stackId="defects"
                           fill={defect.color}
                           name={defect.label}
+                          cursor="pointer"
+                          onClick={(payload: { date?: string; payload?: { date?: string } }) => {
+                            const date = payload?.date ?? payload?.payload?.date;
+                            if (!date || !selectedProject) return;
+                            openLaunchesForService(selectedProject.key, {
+                              startFrom: date,
+                              startTo: date,
+                              sort: DEFECT_TAG_TO_SORT_COLUMN[defect.slug],
+                            });
+                          }}
                         />
                       ))}
                     </BarChart>

@@ -6,6 +6,7 @@ import WeeklyExecutionWidget from './WeeklyExecutionWidget';
 import ServiceCountryExecutionWidget from './ServiceCountryExecutionWidget';
 import DefectBreakdownByServiceWidget from './DefectBreakdownByServiceWidget';
 import NoErrorThisWeek from './NoErrorThisWeek';
+import { toDateOnly } from './navigateToFilteredLaunches';
 
 interface OverviewWidgetsPanelProps {
   projectIds?: number[];
@@ -57,6 +58,11 @@ const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds,
     return { totalTests, passRate, failedRate, totalIssues };
   }, [data]);
 
+  const windowDates = useMemo(() => {
+    if (!data) return null;
+    return { startFrom: toDateOnly(data.window.from), startTo: toDateOnly(data.window.to) };
+  }, [data]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -75,7 +81,7 @@ const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds,
     );
   }
 
-  if (!data) {
+  if (!data || !windowDates) {
     return null;
   }
 
@@ -87,19 +93,36 @@ const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds,
           passRate={summaryStats.passRate}
           failedRate={summaryStats.failedRate}
           totalIssues={summaryStats.totalIssues}
+          windowStartFrom={windowDates.startFrom}
+          windowStartTo={windowDates.startTo}
         />
       )}
-      <WeeklyExecutionWidget weeklyTotals={data.weeklyTotals} window={data.window} defectMix={data.defectMix} />
+      <WeeklyExecutionWidget
+        weeklyTotals={data.weeklyTotals}
+        window={data.window}
+        defectMix={data.defectMix}
+        windowStartFrom={windowDates.startFrom}
+        windowStartTo={windowDates.startTo}
+      />
       <ServiceCountryExecutionWidget
         executionByService={data.executionByService}
         executionByCountry={data.executionByCountry}
         executionByCountryByService={data.executionByCountryByService ?? {}}
+        windowStartFrom={windowDates.startFrom}
+        windowStartTo={windowDates.startTo}
       />
       <DefectBreakdownByServiceWidget
         defectSeriesByProject={data.defectSeriesByProject}
+        executionByService={data.executionByService}
         window={data.window}
+        windowStartFrom={windowDates.startFrom}
+        windowStartTo={windowDates.startTo}
       />
-      <NoErrorThisWeek executionByService={data.executionByService} />
+      <NoErrorThisWeek
+        executionByService={data.executionByService}
+        windowStartFrom={windowDates.startFrom}
+        windowStartTo={windowDates.startTo}
+      />
     </div>
   );
 };

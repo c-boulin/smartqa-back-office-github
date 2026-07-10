@@ -29,6 +29,8 @@ export interface OverviewExecutionRow {
   fail: number;
   passRate: number | null;
   band: 'passed' | 'failed' | string;
+  /** Real SmartQA project ids backing this row (service, country, or country-under-service). */
+  projectIds: number[];
 }
 
 export interface OverviewDefectSeriesRow {
