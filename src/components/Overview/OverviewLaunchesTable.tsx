@@ -972,6 +972,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const historyLaunchTargetCacheRef = useRef<Map<string, OverviewSuiteListLogTarget | null>>(new Map());
   const pendingLaunchesRefreshRef = useRef(false);
   const skipNextLaunchesSearchSyncRef = useRef(false);
+  const loadRequestIdRef = useRef(0);
 
   const [projectOptions, setProjectOptions] = useState<OverviewLaunchesProjectOption[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -1381,6 +1382,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
 
   const load = useCallback(
     async (p: number, size: number) => {
+      const reqId = ++loadRequestIdRef.current;
       setLoading(true);
       setError(null);
       try {
@@ -1398,14 +1400,22 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
           defectTag: defectTagFilter ?? undefined,
           hasIssues: hasIssuesFilter || undefined,
         });
+        if (loadRequestIdRef.current !== reqId) {
+          return;
+        }
         setRows(res.launches.map(mapApiRowToRow));
         setMeta(res.meta);
       } catch (e) {
+        if (loadRequestIdRef.current !== reqId) {
+          return;
+        }
         setError(e instanceof Error ? e.message : 'Could not load launches.');
         setRows([]);
         setMeta(null);
       } finally {
-        setLoading(false);
+        if (loadRequestIdRef.current === reqId) {
+          setLoading(false);
+        }
       }
     },
     [
