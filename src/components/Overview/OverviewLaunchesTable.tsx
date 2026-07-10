@@ -496,18 +496,22 @@ function renderCountCell(value: number | undefined): React.ReactNode {
   return value;
 }
 
-function MiniGroupDonut({ types }: { types: DefectTypeData[] }): React.ReactElement | null {
-  if (types.length === 0) return null;
-  const segments = types.map((t, i) => {
-    const start = (i / types.length) * 100;
-    const end = ((i + 1) / types.length) * 100;
-    return `${t.color} ${start}% ${end}%`;
+function MiniGroupDonut({ slices }: { slices: Array<{ type: DefectTypeData; count: number }> }): React.ReactElement | null {
+  if (slices.length === 0) return null;
+  const total = slices.reduce((sum, s) => sum + Math.max(0, s.count), 0);
+  if (total <= 0) return null;
+  let cursor = 0;
+  const segments = slices.map(s => {
+    const start = (cursor / total) * 100;
+    cursor += Math.max(0, s.count);
+    const end = (cursor / total) * 100;
+    return `${s.type.color} ${start}% ${end}%`;
   });
   return (
     <div
       className="relative h-7 w-7 shrink-0 rounded-full"
       style={{ background: `conic-gradient(${segments.join(', ')})` }}
-      title={types.map(t => t.name).join(', ')}
+      title={slices.map(s => `${s.type.name}: ${s.count}`).join(', ')}
       aria-hidden
     >
       <div className="absolute inset-[5px] rounded-full bg-white dark:bg-slate-900" />
@@ -963,8 +967,8 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       toInvestigate: find('investigate'),
     };
   }, [defectGroups]);
-  // Per-launch distinct defect slugs (fetched lazily from suite items to colour the mini donuts).
-  const [defectSlugsByLaunchId, setDefectSlugsByLaunchId] = useState<Map<number, string[]>>(new Map());
+  // Per-launch defect slug counts (fetched lazily from suite items to colour + weight the mini donuts).
+  const [defectSlugsByLaunchId, setDefectSlugsByLaunchId] = useState<Map<number, Map<string, number>>>(new Map());
   const defectTypeBySlugForColour = useMemo<Map<string, DefectTypeData>>(() => {
     const map = new Map<string, DefectTypeData>();
     for (const group of defectGroups) {
@@ -985,15 +989,15 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     };
   }, [defectGroupByColumn]);
   const defectTypesForColumn = useCallback(
-    (launchId: number, column: 'productBug' | 'autoBug' | 'systemIssue' | 'toInvestigate'): DefectTypeData[] => {
-      const launchSlugs = defectSlugsByLaunchId.get(launchId);
-      if (!launchSlugs || launchSlugs.length === 0) return [];
+    (launchId: number, column: 'productBug' | 'autoBug' | 'systemIssue' | 'toInvestigate'): Array<{ type: DefectTypeData; count: number }> => {
+      const counts = defectSlugsByLaunchId.get(launchId);
+      if (!counts || counts.size === 0) return [];
       const groupSlugs = groupSlugSetsByColumn[column];
-      const out: DefectTypeData[] = [];
-      for (const slug of launchSlugs) {
+      const out: Array<{ type: DefectTypeData; count: number }> = [];
+      for (const [slug, count] of counts) {
         if (!groupSlugs.has(slug)) continue;
         const dt = defectTypeBySlugForColour.get(slug);
-        if (dt) out.push(dt);
+        if (dt && count > 0) out.push({ type: dt, count });
       }
       return out;
     },
@@ -1375,22 +1379,22 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       targets.map(async id => {
         try {
           const res = await fetchOverviewLaunchSuiteItems(id);
-          const seen = new Set<string>();
+          const counts = new Map<string, number>();
           for (const item of res.items) {
             if (item.defectType != null && item.defectType !== '') {
-              seen.add(item.defectType);
+              counts.set(item.defectType, (counts.get(item.defectType) ?? 0) + 1);
             }
           }
-          return { id, slugs: Array.from(seen) };
+          return { id, counts };
         } catch {
-          return { id, slugs: [] as string[] };
+          return { id, counts: new Map<string, number>() };
         }
       }),
     ).then(results => {
       if (cancelled) return;
       setDefectSlugsByLaunchId(prev => {
         const next = new Map(prev);
-        for (const { id, slugs } of results) next.set(id, slugs);
+        for (const { id, counts } of results) next.set(id, counts);
         return next;
       });
     });
@@ -3144,25 +3148,25 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut types={defectTypesForColumn(Number(row.id), 'productBug')} />}
+                      {row.source === 'cron' && row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut slices={defectTypesForColumn(Number(row.id), 'productBug')} />}
                       {row.source === 'cron' ? renderCountCell(row.productBug) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut types={defectTypesForColumn(Number(row.id), 'autoBug')} />}
+                      {row.source === 'cron' && row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut slices={defectTypesForColumn(Number(row.id), 'autoBug')} />}
                       {row.source === 'cron' ? renderCountCell(row.autoBug) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut types={defectTypesForColumn(Number(row.id), 'systemIssue')} />}
+                      {row.source === 'cron' && row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut slices={defectTypesForColumn(Number(row.id), 'systemIssue')} />}
                       {row.source === 'cron' ? renderCountCell(row.systemIssue) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 pl-3 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut types={defectTypesForColumn(Number(row.id), 'toInvestigate')} />}
+                      {row.source === 'cron' && row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut slices={defectTypesForColumn(Number(row.id), 'toInvestigate')} />}
                       {row.source === 'cron' ? renderCountCell(row.toInvestigate) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
