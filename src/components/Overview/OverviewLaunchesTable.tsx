@@ -1360,8 +1360,36 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   }, []);
 
   /**
-   * Fetches suite items for each cron launch that has any triaged defect and caches
-   * the distinct non-null defect slugs so the mini donuts can render the exact defect colours.
+   * Hydrates the defect-count cache from sessionStorage on mount so revisiting the launches
+   * list after breadcrumbs / pagination shows donuts instantly rather than re-fetching.
+   */
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('overviewLaunchDefectCountsV1');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, Record<string, number>>;
+      const hydrated = new Map<number, Map<string, number>>();
+      for (const [idStr, counts] of Object.entries(parsed)) {
+        const id = Number(idStr);
+        if (!Number.isFinite(id)) continue;
+        hydrated.set(id, new Map(Object.entries(counts)));
+      }
+      if (hydrated.size > 0) {
+        setDefectSlugsByLaunchId(prev => {
+          if (prev.size > 0) return prev;
+          return hydrated;
+        });
+      }
+    } catch {
+      // Ignore corrupt cache.
+    }
+  }, []);
+
+  /**
+   * Fetches suite items for each cron launch that has any triaged defect. Each launch resolves
+   * independently and updates the cache incrementally, so mini donuts appear as soon as their
+   * data lands (no waiting on the slowest request). A concurrency cap keeps the browser
+   * responsive when a page holds many launches.
    */
   useEffect(() => {
     const targets = rows
@@ -1375,29 +1403,49 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     if (targets.length === 0) return;
 
     let cancelled = false;
-    void Promise.all(
-      targets.map(async id => {
+    const MAX_CONCURRENT = 6;
+    let cursor = 0;
+
+    const persist = (id: number, counts: Map<string, number>): void => {
+      try {
+        const raw = sessionStorage.getItem('overviewLaunchDefectCountsV1');
+        const parsed = raw ? (JSON.parse(raw) as Record<string, Record<string, number>>) : {};
+        parsed[String(id)] = Object.fromEntries(counts);
+        sessionStorage.setItem('overviewLaunchDefectCountsV1', JSON.stringify(parsed));
+      } catch {
+        // Ignore quota / serialization errors.
+      }
+    };
+
+    const worker = async (): Promise<void> => {
+      while (!cancelled) {
+        const idx = cursor++;
+        if (idx >= targets.length) return;
+        const id = targets[idx];
+        let counts = new Map<string, number>();
         try {
           const res = await fetchOverviewLaunchSuiteItems(id);
-          const counts = new Map<string, number>();
           for (const item of res.items) {
             if (item.defectType != null && item.defectType !== '') {
               counts.set(item.defectType, (counts.get(item.defectType) ?? 0) + 1);
             }
           }
-          return { id, counts };
         } catch {
-          return { id, counts: new Map<string, number>() };
+          counts = new Map();
         }
-      }),
-    ).then(results => {
-      if (cancelled) return;
-      setDefectSlugsByLaunchId(prev => {
-        const next = new Map(prev);
-        for (const { id, counts } of results) next.set(id, counts);
-        return next;
-      });
-    });
+        if (cancelled) return;
+        setDefectSlugsByLaunchId(prev => {
+          const next = new Map(prev);
+          next.set(id, counts);
+          return next;
+        });
+        persist(id, counts);
+      }
+    };
+
+    for (let i = 0; i < Math.min(MAX_CONCURRENT, targets.length); i++) {
+      void worker();
+    }
 
     return () => {
       cancelled = true;
@@ -2040,6 +2088,16 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         next.delete(drilledId);
         return next;
       });
+      try {
+        const raw = sessionStorage.getItem('overviewLaunchDefectCountsV1');
+        if (raw) {
+          const parsed = JSON.parse(raw) as Record<string, Record<string, number>>;
+          delete parsed[String(drilledId)];
+          sessionStorage.setItem('overviewLaunchDefectCountsV1', JSON.stringify(parsed));
+        }
+      } catch {
+        // Ignore quota / serialization errors.
+      }
     }
   }, [drillLaunch]);
 
