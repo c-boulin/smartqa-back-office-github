@@ -45,7 +45,7 @@ import {
 } from './OverviewLaunchHistoryTooltip';
 import OverviewTestLogView from './OverviewTestLogView';
 import { DefectSelectionModal } from './DefectSelectionModal';
-import { fetchDefectGroups, type DefectGroupData } from '../../services/defectGroupsApi';
+import { fetchDefectGroups, type DefectGroupData, type DefectTypeData } from '../../services/defectGroupsApi';
 
 /**
  * Suite list row opens either test log or suite-keyword log (ReportPortal: every name is a link).
@@ -496,24 +496,18 @@ function renderCountCell(value: number | undefined): React.ReactNode {
   return value;
 }
 
-function MiniGroupDonut({
-  group,
-  count,
-}: {
-  group: DefectGroupData | undefined;
-  count: number;
-}): React.ReactElement | null {
-  if (!group || group.defectTypes.length === 0 || count <= 0) return null;
-  const visibleTypes = group.defectTypes.slice(0, Math.min(count, group.defectTypes.length));
-  const segments = visibleTypes.map((t, i) => {
-    const start = (i / visibleTypes.length) * 100;
-    const end = ((i + 1) / visibleTypes.length) * 100;
+function MiniGroupDonut({ types }: { types: DefectTypeData[] }): React.ReactElement | null {
+  if (types.length === 0) return null;
+  const segments = types.map((t, i) => {
+    const start = (i / types.length) * 100;
+    const end = ((i + 1) / types.length) * 100;
     return `${t.color} ${start}% ${end}%`;
   });
   return (
     <div
       className="relative h-7 w-7 shrink-0 rounded-full"
       style={{ background: `conic-gradient(${segments.join(', ')})` }}
+      title={types.map(t => t.name).join(', ')}
       aria-hidden
     >
       <div className="absolute inset-[5px] rounded-full bg-white dark:bg-slate-900" />
@@ -969,6 +963,42 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       toInvestigate: find('investigate'),
     };
   }, [defectGroups]);
+  // Per-launch distinct defect slugs (fetched lazily from suite items to colour the mini donuts).
+  const [defectSlugsByLaunchId, setDefectSlugsByLaunchId] = useState<Map<number, string[]>>(new Map());
+  const defectTypeBySlugForColour = useMemo<Map<string, DefectTypeData>>(() => {
+    const map = new Map<string, DefectTypeData>();
+    for (const group of defectGroups) {
+      for (const dt of group.defectTypes) {
+        map.set(dt.slug, dt);
+      }
+    }
+    return map;
+  }, [defectGroups]);
+  const groupSlugSetsByColumn = useMemo(() => {
+    const build = (group: DefectGroupData | undefined): Set<string> =>
+      group ? new Set(group.defectTypes.map(t => t.slug)) : new Set<string>();
+    return {
+      productBug: build(defectGroupByColumn.productBug),
+      autoBug: build(defectGroupByColumn.autoBug),
+      systemIssue: build(defectGroupByColumn.systemIssue),
+      toInvestigate: build(defectGroupByColumn.toInvestigate),
+    };
+  }, [defectGroupByColumn]);
+  const defectTypesForColumn = useCallback(
+    (launchId: number, column: 'productBug' | 'autoBug' | 'systemIssue' | 'toInvestigate'): DefectTypeData[] => {
+      const launchSlugs = defectSlugsByLaunchId.get(launchId);
+      if (!launchSlugs || launchSlugs.length === 0) return [];
+      const groupSlugs = groupSlugSetsByColumn[column];
+      const out: DefectTypeData[] = [];
+      for (const slug of launchSlugs) {
+        if (!groupSlugs.has(slug)) continue;
+        const dt = defectTypeBySlugForColour.get(slug);
+        if (dt) out.push(dt);
+      }
+      return out;
+    },
+    [defectSlugsByLaunchId, groupSlugSetsByColumn, defectTypeBySlugForColour],
+  );
   // Suite item row selection (multi-select for bulk Make Decision)
   const [selectedTestIds, setSelectedTestIds] = useState<Set<number>>(new Set());
   // Modal state — array of targets (single or bulk)
@@ -1324,6 +1354,51 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       return { column, direction: column === 'name' ? 'asc' : 'desc' };
     });
   }, []);
+
+  /**
+   * Fetches suite items for each cron launch that has any triaged defect and caches
+   * the distinct non-null defect slugs so the mini donuts can render the exact defect colours.
+   */
+  useEffect(() => {
+    const targets = rows
+      .filter(r =>
+        r.source === 'cron' &&
+        ((r.productBug ?? 0) + (r.autoBug ?? 0) + (r.systemIssue ?? 0) + (r.toInvestigate ?? 0)) > 0,
+      )
+      .map(r => Number(r.id))
+      .filter(id => Number.isFinite(id) && !defectSlugsByLaunchId.has(id));
+
+    if (targets.length === 0) return;
+
+    let cancelled = false;
+    void Promise.all(
+      targets.map(async id => {
+        try {
+          const res = await fetchOverviewLaunchSuiteItems(id);
+          const seen = new Set<string>();
+          for (const item of res.items) {
+            if (item.defectType != null && item.defectType !== '') {
+              seen.add(item.defectType);
+            }
+          }
+          return { id, slugs: Array.from(seen) };
+        } catch {
+          return { id, slugs: [] as string[] };
+        }
+      }),
+    ).then(results => {
+      if (cancelled) return;
+      setDefectSlugsByLaunchId(prev => {
+        const next = new Map(prev);
+        for (const { id, slugs } of results) next.set(id, slugs);
+        return next;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rows, defectSlugsByLaunchId]);
 
   const fetchLaunchRowById = useCallback(
     async (launchId: number): Promise<OverviewLaunchRow | null> => {
@@ -3060,25 +3135,25 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut group={defectGroupByColumn.productBug} count={row.productBug} />}
+                      {row.source === 'cron' && row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut types={defectTypesForColumn(Number(row.id), 'productBug')} />}
                       {row.source === 'cron' ? renderCountCell(row.productBug) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut group={defectGroupByColumn.autoBug} count={row.autoBug} />}
+                      {row.source === 'cron' && row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut types={defectTypesForColumn(Number(row.id), 'autoBug')} />}
                       {row.source === 'cron' ? renderCountCell(row.autoBug) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut group={defectGroupByColumn.systemIssue} count={row.systemIssue} />}
+                      {row.source === 'cron' && row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut types={defectTypesForColumn(Number(row.id), 'systemIssue')} />}
                       {row.source === 'cron' ? renderCountCell(row.systemIssue) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 pl-3 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut group={defectGroupByColumn.toInvestigate} count={row.toInvestigate} />}
+                      {row.source === 'cron' && row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut types={defectTypesForColumn(Number(row.id), 'toInvestigate')} />}
                       {row.source === 'cron' ? renderCountCell(row.toInvestigate) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
