@@ -12,7 +12,7 @@ import {
 } from '../../../utils/formatOverviewWindowRange';
 import { DEFECT_BREAKDOWN_STACK_TYPES } from '../../../constants/defectChartTypes';
 import { navigateToFilteredLaunches } from './navigateToFilteredLaunches';
-import { DEFECT_TAG_TO_SORT_COLUMN } from './defectSortColumns';
+import { DEFECT_TAG_TO_FILTER_VALUE } from './defectTagFilterValues';
 
 interface DefectBreakdownByServiceWidgetProps {
   defectSeriesByProject: OverviewDefectSeriesProject[];
@@ -107,14 +107,16 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
   const selected = summaries[selectedIndex] ?? null;
   const selectedProject = defectSeriesByProject[selectedIndex] ?? null;
 
-  const openLaunchesForService = (serviceKey: string, extra?: { startFrom?: string; startTo?: string; sort?: string }): void => {
+  const openLaunchesForService = (
+    serviceKey: string,
+    extra?: { startFrom?: string; startTo?: string; defectTag?: 'product_bug' | 'auto_bug' | 'system_issue' | 'to_investigate' },
+  ): void => {
     const projectIds = projectIdsByServiceKey.get(serviceKey) ?? [];
     navigateToFilteredLaunches(navigate, {
       projectIds,
       startFrom: extra?.startFrom ?? windowStartFrom,
       startTo: extra?.startTo ?? windowStartTo,
-      sort: extra?.sort,
-      direction: extra?.sort ? 'desc' : undefined,
+      defectTag: extra?.defectTag,
     });
   };
 
@@ -295,7 +297,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                             openLaunchesForService(selectedProject.key, {
                               startFrom: date,
                               startTo: date,
-                              sort: DEFECT_TAG_TO_SORT_COLUMN[defect.slug],
+                              defectTag: DEFECT_TAG_TO_FILTER_VALUE[defect.slug],
                             });
                           }}
                         />

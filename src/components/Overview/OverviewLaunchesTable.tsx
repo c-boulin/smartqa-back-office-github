@@ -496,6 +496,56 @@ function renderCountCell(value: number | undefined): React.ReactNode {
   return value;
 }
 
+const STATUS_FILTER_LABEL: Record<'passed' | 'failed', string> = {
+  passed: 'Passed',
+  failed: 'Failed',
+};
+
+const DEFECT_TAG_FILTER_LABEL: Record<'product_bug' | 'auto_bug' | 'system_issue' | 'to_investigate', string> = {
+  product_bug: 'Product Bug',
+  auto_bug: 'Automation Bug',
+  system_issue: 'System Issue',
+  to_investigate: 'To Investigate',
+};
+
+function ActiveFilterChip({
+  statusFilter,
+  defectTagFilter,
+  hasIssuesFilter,
+  onClear,
+}: {
+  statusFilter: 'passed' | 'failed' | null;
+  defectTagFilter: 'product_bug' | 'auto_bug' | 'system_issue' | 'to_investigate' | null;
+  hasIssuesFilter: boolean;
+  onClear: (kind: 'status' | 'defect' | 'issues') => void;
+}): React.ReactElement {
+  const chips: Array<{ key: 'status' | 'defect' | 'issues'; label: string }> = [];
+  if (statusFilter !== null) chips.push({ key: 'status', label: `Filtered: ${STATUS_FILTER_LABEL[statusFilter]}` });
+  if (defectTagFilter !== null) chips.push({ key: 'defect', label: `Filtered: ${DEFECT_TAG_FILTER_LABEL[defectTagFilter]}` });
+  if (hasIssuesFilter) chips.push({ key: 'issues', label: 'Filtered: Has issues' });
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {chips.map(chip => (
+        <span
+          key={chip.key}
+          className="inline-flex items-center gap-1 rounded-full border border-cyan-300 bg-cyan-50 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-slate-400"
+          data-mipqa={`launches-filter-chip-${chip.key}`}
+        >
+          {chip.label}
+          <button
+            type="button"
+            onClick={() => onClear(chip.key)}
+            className="rounded-full p-0.5 text-slate-500 hover:bg-cyan-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-cyan-800/60 dark:hover:text-slate-200"
+            aria-label={`Clear ${chip.label}`}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function MiniGroupDonut({ slices }: { slices: Array<{ type: DefectTypeData; count: number }> }): React.ReactElement | null {
   if (slices.length === 0) return null;
   const total = slices.reduce((sum, s) => sum + Math.max(0, s.count), 0);
@@ -944,6 +994,9 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const [customRangeStart, setCustomRangeStart] = useState<Date | null>(null);
   const [customRangeEnd, setCustomRangeEnd] = useState<Date | null>(null);
   const [executionFilter, setExecutionFilter] = useState<OverviewLaunchesExecutionFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<'passed' | 'failed' | null>(null);
+  const [defectTagFilter, setDefectTagFilter] = useState<'product_bug' | 'auto_bug' | 'system_issue' | 'to_investigate' | null>(null);
+  const [hasIssuesFilter, setHasIssuesFilter] = useState(false);
   const prevStartTimePresetRef = useRef<StartTimePreset>(startTimePreset);
 
   // Defect types (cached once)
@@ -1198,6 +1251,14 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       searchParams.get('start_from'),
       searchParams.get('start_to'),
     );
+    const rawStatus = searchParams.get('status');
+    const parsedStatus: 'passed' | 'failed' | null = rawStatus === 'passed' || rawStatus === 'failed' ? rawStatus : null;
+    const rawDefectTag = searchParams.get('defect_tag');
+    const allowedDefectTags = ['product_bug', 'auto_bug', 'system_issue', 'to_investigate'];
+    const parsedDefectTag = rawDefectTag !== null && allowedDefectTags.includes(rawDefectTag)
+      ? (rawDefectTag as 'product_bug' | 'auto_bug' | 'system_issue' | 'to_investigate')
+      : null;
+    const parsedHasIssues = searchParams.get('has_issues') === '1';
 
     setPage(prev => (prev === parsedPage ? prev : parsedPage));
     setPerPage(prev => (prev === parsedPerPage ? prev : parsedPerPage));
@@ -1208,6 +1269,9 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     );
     setSelectedProjectIds(prev => (arraysEqual(prev, parsedProjectIds) ? prev : parsedProjectIds));
     setExecutionFilter(prev => (prev === parsedExecutionFilter ? prev : parsedExecutionFilter));
+    setStatusFilter(prev => (prev === parsedStatus ? prev : parsedStatus));
+    setDefectTagFilter(prev => (prev === parsedDefectTag ? prev : parsedDefectTag));
+    setHasIssuesFilter(prev => (prev === parsedHasIssues ? prev : parsedHasIssues));
     setStartTimePreset(prev => (prev === parsedPreset.preset ? prev : parsedPreset.preset));
     setCustomRangeStart(prev => {
       const next = parsedPreset.customRangeStart;
@@ -1256,6 +1320,9 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       } else {
         next.delete('executed_by');
       }
+      if (statusFilter !== null) { next.set('status', statusFilter); } else { next.delete('status'); }
+      if (defectTagFilter !== null) { next.set('defect_tag', defectTagFilter); } else { next.delete('defect_tag'); }
+      if (hasIssuesFilter) { next.set('has_issues', '1'); } else { next.delete('has_issues'); }
       next.set('tab', 'launches');
     });
   }, [
@@ -1267,6 +1334,9 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     resolvedStartFrom,
     resolvedStartTo,
     executionFilter,
+    statusFilter,
+    defectTagFilter,
+    hasIssuesFilter,
     replaceLaunchesSearchParams,
   ]);
 
@@ -1324,6 +1394,9 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
           startFrom: resolvedStartFrom ?? undefined,
           startTo: resolvedStartTo ?? undefined,
           executionFilter: executionFilter === 'all' ? undefined : executionFilter,
+          status: statusFilter ?? undefined,
+          defectTag: defectTagFilter ?? undefined,
+          hasIssues: hasIssuesFilter || undefined,
         });
         setRows(res.launches.map(mapApiRowToRow));
         setMeta(res.meta);
@@ -1343,6 +1416,9 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       resolvedStartFrom,
       resolvedStartTo,
       executionFilter,
+      statusFilter,
+      defectTagFilter,
+      hasIssuesFilter,
     ],
   );
 
@@ -2141,7 +2217,10 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const hasLaunchFilters =
     selectedProjectIds.length > 0 ||
     startTimePreset !== 'any' ||
-    executionFilter !== 'all';
+    executionFilter !== 'all' ||
+    statusFilter !== null ||
+    defectTagFilter !== null ||
+    hasIssuesFilter;
 
   /** Text shown on the closed Projects dropdown (matches native select-style controls). */
   const projectsDropdownSummary = useMemo(() => {
@@ -2443,20 +2522,38 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
           </div>
             </div>
           {hasLaunchFilters ? (
-            <button
-              type="button"
-              onClick={() => {
-                setPage(1);
-                setSelectedProjectIds([]);
-                setStartTimePreset('any');
-                setCustomRangeStart(null);
-                setCustomRangeEnd(null);
-                setExecutionFilter('all');
-              }}
-              className="shrink-0 self-start text-sm text-slate-600 underline decoration-slate-400 underline-offset-2 hover:text-cyan-600 sm:self-end dark:text-slate-400 dark:hover:text-cyan-400"
-            >
-              Clear filters
-            </button>
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-end">
+              {(statusFilter !== null || defectTagFilter !== null || hasIssuesFilter) && (
+                <ActiveFilterChip
+                  statusFilter={statusFilter}
+                  defectTagFilter={defectTagFilter}
+                  hasIssuesFilter={hasIssuesFilter}
+                  onClear={(kind) => {
+                    setPage(1);
+                    if (kind === 'status') setStatusFilter(null);
+                    if (kind === 'defect') setDefectTagFilter(null);
+                    if (kind === 'issues') setHasIssuesFilter(false);
+                  }}
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setPage(1);
+                  setSelectedProjectIds([]);
+                  setStartTimePreset('any');
+                  setCustomRangeStart(null);
+                  setCustomRangeEnd(null);
+                  setExecutionFilter('all');
+                  setStatusFilter(null);
+                  setDefectTagFilter(null);
+                  setHasIssuesFilter(false);
+                }}
+                className="shrink-0 text-sm text-slate-600 underline decoration-slate-400 underline-offset-2 hover:text-cyan-600 dark:text-slate-400 dark:hover:text-cyan-400"
+              >
+                Clear filters
+              </button>
+            </div>
           ) : null}
           </div>
           {startTimePreset === 'custom' ? (

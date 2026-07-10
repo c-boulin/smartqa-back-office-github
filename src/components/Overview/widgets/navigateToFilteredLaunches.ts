@@ -6,6 +6,9 @@ export interface LaunchesDeepLinkFilters {
   startTo?: string;
   sort?: string;
   direction?: 'asc' | 'desc';
+  status?: 'passed' | 'failed';
+  defectTag?: 'product_bug' | 'auto_bug' | 'system_issue' | 'to_investigate';
+  hasIssues?: boolean;
 }
 
 /**
@@ -28,6 +31,9 @@ export function navigateToFilteredLaunches(
   if (filters.startTo) params.set('start_to', filters.startTo);
   if (filters.sort) params.set('sort', filters.sort);
   if (filters.direction) params.set('direction', filters.direction);
+  if (filters.status) params.set('status', filters.status);
+  if (filters.defectTag) params.set('defect_tag', filters.defectTag);
+  if (filters.hasIssues) params.set('has_issues', '1');
   navigate({ pathname: '/overview/launches', search: `?${params.toString()}` });
 }
 

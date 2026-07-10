@@ -5,7 +5,7 @@ import type { OverviewDefectMixItem, OverviewWeeklyTotals, OverviewWidgetsWindow
 import { DEFECT_CHART_TYPES } from '../../../constants/defectChartTypes';
 import { DashboardStyleDonutPie } from '../../Charts/DashboardStyleDonutPie';
 import { navigateToFilteredLaunches } from './navigateToFilteredLaunches';
-import { DEFECT_TAG_TO_SORT_COLUMN } from './defectSortColumns';
+import { DEFECT_TAG_TO_FILTER_VALUE } from './defectTagFilterValues';
 
 interface WeeklyExecutionWidgetProps {
   weeklyTotals: OverviewWeeklyTotals;
@@ -64,19 +64,17 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
     navigateToFilteredLaunches(navigate, {
       startFrom: windowStartFrom,
       startTo: windowStartTo,
-      sort: isPassed ? 'passed' : 'failed',
-      direction: 'desc',
+      status: isPassed ? 'passed' : 'failed',
     });
   };
 
   const handleDefectSliceClick = (data: { name: string; value: number }): void => {
     const tag = defectTagByLabel.get(data.name);
-    const sortColumn = tag != null ? DEFECT_TAG_TO_SORT_COLUMN[tag] : undefined;
+    const defectTag = tag != null ? DEFECT_TAG_TO_FILTER_VALUE[tag] : undefined;
     navigateToFilteredLaunches(navigate, {
       startFrom: windowStartFrom,
       startTo: windowStartTo,
-      sort: sortColumn,
-      direction: sortColumn ? 'desc' : undefined,
+      defectTag,
     });
   };
 

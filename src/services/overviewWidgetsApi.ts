@@ -207,6 +207,12 @@ export interface FetchOverviewLaunchesParams {
   executionFilter?: OverviewLaunchesExecutionFilter;
   /** Restrict to a single launch row (`test_run_executions.id`) for deep links. */
   testRunExecutionId?: number;
+  /** Content filter: keep only launches whose overall status matches (server-side). */
+  status?: 'passed' | 'failed';
+  /** Content filter: keep only launches with at least one test of this defect tag. */
+  defectTag?: 'product_bug' | 'auto_bug' | 'system_issue' | 'to_investigate';
+  /** Content filter: keep only launches that have any triaged defect. */
+  hasIssues?: boolean;
 }
 
 /** Label + id for overview launch project filter (projects that have at least one launch). */
@@ -309,6 +315,15 @@ export async function fetchOverviewLaunches(
     search.set('executed_by', 'me');
   } else if (params.executionFilter === 'cron') {
     search.set('executed_by', 'cron');
+  }
+  if (params.status != null) {
+    search.set('status', params.status);
+  }
+  if (params.defectTag != null) {
+    search.set('defect_tag', params.defectTag);
+  }
+  if (params.hasIssues === true) {
+    search.set('has_issues', '1');
   }
   if (params.testRunExecutionId != null && params.testRunExecutionId > 0) {
     search.set('test_run_execution_id', String(params.testRunExecutionId));
