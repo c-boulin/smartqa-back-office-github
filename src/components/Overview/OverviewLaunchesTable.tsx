@@ -496,19 +496,27 @@ function renderCountCell(value: number | undefined): React.ReactNode {
   return value;
 }
 
-function MiniGroupDonut({ group }: { group: DefectGroupData | undefined }): React.ReactElement | null {
-  if (!group || group.defectTypes.length === 0) return null;
-  const segments = group.defectTypes.map((t, i) => {
-    const start = (i / group.defectTypes.length) * 100;
-    const end = ((i + 1) / group.defectTypes.length) * 100;
+function MiniGroupDonut({
+  group,
+  count,
+}: {
+  group: DefectGroupData | undefined;
+  count: number;
+}): React.ReactElement | null {
+  if (!group || group.defectTypes.length === 0 || count <= 0) return null;
+  const visibleTypes = group.defectTypes.slice(0, Math.min(count, group.defectTypes.length));
+  const segments = visibleTypes.map((t, i) => {
+    const start = (i / visibleTypes.length) * 100;
+    const end = ((i + 1) / visibleTypes.length) * 100;
     return `${t.color} ${start}% ${end}%`;
   });
   return (
     <div
-      className="relative h-5 w-5 shrink-0 rounded-full"
+      className="relative h-7 w-7 shrink-0 rounded-full"
       style={{ background: `conic-gradient(${segments.join(', ')})` }}
+      aria-hidden
     >
-      <div className="absolute inset-[4px] rounded-full bg-white dark:bg-slate-900" />
+      <div className="absolute inset-[5px] rounded-full bg-white dark:bg-slate-900" />
     </div>
   );
 }
@@ -3052,25 +3060,25 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut group={defectGroupByColumn.productBug} />}
+                      {row.source === 'cron' && row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut group={defectGroupByColumn.productBug} count={row.productBug} />}
                       {row.source === 'cron' ? renderCountCell(row.productBug) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut group={defectGroupByColumn.autoBug} />}
+                      {row.source === 'cron' && row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut group={defectGroupByColumn.autoBug} count={row.autoBug} />}
                       {row.source === 'cron' ? renderCountCell(row.autoBug) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut group={defectGroupByColumn.systemIssue} />}
+                      {row.source === 'cron' && row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut group={defectGroupByColumn.systemIssue} count={row.systemIssue} />}
                       {row.source === 'cron' ? renderCountCell(row.systemIssue) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 pl-3 align-top text-right tabular-nums text-slate-900 dark:text-white">
                     <div className="flex items-center justify-end gap-1.5">
-                      {row.source === 'cron' && row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut group={defectGroupByColumn.toInvestigate} />}
+                      {row.source === 'cron' && row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut group={defectGroupByColumn.toInvestigate} count={row.toInvestigate} />}
                       {row.source === 'cron' ? renderCountCell(row.toInvestigate) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
                     </div>
                   </td>
