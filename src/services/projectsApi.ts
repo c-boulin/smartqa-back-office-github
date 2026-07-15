@@ -665,6 +665,10 @@ class ProjectsApiService {
     };
     if (projectData.country) requestBody.country = projectData.country;
     if (projectData.projectTypeIri) requestBody.type = projectData.projectTypeIri;
+    if (projectData.categoryIri) {
+      const match = projectData.categoryIri.match(/\/(\d+)$/);
+      if (match) requestBody.category_id = Number(match[1]);
+    }
 
     const response = await apiService.authenticatedRequest(`/projects/${id}/clone`, {
       method: 'POST',
@@ -676,21 +680,24 @@ class ProjectsApiService {
     }
 
     if (response.success && response.data) {
+      const d = response.data;
+      const categoryId = d.category_id;
+      const categoryName = d.category;
       return {
         data: {
-          id: `/api/projects/${response.data.id}`,
+          id: `/api/projects/${d.id}`,
           type: 'Project',
           attributes: {
-            id: response.data.id,
-            title: response.data.title,
-            description: response.data.description,
-            createdAt: response.data.created_at,
-            updatedAt: response.data.updated_at,
-            country: response.data.country ?? projectData.country,
-            category: projectData.categoryName
-              ? { id: projectData.categoryIri ?? '', name: projectData.categoryName, iri: projectData.categoryIri }
-              : response.data.category,
-            type: response.data.type ?? projectData.projectTypeIri,
+            id: d.id,
+            title: d.title,
+            description: d.description,
+            createdAt: d.created_at,
+            updatedAt: d.updated_at,
+            country: d.country,
+            type: d.type,
+            category: categoryId != null && categoryName != null
+              ? { id: categoryId, name: categoryName, iri: `/api/categories/${categoryId}` }
+              : categoryName,
           },
           relationships: {
             testCases: { data: [] },
@@ -699,7 +706,7 @@ class ProjectsApiService {
             creator: { data: { type: 'User', id: '' } },
             editor: { data: { type: 'User', id: '' } },
             destroyer: { data: [] },
-            ...(projectData.categoryIri ? { category: { data: { type: 'Category', id: projectData.categoryIri } } } : {}),
+            ...(categoryId != null ? { category: { data: { type: 'Category', id: `/api/categories/${categoryId}` } } } : {}),
           }
         }
       };
