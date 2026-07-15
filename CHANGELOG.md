@@ -1,3 +1,9 @@
+## [1.25.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.24.0...1.25.0) (2026-07-15)
+
+### Features
+
+* Update cloneTemplateToProject logic ([71ac64c](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/71ac64ca046a2481c32d58fed4bc02d2f159d25e))
+
 ## [1.23.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.22.0...1.23.0) (2026-06-17)
 
 ### Features
