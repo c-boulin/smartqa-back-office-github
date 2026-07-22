@@ -1,99 +1,165 @@
 import React, { useMemo } from 'react';
-import { ResponsiveContainer } from 'recharts';
-import type { OverviewWeeklyTotals, OverviewWidgetsWindow } from '../../../services/overviewWidgetsApi';
-import {
-  formatOverviewWindowRangeShort,
-  overviewWidgetsLastWeekTrendLabel,
-} from '../../../utils/formatOverviewWindowRange';
-import { DashboardStyleDonutPie } from '../../Charts/DashboardStyleDonutPie';
-import {
-  DashboardSection,
-  DateFilter,
-  DonutChartCard,
-  SectionToolbar,
-  ViewSwitch,
-  WidgetContentBody,
-  WidgetContentHeader,
-} from './dashboard';
+import { useNavigate } from 'react-router-dom';
+import type { OverviewDefectMixItem, OverviewWeeklyTotals, OverviewWidgetsWindow } from '../../../services/overviewWidgetsApi';
+import { DEFECT_CHART_TYPES } from '../../../constants/defectChartTypes';
+import { DashboardStyleDonutWithCenterLabel } from '../../Charts/DashboardStyleDonutPie';
+import { navigateToFilteredTests } from './navigateToFilteredTests';
+import { defectTagForLaunchesFilter } from './defectTagFilterValues';
 
 interface WeeklyExecutionWidgetProps {
   weeklyTotals: OverviewWeeklyTotals;
   window: OverviewWidgetsWindow;
+  defectMix: OverviewDefectMixItem[];
+  windowStartFrom: string;
+  windowStartTo: string;
+  defectColorMap: Record<string, string>;
 }
 
-/** Passed / failed colours aligned with dashboard “Test Cases in Active Test Runs”. */
 const PASSED_COLOR = '#10B981';
 const FAILED_COLOR = '#EF4444';
+const FALLBACK_COLOR = '#94A3B8';
 
-/**
- * Pass/fail donut for the previous calendar week.
- * Uses the same Recharts donut as the dashboard active test runs chart ({@link DashboardStyleDonutPie}).
- */
-const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({ weeklyTotals, window }) => {
+const DEFECT_COLOR_BY_SLUG: Record<string, string> = Object.fromEntries(
+  DEFECT_CHART_TYPES.map(d => [d.slug, d.color]),
+);
+
+const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
+  weeklyTotals,
+  defectMix,
+  windowStartFrom,
+  windowStartTo,
+  defectColorMap,
+}) => {
+  const navigate = useNavigate();
   const { pass, fail } = weeklyTotals;
   const totalTests = pass + fail;
 
+  function defectColor(tag: string): string {
+    return defectColorMap[tag] ?? DEFECT_COLOR_BY_SLUG[tag] ?? FALLBACK_COLOR;
+  }
   const overallData = useMemo(() => {
     const rows = [];
-    if (pass > 0) {
-      rows.push({ name: 'Passed', value: pass, color: PASSED_COLOR });
-    }
-    if (fail > 0) {
-      rows.push({ name: 'Failed', value: fail, color: FAILED_COLOR });
-    }
+    if (pass > 0) rows.push({ name: 'Passed', value: pass, color: PASSED_COLOR });
+    if (fail > 0) rows.push({ name: 'Failed', value: fail, color: FAILED_COLOR });
     return rows;
   }, [pass, fail]);
 
-  return (
-    <DashboardSection
-      title="Weekly Test Execution & Defects Overview"
-      description={`It shows a summary of the test cases run for ${formatOverviewWindowRangeShort(window.from, window.to)}, specifying passed and failed tests.`}
-      icon="report"
-    >
-      <WidgetContentHeader>
-        <SectionToolbar>
-          <div className="flex flex-wrap items-center gap-4">
-            <DateFilter value={overviewWidgetsLastWeekTrendLabel(window)} />
-            <ViewSwitch options={['Overall statistics', 'Donut view']} />
-          </div>
-        </SectionToolbar>
-      </WidgetContentHeader>
+  const defectData = useMemo(
+    () => defectMix.map(item => ({ name: item.label, value: item.failCount, color: defectColor(item.tag) })),
+    [defectMix, defectColorMap],
+  );
 
-      <WidgetContentBody>
-        <DonutChartCard title="Execution Summary">
-          <div className="flex flex-row items-center gap-3 sm:gap-4">
-            <div
-              className="flex shrink-0 flex-col justify-center gap-2.5 border-r border-slate-200 pr-3 dark:border-slate-600 sm:pr-4"
-              aria-label="Pass and fail legend"
-            >
-              <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: PASSED_COLOR }} />
-                Passed
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: FAILED_COLOR }} />
-                Failed
+  const defectTagByLabel = useMemo(
+    () => new Map(defectMix.map(item => [item.label, item.tag])),
+    [defectMix],
+  );
+
+  const totalIssues = useMemo(() => defectMix.reduce((sum, item) => sum + item.failCount, 0), [defectMix]);
+
+  const passPercent = totalTests > 0 ? ((pass / totalTests) * 100).toFixed(1) : '0';
+  const failPercent = totalTests > 0 ? ((fail / totalTests) * 100).toFixed(1) : '0';
+
+  const handleOverallSliceClick = (data: { name: string; value: number }): void => {
+    const isPassed = data.name.toLowerCase().startsWith('pass');
+    navigateToFilteredTests(navigate, {
+      startFrom: windowStartFrom,
+      startTo: windowStartTo,
+      status: isPassed ? 'passed' : 'failed',
+    });
+  };
+
+  const handleDefectSliceClick = (data: { name: string; value: number }): void => {
+    const tag = defectTagByLabel.get(data.name);
+    const defectTag = defectTagForLaunchesFilter(tag);
+    if (!defectTag) return;
+    navigateToFilteredTests(navigate, {
+      startFrom: windowStartFrom,
+      startTo: windowStartTo,
+      defectTag,
+    });
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Tests: Passed vs Failed */}
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-4">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">Tests: Passed vs Failed</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Distribution of {totalTests.toLocaleString()} tests
+          </p>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="relative h-56 w-56 shrink-0">
+            {overallData.length > 0 ? (
+              <DashboardStyleDonutWithCenterLabel
+                data={overallData}
+                centerValue={totalTests.toLocaleString()}
+                centerSubtitle="TOTAL TESTS"
+                onSliceClick={handleOverallSliceClick}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+                No data
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: PASSED_COLOR }} />
+              <span className="text-sm text-slate-700 dark:text-slate-300">Passed</span>
+              <span className="ml-2 text-sm font-semibold text-slate-900 dark:text-white">
+                {pass.toLocaleString()} ({passPercent}%)
               </span>
             </div>
-            <div className="relative h-72 min-w-0 flex-1">
-              {overallData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <DashboardStyleDonutPie
-                    data={overallData}
-                    centerValue={totalTests}
-                    centerSubtitle="SUM"
-                  />
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                  No execution totals in this period
-                </div>
-              )}
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: FAILED_COLOR }} />
+              <span className="text-sm text-slate-700 dark:text-slate-300">Failed</span>
+              <span className="ml-2 text-sm font-semibold text-slate-900 dark:text-white">
+                {fail.toLocaleString()} ({failPercent}%)
+              </span>
             </div>
           </div>
-        </DonutChartCard>
-      </WidgetContentBody>
-    </DashboardSection>
+        </div>
+      </div>
+
+      {/* Issues by category */}
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-4">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">Issues by category</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Distribution of {totalIssues.toLocaleString()} issues
+          </p>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="relative h-56 w-56 shrink-0">
+            {defectData.length > 0 ? (
+              <DashboardStyleDonutWithCenterLabel
+                data={defectData}
+                centerValue={totalIssues.toLocaleString()}
+                centerSubtitle="ISSUES"
+                onSliceClick={handleDefectSliceClick}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+                No defects
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 overflow-hidden">
+            {defectData.map(item => (
+              <div key={item.name} className="flex items-center gap-2 text-xs">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                <span className="truncate text-slate-700 dark:text-slate-300">{item.name}</span>
+                <span className="ml-auto whitespace-nowrap font-medium text-slate-900 dark:text-white">
+                  {item.value} ({totalIssues > 0 ? Math.round((item.value / totalIssues) * 100) : 0}%)
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

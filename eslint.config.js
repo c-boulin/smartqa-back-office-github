@@ -23,6 +23,8 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+      'no-duplicate-imports': 'error',
+      'no-dupe-keys': 'error',
       // Better handling of unused variables to reduce false positives
       '@typescript-eslint/no-unused-vars': [
         'warn',  // Changed from 'error' to 'warn' to prevent build breaks

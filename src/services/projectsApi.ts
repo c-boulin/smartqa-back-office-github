@@ -195,19 +195,25 @@ class ProjectsApiService {
     return `/projects-list?${qs}${extra}`;
   }
 
-  async getProjectsList(page: number = 1, itemsPerPage: number = 30, sortParam?: string, createdBy?: string): Promise<ProjectsApiResponse> {
+  async getProjectsList(page: number = 1, itemsPerPage: number = 30, sortParam?: string, createdBy?: string, gitlabProjectNames?: string[]): Promise<ProjectsApiResponse> {
     const params: Record<string, string> = { page: String(page), itemsPerPage: String(itemsPerPage) };
     if (createdBy) params.created_by = createdBy;
+    if (gitlabProjectNames && gitlabProjectNames.length > 0) {
+      params.gitlab_project_name = gitlabProjectNames.join(',');
+    }
     const response = await apiService.authenticatedRequest(this.buildProjectsListUrl(params, sortParam));
     return response || this.getDefaultProjectsResponse();
   }
 
-  async searchProjectsList(searchTerm: string, page: number = 1, itemsPerPage: number = 30, sortParam?: string, createdBy?: string): Promise<ProjectsApiResponse> {
+  async searchProjectsList(searchTerm: string, page: number = 1, itemsPerPage: number = 30, sortParam?: string, createdBy?: string, gitlabProjectNames?: string[]): Promise<ProjectsApiResponse> {
     const trimmedTerm = searchTerm.trim();
     const isNumeric = /^\d+$/.test(trimmedTerm);
     const params: Record<string, string> = { page: String(page), itemsPerPage: String(itemsPerPage) };
     if (trimmedTerm) params[isNumeric ? 'id' : 'title'] = trimmedTerm;
     if (createdBy) params.created_by = createdBy;
+    if (gitlabProjectNames && gitlabProjectNames.length > 0) {
+      params.gitlab_project_name = gitlabProjectNames.join(',');
+    }
     const response = await apiService.authenticatedRequest(this.buildProjectsListUrl(params, sortParam));
     return response || this.getDefaultProjectsResponse();
   }

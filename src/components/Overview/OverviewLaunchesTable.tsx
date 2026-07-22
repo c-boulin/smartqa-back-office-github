@@ -14,23 +14,28 @@ import {
   Link2,
   Loader2,
   Menu,
+  Search,
   User,
+  X,
 } from 'lucide-react';
 import { endOfDay, format, isEqual, isSameDay, startOfDay } from 'date-fns';
 import { convertUtcToLocalDisplay } from '../../utils/dateHelpers';
 import {
   fetchAllOverviewLaunchesProjectOptions,
+  fetchOverviewDefectTypes,
   fetchOverviewLaunchHistory,
   fetchOverviewLaunches,
   fetchOverviewLaunchSuiteItems,
   fetchOverviewSuiteKwLogItems,
   fetchOverviewTestLogItems,
+  type OverviewDefectType,
   type OverviewLaunchesMeta,
   type OverviewLaunchApiRow,
   type OverviewLaunchesProjectOption,
   type OverviewLaunchSuiteItemApiRow,
   type OverviewLaunchesExecutionFilter,
   type OverviewLaunchesSortColumn,
+  type OverviewTestDefect,
   type OverviewTestLogItemsResponse,
 } from '../../services/overviewWidgetsApi';
 import { OverviewLaunchStartTimeRangePicker } from './OverviewLaunchStartTimeRangePicker';
@@ -39,6 +44,10 @@ import {
   type HistoryLaunchTooltipButtonModel,
 } from './OverviewLaunchHistoryTooltip';
 import OverviewTestLogView from './OverviewTestLogView';
+import { DefectSelectionModal } from './DefectSelectionModal';
+import { fetchDefectGroups, type DefectGroupData, type DefectTypeData } from '../../services/defectGroupsApi';
+import { DEFECT_CHART_TYPES } from '../../constants/defectChartTypes';
+import { exportOverviewLaunches, type OverviewExporter } from '../../services/overviewExportService';
 
 /**
  * Suite list row opens either test log or suite-keyword log (ReportPortal: every name is a link).
@@ -86,6 +95,7 @@ function mapApiRowToRow(api: OverviewLaunchApiRow): OverviewLaunchRow {
     launchedBy: byLabel,
     runnedByLabel: byLabel,
     createdByUserId: api.createdByUserId,
+    source: api.source ?? null,
     attributeText: api.attributeLine,
     startTimeRelative: api.startTimeRelative,
     startTimeDisplay: api.startTimeDisplay,
@@ -405,6 +415,8 @@ export interface OverviewLaunchRow {
   runnedByLabel: string;
   /** null means the launch was triggered by cron / automation (no human creator). */
   createdByUserId: number | null;
+  /** "cron" when triggered by automation/scheduler, "app" when triggered by a user. */
+  source: string | null;
   attributeText: string;
   description?: string;
   testCasesLine?: string;
@@ -421,6 +433,8 @@ export interface OverviewLaunchRow {
   toInvestigate?: number;
   /** Drill-down row: root suite name as title, duration only under name. */
   suiteDrillDown?: boolean;
+  /** Numeric launch id preserved through drill-down (row.id becomes composite for React key uniqueness). */
+  parentLaunchId?: number;
 }
 
 /**
@@ -435,6 +449,7 @@ function buildDrillDownSuiteRow(parent: OverviewLaunchRow): OverviewLaunchRow {
   return {
     ...parent,
     id: `${parent.id}-suite-detail`,
+    parentLaunchId: Number(parent.id),
     title: suiteTitle,
     launchedBy: '',
     runnedByLabel: '',
@@ -484,6 +499,94 @@ function renderCountCell(value: number | undefined): React.ReactNode {
     return <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>;
   }
   return value;
+}
+
+const STATUS_FILTER_LABEL: Record<'passed' | 'failed', string> = {
+  passed: 'Passed',
+  failed: 'Failed',
+};
+
+/** Legacy 4-group aliases used by Launches table column headers; the Launches API still accepts them. */
+const DEFECT_TAG_FILTER_LABEL: Record<'product_bug' | 'auto_bug' | 'system_issue' | 'to_investigate', string> = {
+  product_bug: 'Product Bug',
+  auto_bug: 'Automation Bug',
+  system_issue: 'System Issue',
+  to_investigate: 'To Investigate',
+};
+
+const DEFECT_TYPE_LABEL_BY_SLUG: Record<string, string> = Object.fromEntries(
+  DEFECT_CHART_TYPES.map(t => [t.slug, t.label]),
+);
+
+/** Resolve a human label for any `defect_tag` value: overview_defect_types.slug, legacy alias, or raw fallback. */
+function resolveDefectTagLabel(value: string): string {
+  if (value in DEFECT_TAG_FILTER_LABEL) {
+    return DEFECT_TAG_FILTER_LABEL[value as keyof typeof DEFECT_TAG_FILTER_LABEL];
+  }
+  return DEFECT_TYPE_LABEL_BY_SLUG[value] ?? value;
+}
+
+const DEFECT_TAG_SLUG_PATTERN = /^[a-z0-9-]+$/;
+
+function ActiveFilterChip({
+  statusFilter,
+  defectTagFilter,
+  hasIssuesFilter,
+  onClear,
+}: {
+  statusFilter: 'passed' | 'failed' | null;
+  defectTagFilter: string | null;
+  hasIssuesFilter: boolean;
+  onClear: (kind: 'status' | 'defect' | 'issues') => void;
+}): React.ReactElement {
+  const chips: Array<{ key: 'status' | 'defect' | 'issues'; label: string }> = [];
+  if (statusFilter !== null) chips.push({ key: 'status', label: `Filtered: ${STATUS_FILTER_LABEL[statusFilter]}` });
+  if (defectTagFilter !== null) chips.push({ key: 'defect', label: `Filtered: ${resolveDefectTagLabel(defectTagFilter)}` });
+  if (hasIssuesFilter) chips.push({ key: 'issues', label: 'Filtered: Has issues' });
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {chips.map(chip => (
+        <span
+          key={chip.key}
+          className="inline-flex items-center gap-1 rounded-full border border-cyan-300 bg-cyan-50 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-slate-400"
+          data-mipqa={`launches-filter-chip-${chip.key}`}
+        >
+          {chip.label}
+          <button
+            type="button"
+            onClick={() => onClear(chip.key)}
+            className="rounded-full p-0.5 text-slate-500 hover:bg-cyan-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-cyan-800/60 dark:hover:text-slate-200"
+            aria-label={`Clear ${chip.label}`}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function MiniGroupDonut({ slices }: { slices: Array<{ type: DefectTypeData; count: number }> }): React.ReactElement | null {
+  if (slices.length === 0) return null;
+  const total = slices.reduce((sum, s) => sum + Math.max(0, s.count), 0);
+  if (total <= 0) return null;
+  let cursor = 0;
+  const segments = slices.map(s => {
+    const start = (cursor / total) * 100;
+    cursor += Math.max(0, s.count);
+    const end = (cursor / total) * 100;
+    return `${s.type.color} ${start}% ${end}%`;
+  });
+  return (
+    <div
+      className="relative h-7 w-7 shrink-0 rounded-full"
+      style={{ background: `conic-gradient(${segments.join(', ')})` }}
+      title={slices.map(s => `${s.type.name}: ${s.count}`).join(', ')}
+      aria-hidden
+    >
+      <div className="absolute inset-[5px] rounded-full bg-white dark:bg-slate-900" />
+    </div>
+  );
 }
 
 const PER_PAGE_OPTIONS = [15, 25, 50, 100] as const;
@@ -834,7 +937,13 @@ function SuiteListSortableTh({
   );
 }
 
-const OverviewLaunchesTable: React.FC = () => {
+interface OverviewLaunchesTableProps {
+  externalProjectIds?: number[];
+  gitlabProjectNames?: string[];
+  registerExporter?: (exporter: OverviewExporter | null) => void;
+}
+
+const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, gitlabProjectNames, registerExporter }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -873,6 +982,7 @@ const OverviewLaunchesTable: React.FC = () => {
   const [testLogPayload, setTestLogPayload] = useState<OverviewTestLogItemsResponse | null>(null);
   const [testLogLoading, setTestLogLoading] = useState(false);
   const [testLogError, setTestLogError] = useState<string | null>(null);
+  const [expandedErrorRows, setExpandedErrorRows] = useState<Set<string>>(new Set());
   const [historyAnchorLaunch, setHistoryAnchorLaunch] = useState<OverviewLaunchRow | null>(null);
   const [historyAnchorTarget, setHistoryAnchorTarget] = useState<OverviewSuiteListLogTarget | null>(null);
   const [historyLaunches, setHistoryLaunches] = useState<HistoryLaunchEntry[]>([]);
@@ -880,23 +990,102 @@ const OverviewLaunchesTable: React.FC = () => {
   const [historyLaunchesHiddenCount, setHistoryLaunchesHiddenCount] = useState(0);
   const [historyLaunchesNextBeforeId, setHistoryLaunchesNextBeforeId] = useState<number | null>(null);
   const [hoveredLogTimeRowKey, setHoveredLogTimeRowKey] = useState<string | null>(null);
-  const [selectedLaunchRowIds, setSelectedLaunchRowIds] = useState<Set<string>>(() => new Set());
-  const [selectedSuiteRowKeys, setSelectedSuiteRowKeys] = useState<Set<string>>(() => new Set());
-  const launchSelectAllCheckboxRef = useRef<HTMLInputElement>(null);
-  const suiteSelectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const historyLaunchTargetCacheRef = useRef<Map<string, OverviewSuiteListLogTarget | null>>(new Map());
+  const pendingLaunchesRefreshRef = useRef(false);
   const skipNextLaunchesSearchSyncRef = useRef(false);
+  const loadRequestIdRef = useRef(0);
 
   const [projectOptions, setProjectOptions] = useState<OverviewLaunchesProjectOption[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
   const [projectsDropdownOpen, setProjectsDropdownOpen] = useState(false);
+  const [projectsSearchTerm, setProjectsSearchTerm] = useState('');
   const projectsFilterDropdownRef = useRef<HTMLDivElement>(null);
+
+  const effectiveProjectIds = useMemo(() => {
+    if (externalProjectIds && externalProjectIds.length > 0) {
+      if (selectedProjectIds.length > 0) {
+        return selectedProjectIds.filter(id => externalProjectIds.includes(id));
+      }
+      return externalProjectIds;
+    }
+    return selectedProjectIds;
+  }, [externalProjectIds, selectedProjectIds]);
+
   const [startTimePreset, setStartTimePreset] = useState<StartTimePreset>('any');
   const [customRangeStart, setCustomRangeStart] = useState<Date | null>(null);
   const [customRangeEnd, setCustomRangeEnd] = useState<Date | null>(null);
+  const isFromWidgetDeepLink = searchParams.get('from_widget') === '1';
   const [executionFilter, setExecutionFilter] = useState<OverviewLaunchesExecutionFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<'passed' | 'failed' | null>(null);
+  const [defectTagFilter, setDefectTagFilter] = useState<string | null>(null);
+  const [hasIssuesFilter, setHasIssuesFilter] = useState(false);
   const prevStartTimePresetRef = useRef<StartTimePreset>(startTimePreset);
+
+  // Defect types (cached once)
+  const [defectTypes, setDefectTypes] = useState<OverviewDefectType[]>([]);
+  // Defect groups (for per-column donuts)
+  const [defectGroups, setDefectGroups] = useState<DefectGroupData[]>([]);
+  // Map slug → defect type for fast look-up in the suite items table
+  const defectTypeBySlug = useMemo<Map<string, OverviewDefectType>>(
+    () => new Map(defectTypes.map(d => [d.slug, d])),
+    [defectTypes],
+  );
+  const defectGroupByColumn = useMemo(() => {
+    const find = (...terms: string[]) =>
+      defectGroups.find(g =>
+        terms.some(t => g.slug.toLowerCase().includes(t) || g.name.toLowerCase().includes(t)),
+      );
+    return {
+      productBug: find('product'),
+      autoBug: find('auto'),
+      systemIssue: find('system'),
+      toInvestigate: find('investigate'),
+    };
+  }, [defectGroups]);
+  // Per-launch defect slug counts (fetched lazily from suite items to colour + weight the mini donuts).
+  const [defectSlugsByLaunchId, setDefectSlugsByLaunchId] = useState<Map<number, Map<string, number>>>(new Map());
+  const defectTypeBySlugForColour = useMemo<Map<string, DefectTypeData>>(() => {
+    const map = new Map<string, DefectTypeData>();
+    for (const group of defectGroups) {
+      for (const dt of group.defectTypes) {
+        map.set(dt.slug, dt);
+      }
+    }
+    return map;
+  }, [defectGroups]);
+  const groupSlugSetsByColumn = useMemo(() => {
+    const build = (group: DefectGroupData | undefined): Set<string> =>
+      group ? new Set(group.defectTypes.map(t => t.slug)) : new Set<string>();
+    return {
+      productBug: build(defectGroupByColumn.productBug),
+      autoBug: build(defectGroupByColumn.autoBug),
+      systemIssue: build(defectGroupByColumn.systemIssue),
+      toInvestigate: build(defectGroupByColumn.toInvestigate),
+    };
+  }, [defectGroupByColumn]);
+  const defectTypesForColumn = useCallback(
+    (launchId: number, column: 'productBug' | 'autoBug' | 'systemIssue' | 'toInvestigate'): Array<{ type: DefectTypeData; count: number }> => {
+      const counts = defectSlugsByLaunchId.get(launchId);
+      if (!counts || counts.size === 0) return [];
+      const groupSlugs = groupSlugSetsByColumn[column];
+      const out: Array<{ type: DefectTypeData; count: number }> = [];
+      for (const [slug, count] of counts) {
+        if (!groupSlugs.has(slug)) continue;
+        const dt = defectTypeBySlugForColour.get(slug);
+        if (dt && count > 0) out.push({ type: dt, count });
+      }
+      return out;
+    },
+    [defectSlugsByLaunchId, groupSlugSetsByColumn, defectTypeBySlugForColour],
+  );
+  // Suite item row selection (multi-select for bulk Make Decision)
+  const [selectedTestIds, setSelectedTestIds] = useState<Set<number>>(new Set());
+  // Modal state — array of targets (single or bulk)
+  const [defectModalTarget, setDefectModalTarget] = useState<Array<{
+    overviewTestId: number;
+    testName: string;
+  }> | null>(null);
 
   const customFromApi = useMemo(() => {
     if (startTimePreset !== 'custom' || customRangeStart === null || customRangeEnd === null) {
@@ -932,6 +1121,16 @@ const OverviewLaunchesTable: React.FC = () => {
     }
     prevStartTimePresetRef.current = startTimePreset;
   }, [searchParams, startTimePreset]);
+
+  // Fetch defect types once on mount
+  useEffect(() => {
+    fetchOverviewDefectTypes()
+      .then(data => setDefectTypes(data))
+      .catch(() => { /* non-critical — table still works without colors */ });
+    fetchDefectGroups()
+      .then(data => setDefectGroups(data.slice().sort((a, b) => a.position - b.position)))
+      .catch(() => { /* non-critical */ });
+  }, []);
 
   const historySelectedLaunchIdFromSearch = useMemo(
     () => positiveIntFromSearchParam(searchParams.get('history_selected_tre')),
@@ -1014,9 +1213,16 @@ const OverviewLaunchesTable: React.FC = () => {
     const run = async () => {
       setProjectsLoading(true);
       try {
-        const opts = await fetchAllOverviewLaunchesProjectOptions();
+        const opts = await fetchAllOverviewLaunchesProjectOptions(
+          gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
+        );
         if (!cancelled) {
           setProjectOptions(opts);
+          // Clear any selected projects that are no longer in the filtered option list.
+          if (gitlabProjectNames && gitlabProjectNames.length > 0) {
+            const validIds = new Set(opts.map(o => o.id));
+            setSelectedProjectIds(prev => prev.filter(id => validIds.has(id)));
+          }
         }
       } catch {
         if (!cancelled) {
@@ -1033,7 +1239,7 @@ const OverviewLaunchesTable: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [gitlabProjectNames]);
 
   useEffect(() => {
     skipNextLaunchesSearchSyncRef.current = true;
@@ -1075,6 +1281,14 @@ const OverviewLaunchesTable: React.FC = () => {
       searchParams.get('start_from'),
       searchParams.get('start_to'),
     );
+    const rawStatus = searchParams.get('status');
+    const parsedStatus: 'passed' | 'failed' | null = rawStatus === 'passed' || rawStatus === 'failed' ? rawStatus : null;
+    const rawDefectTag = searchParams.get('defect_tag');
+    const parsedDefectTag: string | null =
+      rawDefectTag !== null && rawDefectTag !== '' && DEFECT_TAG_SLUG_PATTERN.test(rawDefectTag)
+        ? rawDefectTag
+        : null;
+    const parsedHasIssues = searchParams.get('has_issues') === '1';
 
     setPage(prev => (prev === parsedPage ? prev : parsedPage));
     setPerPage(prev => (prev === parsedPerPage ? prev : parsedPerPage));
@@ -1085,6 +1299,9 @@ const OverviewLaunchesTable: React.FC = () => {
     );
     setSelectedProjectIds(prev => (arraysEqual(prev, parsedProjectIds) ? prev : parsedProjectIds));
     setExecutionFilter(prev => (prev === parsedExecutionFilter ? prev : parsedExecutionFilter));
+    setStatusFilter(prev => (prev === parsedStatus ? prev : parsedStatus));
+    setDefectTagFilter(prev => (prev === parsedDefectTag ? prev : parsedDefectTag));
+    setHasIssuesFilter(prev => (prev === parsedHasIssues ? prev : parsedHasIssues));
     setStartTimePreset(prev => (prev === parsedPreset.preset ? prev : parsedPreset.preset));
     setCustomRangeStart(prev => {
       const next = parsedPreset.customRangeStart;
@@ -1133,6 +1350,9 @@ const OverviewLaunchesTable: React.FC = () => {
       } else {
         next.delete('executed_by');
       }
+      if (statusFilter !== null) { next.set('status', statusFilter); } else { next.delete('status'); }
+      if (defectTagFilter !== null) { next.set('defect_tag', defectTagFilter); } else { next.delete('defect_tag'); }
+      if (hasIssuesFilter) { next.set('has_issues', '1'); } else { next.delete('has_issues'); }
       next.set('tab', 'launches');
     });
   }, [
@@ -1144,6 +1364,9 @@ const OverviewLaunchesTable: React.FC = () => {
     resolvedStartFrom,
     resolvedStartTo,
     executionFilter,
+    statusFilter,
+    defectTagFilter,
+    hasIssuesFilter,
     replaceLaunchesSearchParams,
   ]);
 
@@ -1160,10 +1383,12 @@ const OverviewLaunchesTable: React.FC = () => {
         return;
       }
       setProjectsDropdownOpen(false);
+      setProjectsSearchTerm('');
     };
     const closeOnEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setProjectsDropdownOpen(false);
+        setProjectsSearchTerm('');
       }
     };
     document.addEventListener('pointerdown', closeOnOutsidePointer, true);
@@ -1186,6 +1411,7 @@ const OverviewLaunchesTable: React.FC = () => {
 
   const load = useCallback(
     async (p: number, size: number) => {
+      const reqId = ++loadRequestIdRef.current;
       setLoading(true);
       setError(null);
       try {
@@ -1194,30 +1420,93 @@ const OverviewLaunchesTable: React.FC = () => {
           perPage: size,
           sort: launchSort.column,
           direction: launchSort.direction,
-          projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+          projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
+          gitlabProjectNames: gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
           startFrom: resolvedStartFrom ?? undefined,
           startTo: resolvedStartTo ?? undefined,
           executionFilter: executionFilter === 'all' ? undefined : executionFilter,
+          status: statusFilter ?? undefined,
+          defectTag: defectTagFilter ?? undefined,
+          hasIssues: hasIssuesFilter || undefined,
         });
+        if (loadRequestIdRef.current !== reqId) {
+          return;
+        }
         setRows(res.launches.map(mapApiRowToRow));
         setMeta(res.meta);
       } catch (e) {
+        if (loadRequestIdRef.current !== reqId) {
+          return;
+        }
         setError(e instanceof Error ? e.message : 'Could not load launches.');
         setRows([]);
         setMeta(null);
       } finally {
-        setLoading(false);
+        if (loadRequestIdRef.current === reqId) {
+          setLoading(false);
+        }
       }
     },
     [
       launchSort.column,
       launchSort.direction,
-      selectedProjectIds,
+      effectiveProjectIds,
+      gitlabProjectNames,
       resolvedStartFrom,
       resolvedStartTo,
       executionFilter,
+      statusFilter,
+      defectTagFilter,
+      hasIssuesFilter,
     ],
   );
+
+  useEffect(() => {
+    if (!registerExporter) return;
+    const exporter: OverviewExporter = format => exportOverviewLaunches({
+      format,
+      domSelector: '[data-overview-export="launches"]',
+      filters: {
+        gitlabProjectNames,
+        projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
+        projectOptions,
+        startFrom: resolvedStartFrom,
+        startTo: resolvedStartTo,
+        executionFilter,
+        statusFilter,
+        defectTagFilter,
+        hasIssuesFilter,
+      },
+      fetchAllLaunches: base => fetchOverviewLaunches(base),
+      fetchParamsBase: {
+        sort: launchSort.column,
+        direction: launchSort.direction,
+        projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
+        gitlabProjectNames: gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
+        startFrom: resolvedStartFrom ?? undefined,
+        startTo: resolvedStartTo ?? undefined,
+        executionFilter: executionFilter === 'all' ? undefined : executionFilter,
+        status: statusFilter ?? undefined,
+        defectTag: defectTagFilter ?? undefined,
+        hasIssues: hasIssuesFilter || undefined,
+      },
+    });
+    registerExporter(exporter);
+    return () => registerExporter(null);
+  }, [
+    registerExporter,
+    launchSort.column,
+    launchSort.direction,
+    effectiveProjectIds,
+    gitlabProjectNames,
+    resolvedStartFrom,
+    resolvedStartTo,
+    executionFilter,
+    statusFilter,
+    defectTagFilter,
+    hasIssuesFilter,
+    projectOptions,
+  ]);
 
   /**
    * Cycles sort direction for the active column or sets a new column (name defaults to A→Z).
@@ -1232,12 +1521,141 @@ const OverviewLaunchesTable: React.FC = () => {
     });
   }, []);
 
+  /**
+   * Hydrates the defect-count cache from sessionStorage on mount so revisiting the launches
+   * list after breadcrumbs / pagination shows donuts instantly rather than re-fetching.
+   */
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('overviewLaunchDefectCountsV1');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, Record<string, number>>;
+      const hydrated = new Map<number, Map<string, number>>();
+      for (const [idStr, counts] of Object.entries(parsed)) {
+        const id = Number(idStr);
+        if (!Number.isFinite(id)) continue;
+        hydrated.set(id, new Map(Object.entries(counts)));
+      }
+      if (hydrated.size > 0) {
+        setDefectSlugsByLaunchId(prev => {
+          if (prev.size > 0) return prev;
+          return hydrated;
+        });
+      }
+    } catch {
+      // Ignore corrupt cache.
+    }
+  }, []);
+
+  /**
+   * Fetches suite items for each cron launch that has any triaged defect. Each launch resolves
+   * independently and updates the cache incrementally, so mini donuts appear as soon as their
+   * data lands (no waiting on the slowest request). A concurrency cap keeps the browser
+   * responsive when a page holds many launches.
+   */
+  useEffect(() => {
+    const candidates: OverviewLaunchRow[] = [...rows];
+    if (drillLaunch !== null) {
+      const drillIdNum = Number(drillLaunch.id);
+      if (Number.isFinite(drillIdNum) && !candidates.some(r => Number(r.id) === drillIdNum)) {
+        candidates.push(drillLaunch);
+      }
+    }
+
+    const targets = candidates
+      .filter(r =>
+        r.source === 'cron' &&
+        ((r.productBug ?? 0) + (r.autoBug ?? 0) + (r.systemIssue ?? 0) + (r.toInvestigate ?? 0)) > 0,
+      )
+      .map(r => Number(r.id))
+      .filter(id => Number.isFinite(id) && !defectSlugsByLaunchId.has(id));
+
+    if (targets.length === 0) return;
+
+    let cancelled = false;
+    const MAX_CONCURRENT = 6;
+    let cursor = 0;
+
+    const persist = (id: number, counts: Map<string, number>): void => {
+      try {
+        const raw = sessionStorage.getItem('overviewLaunchDefectCountsV1');
+        const parsed = raw ? (JSON.parse(raw) as Record<string, Record<string, number>>) : {};
+        parsed[String(id)] = Object.fromEntries(counts);
+        sessionStorage.setItem('overviewLaunchDefectCountsV1', JSON.stringify(parsed));
+      } catch {
+        // Ignore quota / serialization errors.
+      }
+    };
+
+    const worker = async (): Promise<void> => {
+      while (!cancelled) {
+        const idx = cursor++;
+        if (idx >= targets.length) return;
+        const id = targets[idx];
+        let counts = new Map<string, number>();
+        try {
+          const res = await fetchOverviewLaunchSuiteItems(id);
+          for (const item of res.items) {
+            if (item.defectType != null && item.defectType !== '') {
+              counts.set(item.defectType, (counts.get(item.defectType) ?? 0) + 1);
+            }
+          }
+        } catch {
+          counts = new Map();
+        }
+        if (cancelled) return;
+        setDefectSlugsByLaunchId(prev => {
+          const next = new Map(prev);
+          next.set(id, counts);
+          return next;
+        });
+        persist(id, counts);
+      }
+    };
+
+    for (let i = 0; i < Math.min(MAX_CONCURRENT, targets.length); i++) {
+      void worker();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rows, drillLaunch, defectSlugsByLaunchId]);
+
+  useEffect(() => {
+    if (drillLaunch === null || suiteListItems === null) return;
+    const drillIdNum = Number(drillLaunch.id);
+    if (!Number.isFinite(drillIdNum)) return;
+    if (defectSlugsByLaunchId.has(drillIdNum)) return;
+
+    const counts = new Map<string, number>();
+    for (const item of suiteListItems) {
+      if (item.defectType != null && item.defectType !== '') {
+        counts.set(item.defectType, (counts.get(item.defectType) ?? 0) + 1);
+      }
+    }
+    setDefectSlugsByLaunchId(prev => {
+      const next = new Map(prev);
+      next.set(drillIdNum, counts);
+      return next;
+    });
+    try {
+      const raw = sessionStorage.getItem('overviewLaunchDefectCountsV1');
+      const parsed = raw ? (JSON.parse(raw) as Record<string, Record<string, number>>) : {};
+      parsed[String(drillIdNum)] = Object.fromEntries(counts);
+      sessionStorage.setItem('overviewLaunchDefectCountsV1', JSON.stringify(parsed));
+    } catch {
+      // Ignore quota / serialization errors.
+    }
+  }, [drillLaunch, suiteListItems, defectSlugsByLaunchId]);
+
   const fetchLaunchRowById = useCallback(
     async (launchId: number): Promise<OverviewLaunchRow | null> => {
       const res = await fetchOverviewLaunches({
         testRunExecutionId: launchId,
         perPage: 1,
-        projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+        projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
+        gitlabProjectNames: gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
         startFrom: resolvedStartFrom ?? undefined,
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
@@ -1247,8 +1665,12 @@ const OverviewLaunchesTable: React.FC = () => {
 
       return row !== undefined ? mapApiRowToRow(row) : null;
     },
-    [selectedProjectIds, resolvedStartFrom, resolvedStartTo, executionFilter],
+    [effectiveProjectIds, gitlabProjectNames, resolvedStartFrom, resolvedStartTo, executionFilter],
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [gitlabProjectNames]);
 
   useEffect(() => {
     void load(page, perPage);
@@ -1268,12 +1690,18 @@ const OverviewLaunchesTable: React.FC = () => {
       setTestLogPayload(null);
       setTestLogError(null);
       setHoveredLogTimeRowKey(null);
+      setExpandedErrorRows(new Set());
+      setSelectedTestIds(new Set());
       historyLaunchTargetCacheRef.current = new Map();
     };
 
     const run = async (): Promise<void> => {
       if (routeState.kind === 'list') {
         clearLocalSelection();
+        if (pendingLaunchesRefreshRef.current) {
+          pendingLaunchesRefreshRef.current = false;
+          void load(page, perPage);
+        }
         return;
       }
 
@@ -1387,7 +1815,7 @@ const OverviewLaunchesTable: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [fetchLaunchRowById, historySelectedLaunchIdFromSearch, navigateToLaunchesRoute, routeState]);
+  }, [fetchLaunchRowById, historySelectedLaunchIdFromSearch, load, navigateToLaunchesRoute, page, perPage, routeState]);
 
   useEffect(() => {
     setDrillLaunch(null);
@@ -1399,20 +1827,13 @@ const OverviewLaunchesTable: React.FC = () => {
     setTestLogTarget(null);
     setTestLogPayload(null);
     setTestLogError(null);
+    setSelectedTestIds(new Set());
     historyLaunchTargetCacheRef.current = new Map();
   }, [page, perPage]);
 
   useEffect(() => {
     setHoveredStartRowId(null);
   }, [rows]);
-
-  useEffect(() => {
-    setSelectedLaunchRowIds(new Set());
-  }, [page, perPage, drillLaunch?.id]);
-
-  useEffect(() => {
-    setSelectedSuiteRowKeys(new Set());
-  }, [suiteListItems]);
 
   useEffect(() => {
     setSuiteListItems(null);
@@ -1422,6 +1843,7 @@ const OverviewLaunchesTable: React.FC = () => {
     setTestLogTarget(null);
     setTestLogPayload(null);
     setTestLogError(null);
+    setSelectedTestIds(new Set());
     historyLaunchTargetCacheRef.current = new Map();
   }, [drillLaunch?.id]);
 
@@ -1561,7 +1983,8 @@ const OverviewLaunchesTable: React.FC = () => {
       const res = await fetchOverviewLaunchHistory({
         testRunExecutionId: Number(historyAnchorLaunch.id),
         perPage: HISTORY_BUTTON_BATCH_SIZE,
-        projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+        projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
+        gitlabProjectNames: gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
         startFrom: resolvedStartFrom ?? undefined,
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
@@ -1584,7 +2007,8 @@ const OverviewLaunchesTable: React.FC = () => {
   }, [
     historyAnchorLaunch,
     historyAnchorTarget,
-    selectedProjectIds,
+    effectiveProjectIds,
+    gitlabProjectNames,
     resolvedStartFrom,
     resolvedStartTo,
     executionFilter,
@@ -1682,7 +2106,8 @@ const OverviewLaunchesTable: React.FC = () => {
       const res = await fetchOverviewLaunchHistory({
         testRunExecutionId: Number(historyAnchorLaunch.id),
         perPage: Math.min(HISTORY_BUTTON_BATCH_SIZE, remainingSlots),
-        projectIds: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
+        projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
+        gitlabProjectNames: gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
         startFrom: resolvedStartFrom ?? undefined,
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
@@ -1716,7 +2141,8 @@ const OverviewLaunchesTable: React.FC = () => {
     historyLaunchesHiddenCount,
     historyLaunchesNextBeforeId,
     historyLaunches.length,
-    selectedProjectIds,
+    effectiveProjectIds,
+    gitlabProjectNames,
     resolvedStartFrom,
     resolvedStartTo,
     executionFilter,
@@ -1787,36 +2213,6 @@ const OverviewLaunchesTable: React.FC = () => {
 
   const launchRowIdsOnPage = useMemo(() => displayRows.map(r => r.id), [displayRows]);
 
-  const allLaunchRowsSelected =
-    launchRowIdsOnPage.length > 0 && launchRowIdsOnPage.every(id => selectedLaunchRowIds.has(id));
-  const someLaunchRowsSelected =
-    launchRowIdsOnPage.length > 0 && launchRowIdsOnPage.some(id => selectedLaunchRowIds.has(id));
-
-  useEffect(() => {
-    const el = launchSelectAllCheckboxRef.current;
-    if (el !== null) {
-      el.indeterminate = someLaunchRowsSelected && !allLaunchRowsSelected;
-    }
-  }, [someLaunchRowsSelected, allLaunchRowsSelected]);
-
-  const toggleSelectAllLaunchRows = useCallback(() => {
-    setSelectedLaunchRowIds(prev => {
-      const allSelected =
-        launchRowIdsOnPage.length > 0 && launchRowIdsOnPage.every(id => prev.has(id));
-      const next = new Set(prev);
-      if (allSelected) {
-        for (const id of launchRowIdsOnPage) {
-          next.delete(id);
-        }
-      } else {
-        for (const id of launchRowIdsOnPage) {
-          next.add(id);
-        }
-      }
-      return next;
-    });
-  }, [launchRowIdsOnPage]);
-
   const inSuiteListView = suiteListItems !== null;
 
   /**
@@ -1834,35 +2230,73 @@ const OverviewLaunchesTable: React.FC = () => {
     [filteredSuiteItems],
   );
 
-  const allSuiteRowsSelected =
-    suiteRowKeysOnPage.length > 0 && suiteRowKeysOnPage.every(k => selectedSuiteRowKeys.has(k));
-  const someSuiteRowsSelected =
-    suiteRowKeysOnPage.length > 0 && suiteRowKeysOnPage.some(k => selectedSuiteRowKeys.has(k));
+  // A launch is a cron launch if the filter is set to 'cron' OR if the specific
+  // drilled-into launch has no human creator (createdByUserId === null means cron/automation).
+  const isCronContext = executionFilter === 'cron' || drillLaunch?.source === 'cron';
 
-  useEffect(() => {
-    const el = suiteSelectAllCheckboxRef.current;
-    if (el !== null) {
-      el.indeterminate = someSuiteRowsSelected && !allSuiteRowsSelected;
+  // Items eligible for checkbox selection: failed cron rows with an overviewTestId
+  const selectableItems = useMemo(
+    () => filteredSuiteItems.filter(
+      item => isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null,
+    ),
+    [filteredSuiteItems, isCronContext],
+  );
+  const allSelectableSelected = selectableItems.length > 0 && selectableItems.every(item => selectedTestIds.has(item.overviewTestId!));
+  const someSelectableSelected = selectableItems.some(item => selectedTestIds.has(item.overviewTestId!));
+
+  const toggleSelectAll = useCallback(() => {
+    if (allSelectableSelected) {
+      setSelectedTestIds(new Set());
+    } else {
+      setSelectedTestIds(new Set(selectableItems.map(item => item.overviewTestId!)));
     }
-  }, [someSuiteRowsSelected, allSuiteRowsSelected]);
+  }, [allSelectableSelected, selectableItems]);
 
-  const toggleSelectAllSuiteRows = useCallback(() => {
-    setSelectedSuiteRowKeys(prev => {
-      const allSelected =
-        suiteRowKeysOnPage.length > 0 && suiteRowKeysOnPage.every(k => prev.has(k));
+  const toggleSelectItem = useCallback((id: number) => {
+    setSelectedTestIds(prev => {
       const next = new Set(prev);
-      if (allSelected) {
-        for (const k of suiteRowKeysOnPage) {
-          next.delete(k);
-        }
+      if (next.has(id)) {
+        next.delete(id);
       } else {
-        for (const k of suiteRowKeysOnPage) {
-          next.add(k);
-        }
+        next.add(id);
       }
       return next;
     });
-  }, [suiteRowKeysOnPage]);
+  }, []);
+
+  /** Updates the defectType slug on suite items after the modal applies. */
+  const handleDefectApplied = useCallback((results: Array<{ overviewTestId: number; defect: OverviewTestDefect | null }>) => {
+    setSuiteListItems(prev => {
+      if (prev === null) return prev;
+      const map = new Map(results.map(r => [r.overviewTestId, r.defect]));
+      return prev.map(item =>
+        item.overviewTestId !== null && map.has(item.overviewTestId)
+          ? { ...item, defectType: map.get(item.overviewTestId)?.defectType.slug ?? null }
+          : item,
+      );
+    });
+    setSelectedTestIds(new Set());
+    pendingLaunchesRefreshRef.current = true;
+    const drilledId = drillLaunch !== null ? Number(drillLaunch.id) : null;
+    if (drilledId !== null && Number.isFinite(drilledId)) {
+      setDefectSlugsByLaunchId(prev => {
+        if (!prev.has(drilledId)) return prev;
+        const next = new Map(prev);
+        next.delete(drilledId);
+        return next;
+      });
+      try {
+        const raw = sessionStorage.getItem('overviewLaunchDefectCountsV1');
+        if (raw) {
+          const parsed = JSON.parse(raw) as Record<string, Record<string, number>>;
+          delete parsed[String(drilledId)];
+          sessionStorage.setItem('overviewLaunchDefectCountsV1', JSON.stringify(parsed));
+        }
+      } catch {
+        // Ignore quota / serialization errors.
+      }
+    }
+  }, [drillLaunch]);
 
   /**
    * Toggles suite List view sort (client-side); new text columns default A→Z, start time chronological.
@@ -1904,7 +2338,10 @@ const OverviewLaunchesTable: React.FC = () => {
   const hasLaunchFilters =
     selectedProjectIds.length > 0 ||
     startTimePreset !== 'any' ||
-    executionFilter !== 'all';
+    executionFilter !== 'all' ||
+    statusFilter !== null ||
+    defectTagFilter !== null ||
+    hasIssuesFilter;
 
   /** Text shown on the closed Projects dropdown (matches native select-style controls). */
   const projectsDropdownSummary = useMemo(() => {
@@ -1915,13 +2352,23 @@ const OverviewLaunchesTable: React.FC = () => {
       return 'No projects';
     }
     if (selectedProjectIds.length === 0) {
-      return 'All';
+      return 'All projects';
     }
     if (selectedProjectIds.length === 1) {
       return projectOptions.find(o => o.id === selectedProjectIds[0])?.name ?? '1 project';
     }
     return `${selectedProjectIds.length} projects`;
   }, [projectsLoading, projectOptions, selectedProjectIds]);
+
+  const filteredProjectOptions = useMemo(() => {
+    if (!projectsSearchTerm) return projectOptions;
+    const lower = projectsSearchTerm.toLowerCase();
+    return projectOptions.filter(o =>
+      o.name.toLowerCase().includes(lower) ||
+      (o.country ?? '').toLowerCase().includes(lower) ||
+      (o.project_type ?? '').toLowerCase().includes(lower),
+    );
+  }, [projectOptions, projectsSearchTerm]);
 
   /**
    * Payload for {@link HistoryLaunchTooltip}: current drilled launch (suite list parent execution).
@@ -1992,7 +2439,8 @@ const OverviewLaunchesTable: React.FC = () => {
   }, [suiteListLaunchTooltip]);
 
   return (
-    <div>
+    <>
+    <div data-overview-export="launches">
       {error ? (
         <p className="mb-3 text-sm text-red-600 dark:text-red-400" role="alert">
           {error}
@@ -2015,46 +2463,136 @@ const OverviewLaunchesTable: React.FC = () => {
               Projects
             </span>
             <div ref={projectsFilterDropdownRef} className="relative">
-              <button
-                type="button"
-                id="ov-projects-filter-trigger"
-                aria-expanded={projectsDropdownOpen}
-                aria-haspopup="listbox"
-                aria-labelledby="ov-projects-filter-label ov-projects-filter-trigger"
-                onClick={() => setProjectsDropdownOpen(o => !o)}
-                className="flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-              >
-                <span className="min-w-0 truncate">{projectsDropdownSummary}</span>
-                <ChevronDown
-                  className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${projectsDropdownOpen ? 'rotate-180' : ''}`}
-                  aria-hidden
-                />
-              </button>
+              {/* Closed state: summary button; open state: search input */}
               {projectsDropdownOpen ? (
+                <div className="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-cyan-500 dark:border-cyan-500/70 rounded-md flex items-center gap-2">
+                  <Search className="w-4 h-4 text-slate-400 dark:text-gray-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search projects"
+                    value={projectsSearchTerm}
+                    onChange={e => setProjectsSearchTerm(e.target.value)}
+                    className="flex-1 min-w-0 bg-transparent text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none"
+                    autoFocus
+                    data-mipqa="ov-projects-search-input"
+                  />
+                  {projectsSearchTerm && (
+                    <button
+                      onClick={() => setProjectsSearchTerm('')}
+                      className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <ChevronDown
+                    className="w-4 h-4 text-slate-400 rotate-180 shrink-0 cursor-pointer"
+                    onClick={() => { setProjectsDropdownOpen(false); setProjectsSearchTerm(''); }}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  id="ov-projects-filter-trigger"
+                  aria-expanded={projectsDropdownOpen}
+                  aria-haspopup="listbox"
+                  aria-labelledby="ov-projects-filter-label ov-projects-filter-trigger"
+                  onClick={() => setProjectsDropdownOpen(true)}
+                  className={`w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 focus:border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors text-left flex items-center justify-between ${
+                    selectedProjectIds.length > 0 ? 'border-cyan-500/50 dark:border-cyan-500/40' : ''
+                  }`}
+                  data-mipqa="ov-projects-filter-trigger"
+                >
+                  <span className={`min-w-0 truncate text-sm font-medium ${selectedProjectIds.length > 0 ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-700 dark:text-gray-300'}`}>
+                    {projectsDropdownSummary}
+                  </span>
+                  {projectsLoading ? (
+                    <Loader2 className="w-4 h-4 text-slate-400 dark:text-gray-400 animate-spin shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400 dark:text-gray-400 shrink-0" />
+                  )}
+                </button>
+              )}
+
+              {/* Dropdown Menu */}
+              {projectsDropdownOpen && (
                 <div
                   role="listbox"
                   aria-labelledby="ov-projects-filter-label"
-                  className="absolute left-0 right-0 z-30 mt-1 max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-slate-300 bg-white p-2 text-sm shadow-lg dark:border-slate-600 dark:bg-slate-800"
+                  className="absolute left-0 right-0 z-30 mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-xl flex flex-col"
+                  style={{ maxHeight: '15rem' }}
                 >
-                  {projectsLoading ? (
-                    <p className="text-slate-500 dark:text-slate-400">Loading projects…</p>
-                  ) : projectOptions.length === 0 ? (
-                    <p className="text-slate-500 dark:text-slate-400">No projects available.</p>
-                  ) : (
-                    projectOptions.map(opt => (
-                      <label key={opt.id} className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedProjectIds.includes(opt.id)}
-                          onChange={() => toggleProjectFilter(opt.id)}
-                          className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-slate-600"
-                        />
-                        <span className="text-slate-800 dark:text-slate-200">{opt.name}</span>
-                      </label>
-                    ))
+                  <div className="overflow-y-auto flex-1 sidebar-project-scrollbar" style={{ maxHeight: '12rem' }}>
+                    {projectsLoading ? (
+                      <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Loading projects…
+                      </div>
+                    ) : filteredProjectOptions.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
+                        {projectsSearchTerm ? `No projects found for "${projectsSearchTerm}"` : 'No projects available.'}
+                      </div>
+                    ) : (
+                      <>
+                        {filteredProjectOptions.length > 0 && (
+                          <div className="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500">
+                            {projectsSearchTerm ? `${filteredProjectOptions.length} result${filteredProjectOptions.length !== 1 ? 's' : ''}` : 'Projects'}
+                          </div>
+                        )}
+                        {filteredProjectOptions.map(opt => {
+                          const isSelected = selectedProjectIds.includes(opt.id);
+                          return (
+                            <button
+                              key={opt.id}
+                              role="option"
+                              aria-selected={isSelected}
+                              onClick={() => toggleProjectFilter(opt.id)}
+                              className={`w-full px-3 py-2 text-left transition-all duration-150 flex items-center gap-2 overflow-hidden ${
+                                isSelected
+                                  ? 'bg-cyan-500/10 dark:bg-cyan-500/15 border-l-[3px] border-cyan-500 dark:border-cyan-400'
+                                  : 'border-l-[3px] border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                              }`}
+                              title={[opt.country, opt.name, opt.project_type].filter(Boolean).join(' - ')}
+                              data-mipqa={`ov-project-option-${opt.id}`}
+                            >
+                              {isSelected && (
+                                <span className="text-cyan-500 dark:text-cyan-400 font-bold text-xs shrink-0">✓</span>
+                              )}
+                              <span className="min-w-0 flex-1 flex items-center gap-1.5 overflow-hidden">
+                                {opt.country && (
+                                  <span className="shrink-0 text-xs font-semibold text-slate-400 dark:text-slate-500">
+                                    {opt.country}
+                                  </span>
+                                )}
+                                <span className={`text-sm font-medium leading-tight truncate min-w-0 ${isSelected ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-800 dark:text-gray-200'}`}>
+                                  {opt.name}
+                                </span>
+                                {opt.project_type && (
+                                  <span className="shrink-0 text-xs font-semibold text-slate-400 dark:text-slate-500">
+                                    {opt.project_type}
+                                  </span>
+                                )}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Footer: clear selection */}
+                  {selectedProjectIds.length > 0 && (
+                    <div className="shrink-0 border-t border-slate-200 dark:border-slate-700">
+                      <button
+                        onClick={() => { setSelectedProjectIds([]); setPage(1); }}
+                        className="w-full px-4 py-2.5 text-left text-sm font-medium transition-colors flex items-center gap-2 rounded-b-lg text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 hover:text-cyan-600 dark:hover:text-cyan-400"
+                        data-mipqa="ov-projects-clear-filter"
+                      >
+                        Show all projects
+                      </button>
+                    </div>
                   )}
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
           <div className="flex w-full min-w-[12rem] max-w-[18rem] flex-col gap-1 sm:w-auto">
@@ -2082,6 +2620,7 @@ const OverviewLaunchesTable: React.FC = () => {
               <option value="custom">Custom range</option>
             </select>
           </div>
+          {!isFromWidgetDeepLink ? (
           <div className="flex w-full min-w-[10rem] max-w-[14rem] flex-col gap-1 sm:w-auto">
             <label
               htmlFor="ov-execution-filter"
@@ -2103,22 +2642,58 @@ const OverviewLaunchesTable: React.FC = () => {
               <option value="cron">Cron</option>
             </select>
           </div>
+          ) : (
+          <div className="flex w-full min-w-[10rem] max-w-[14rem] flex-col gap-1 sm:w-auto">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+              Run by
+            </span>
+            <span
+              className="inline-flex items-center gap-1 rounded-full border border-cyan-300 bg-cyan-50 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-slate-400"
+              data-mipqa="ov-widget-runby-chip"
+            >
+              Cron
+            </span>
+          </div>
+          )}
             </div>
           {hasLaunchFilters ? (
-            <button
-              type="button"
-              onClick={() => {
-                setPage(1);
-                setSelectedProjectIds([]);
-                setStartTimePreset('any');
-                setCustomRangeStart(null);
-                setCustomRangeEnd(null);
-                setExecutionFilter('all');
-              }}
-              className="shrink-0 self-start text-sm text-slate-600 underline decoration-slate-400 underline-offset-2 hover:text-cyan-600 sm:self-end dark:text-slate-400 dark:hover:text-cyan-400"
-            >
-              Clear filters
-            </button>
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-end">
+              {(statusFilter !== null || defectTagFilter !== null || hasIssuesFilter) && (
+                <ActiveFilterChip
+                  statusFilter={statusFilter}
+                  defectTagFilter={defectTagFilter}
+                  hasIssuesFilter={hasIssuesFilter}
+                  onClear={(kind) => {
+                    setPage(1);
+                    if (kind === 'status') setStatusFilter(null);
+                    if (kind === 'defect') setDefectTagFilter(null);
+                    if (kind === 'issues') setHasIssuesFilter(false);
+                  }}
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setPage(1);
+                  setSelectedProjectIds([]);
+                  setStartTimePreset('any');
+                  setCustomRangeStart(null);
+                  setCustomRangeEnd(null);
+                  setExecutionFilter('all');
+                  setStatusFilter(null);
+                  setDefectTagFilter(null);
+                  setHasIssuesFilter(false);
+                  setSearchParams(prev => {
+                    const next = new URLSearchParams(prev);
+                    next.delete('from_widget');
+                    return next;
+                  }, { replace: true });
+                }}
+                className="shrink-0 text-sm text-slate-600 underline decoration-slate-400 underline-offset-2 hover:text-cyan-600 dark:text-slate-400 dark:hover:text-cyan-400"
+              >
+                Clear filters
+              </button>
+            </div>
           ) : null}
           </div>
           {startTimePreset === 'custom' ? (
@@ -2211,12 +2786,38 @@ const OverviewLaunchesTable: React.FC = () => {
           ) : null}
         </nav>
         {drillLaunch !== null && !inTestLogView ? (
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-            <span className="font-medium text-teal-600 dark:text-teal-400">
-              Passed {passRatePercentFromLaunch(drillLaunch)}%
-            </span>
-            <span className="text-slate-400">|</span>
-            <span>Total: {drillLaunch.total}</span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+              <span className="font-medium text-teal-600 dark:text-teal-400">
+                Passed {passRatePercentFromLaunch(drillLaunch)}%
+              </span>
+              <span className="text-slate-400">|</span>
+              <span>Total: {drillLaunch.total}</span>
+            </div>
+            {isCronContext && selectableItems.length > 0 ? (
+              <div className="flex items-center gap-2">
+                {selectedTestIds.size > 0 && (
+                  <span className="text-xs text-slate-400 dark:text-slate-500"
+                    data-mipqa="suite-selected-count">
+                    {selectedTestIds.size} selected
+                  </span>
+                )}
+                <button
+                  type="button"
+                  data-mipqa="suite-make-decision-btn"
+                  onClick={() => {
+                    const activeIds = selectedTestIds.size > 0 ? selectedTestIds : new Set(selectableItems.map(item => item.overviewTestId!));
+                    const targets = selectableItems
+                      .filter(item => activeIds.has(item.overviewTestId!))
+                      .map(item => ({ overviewTestId: item.overviewTestId!, testName: item.name }));
+                    if (targets.length > 0) setDefectModalTarget(targets);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors"
+                >
+                  Make Decision
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -2277,6 +2878,11 @@ const OverviewLaunchesTable: React.FC = () => {
             onRefresh={() => void loadTestLog()}
             hoveredTimeRowKey={hoveredLogTimeRowKey}
             onHoverTimeRow={setHoveredLogTimeRowKey}
+            isCronContext={isCronContext}
+            overviewTestId={testLogTarget.kind === 'test' ? testLogTarget.overviewTestId : null}
+            defectTypes={defectTypes}
+            defectGroups={defectGroups}
+            onDefectApplied={(overviewTestId, applied) => handleDefectApplied([{ overviewTestId, defect: applied }])}
           />
         ) : inSuiteListView ? (
           <table className="w-full min-w-[900px] table-fixed text-sm">
@@ -2287,12 +2893,30 @@ const OverviewLaunchesTable: React.FC = () => {
               <col className="w-[13%]" />
               <col className="w-[14%]" />
               <col className="w-[12%]" />
-              <col className="w-10" />
             </colgroup>
             <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
               <tr className="text-left">
                 <th className="py-3 pl-4 pr-2">
-                  <Link2 className="h-4 w-4 text-slate-400" aria-hidden />
+                  {isCronContext && selectableItems.length > 0 ? (
+                    <label data-mipqa="suite-select-all-checkbox" className="relative inline-flex h-4 w-4 cursor-pointer select-none items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={allSelectableSelected}
+                        ref={el => { if (el) el.indeterminate = someSelectableSelected && !allSelectableSelected; }}
+                        onChange={toggleSelectAll}
+                        className="sr-only"
+                      />
+                      <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${allSelectableSelected ? 'border-cyan-500 bg-cyan-500' : someSelectableSelected ? 'border-cyan-500 bg-cyan-500/20 dark:bg-cyan-500/30' : 'border-slate-300 bg-white hover:border-slate-400 dark:border-slate-500 dark:bg-slate-700/60 dark:hover:border-slate-400'}`}>
+                        {someSelectableSelected && !allSelectableSelected ? (
+                          <span className="block h-0.5 w-2 rounded-full bg-cyan-400" />
+                        ) : allSelectableSelected ? (
+                          <svg viewBox="0 0 10 8" className="h-2.5 w-2.5 fill-none stroke-white stroke-2"><polyline points="1,4 4,7 9,1" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        ) : null}
+                      </span>
+                    </label>
+                  ) : (
+                    <Link2 className="h-4 w-4 text-slate-400" aria-hidden />
+                  )}
                 </th>
                 <SuiteListSortableTh
                   column="method_type"
@@ -2333,17 +2957,6 @@ const OverviewLaunchesTable: React.FC = () => {
                 <th className="py-3 px-2 text-xs font-semibold uppercase tracking-wide text-slate-600 align-bottom dark:text-slate-400">
                   Defect type
                 </th>
-                <th className="py-3 pl-2 pr-4 align-top" scope="col">
-                  <input
-                    ref={suiteSelectAllCheckboxRef}
-                    type="checkbox"
-                    checked={allSuiteRowsSelected}
-                    onChange={toggleSelectAllSuiteRows}
-                    disabled={suiteRowKeysOnPage.length === 0}
-                    className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 disabled:opacity-40"
-                    aria-label="Select all suite list rows on this page"
-                  />
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -2358,13 +2971,36 @@ const OverviewLaunchesTable: React.FC = () => {
               ) : null}
               {filteredSuiteItems.map(item => {
                 const rowKey = suiteListItemRowKey(item);
+                const isFailed =
+                  item.statusBand === 'failed' ||
+                  item.statusLabel.toUpperCase().includes('FAIL');
                 return (
                   <tr
                     key={rowKey}
-                    className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+                    className={`transition-colors ${isFailed ? 'bg-red-100 dark:bg-red-900/40 hover:bg-red-200/70 dark:hover:bg-red-900/60' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
                   >
                     <td className="py-3 pl-4 pr-2 align-top text-slate-400">
-                      <span className="inline-flex p-1" aria-hidden="true" />
+                      {isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
+                        <label
+                          data-mipqa={`suite-row-checkbox-${item.overviewTestId}`}
+                          className="relative inline-flex h-4 w-4 cursor-pointer select-none items-center justify-center"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedTestIds.has(item.overviewTestId)}
+                            onChange={() => toggleSelectItem(item.overviewTestId!)}
+                            className="sr-only"
+                          />
+                          <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${selectedTestIds.has(item.overviewTestId) ? 'border-cyan-500 bg-cyan-500' : 'border-slate-300 bg-white hover:border-slate-400 dark:border-slate-500 dark:bg-slate-700/60 dark:hover:border-slate-400'}`}>
+                            {selectedTestIds.has(item.overviewTestId) && (
+                              <svg viewBox="0 0 10 8" className="h-2.5 w-2.5 fill-none stroke-white stroke-2"><polyline points="1,4 4,7 9,1" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            )}
+                          </span>
+                        </label>
+                      ) : (
+                        <span className="inline-flex p-1" aria-hidden="true" />
+                      )}
                     </td>
                     <td className="py-3 pr-2 align-top text-slate-700 dark:text-slate-300 whitespace-nowrap">
                       {item.methodType}
@@ -2447,6 +3083,38 @@ const OverviewLaunchesTable: React.FC = () => {
                           {item.durationLabel}
                         </span>
                       </div>
+                      {isFailed && item.errorMessages != null && item.errorMessages.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setExpandedErrorRows(prev => {
+                              const next = new Set(prev);
+                              if (next.has(rowKey)) {
+                                next.delete(rowKey);
+                              } else {
+                                next.add(rowKey);
+                              }
+                              return next;
+                            });
+                          }}
+                          className="mt-1.5 block w-full text-left"
+                        >
+                          {expandedErrorRows.has(rowKey) ? (
+                            <div className="flex flex-col gap-0.5">
+                              {item.errorMessages.map((msg, i) => (
+                                <p key={i} className="text-xs text-red-700 dark:text-red-300 font-mono [overflow-wrap:anywhere]">
+                                  {msg}
+                                </p>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="truncate text-xs text-red-700 dark:text-red-300 font-mono">
+                              {item.errorMessages[0]}
+                            </p>
+                          )}
+                        </button>
+                      ) : null}
                     </td>
                     <td className="whitespace-nowrap py-3 px-2 align-top text-slate-700 dark:text-slate-300">
                       <span className="inline-flex items-center gap-1">
@@ -2471,31 +3139,47 @@ const OverviewLaunchesTable: React.FC = () => {
                         : item.startTimeRelative}
                     </td>
                     <td className="py-3 px-2 align-top text-slate-700 dark:text-slate-300">
-                      {item.defectType === null ||
-                      item.defectType === '' ? (
-                        <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>
+                      {isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
+                        (() => {
+                          const resolved = item.defectType ? defectTypeBySlug.get(item.defectType) : null;
+                          return resolved != null ? (
+                            <button
+                              type="button"
+                              data-mipqa="defect-badge-btn"
+                              onClick={() => setDefectModalTarget([{ overviewTestId: item.overviewTestId!, testName: item.name }])}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-slate-600 bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-200 hover:border-slate-400 hover:bg-slate-700 transition-colors"
+                            >
+                              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: resolved.color }} />
+                              {resolved.name}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              data-mipqa="defect-make-decision-btn"
+                              onClick={() => setDefectModalTarget([{ overviewTestId: item.overviewTestId!, testName: item.name }])}
+                              className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-600 bg-transparent px-2.5 py-0.5 text-xs font-medium text-slate-400 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
+                            >
+                              Make Decision
+                            </button>
+                          );
+                        })()
                       ) : (
-                        item.defectType
+                        item.defectType === null || item.defectType === '' ? (
+                          <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>
+                        ) : (
+                          (() => {
+                            const dt = defectTypeBySlug.get(item.defectType!);
+                            return dt != null ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs">
+                                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dt.color }} />
+                                {dt.name}
+                              </span>
+                            ) : (
+                              <span>{item.defectType}</span>
+                            );
+                          })()
+                        )
                       )}
-                    </td>
-                    <td className="py-3 pl-2 pr-4 align-top">
-                      <input
-                        type="checkbox"
-                        checked={selectedSuiteRowKeys.has(rowKey)}
-                        onChange={() => {
-                          setSelectedSuiteRowKeys(prev => {
-                            const next = new Set(prev);
-                            if (next.has(rowKey)) {
-                              next.delete(rowKey);
-                            } else {
-                              next.add(rowKey);
-                            }
-                            return next;
-                          });
-                        }}
-                        className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
-                        aria-label={`Select ${item.name}`}
-                      />
                     </td>
                   </tr>
                 );
@@ -2645,17 +3329,6 @@ const OverviewLaunchesTable: React.FC = () => {
                   align="right"
                   thClassName="px-1 pl-2 text-right"
                 />
-                <th className="py-3 pl-2 pr-4 align-top" scope="col">
-                  <input
-                    ref={launchSelectAllCheckboxRef}
-                    type="checkbox"
-                    checked={allLaunchRowsSelected}
-                    onChange={toggleSelectAllLaunchRows}
-                    disabled={launchRowIdsOnPage.length === 0}
-                    className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 disabled:opacity-40"
-                    aria-label="Select all launches on this page"
-                  />
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -2769,35 +3442,28 @@ const OverviewLaunchesTable: React.FC = () => {
                     {row.skipped}
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
-                    {renderCountCell(row.productBug)}
+                    <div className="flex items-center justify-end gap-1.5">
+                      {row.source === 'cron' && row.productBug !== undefined && row.productBug > 0 && <MiniGroupDonut slices={defectTypesForColumn(row.parentLaunchId ?? Number(row.id), 'productBug')} />}
+                      {row.source === 'cron' ? renderCountCell(row.productBug) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
+                    </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
-                    {renderCountCell(row.autoBug)}
+                    <div className="flex items-center justify-end gap-1.5">
+                      {row.source === 'cron' && row.autoBug !== undefined && row.autoBug > 0 && <MiniGroupDonut slices={defectTypesForColumn(row.parentLaunchId ?? Number(row.id), 'autoBug')} />}
+                      {row.source === 'cron' ? renderCountCell(row.autoBug) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
+                    </div>
                   </td>
                   <td className="py-3 px-2 align-top text-right tabular-nums text-slate-900 dark:text-white">
-                    {renderCountCell(row.systemIssue)}
+                    <div className="flex items-center justify-end gap-1.5">
+                      {row.source === 'cron' && row.systemIssue !== undefined && row.systemIssue > 0 && <MiniGroupDonut slices={defectTypesForColumn(row.parentLaunchId ?? Number(row.id), 'systemIssue')} />}
+                      {row.source === 'cron' ? renderCountCell(row.systemIssue) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
+                    </div>
                   </td>
                   <td className="py-3 px-2 pl-3 align-top text-right tabular-nums text-slate-900 dark:text-white">
-                    {renderCountCell(row.toInvestigate)}
-                  </td>
-                  <td className="py-3 pl-2 pr-4 align-top">
-                    <input
-                      type="checkbox"
-                      checked={selectedLaunchRowIds.has(row.id)}
-                      onChange={() => {
-                        setSelectedLaunchRowIds(prev => {
-                          const next = new Set(prev);
-                          if (next.has(row.id)) {
-                            next.delete(row.id);
-                          } else {
-                            next.add(row.id);
-                          }
-                          return next;
-                        });
-                      }}
-                      className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
-                      aria-label={`Select ${row.title}`}
-                    />
+                    <div className="flex items-center justify-end gap-1.5">
+                      {row.source === 'cron' && row.toInvestigate !== undefined && row.toInvestigate > 0 && <MiniGroupDonut slices={defectTypesForColumn(row.parentLaunchId ?? Number(row.id), 'toInvestigate')} />}
+                      {row.source === 'cron' ? renderCountCell(row.toInvestigate) : <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -2934,6 +3600,16 @@ const OverviewLaunchesTable: React.FC = () => {
         />
       ) : null}
     </div>
+    {defectModalTarget !== null && (
+      <DefectSelectionModal
+        targets={defectModalTarget}
+        defectTypes={defectTypes}
+        defectGroups={defectGroups}
+        onClose={() => setDefectModalTarget(null)}
+        onApplied={results => handleDefectApplied(results)}
+      />
+    )}
+    </>
   );
 };
 

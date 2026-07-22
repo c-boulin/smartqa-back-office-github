@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowUpRight } from 'lucide-react';
 
 interface ServiceStatCardProps {
   /** Service name, country name, or other row label. */
@@ -8,8 +9,10 @@ interface ServiceStatCardProps {
   passRateValue?: number | null;
   testCases: number;
   status: 'failed' | 'passed';
-  /** When set, card is interactive (e.g. drill down from service list). */
+  /** When set, card body is interactive (e.g. drill down from service list). */
   onClick?: () => void;
+  /** When set, an icon button is shown in the top-right to deep-link to launches. */
+  onViewLaunches?: () => void;
 }
 
 /**
@@ -44,7 +47,25 @@ function topBarClassName(status: 'failed' | 'passed', passRateValue?: number | n
 
 /** Card frame: left/right/bottom only so `dark:border-slate-600` never paints over the accent top strip. */
 const CARD_FRAME_CLASS =
-  'rounded-lg border-x border-b border-slate-200 bg-white p-4 shadow-sm dark:border-x-slate-600 dark:border-b-slate-600 dark:bg-slate-800';
+  'relative rounded-lg border-x border-b border-slate-200 bg-white p-4 shadow-sm dark:border-x-slate-600 dark:border-b-slate-600 dark:bg-slate-800';
+
+function ViewLaunchesButton({ label, onClick }: { label: string; onClick: () => void }): React.ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      title="View launches"
+      aria-label={`View launches for ${label}`}
+      data-mipqa={`view-launches-btn-${label.toLowerCase().replace(/\s+/g, '-')}`}
+      className="absolute right-2 top-2 rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-cyan-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:hover:bg-slate-700 dark:hover:text-cyan-400 dark:focus-visible:ring-cyan-400"
+    >
+      <ArrowUpRight className="h-4 w-4" />
+    </button>
+  );
+}
 
 /**
  * Single service/country execution summary card (coloured top bar only).
@@ -56,6 +77,7 @@ export const ServiceStatCard: React.FC<ServiceStatCardProps> = ({
   testCases,
   status,
   onClick,
+  onViewLaunches,
 }) => {
   const topBar = topBarClassName(status, passRateValue);
   const baseClass = `${CARD_FRAME_CLASS} ${topBar}`;
@@ -63,7 +85,7 @@ export const ServiceStatCard: React.FC<ServiceStatCardProps> = ({
   const body = (
     <>
       <h4
-        className="mb-4 truncate text-sm font-bold text-slate-900 dark:text-white"
+        className="mb-4 truncate pr-8 text-sm font-bold text-slate-900 dark:text-white"
         title={serviceName}
       >
         {serviceName}
@@ -81,18 +103,34 @@ export const ServiceStatCard: React.FC<ServiceStatCardProps> = ({
     </>
   );
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (!onClick) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   if (onClick) {
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
-        className={`${baseClass} w-full cursor-pointer text-left transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400`}
+        onKeyDown={handleKeyDown}
         aria-label={`View ${serviceName} breakdown by country`}
+        className={`${baseClass} w-full cursor-pointer text-left transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400`}
       >
         {body}
-      </button>
+        {onViewLaunches && <ViewLaunchesButton label={serviceName} onClick={onViewLaunches} />}
+      </div>
     );
   }
 
-  return <div className={baseClass}>{body}</div>;
+  return (
+    <div className={baseClass}>
+      {body}
+      {onViewLaunches && <ViewLaunchesButton label={serviceName} onClick={onViewLaunches} />}
+    </div>
+  );
 };

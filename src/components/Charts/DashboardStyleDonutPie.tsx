@@ -1,9 +1,6 @@
 import React from 'react';
-import { PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
-/**
- * One slice for {@link DashboardStyleDonutPie} (matches dashboard active-test-runs chart shape).
- */
 export type DashboardStyleDonutDatum = {
   name: string;
   value: number;
@@ -19,23 +16,11 @@ const TOOLTIP_CONTENT_STYLE: React.CSSProperties = {
 
 type DashboardStyleDonutPieProps = {
   data: DashboardStyleDonutDatum[];
-  centerValue: number;
-  centerSubtitle: string;
-  /** Same contract as dashboard {@code Pie} onClick when slices are clickable. */
   onSliceClick?: (data: { name: string; value: number }) => void;
 } & Pick<React.ComponentProps<typeof PieChart>, 'width' | 'height'>;
 
-/**
- * Donut chart built like **Test Cases in Active Test Runs** on the dashboard: same Recharts layout,
- * start/end angles, radii, tooltip, and centre labels.
- *
- * When wrapped in Recharts `ResponsiveContainer`, the library injects `width` / `height` on this
- * component; those must be forwarded to `PieChart` or the donut renders at zero size.
- */
 export const DashboardStyleDonutPie: React.FC<DashboardStyleDonutPieProps> = ({
   data,
-  centerValue,
-  centerSubtitle,
   onSliceClick,
   width,
   height,
@@ -66,23 +51,37 @@ export const DashboardStyleDonutPie: React.FC<DashboardStyleDonutPieProps> = ({
       labelStyle={{ color: 'rgb(15 23 42)' }}
       itemStyle={{ color: 'rgb(15 23 42)' }}
     />
-    <text
-      x="50%"
-      y="45%"
-      textAnchor="middle"
-      dominantBaseline="middle"
-      className="fill-slate-900 dark:fill-white text-2xl font-bold"
-    >
-      {centerValue}
-    </text>
-    <text
-      x="50%"
-      y="55%"
-      textAnchor="middle"
-      dominantBaseline="middle"
-      className="fill-slate-600 dark:fill-gray-400 text-sm"
-    >
-      {centerSubtitle}
-    </text>
   </PieChart>
+);
+
+type DashboardStyleDonutWithCenterLabelProps = DashboardStyleDonutPieProps & {
+  centerValue: number | string;
+  centerSubtitle: string;
+};
+
+/**
+ * Wraps {@link DashboardStyleDonutPie} in a ResponsiveContainer sized to its
+ * parent, and overlays the centre value/subtitle as plain HTML so html2canvas
+ * exports render the labels reliably (SVG {@code <text>} inside recharts is
+ * unreliable under html2canvas at the sizes we need).
+ */
+export const DashboardStyleDonutWithCenterLabel: React.FC<DashboardStyleDonutWithCenterLabelProps> = ({
+  data,
+  centerValue,
+  centerSubtitle,
+  onSliceClick,
+}) => (
+  <div className="relative h-full w-full">
+    <ResponsiveContainer width="100%" height="100%">
+      <DashboardStyleDonutPie data={data} onSliceClick={onSliceClick} />
+    </ResponsiveContainer>
+    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+      <div className="text-2xl font-bold leading-none text-slate-900 dark:text-white">
+        {centerValue}
+      </div>
+      <div className="mt-1 text-sm leading-none text-slate-600 dark:text-gray-400">
+        {centerSubtitle}
+      </div>
+    </div>
+  </div>
 );

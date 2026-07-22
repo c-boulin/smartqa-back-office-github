@@ -18,11 +18,14 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type {
+  OverviewDefectType,
+  OverviewTestDefect,
   OverviewTestLogItemApiRow,
   OverviewTestLogKeywordApiNode,
   OverviewTestLogTreeNode,
 } from '../../services/overviewWidgetsApi';
 import { buildAssetsUrlFromObjectKey } from '../../env';
+import { DefectSelectionModal } from './DefectSelectionModal';
 
 /** Identifiers for the test-detail sub-tabs (All logs / Item details have body content; others placeholder or empty). */
 export type OverviewTestLogDetailTabId = 'all_logs';
@@ -71,6 +74,16 @@ export interface OverviewTestLogViewProps {
   onRefresh: () => void;
   hoveredTimeRowKey: string | null;
   onHoverTimeRow: (key: string | null) => void;
+  /** When true and the test is failed, show an active "Make decision" button. */
+  isCronContext?: boolean;
+  /** The overviewTestId for this test log (null for suite-keyword logs). */
+  overviewTestId?: number | null;
+  /** Cached defect types from the parent (used in the modal). */
+  defectTypes?: OverviewDefectType[];
+  /** Cached defect groups from the parent (used in the modal for grouped layout). */
+  defectGroups?: import('../../services/defectGroupsApi').DefectGroupData[];
+  /** Called after a defect decision is applied so the parent can update the suite list row. */
+  onDefectApplied?: (overviewTestId: number, applied: OverviewTestDefect | null) => void;
 }
 
 /**
@@ -487,7 +500,7 @@ function KeywordLogAccordionBlock(
 
   return (
     <React.Fragment key={`${rowKey}-frag`}>
-      <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+      <tr className={`transition-colors ${normalizeStatusBand(node.statusBand, node.statusLabel) === 'failed' ? 'bg-red-100 dark:bg-red-900/40 hover:bg-red-200/70 dark:hover:bg-red-900/60' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}>
         <td
           className="min-w-0 break-words py-2.5 pr-2 align-top font-mono text-xs text-slate-800 dark:text-slate-200"
           style={{ paddingLeft: `${8 + depth * 16}px` }}
@@ -575,7 +588,23 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   onRefresh,
   hoveredTimeRowKey,
   onHoverTimeRow,
+  suiteListStatusLabel,
+  suiteListStatusBand,
+  isCronContext = false,
+  overviewTestId = null,
+  defectTypes = [],
+  defectGroups,
+  onDefectApplied,
 }) => {
+  const [defectModalOpen, setDefectModalOpen] = useState(false);
+
+  // Use suite-list status as authoritative source (available immediately, before the log payload loads)
+  const isFailed =
+    normalizeStatusBand(suiteListStatusBand, suiteListStatusLabel) === 'failed' ||
+    suiteListStatusLabel.toUpperCase().includes('FAIL') ||
+    normalizeStatusBand(undefined, testStatusLabel) === 'failed' ||
+    testStatusLabel.toUpperCase().includes('FAIL');
+  const canMakeDecision = isCronContext && isFailed && overviewTestId !== null;
 
   const showHistoryButtonTooltip = (
     button: OverviewTestLogViewProps['historyButtons'][number],
@@ -629,6 +658,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   const showNoResultsEmptyState = !loading && error === null && items.length === 0;
 
   return (
+    <>
     <div className="min-h-[12rem] p-4 text-sm text-slate-800 dark:text-slate-200">
       <div className="mb-4 flex justify-end">
         <div className="flex flex-wrap items-center gap-2">
@@ -659,6 +689,16 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+          {canMakeDecision && (
+            <button
+              type="button"
+              onClick={() => setDefectModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors"
+              data-mipqa="make-decision-button"
+            >
+              Make decision
+            </button>
+          )}
         </div>
       </div>
 
@@ -742,19 +782,6 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
           left={hoveredHistoryButton.left}
         />
       ) : null}
-
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-100 px-3 py-2.5 dark:bg-slate-700/50">
-        <div className="min-h-[1px] flex-1" />
-        <div className="flex flex-wrap items-center gap-3 border-l border-slate-300 pl-4 dark:border-slate-600">
-          <button
-            type="button"
-            disabled
-            className="cursor-not-allowed rounded border border-slate-300 bg-slate-200 px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-400"
-          >
-            Make decision
-          </button>
-        </div>
-      </div>
 
       <div className="mb-3 border-b border-slate-200 dark:border-slate-700">
         <nav aria-label="Test log sections">
@@ -891,6 +918,19 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
       </div>
 
     </div>
+    {defectModalOpen && overviewTestId !== null && (
+      <DefectSelectionModal
+        targets={[{ overviewTestId, testName: testDisplayName }]}
+        defectTypes={defectTypes}
+        defectGroups={defectGroups}
+        onClose={() => setDefectModalOpen(false)}
+        onApplied={results => {
+          results.forEach(r => onDefectApplied?.(r.overviewTestId, r.defect));
+          setDefectModalOpen(false);
+        }}
+      />
+    )}
+    </>
   );
 };
 
