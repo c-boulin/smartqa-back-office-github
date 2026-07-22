@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Users, Loader, Shield, Bot, Search, ChevronLeft, ChevronRight, SquarePen, X } from 'lucide-react';
+import { Users, Loader, Shield, Bot, Search, ChevronLeft, ChevronRight, SquarePen, X, Activity } from 'lucide-react';
+import { MonitoringSettings } from '../components/Settings/MonitoringSettings';
 import { usersApiService, User } from '../services/usersApi';
 import { apiService, Role } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -21,7 +22,7 @@ type GitlabRepositoryOption = {
   url: string;
 };
 
-type SettingsTab = 'users' | 'automation';
+type SettingsTab = 'users' | 'automation' | 'monitoring';
 
 const Settings: React.FC = () => {
   const { state: authState, hasPermission } = useAuth();
@@ -265,6 +266,18 @@ const Settings: React.FC = () => {
           >
             <Bot className="w-4 h-4" />
             Automation Testing Management
+          </button>
+          <button
+            data-mipqa="settings-tab-monitoring"
+            onClick={() => setActiveTab('monitoring')}
+            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              activeTab === 'monitoring'
+                ? 'text-cyan-600 dark:text-cyan-400 border-b-2 border-cyan-600 dark:border-cyan-400'
+                : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            Monitoring Settings
           </button>
         </div>
       </Card>
@@ -566,6 +579,7 @@ const Settings: React.FC = () => {
           </Modal>
         </>
       )}
+      {activeTab === 'monitoring' && <MonitoringSettings />}
     </div>
   );
 };

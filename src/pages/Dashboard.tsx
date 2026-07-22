@@ -8,7 +8,7 @@ import {
 import PageBreadcrumb from '../components/UI/PageBreadcrumb';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { DashboardStyleDonutPie } from '../components/Charts/DashboardStyleDonutPie';
+import { DashboardStyleDonutWithCenterLabel } from '../components/Charts/DashboardStyleDonutPie';
 import Card from '../components/UI/Card';
 import SkeletonCard from '../components/UI/SkeletonCard';
 import ClosedRunsCaseResultsStackedChart from '../components/Charts/ClosedRunsCaseResultsStackedChart';
@@ -201,14 +201,14 @@ export default function Dashboard() {
           <div className="h-64 flex items-center justify-center relative">
             {totalActiveTestCases > 0 ? (
             <div className="h-full w-full flex items-center">
-              <ResponsiveContainer width="60%" height="100%">
-                <DashboardStyleDonutPie
+              <div className="relative h-full" style={{ width: '60%' }}>
+                <DashboardStyleDonutWithCenterLabel
                   data={activeTestRunsData}
                   centerValue={totalActiveTestCases}
                   centerSubtitle="Total Test Cases"
                   onSliceClick={handleActiveTestRunsClick}
                 />
-              </ResponsiveContainer>
+              </div>
 
               <div className="ml-6 space-y-3 flex-1">
                 {activeTestRunsData.filter(entry => entry.value > 0).map((entry, index) => (

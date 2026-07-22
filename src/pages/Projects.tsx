@@ -1038,6 +1038,7 @@ const Projects: React.FC = () => {
         templatesLoading={templatesLoadingForModal}
       />
 
+
       <EditProjectModal
         isOpen={isEditModalOpen}
         project={projectToManage}

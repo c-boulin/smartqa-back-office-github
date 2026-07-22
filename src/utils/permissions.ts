@@ -22,6 +22,7 @@ export const PERMISSIONS = {
     READ: 'project:read',
     UPDATE: 'project:update',
     DELETE: 'project:delete',
+    IMPORT: 'project:import',
   },
   SCHEDULED_REPORT: {
     CREATE: 'scheduled-report:create',
