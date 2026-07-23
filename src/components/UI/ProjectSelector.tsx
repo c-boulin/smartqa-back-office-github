@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Search, FolderOpen, X, Loader, ChevronDown, AlertCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, FolderOpen, X, Loader, ChevronDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { projectsApiService } from '../../services/projectsApi';
 import { Project } from '../../types';
 
 interface ProjectSelectorProps {
@@ -13,11 +12,6 @@ interface ProjectSelectorProps {
   error?: string;
   className?: string;
 }
-
-const RECENT_ITEMS_PER_PAGE = 100;
-const SEARCH_ITEMS_PER_PAGE = 100;
-const RECENT_SORT = 'order[createdAt]=desc';
-const DEBOUNCE_MS = 300;
 
 const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   selectedProjectId,
@@ -31,86 +25,21 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   const { state } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [options, setOptions] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const requestSeqRef = useRef(0);
 
-  // Resolve the currently selected project: first try the local sidebar list,
-  // then fall back to a single fetch so the button label always renders.
-  useEffect(() => {
-    if (!selectedProjectId) {
-      setSelectedProject(null);
-      return;
-    }
-    const local = state.projects.find(p => p.id === selectedProjectId);
-    if (local) {
-      setSelectedProject(local);
-      return;
-    }
-    let cancelled = false;
-    projectsApiService
-      .getProject(selectedProjectId)
-      .then(res => {
-        if (cancelled || !res?.data) return;
-        setSelectedProject(projectsApiService.transformApiProject(res.data));
-      })
-      .catch(() => {
-        if (!cancelled) setSelectedProject(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProjectId, state.projects]);
+  const filteredProjects = state.projects.filter(project => {
+    const q = searchTerm.toLowerCase();
+    return (
+      project.name.toLowerCase().includes(q) ||
+      project.id.toLowerCase().includes(q) ||
+      (project.country ?? '').toLowerCase().includes(q) ||
+      (project.project_type ?? '').toLowerCase().includes(q)
+    );
+  });
 
-  // Fetch a page of non-template projects from the server.
-  // Empty term => recent projects; non-empty => LIKE %term% on title.
-  const fetchProjects = async (term: string) => {
-    const seq = ++requestSeqRef.current;
-    setLoading(true);
-    setFetchError(null);
-    try {
-      const response = await projectsApiService.searchProjectsList(
-        term,
-        1,
-        term ? SEARCH_ITEMS_PER_PAGE : RECENT_ITEMS_PER_PAGE,
-        RECENT_SORT
-      );
-      if (seq !== requestSeqRef.current) return; // stale response
-      const projects = (response?.data ?? []).map(p => projectsApiService.transformApiProject(p));
-      setOptions(projects);
-    } catch {
-      if (seq !== requestSeqRef.current) return;
-      setFetchError('Failed to load projects. Please try again.');
-      setOptions([]);
-    } finally {
-      if (seq === requestSeqRef.current) setLoading(false);
-    }
-  };
-
-  // Load initial page when the dropdown opens; debounce subsequent searches.
-  useEffect(() => {
-    if (!isOpen) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      fetchProjects(searchTerm);
-    }, searchTerm ? DEBOUNCE_MS : 0);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, searchTerm]);
-
-  // Keep the selected project visible even when it's absent from the current results.
-  const displayOptions = useMemo(() => {
-    if (!selectedProject) return options;
-    if (options.some(p => p.id === selectedProject.id)) return options;
-    return [selectedProject, ...options];
-  }, [options, selectedProject]);
+  // Find selected project
+  const selectedProject = state.projects.find(p => p.id === selectedProjectId);
 
   const handleProjectSelect = (project: Project) => {
     onProjectChange(project.id);
@@ -127,8 +56,8 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (displayOptions.length > 0) {
-        handleProjectSelect(displayOptions[0]);
+      if (filteredProjects.length > 0) {
+        handleProjectSelect(filteredProjects[0]);
       }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
@@ -151,15 +80,9 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
   return (
     <div className={className}>
-      {/* Hidden input so native form validation honours `required` */}
-      <input
-        type="hidden"
-        value={selectedProjectId}
-        required={required}
-        onChange={() => {}}
-        tabIndex={-1}
-        aria-hidden="true"
-      />
+      <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
+        Project {required && <span className="text-red-400">*</span>}
+      </label>
       <div className="relative" ref={dropdownRef}>
         {/* Main Button */}
         <button
@@ -167,12 +90,12 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
           className={`w-full px-3 py-3 pl-10 bg-slate-100 dark:bg-slate-700 border rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 focus:border-transparent transition-all text-left flex items-center justify-between ${
-            error
-              ? 'border-red-500 focus:ring-red-400'
+            error 
+              ? 'border-red-500 focus:ring-red-400' 
               : 'border-slate-300 dark:border-slate-600'
           } ${
-            disabled
-              ? 'opacity-50 cursor-not-allowed'
+            disabled 
+              ? 'opacity-50 cursor-not-allowed' 
               : ''
           }`}
         >
@@ -211,7 +134,7 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 <X className="w-4 h-4" />
               </span>
             )}
-            {loading ? (
+            {state.isLoadingProjects ? (
               <Loader className="w-4 h-4 text-slate-400 dark:text-gray-400 animate-spin" />
             ) : (
               <ChevronDown className={`w-4 h-4 text-slate-400 dark:text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -249,25 +172,11 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
             {/* Options */}
             <div className="max-h-60 overflow-y-auto bg-white dark:bg-slate-800">
-              {loading ? (
+              {state.isLoadingProjects ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="text-center">
                     <Loader className="w-6 h-6 text-cyan-600 dark:text-cyan-400 animate-spin mx-auto mb-2" />
                     <span className="text-slate-500 dark:text-gray-400 text-sm">Loading projects...</span>
-                  </div>
-                </div>
-              ) : fetchError ? (
-                <div className="flex items-center justify-center py-8 px-4">
-                  <div className="text-center">
-                    <AlertCircle className="w-6 h-6 text-red-400 mx-auto mb-2" />
-                    <span className="text-slate-500 dark:text-gray-400 text-sm">{fetchError}</span>
-                    <button
-                      type="button"
-                      onClick={() => fetchProjects(searchTerm)}
-                      className="block mx-auto mt-2 text-xs text-cyan-500 hover:text-cyan-400 transition-colors"
-                    >
-                      Retry
-                    </button>
                   </div>
                 </div>
               ) : (
@@ -283,8 +192,8 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   </button>
 
                   {/* Project options */}
-                  {displayOptions.length > 0 ? (
-                    displayOptions.map((project) => (
+                  {filteredProjects.length > 0 ? (
+                    filteredProjects.map((project) => (
                       <button
                         key={project.id}
                         type="button"
