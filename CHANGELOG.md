@@ -1,3 +1,9 @@
+## [1.26.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.25.0...1.26.0) (2026-07-27)
+
+### Features
+
+* upgrade overview and settings pages ([b574362](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/b574362b3564b274675385c9965cc70af9f14903))
+
 ## [1.25.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.24.0...1.25.0) (2026-07-15)
 
 ### Features
