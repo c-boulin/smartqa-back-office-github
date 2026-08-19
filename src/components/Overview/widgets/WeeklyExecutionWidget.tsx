@@ -105,21 +105,17 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-3.5 min-w-0 flex-1">
-            <div className="flex items-center gap-2.5 text-sm">
-              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: PASSED_COLOR }} />
-              <span className="text-slate-700 dark:text-slate-300">Passed</span>
-              <span className="ml-auto whitespace-nowrap font-medium text-slate-900 dark:text-white">
-                {pass.toLocaleString()} ({passPercent}%)
-              </span>
-            </div>
-            <div className="flex items-center gap-2.5 text-sm">
-              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: FAILED_COLOR }} />
-              <span className="text-slate-700 dark:text-slate-300">Failed</span>
-              <span className="ml-auto whitespace-nowrap font-medium text-slate-900 dark:text-white">
-                {fail.toLocaleString()} ({failPercent}%)
-              </span>
-            </div>
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2.5 gap-y-3.5 text-sm min-w-0">
+            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: PASSED_COLOR }} />
+            <span className="text-slate-700 dark:text-slate-300">Passed</span>
+            <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right">
+              {pass.toLocaleString()} ({passPercent}%)
+            </span>
+            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: FAILED_COLOR }} />
+            <span className="text-slate-700 dark:text-slate-300">Failed</span>
+            <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right">
+              {fail.toLocaleString()} ({failPercent}%)
+            </span>
           </div>
         </div>
       </div>
@@ -148,15 +144,15 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-3.5 min-w-0 flex-1">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2.5 gap-y-3.5 text-sm min-w-0">
             {defectData.map(item => (
-              <div key={item.name} className="flex items-center gap-2.5 text-sm">
-                <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+              <React.Fragment key={item.name}>
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-slate-700 dark:text-slate-300">{item.name}</span>
-                <span className="ml-auto whitespace-nowrap font-medium text-slate-900 dark:text-white">
+                <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right">
                   {item.value} ({totalIssues > 0 ? ((item.value / totalIssues) * 100).toFixed(1) : '0.0'}%)
                 </span>
-              </div>
+              </React.Fragment>
             ))}
           </div>
         </div>
