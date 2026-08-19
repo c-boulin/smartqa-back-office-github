@@ -128,102 +128,104 @@ const Overview: React.FC = () => {
           onSelectReposChange={handleSelectReposChange}
         />
 
-        <div className="flex-1 min-w-0 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <div className="border-b border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between">
-              <nav className="flex -mb-px">
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* Tab bar — sits on page background, no rounded box */}
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
+            <nav className="flex -mb-px">
+              <button
+                data-mipqa="overview-tab-widgets"
+                type="button"
+                onClick={() => {
+                  if (activeTab === 'widgets') {
+                    return;
+                  }
+                  setActiveTab('widgets');
+                  setSearchParams(prev => {
+                    const next = new URLSearchParams(prev);
+                    next.delete('tab');
+                    return next;
+                  }, { replace: true });
+                  navigate('/overview', { replace: true });
+                }}
+                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'widgets'
+                    ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Widget
+              </button>
+              <button
+                data-mipqa="overview-tab-launches"
+                type="button"
+                onClick={() => {
+                  if (activeTab === 'launches') {
+                    return;
+                  }
+                  setActiveTab('launches');
+                  setSearchParams(prev => {
+                    const next = new URLSearchParams(prev);
+                    next.set('tab', 'launches');
+                    return next;
+                  }, { replace: true });
+                  navigate({
+                    pathname: '/overview/launches',
+                    search: searchParams.toString() !== '' ? `?${searchParams.toString()}` : '',
+                  }, { replace: true });
+                }}
+                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'launches'
+                    ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+              >
+                <Rocket className="w-4 h-4" />
+                Launches
+              </button>
+            </nav>
+            <div className="pr-4">
+              {activeTab === 'widgets' && (
                 <button
-                  data-mipqa="overview-tab-widgets"
                   type="button"
-                  onClick={() => {
-                    if (activeTab === 'widgets') {
-                      return;
-                    }
-                    setActiveTab('widgets');
-                    setSearchParams(prev => {
-                      const next = new URLSearchParams(prev);
-                      next.delete('tab');
-                      return next;
-                    }, { replace: true });
-                    navigate('/overview', { replace: true });
-                  }}
-                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'widgets'
-                      ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
-                      : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
-                  }`}
+                  data-mipqa="overview-export-report-btn"
+                  onClick={handleOpenExport}
+                  disabled={exporting}
+                  className="flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-cyan-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <LayoutGrid className="w-4 h-4" />
-                  Widget
+                  <Download className="h-4 w-4" />
+                  {exporting ? 'Exporting...' : 'Export report'}
                 </button>
-                <button
-                  data-mipqa="overview-tab-launches"
-                  type="button"
-                  onClick={() => {
-                    if (activeTab === 'launches') {
-                      return;
-                    }
-                    setActiveTab('launches');
-                    setSearchParams(prev => {
-                      const next = new URLSearchParams(prev);
-                      next.set('tab', 'launches');
-                      return next;
-                    }, { replace: true });
-                    navigate({
-                      pathname: '/overview/launches',
-                      search: searchParams.toString() !== '' ? `?${searchParams.toString()}` : '',
-                    }, { replace: true });
-                  }}
-                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'launches'
-                      ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
-                      : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300 dark:hover:border-slate-600'
-                  }`}
-                >
-                  <Rocket className="w-4 h-4" />
-                  Launches
-                </button>
-              </nav>
-              <div className="pr-4">
-                {activeTab === 'widgets' && (
-                  <button
-                    type="button"
-                    data-mipqa="overview-export-report-btn"
-                    onClick={handleOpenExport}
-                    disabled={exporting}
-                    className="flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-cyan-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <Download className="h-4 w-4" />
-                    {exporting ? 'Exporting…' : 'Export report'}
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           </div>
 
-          {activeTab === 'widgets' && (
-            <div className="p-6 bg-slate-50 dark:bg-slate-900/40">
-              <OverviewWidgetsPanel
-                gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
-                registerExporter={activeTab === 'widgets' ? registerExporter : undefined}
-              />
-            </div>
-          )}
-          {activeTab === 'launches' && (
-            <div className="p-6 min-h-[12rem] bg-slate-50 dark:bg-slate-900/40">
-              <OverviewLaunchesTable
-                gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
-                registerExporter={activeTab === 'launches' ? registerExporter : undefined}
-              />
-            </div>
-          )}
-          {activeTab === 'tests' && (
-            <div className="p-6 min-h-[12rem] bg-slate-50 dark:bg-slate-900/40">
-              <OverviewTestsTable
-                gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
-              />
-            </div>
-          )}
+          {/* Content container — rounded box starts here, below the tabs */}
+          <div className="mt-4 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
+            {activeTab === 'widgets' && (
+              <div className="p-6 bg-slate-50 dark:bg-slate-900/40">
+                <OverviewWidgetsPanel
+                  gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
+                  registerExporter={activeTab === 'widgets' ? registerExporter : undefined}
+                />
+              </div>
+            )}
+            {activeTab === 'launches' && (
+              <div className="p-6 min-h-[12rem] bg-slate-50 dark:bg-slate-900/40">
+                <OverviewLaunchesTable
+                  gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
+                  registerExporter={activeTab === 'launches' ? registerExporter : undefined}
+                />
+              </div>
+            )}
+            {activeTab === 'tests' && (
+              <div className="p-6 min-h-[12rem] bg-slate-50 dark:bg-slate-900/40">
+                <OverviewTestsTable
+                  gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <DownloadModal
