@@ -89,7 +89,7 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
             Distribution of {totalTests.toLocaleString()} tests
           </p>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-10 lg:gap-12">
           <div className="relative h-56 w-56 shrink-0">
             {overallData.length > 0 ? (
               <DashboardStyleDonutWithCenterLabel
@@ -97,6 +97,7 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
                 centerValue={totalTests.toLocaleString()}
                 centerSubtitle="TOTAL TESTS"
                 onSliceClick={handleOverallSliceClick}
+                showSegmentLabels
               />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
@@ -131,7 +132,7 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
             Distribution of {totalIssues.toLocaleString()} issues
           </p>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-10 lg:gap-12">
           <div className="relative h-56 w-56 shrink-0">
             {defectData.length > 0 ? (
               <DashboardStyleDonutWithCenterLabel
@@ -139,6 +140,7 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
                 centerValue={totalIssues.toLocaleString()}
                 centerSubtitle="ISSUES"
                 onSliceClick={handleDefectSliceClick}
+                showSegmentLabels
               />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
