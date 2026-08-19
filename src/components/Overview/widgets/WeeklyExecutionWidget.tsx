@@ -105,15 +105,15 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
               </div>
             )}
           </div>
-          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2.5 gap-y-3.5 text-sm min-w-0">
+          <div className="grid grid-cols-[auto_1fr_minmax(6rem,auto)] items-center gap-x-2.5 gap-y-3.5 text-sm min-w-0">
             <span className="h-3 w-3 rounded-full" style={{ backgroundColor: PASSED_COLOR }} />
             <span className="text-slate-700 dark:text-slate-300">Passed</span>
-            <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right">
+            <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right tabular-nums">
               {pass.toLocaleString()} ({passPercent}%)
             </span>
             <span className="h-3 w-3 rounded-full" style={{ backgroundColor: FAILED_COLOR }} />
             <span className="text-slate-700 dark:text-slate-300">Failed</span>
-            <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right">
+            <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right tabular-nums">
               {fail.toLocaleString()} ({failPercent}%)
             </span>
           </div>
@@ -144,12 +144,12 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
               </div>
             )}
           </div>
-          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2.5 gap-y-3.5 text-sm min-w-0">
+          <div className="grid grid-cols-[auto_1fr_minmax(6rem,auto)] items-center gap-x-2.5 gap-y-3.5 text-sm min-w-0">
             {defectData.map(item => (
               <React.Fragment key={item.name}>
                 <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-slate-700 dark:text-slate-300">{item.name}</span>
-                <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right">
+                <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right tabular-nums">
                   {item.value} ({totalIssues > 0 ? ((item.value / totalIssues) * 100).toFixed(1) : '0.0'}%)
                 </span>
               </React.Fragment>
