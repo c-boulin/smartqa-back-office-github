@@ -105,18 +105,18 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3.5 min-w-0 flex-1">
+            <div className="flex items-center gap-2.5 text-sm">
               <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: PASSED_COLOR }} />
-              <span className="text-sm text-slate-700 dark:text-slate-300">Passed</span>
-              <span className="ml-2 text-sm font-semibold text-slate-900 dark:text-white">
+              <span className="text-slate-700 dark:text-slate-300">Passed</span>
+              <span className="ml-auto whitespace-nowrap font-medium text-slate-900 dark:text-white">
                 {pass.toLocaleString()} ({passPercent}%)
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5 text-sm">
               <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: FAILED_COLOR }} />
-              <span className="text-sm text-slate-700 dark:text-slate-300">Failed</span>
-              <span className="ml-2 text-sm font-semibold text-slate-900 dark:text-white">
+              <span className="text-slate-700 dark:text-slate-300">Failed</span>
+              <span className="ml-auto whitespace-nowrap font-medium text-slate-900 dark:text-white">
                 {fail.toLocaleString()} ({failPercent}%)
               </span>
             </div>
