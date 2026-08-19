@@ -589,6 +589,7 @@ export interface OverviewTestApiRow {
   startTimeDisplay: string;
   startTimeRaw: string | null;
   defectType: string | null;
+  defectComment?: string | null;
   errorMessages: string[] | null;
   overviewTestId: number | null;
   /** Always null for individual test rows; kept for parity with suite-items. */
