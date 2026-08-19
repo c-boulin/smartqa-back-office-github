@@ -6,8 +6,8 @@ export interface OverviewCategoryMeta {
 }
 
 export const OVERVIEW_CATEGORIES: OverviewCategoryMeta[] = [
-  { id: 'dvs', label: 'DV Content by DVS', repoNames: ['QATEconf', 'QATEgraph'], enabled: true },
   { id: 'sb', label: 'DV Content by SB', repoNames: ['QATESmartbuilder'], enabled: true },
+  { id: 'dvs', label: 'DV Content by DVS', repoNames: ['QATEconf', 'QATEgraph'], enabled: true },
   { id: 'bolt', label: 'DV Content by Bolt', repoNames: [], enabled: false },
   { id: 'games', label: 'Games', repoNames: [], enabled: false },
   { id: 'landing', label: 'Landing Page', repoNames: [], enabled: false },

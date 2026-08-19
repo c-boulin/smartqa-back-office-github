@@ -116,19 +116,19 @@ const Overview: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 data-mipqa="overview-title" className="text-3xl font-bold text-slate-900 dark:text-white">Overview</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Scheduled Automation tests - Last 7 days</p>
-      </div>
-
+    <>
       <div className="flex gap-6">
         <OverviewProjectSidebar
           selectedRepos={selectedRepos}
           onSelectReposChange={handleSelectReposChange}
         />
 
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-w-0 flex flex-col space-y-6">
+          <div>
+            <h1 data-mipqa="overview-title" className="text-3xl font-bold text-slate-900 dark:text-white">Overview</h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Scheduled Automation tests - Last 7 days</p>
+          </div>
+
           {/* Tab bar — sits on page background, no rounded box */}
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
             <nav className="flex -mb-px">
@@ -201,7 +201,7 @@ const Overview: React.FC = () => {
           </div>
 
           {/* Content container — rounded box starts here, below the tabs */}
-          <div className="mt-4 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
+          <div className="rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
             {activeTab === 'widgets' && (
               <div className="p-6 bg-slate-50 dark:bg-slate-900/40">
                 <OverviewWidgetsPanel
@@ -235,7 +235,7 @@ const Overview: React.FC = () => {
         onDownloadCSV={() => void handleExport('csv')}
         reportTitle={`Overview – ${activeTab === 'widgets' ? 'Widgets' : activeTab === 'tests' ? 'Tests' : 'Launches'}`}
       />
-    </div>
+    </>
   );
 };
 
