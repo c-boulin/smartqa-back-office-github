@@ -148,13 +148,13 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-2 overflow-hidden">
+          <div className="flex flex-col gap-3.5 min-w-0 flex-1">
             {defectData.map(item => (
-              <div key={item.name} className="flex items-center gap-2 text-xs">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="truncate text-slate-700 dark:text-slate-300">{item.name}</span>
+              <div key={item.name} className="flex items-center gap-2.5 text-sm">
+                <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                <span className="text-slate-700 dark:text-slate-300">{item.name}</span>
                 <span className="ml-auto whitespace-nowrap font-medium text-slate-900 dark:text-white">
-                  {item.value} ({totalIssues > 0 ? Math.round((item.value / totalIssues) * 100) : 0}%)
+                  {item.value} ({totalIssues > 0 ? ((item.value / totalIssues) * 100).toFixed(1) : '0.0'}%)
                 </span>
               </div>
             ))}
