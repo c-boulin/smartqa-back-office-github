@@ -3192,6 +3192,15 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                           })()
                         )
                       )}
+                      {item.defectComment && item.defectComment.trim() !== '' && (
+                        <p
+                          className="mt-1 max-w-[180px] truncate text-[11px] text-slate-500 dark:text-slate-400"
+                          title={item.defectComment}
+                          data-mipqa="defect-comment-text"
+                        >
+                          {item.defectComment}
+                        </p>
+                      )}
                     </td>
                   </tr>
                 );

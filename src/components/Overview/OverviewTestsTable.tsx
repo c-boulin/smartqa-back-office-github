@@ -583,15 +583,6 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
                               </span>
                             )
                           )}
-                          {row.defectComment && row.defectComment.trim() !== '' && (
-                            <p
-                              className="mt-1 max-w-[180px] truncate text-[11px] text-slate-500 dark:text-slate-400"
-                              title={row.defectComment}
-                              data-mipqa="defect-comment-text"
-                            >
-                              {row.defectComment}
-                            </p>
-                          )}
                         </td>
                       )}
                     </tr>,
