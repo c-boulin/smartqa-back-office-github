@@ -184,7 +184,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
 
   if (defectSeriesByProject.length === 0) {
     return (
-      <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200 dark:border-slate-700/50 dark:bg-[#0f1729]">
+      <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800">
         <h3 className="text-base font-bold text-slate-900 dark:text-white">Defect Breakdown by Service</h3>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Defect types per service for {rangeShort}</p>
         <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
@@ -195,7 +195,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
   }
 
   return (
-    <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200 dark:border-slate-700/50 dark:bg-[#0f1729]">
+    <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800">
       {/* Header */}
       <div className="mb-6">
         <h3 className="text-base font-bold text-slate-900 dark:text-white">Defect Breakdown by Service</h3>
@@ -205,7 +205,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
       <div className="flex flex-col gap-5 lg:flex-row">
         {/* Left: Service list */}
         <div className="w-full shrink-0 lg:w-[320px]">
-          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33]">
+          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-900/50">
             {/* Table header */}
             <div className="grid grid-cols-[1fr_72px_88px] gap-2 border-b border-slate-200 dark:border-slate-700/60 px-4 py-2.5 text-[11px] font-medium text-slate-500 dark:text-slate-500">
               <span>Service</span>
@@ -354,7 +354,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
             {/* Issues by category + Issues by day */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {/* Issues by category */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-900/50 p-4">
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by category</h5>
                 <div className="flex flex-col gap-2.5">
                   {selected.issuesByCategory.slice(0, 8).map(cat => (
@@ -373,7 +373,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               </div>
 
               {/* Issues by day chart */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-900/50 p-4">
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by day</h5>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
