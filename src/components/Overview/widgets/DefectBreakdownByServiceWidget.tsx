@@ -167,16 +167,49 @@ function topRoundedRectPath(x: number, y: number, w: number, h: number, r: numbe
 
 const MAX_BAR_WIDTH = 38;
 
-function DirectBarShape(props: Record<string, unknown>): React.ReactElement | null {
+function HitTargetShape(props: Record<string, unknown>): React.ReactElement | null {
   const rawWidth = Number(props.width) || 0;
   const width = Math.min(rawWidth, MAX_BAR_WIDTH);
   const x = (Number(props.x) || 0) + (rawWidth - width) / 2;
   const y = Number(props.y) || 0;
   const height = Number(props.height) || 0;
-  const fill = (props.fill as string) ?? '#888';
   if (height <= 0) return null;
-  return <path d={topRoundedRectPath(x, y, width, height, BAR_RADIUS)} fill={fill} />;
+  return <rect x={x} y={y} width={width} height={height} fill="transparent" />;
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function RoundedBarsLayer(props: Record<string, unknown>): React.ReactElement | null {
+  const items = (props as any).formattedGraphicalItems;
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const paths: React.ReactElement[] = [];
+  for (let stackIdx = 0; stackIdx < items.length; stackIdx++) {
+    const item = items[stackIdx];
+    const barProps = item?.props;
+    const data = barProps?.data;
+    if (!Array.isArray(data)) continue;
+    const itemFill: string = barProps?.fill ?? '#888';
+    for (let barIdx = 0; barIdx < data.length; barIdx++) {
+      const cell = data[barIdx];
+      if (!cell) continue;
+      const rawWidth = Number(cell.width) || 0;
+      const width = Math.min(rawWidth, MAX_BAR_WIDTH);
+      const x = (Number(cell.x) || 0) + (rawWidth - width) / 2;
+      const y = Number(cell.y) || 0;
+      const height = Number(cell.height) || 0;
+      const fill: string = (cell.fill as string) ?? itemFill;
+      if (height <= 0) continue;
+      paths.push(
+        <path
+          key={`${stackIdx}-${barIdx}`}
+          d={topRoundedRectPath(x, y, width, height, BAR_RADIUS)}
+          fill={fill}
+        />
+      );
+    }
+  }
+  return paths.length > 0 ? <g>{paths}</g> : null;
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /* ─── Overlay layer rendering the hovered segment on top of all bars ─── */
 function HoveredBarOverlay({ geo }: { geo: { x: number; y: number; width: number; height: number; fill: string; r: number } | null }): React.ReactElement | null {
@@ -420,7 +453,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               {/* Issues by day chart */}
               <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-700/40 p-4">
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by day</h5>
-                <div className="h-56">
+                <div className="h-56" onMouseLeave={() => { setHoveredDefectKey(null); setHoveredBarGeo(null); }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={selectedProject.series} margin={{ top: 20, right: 4, bottom: 0, left: 4 }} barCategoryGap="20%">
                       <XAxis
@@ -452,7 +485,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           stackId="defects"
                           fill={defectColorMap[defect.slug] ?? defect.color}
                           name={defect.label}
-                          shape={DirectBarShape}
+                          shape={HitTargetShape}
                           cursor="pointer"
                           onMouseEnter={(data: Record<string, unknown>) => {
                             setHoveredDefectKey(defect.key);
@@ -487,6 +520,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           )}
                         </Bar>
                       ))}
+                      <Customized component={RoundedBarsLayer} />
                       <Customized component={() => <HoveredBarOverlay geo={hoveredBarGeo} />} />
                     </BarChart>
                   </ResponsiveContainer>
