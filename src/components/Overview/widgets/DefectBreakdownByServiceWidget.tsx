@@ -215,13 +215,15 @@ function RoundedBarsLayer(props: Record<string, unknown>): React.ReactElement | 
 /* ─── Overlay layer rendering the hovered segment on top of all bars ─── */
 function HoveredBarOverlay({ geo }: { geo: { x: number; y: number; width: number; height: number; fill: string; r: number } | null }): React.ReactElement | null {
   if (!geo || geo.height <= 0) return null;
+  const cx = geo.x + geo.width / 2;
+  const cy = geo.y + geo.height / 2;
   return (
     <path
       d={topRoundedRectPath(geo.x, geo.y, geo.width, geo.height, geo.r)}
       fill={geo.fill}
       stroke={toPastel(geo.fill)}
       strokeWidth={2.5}
-      style={{ transition: 'all 0.15s ease-out', pointerEvents: 'none' }}
+      style={{ transition: 'all 0.15s ease-out', pointerEvents: 'none', transformOrigin: `${cx}px ${cy}px`, transform: 'scale(1.08)' }}
     />
   );
 }
