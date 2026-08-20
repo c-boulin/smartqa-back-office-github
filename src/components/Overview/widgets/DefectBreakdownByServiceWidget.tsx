@@ -230,7 +230,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                     tabIndex={0}
                     onClick={handleSelect}
                     onKeyDown={handleKeyDown}
-                    className={`relative grid w-full cursor-pointer grid-cols-[1fr_72px_88px] items-center gap-2 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400 ${
+                    className={`group/row relative grid w-full cursor-pointer grid-cols-[1fr_72px_88px] items-center gap-2 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400 ${
                       isSelected
                         ? 'bg-slate-100 dark:bg-slate-700/40'
                         : 'hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
@@ -253,21 +253,23 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                         {formatPassRate(s.passRate)}
                       </span>
                     </div>
-                    {isSelected && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openTestsForService(s.key);
-                        }}
-                        title="View tests"
-                        aria-label={`View tests for ${s.label}`}
-                        data-mipqa={`defect-service-view-tests-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition-colors hover:text-cyan-500 dark:text-slate-500 dark:hover:text-cyan-400"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openTestsForService(s.key);
+                      }}
+                      title="View tests"
+                      aria-label={`View tests for ${s.label}`}
+                      data-mipqa={`defect-service-view-tests-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
+                      className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 transition-colors hover:text-cyan-500 dark:hover:text-cyan-400 ${
+                        isSelected
+                          ? 'text-slate-400 dark:text-slate-500'
+                          : 'text-slate-400 dark:text-slate-500 opacity-0 group-hover/row:opacity-100'
+                      }`}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
                   </div>
                 );
               })}
@@ -281,23 +283,23 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
             {/* Title + date range */}
             <div className="mb-4 flex items-center justify-between">
               <h4 className="text-lg font-bold text-slate-900 dark:text-white">{selected.label}</h4>
-              <div className="flex items-center gap-1.5 rounded-md bg-slate-100 dark:bg-slate-800/60 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                 <Calendar className="h-3.5 w-3.5" />
                 {rangeShort}
               </div>
             </div>
 
-            {/* 5 metric cards */}
-            <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+            {/* 5 metric cards – unified strip */}
+            <div className="mb-5 flex overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] divide-x divide-slate-200 dark:divide-slate-700/40">
               {/* Total issues */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
-                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500 mb-1">Total issues</p>
+              <div className="flex-1 p-4 min-w-0">
+                <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-1">Total issues</p>
                 <p className="text-2xl font-bold text-red-500 dark:text-red-400">{selected.totalIssues}</p>
               </div>
 
               {/* Top issue category */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
-                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500 mb-1">Top issue category</p>
+              <div className="flex-1 p-4 min-w-0">
+                <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-1">Top issue category</p>
                 {selected.totalIssues === 0 || selected.topIssueCategory === null ? (
                   <p className="text-sm font-bold text-slate-900 dark:text-white">—</p>
                 ) : (
@@ -321,12 +323,12 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               </div>
 
               {/* Pass rate */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
-                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500 mb-1">Pass rate</p>
+              <div className="flex-1 p-4 min-w-0">
+                <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-1">Pass rate</p>
                 <p className="text-lg font-bold text-slate-900 dark:text-white">
                   {formatPassRate(selected.passRate)}
                 </p>
-                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/50">
+                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/50">
                   <div
                     className="h-full rounded-full bg-emerald-500"
                     style={{ width: `${Math.min(selected.passRate ?? 0, 100)}%` }}
@@ -335,14 +337,14 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               </div>
 
               {/* Test cases */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
-                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500 mb-1">Test cases</p>
+              <div className="flex-1 p-4 min-w-0">
+                <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-1">Test cases</p>
                 <p className="text-lg font-bold text-slate-900 dark:text-white">{selected.testCases}</p>
               </div>
 
               {/* Affected countries */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
-                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500 mb-1">Affected countries</p>
+              <div className="flex-1 p-4 min-w-0">
+                <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-1">Affected countries</p>
                 <p className="text-sm font-bold text-slate-900 dark:text-white">
                   {formatAffectedCountries(selected.affectedCountries)}
                 </p>
@@ -381,11 +383,18 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                         dataKey="label"
                         tick={{ fill: '#9CA3AF', fontSize: 10 }}
                         interval={0}
-                        angle={-15}
-                        textAnchor="end"
-                        height={40}
+                        height={32}
                         axisLine={false}
                         tickLine={false}
+                        tickFormatter={(value: string) => {
+                          const d = new Date(value.replace(/^[A-Za-z]+,\s*/, ''));
+                          if (!isNaN(d.getTime())) {
+                            return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+                          }
+                          const parts = value.split(',');
+                          if (parts.length >= 2) return `${parts[0].trim().slice(0, 3)}, ${parts[1].trim().split('-').pop()}`;
+                          return value.length > 7 ? value.slice(0, 7) : value;
+                        }}
                       />
                       <YAxis
                         tick={{ fill: '#9CA3AF', fontSize: 10 }}
