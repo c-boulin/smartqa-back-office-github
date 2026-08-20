@@ -158,15 +158,44 @@ function toPastel(hex: string, opacity = 0.45): string {
   return `rgb(${pr}, ${pg}, ${pb})`;
 }
 
+/* ─── Gap between stacked segments (px) ─── */
+const SEGMENT_GAP = 2;
+const SEGMENT_RADIUS = 4;
+
+/* ─── Custom bar shape that insets vertically to create gaps between stacked segments ─── */
+function GappedBarShape(props: Record<string, unknown>): React.ReactElement | null {
+  const x = Number(props.x) || 0;
+  const y = Number(props.y) || 0;
+  const width = Number(props.width) || 0;
+  const height = Number(props.height) || 0;
+  const fill = (props.fill as string) ?? '#888';
+  if (height <= 0) return null;
+  const insetH = Math.max(height - SEGMENT_GAP, 1);
+  const insetY = y + SEGMENT_GAP;
+  return (
+    <rect
+      x={x}
+      y={insetY}
+      width={width}
+      height={insetH}
+      fill={fill}
+      rx={SEGMENT_RADIUS}
+      ry={SEGMENT_RADIUS}
+    />
+  );
+}
+
 /* ─── Overlay layer rendering the hovered segment on top of all bars ─── */
 function HoveredBarOverlay({ geo }: { geo: { x: number; y: number; width: number; height: number; fill: string; r: number } | null }): React.ReactElement | null {
   if (!geo || geo.height <= 0) return null;
+  const insetY = geo.y + SEGMENT_GAP;
+  const insetH = Math.max(geo.height - SEGMENT_GAP, 1);
   return (
     <rect
       x={geo.x}
-      y={geo.y}
+      y={insetY}
       width={geo.width}
-      height={geo.height}
+      height={insetH}
       fill={geo.fill}
       rx={geo.r}
       ry={geo.r}
@@ -438,7 +467,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           fill={defectColorMap[defect.slug] ?? defect.color}
                           name={defect.label}
                           barSize={38}
-                          radius={[4, 4, 4, 4]}
+                          shape={GappedBarShape}
                           cursor="pointer"
                           onMouseEnter={(data: Record<string, unknown>) => {
                             setHoveredDefectKey(defect.key);
