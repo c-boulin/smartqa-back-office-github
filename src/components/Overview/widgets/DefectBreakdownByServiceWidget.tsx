@@ -207,7 +207,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
         <div className="w-full shrink-0 lg:w-[320px]">
           <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33]">
             {/* Table header */}
-            <div className="grid grid-cols-[1fr_72px_88px] gap-2 border-b border-slate-200 dark:border-slate-700/60 px-4 py-2.5 text-[11px] font-medium text-slate-500 dark:text-slate-500 uppercase tracking-wide">
+            <div className="grid grid-cols-[1fr_72px_88px] gap-2 border-b border-slate-200 dark:border-slate-700/60 px-4 py-2.5 text-[11px] font-medium text-slate-500 dark:text-slate-500">
               <span>Service</span>
               <span className="text-center">Total issue</span>
               <span className="text-right">Pass rate</span>
@@ -389,7 +389,8 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                         tickFormatter={(value: string) => {
                           const d = new Date(value.replace(/^[A-Za-z]+,\s*/, ''));
                           if (!isNaN(d.getTime())) {
-                            return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+                            const day = d.toLocaleDateString('en-US', { weekday: 'short' });
+                            return `${day}, ${d.getDate()}`;
                           }
                           const parts = value.split(',');
                           if (parts.length >= 2) return `${parts[0].trim().slice(0, 3)}, ${parts[1].trim().split('-').pop()}`;
