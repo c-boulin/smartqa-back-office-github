@@ -204,15 +204,15 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
 
       <div className="flex flex-col gap-5 lg:flex-row">
         {/* Left: Service list */}
-        <div className="w-full shrink-0 lg:w-[320px]">
+        <div className="w-full shrink-0 lg:w-[340px]">
           {/* Table header */}
-          <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-4 py-2 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+          <div className="grid grid-cols-[1fr_90px_100px] gap-2 px-5 py-2.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
             <span>Service</span>
             <span className="text-center">Total issue</span>
             <span className="text-right">Pass rate</span>
           </div>
-          {/* Service rows with continuous left border */}
-          <div className="relative max-h-[420px] overflow-y-auto border-l-[3px] border-cyan-400 ml-1">
+          {/* Service rows */}
+          <div className="max-h-[420px] overflow-y-auto space-y-1 px-1">
             {summaries.map((s, idx) => {
               const isSelected = idx === selectedIndex;
               const handleSelect = (): void => setSelectedIndex(idx);
@@ -229,18 +229,26 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                   tabIndex={0}
                   onClick={handleSelect}
                   onKeyDown={handleKeyDown}
-                  className={`group/row relative grid w-full cursor-pointer grid-cols-[1fr_72px_72px] items-center gap-2 pl-4 pr-4 py-3.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400 ${
+                  className={`group/row relative grid w-full cursor-pointer grid-cols-[1fr_90px_100px] items-center gap-2 rounded-lg px-4 py-4 text-left text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400 ${
                     isSelected
-                      ? 'bg-slate-100/80 dark:bg-slate-700/20'
-                      : 'hover:bg-slate-100/40 dark:hover:bg-slate-700/10'
+                      ? 'bg-slate-100 dark:bg-slate-600/30 border-l-[4px] border-cyan-400 pl-3.5'
+                      : 'border border-transparent hover:border-slate-300 dark:hover:border-slate-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/20'
                   }`}
                   data-mipqa={`defect-service-row-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
                 >
-                  <span className="truncate font-semibold text-slate-900 dark:text-white">{s.label}</span>
-                  <span className="text-center font-bold text-red-400">{s.totalIssues}</span>
-                  <span className="text-right text-sm font-semibold text-emerald-400 whitespace-nowrap">
-                    {formatPassRate(s.passRate)}
-                  </span>
+                  <span className="truncate font-bold text-slate-900 dark:text-white">{s.label}</span>
+                  <span className="text-center font-bold text-red-500 dark:text-red-400">{s.totalIssues}</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                      {formatPassRate(s.passRate)}
+                    </span>
+                    <div className="h-[3px] w-16 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/50">
+                      <div
+                        className="h-full rounded-full bg-emerald-500"
+                        style={{ width: `${Math.min(s.passRate ?? 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
                   {!isSelected && (
                     <button
                       type="button"
@@ -251,7 +259,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                       title="View tests"
                       aria-label={`View tests for ${s.label}`}
                       data-mipqa={`defect-service-view-tests-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 dark:text-slate-500 opacity-0 group-hover/row:opacity-100 transition-opacity hover:text-cyan-500 dark:hover:text-cyan-400"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 dark:text-slate-500 opacity-0 group-hover/row:opacity-100 transition-opacity hover:text-cyan-500 dark:hover:text-cyan-400"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
