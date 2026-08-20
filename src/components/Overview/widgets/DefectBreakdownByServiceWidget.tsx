@@ -187,7 +187,7 @@ function RoundedBarsLayer(props: Record<string, unknown>): React.ReactElement | 
     const barProps = item?.props;
     const data = barProps?.data;
     if (!Array.isArray(data)) continue;
-    const itemFill: string = barProps?.fill ?? '#888';
+    const itemFill: string = item?.item?.props?.fill ?? barProps?.fill ?? '#888';
     for (let barIdx = 0; barIdx < data.length; barIdx++) {
       const cell = data[barIdx];
       if (!cell) continue;
