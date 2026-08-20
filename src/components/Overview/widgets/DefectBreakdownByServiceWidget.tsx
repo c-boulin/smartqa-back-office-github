@@ -203,6 +203,7 @@ function RoundedBarsLayer(props: Record<string, unknown>): React.ReactElement | 
           key={`${stackIdx}-${barIdx}`}
           d={topRoundedRectPath(x, y, width, height, BAR_RADIUS)}
           fill={fill}
+          pointerEvents="none"
         />
       );
     }
