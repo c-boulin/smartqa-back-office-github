@@ -257,3 +257,7 @@
 .dark .react-datepicker__triangle {
   display: none;
 }
+
+.donut-chart-wrapper svg {
+  overflow: visible;
+}

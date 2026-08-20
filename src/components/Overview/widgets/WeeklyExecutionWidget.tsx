@@ -83,14 +83,14 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Tests: Passed vs Failed */}
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <div className="mb-4">
+        <div className="mb-6">
           <h3 className="text-base font-bold text-slate-900 dark:text-white">Tests: Passed vs Failed</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Distribution of {totalTests.toLocaleString()} tests
           </p>
         </div>
-        <div className="flex items-center gap-10 lg:gap-12">
-          <div className="relative h-56 w-56 shrink-0">
+        <div className="flex items-center justify-center gap-10 lg:gap-14">
+          <div className="relative h-72 w-72 shrink-0 overflow-visible">
             {overallData.length > 0 ? (
               <DashboardStyleDonutWithCenterLabel
                 data={overallData}
@@ -105,16 +105,16 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
               </div>
             )}
           </div>
-          <div className="grid grid-cols-[auto_auto_auto] items-center gap-x-4 gap-y-3.5 text-sm">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-2 text-sm">
             <span className="h-3 w-3 rounded-full" style={{ backgroundColor: PASSED_COLOR }} />
             <span className="text-slate-700 dark:text-slate-300">Passed</span>
-            <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right tabular-nums">
-              {pass.toLocaleString()} ({passPercent}%)
+            <span className="whitespace-nowrap font-semibold text-slate-900 dark:text-white tabular-nums">
+              {pass.toLocaleString()} ({passPercent.replace('.', ',')}%)
             </span>
             <span className="h-3 w-3 rounded-full" style={{ backgroundColor: FAILED_COLOR }} />
             <span className="text-slate-700 dark:text-slate-300">Failed</span>
-            <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right tabular-nums">
-              {fail.toLocaleString()} ({failPercent}%)
+            <span className="whitespace-nowrap font-semibold text-slate-900 dark:text-white tabular-nums">
+              {fail.toLocaleString()} ({failPercent.replace('.', ',')}%)
             </span>
           </div>
         </div>
@@ -122,14 +122,14 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
 
       {/* Issues by category */}
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <div className="mb-4">
+        <div className="mb-6">
           <h3 className="text-base font-bold text-slate-900 dark:text-white">Issues by category</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Distribution of {totalIssues.toLocaleString()} issues
           </p>
         </div>
-        <div className="flex items-center gap-10 lg:gap-12">
-          <div className="relative h-56 w-56 shrink-0">
+        <div className="flex items-center justify-center gap-10 lg:gap-14">
+          <div className="relative h-72 w-72 shrink-0 overflow-visible">
             {defectData.length > 0 ? (
               <DashboardStyleDonutWithCenterLabel
                 data={defectData}
@@ -144,13 +144,13 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
               </div>
             )}
           </div>
-          <div className="grid grid-cols-[auto_auto_auto] items-center gap-x-4 gap-y-3.5 text-sm">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-2 text-sm">
             {defectData.map(item => (
               <React.Fragment key={item.name}>
                 <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-slate-700 dark:text-slate-300">{item.name}</span>
-                <span className="whitespace-nowrap font-medium text-slate-900 dark:text-white text-right tabular-nums">
-                  {item.value} ({totalIssues > 0 ? ((item.value / totalIssues) * 100).toFixed(1) : '0.0'}%)
+                <span className="whitespace-nowrap font-semibold text-slate-900 dark:text-white tabular-nums">
+                  {item.value} ({totalIssues > 0 ? ((item.value / totalIssues) * 100).toFixed(1).replace('.', ',') : '0,0'}%)
                 </span>
               </React.Fragment>
             ))}
