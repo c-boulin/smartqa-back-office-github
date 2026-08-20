@@ -296,7 +296,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
       <div className="flex flex-col gap-5 lg:flex-row">
         {/* Left: Service list */}
         <div className="w-full shrink-0 lg:w-[380px]">
-          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-800/50">
+          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-700/40">
             {/* Table header */}
             <div className="grid grid-cols-[1fr_70px_85px_28px] gap-2 px-5 py-2.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
               <span>Service</span>
