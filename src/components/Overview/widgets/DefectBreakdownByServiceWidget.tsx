@@ -165,6 +165,11 @@ function topRoundedRectPath(x: number, y: number, w: number, h: number, r: numbe
   return `M${x + cr},${y} h${w - 2 * cr} a${cr},${cr} 0 0 1 ${cr},${cr} v${h - cr} h-${w} v-${h - cr} a${cr},${cr} 0 0 1 ${cr},-${cr} Z`;
 }
 
+function allRoundedRectPath(x: number, y: number, w: number, h: number, r: number): string {
+  const cr = Math.min(r, w / 2, h / 2);
+  return `M${x + cr},${y} h${w - 2 * cr} a${cr},${cr} 0 0 1 ${cr},${cr} v${h - 2 * cr} a${cr},${cr} 0 0 1 -${cr},${cr} h-${w - 2 * cr} a${cr},${cr} 0 0 1 -${cr},-${cr} v-${h - 2 * cr} a${cr},${cr} 0 0 1 ${cr},-${cr} Z`;
+}
+
 const MAX_BAR_WIDTH = 38;
 
 function HitTargetShape(props: Record<string, unknown>): React.ReactElement | null {
@@ -219,7 +224,7 @@ function HoveredBarOverlay({ geo }: { geo: { x: number; y: number; width: number
   const cy = geo.y + geo.height / 2;
   return (
     <path
-      d={topRoundedRectPath(geo.x, geo.y, geo.width, geo.height, geo.r)}
+      d={allRoundedRectPath(geo.x, geo.y, geo.width, geo.height, geo.r)}
       fill={geo.fill}
       stroke={toPastel(geo.fill)}
       strokeWidth={2.5}
