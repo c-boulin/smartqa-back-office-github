@@ -146,19 +146,32 @@ function renderBarTotalLabel(props: Record<string, unknown>, series: Array<Recor
   );
 }
 
+/* ─── Convert a hex color to a pastel variant (mix with white at given opacity) ─── */
+function toPastel(hex: string, opacity = 0.45): string {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  const pr = Math.round(r + (255 - r) * (1 - opacity));
+  const pg = Math.round(g + (255 - g) * (1 - opacity));
+  const pb = Math.round(b + (255 - b) * (1 - opacity));
+  return `rgb(${pr}, ${pg}, ${pb})`;
+}
+
 /* ─── Overlay layer rendering the hovered segment on top of all bars ─── */
 function HoveredBarOverlay({ geo }: { geo: { x: number; y: number; width: number; height: number; fill: string; r: number } | null }): React.ReactElement | null {
   if (!geo || geo.height <= 0) return null;
-  const expand = 3;
   return (
     <rect
-      x={geo.x - expand}
-      y={geo.y - expand}
-      width={geo.width + expand * 2}
-      height={geo.height + expand}
+      x={geo.x}
+      y={geo.y}
+      width={geo.width}
+      height={geo.height}
       fill={geo.fill}
       rx={geo.r}
       ry={geo.r}
+      stroke={toPastel(geo.fill)}
+      strokeWidth={2.5}
       style={{ transition: 'all 0.15s ease-out', pointerEvents: 'none' }}
     />
   );
@@ -425,7 +438,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           fill={defectColorMap[defect.slug] ?? defect.color}
                           name={defect.label}
                           barSize={38}
-                          radius={dIdx === DEFECT_BREAKDOWN_STACK_TYPES.length - 1 ? [3, 3, 0, 0] : undefined}
+                          radius={[4, 4, 4, 4]}
                           cursor="pointer"
                           onMouseEnter={(data: Record<string, unknown>) => {
                             setHoveredDefectKey(defect.key);
@@ -437,7 +450,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                               setHoveredBarGeo({
                                 x: bx, y: by, width: bw, height: bh,
                                 fill: defectColorMap[defect.slug] ?? defect.color,
-                                r: dIdx === DEFECT_BREAKDOWN_STACK_TYPES.length - 1 ? 3 : 0,
+                                r: 4,
                               });
                             }
                           }}
