@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronRight, Calendar } from 'lucide-react';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, LabelList, Customized } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import type {
   OverviewDefectSeriesProject,
@@ -146,41 +146,20 @@ function renderBarTotalLabel(props: Record<string, unknown>, series: Array<Recor
   );
 }
 
-/* ─── Custom bar shape with hover zoom effect ─── */
-function ZoomableBarShape({
-  x,
-  y,
-  width,
-  height,
-  fill,
-  radius,
-  isHovered,
-}: {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  fill?: string;
-  radius?: number[];
-  isHovered?: boolean;
-}): React.ReactElement | null {
-  if (!x || !y || !width || !height || height <= 0) return null;
-  const expand = isHovered ? 3 : 0;
-  const rx = x - expand;
-  const ry = y - expand;
-  const rw = width + expand * 2;
-  const rh = height + expand;
-  const r = radius?.[0] ?? 0;
+/* ─── Overlay layer rendering the hovered segment on top of all bars ─── */
+function HoveredBarOverlay({ geo }: { geo: { x: number; y: number; width: number; height: number; fill: string; r: number } | null }): React.ReactElement | null {
+  if (!geo || geo.height <= 0) return null;
+  const expand = 3;
   return (
     <rect
-      x={rx}
-      y={ry}
-      width={rw}
-      height={rh}
-      fill={fill}
-      rx={r}
-      ry={r}
-      style={{ transition: 'all 0.15s ease-out' }}
+      x={geo.x - expand}
+      y={geo.y - expand}
+      width={geo.width + expand * 2}
+      height={geo.height + expand}
+      fill={geo.fill}
+      rx={geo.r}
+      ry={geo.r}
+      style={{ transition: 'all 0.15s ease-out', pointerEvents: 'none' }}
     />
   );
 }
@@ -197,6 +176,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
   const rangeShort = formatOverviewWindowRangeShort(windowProp.from, windowProp.to);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hoveredDefectKey, setHoveredDefectKey] = useState<string | null>(null);
+  const [hoveredBarGeo, setHoveredBarGeo] = useState<{ x: number; y: number; width: number; height: number; fill: string; r: number } | null>(null);
 
   const summaries = useMemo(
     () => deriveServiceSummaries(defectSeriesByProject, defectColorMap),
@@ -447,20 +427,21 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           barSize={38}
                           radius={dIdx === DEFECT_BREAKDOWN_STACK_TYPES.length - 1 ? [3, 3, 0, 0] : undefined}
                           cursor="pointer"
-                          shape={(props: Record<string, unknown>) => (
-                            <ZoomableBarShape
-                              {...props}
-                              x={props.x as number}
-                              y={props.y as number}
-                              width={props.width as number}
-                              height={props.height as number}
-                              fill={props.fill as string}
-                              radius={dIdx === DEFECT_BREAKDOWN_STACK_TYPES.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
-                              isHovered={hoveredDefectKey === defect.key}
-                            />
-                          )}
-                          onMouseEnter={() => setHoveredDefectKey(defect.key)}
-                          onMouseLeave={() => setHoveredDefectKey(null)}
+                          onMouseEnter={(data: Record<string, unknown>) => {
+                            setHoveredDefectKey(defect.key);
+                            const bx = Number(data.x) || 0;
+                            const by = Number(data.y) || 0;
+                            const bw = Number(data.width) || 0;
+                            const bh = Number(data.height) || 0;
+                            if (bh > 0) {
+                              setHoveredBarGeo({
+                                x: bx, y: by, width: bw, height: bh,
+                                fill: defectColorMap[defect.slug] ?? defect.color,
+                                r: dIdx === DEFECT_BREAKDOWN_STACK_TYPES.length - 1 ? 3 : 0,
+                              });
+                            }
+                          }}
+                          onMouseLeave={() => { setHoveredDefectKey(null); setHoveredBarGeo(null); }}
                           onClick={(payload: { date?: string; payload?: { date?: string } }) => {
                             const date = payload?.date ?? payload?.payload?.date;
                             if (!date || !selectedProject) return;
@@ -478,6 +459,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           )}
                         </Bar>
                       ))}
+                      <Customized component={() => <HoveredBarOverlay geo={hoveredBarGeo} />} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
