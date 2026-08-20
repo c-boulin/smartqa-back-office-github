@@ -290,7 +290,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
             </div>
 
             {/* Metrics strip */}
-            <div className="mb-5 flex rounded-lg border border-slate-200 dark:border-slate-700/30 divide-x divide-slate-200 dark:divide-slate-700/30 bg-white dark:bg-transparent">
+            <div className="mb-5 flex rounded-lg border border-slate-200 dark:border-slate-700/30 divide-x divide-slate-200 dark:divide-slate-700/30 bg-white dark:bg-slate-700/40">
               {/* Total issues */}
               <div className="flex-1 px-4 py-3 min-w-0">
                 <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-0.5">Total issues</p>
