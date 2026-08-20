@@ -295,7 +295,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
 
       <div className="flex flex-col gap-5 lg:flex-row">
         {/* Left: Service list */}
-        <div className="w-full shrink-0 lg:w-[340px]">
+        <div className="w-full shrink-0 lg:w-[300px]">
           <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-800/50">
             {/* Table header */}
             <div className="grid grid-cols-[1fr_90px_100px_28px] gap-2 px-5 py-2.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
@@ -441,7 +441,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
             </div>
 
             {/* Issues by category + Issues by day */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.2fr]">
               {/* Issues by category */}
               <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-700/40 p-4">
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by category</h5>
