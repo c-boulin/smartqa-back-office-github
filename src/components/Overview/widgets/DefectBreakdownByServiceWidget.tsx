@@ -295,10 +295,10 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
 
       <div className="flex flex-col gap-5 lg:flex-row">
         {/* Left: Service list */}
-        <div className="w-full shrink-0 lg:w-[300px]">
+        <div className="w-full shrink-0 lg:w-[380px]">
           <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-800/50">
             {/* Table header */}
-            <div className="grid grid-cols-[1fr_90px_100px_28px] gap-2 px-5 py-2.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+            <div className="grid grid-cols-[1fr_70px_85px_28px] gap-2 px-5 py-2.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
               <span>Service</span>
               <span className="text-center">Total issue</span>
               <span className="text-right">Pass rate</span>
@@ -322,7 +322,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                   tabIndex={0}
                   onClick={handleSelect}
                   onKeyDown={handleKeyDown}
-                  className={`group/row grid w-full cursor-pointer grid-cols-[1fr_90px_100px_28px] items-center gap-2 rounded-lg px-4 py-4 text-left text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400 ${
+                  className={`group/row grid w-full cursor-pointer grid-cols-[1fr_70px_85px_28px] items-center gap-2 rounded-lg px-4 py-4 text-left text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400 ${
                     isSelected
                       ? 'bg-slate-100 dark:bg-slate-600/30 border-l-[4px] border-cyan-400 pl-3.5'
                       : 'border border-transparent hover:border-slate-300 dark:hover:border-slate-500/50 hover:bg-slate-50 dark:hover:bg-slate-700/20'
