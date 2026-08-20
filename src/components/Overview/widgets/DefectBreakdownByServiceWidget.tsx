@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowUpRight, Calendar } from 'lucide-react';
+import { ChevronRight, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import type {
@@ -83,22 +83,6 @@ function formatPassRate(rate: number | null): string {
 
 function formatAffectedCountries(countries: string[]): string {
   return countries.length === 0 ? '—' : countries.join(', ');
-}
-
-/* ─── Metric card component ─── */
-function InfoMetricCard({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900/60 p-4">
-      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{label}</p>
-      {children}
-    </div>
-  );
 }
 
 /* ─── Custom tooltip for the stacked bar chart ─── */
@@ -200,7 +184,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
 
   if (defectSeriesByProject.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200 dark:border-slate-700/50 dark:bg-[#0f1729]">
         <h3 className="text-base font-bold text-slate-900 dark:text-white">Defect Breakdown by Service</h3>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Defect types per service for {rangeShort}</p>
         <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
@@ -211,22 +195,25 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+    <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200 dark:border-slate-700/50 dark:bg-[#0f1729]">
+      {/* Header */}
       <div className="mb-6">
         <h3 className="text-base font-bold text-slate-900 dark:text-white">Defect Breakdown by Service</h3>
         <p className="text-xs text-slate-500 dark:text-slate-400">Defect types per service for {rangeShort}</p>
       </div>
 
       <div className="flex flex-col gap-5 lg:flex-row">
-        {/* Left: Service list card */}
-        <div className="w-full shrink-0 lg:w-[340px]">
-          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50">
-            <div className="grid grid-cols-[1fr_72px_88px] gap-2 border-b border-slate-200 dark:border-slate-700 px-4 py-2.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+        {/* Left: Service list */}
+        <div className="w-full shrink-0 lg:w-[320px]">
+          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33]">
+            {/* Table header */}
+            <div className="grid grid-cols-[1fr_72px_88px] gap-2 border-b border-slate-200 dark:border-slate-700/60 px-4 py-2.5 text-[11px] font-medium text-slate-500 dark:text-slate-500 uppercase tracking-wide">
               <span>Service</span>
-              <span className="text-center">Issues</span>
+              <span className="text-center">Total issue</span>
               <span className="text-right">Pass rate</span>
             </div>
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/50">
+            {/* Service rows */}
+            <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/30">
               {summaries.map((s, idx) => {
                 const isSelected = idx === selectedIndex;
                 const handleSelect = (): void => setSelectedIndex(idx);
@@ -245,40 +232,42 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                     onKeyDown={handleKeyDown}
                     className={`relative grid w-full cursor-pointer grid-cols-[1fr_72px_88px] items-center gap-2 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400 ${
                       isSelected
-                        ? 'bg-slate-100 dark:bg-slate-700/60'
-                        : 'hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
+                        ? 'bg-slate-100 dark:bg-slate-700/40'
+                        : 'hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
                     }`}
                     data-mipqa={`defect-service-row-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
                   >
                     {isSelected && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyan-400 rounded-r" />
+                      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-r bg-cyan-400" />
                     )}
-                    <span className="truncate pr-6 font-medium text-slate-900 dark:text-white">{s.label}</span>
-                    <span className="text-center font-bold text-red-500">{s.totalIssues}</span>
+                    <span className="truncate pr-4 font-medium text-slate-900 dark:text-white">{s.label}</span>
+                    <span className="text-center font-bold text-red-400">{s.totalIssues}</span>
                     <div className="flex items-center gap-2">
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/50">
                         <div
                           className="h-full rounded-full bg-emerald-500"
                           style={{ width: `${Math.min(s.passRate ?? 0, 100)}%` }}
                         />
                       </div>
-                      <span className="w-10 text-right text-xs font-medium text-slate-700 dark:text-slate-300">
+                      <span className="w-[38px] text-right text-xs font-medium text-slate-600 dark:text-emerald-400">
                         {formatPassRate(s.passRate)}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openTestsForService(s.key);
-                      }}
-                      title="View tests"
-                      aria-label={`View tests for ${s.label}`}
-                      data-mipqa={`defect-service-view-tests-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-200 hover:text-cyan-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:hover:bg-slate-700 dark:hover:text-cyan-400 dark:focus-visible:ring-cyan-400"
-                    >
-                      <ArrowUpRight className="h-4 w-4" />
-                    </button>
+                    {isSelected && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openTestsForService(s.key);
+                        }}
+                        title="View tests"
+                        aria-label={`View tests for ${s.label}`}
+                        data-mipqa={`defect-service-view-tests-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition-colors hover:text-cyan-500 dark:text-slate-500 dark:hover:text-cyan-400"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -289,9 +278,10 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
         {/* Right: Detail panel */}
         {selected && selectedProject && (
           <div className="min-w-0 flex-1">
+            {/* Title + date range */}
             <div className="mb-4 flex items-center justify-between">
               <h4 className="text-lg font-bold text-slate-900 dark:text-white">{selected.label}</h4>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-1.5 rounded-md bg-slate-100 dark:bg-slate-800/60 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400">
                 <Calendar className="h-3.5 w-3.5" />
                 {rangeShort}
               </div>
@@ -299,11 +289,15 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
 
             {/* 5 metric cards */}
             <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-              <InfoMetricCard label="Total issues">
-                <p className="text-2xl font-bold text-red-500">{selected.totalIssues}</p>
-              </InfoMetricCard>
+              {/* Total issues */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500 mb-1">Total issues</p>
+                <p className="text-2xl font-bold text-red-500 dark:text-red-400">{selected.totalIssues}</p>
+              </div>
 
-              <InfoMetricCard label="Top issue category">
+              {/* Top issue category */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500 mb-1">Top issue category</p>
                 {selected.totalIssues === 0 || selected.topIssueCategory === null ? (
                   <p className="text-sm font-bold text-slate-900 dark:text-white">—</p>
                 ) : (
@@ -324,41 +318,48 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                     </p>
                   </>
                 )}
-              </InfoMetricCard>
+              </div>
 
-              <InfoMetricCard label="Pass rate">
+              {/* Pass rate */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500 mb-1">Pass rate</p>
                 <p className="text-lg font-bold text-slate-900 dark:text-white">
                   {formatPassRate(selected.passRate)}
                 </p>
-                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600">
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/50">
                   <div
                     className="h-full rounded-full bg-emerald-500"
                     style={{ width: `${Math.min(selected.passRate ?? 0, 100)}%` }}
                   />
                 </div>
-              </InfoMetricCard>
+              </div>
 
-              <InfoMetricCard label="Test cases">
+              {/* Test cases */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500 mb-1">Test cases</p>
                 <p className="text-lg font-bold text-slate-900 dark:text-white">{selected.testCases}</p>
-              </InfoMetricCard>
+              </div>
 
-              <InfoMetricCard label="Affected countries">
+              {/* Affected countries */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500 mb-1">Affected countries</p>
                 <p className="text-sm font-bold text-slate-900 dark:text-white">
                   {formatAffectedCountries(selected.affectedCountries)}
                 </p>
-              </InfoMetricCard>
+              </div>
             </div>
 
             {/* Issues by category + Issues by day */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900/40 p-4">
+              {/* Issues by category */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by category</h5>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2.5">
                   {selected.issuesByCategory.slice(0, 8).map(cat => (
-                    <div key={cat.name} className="flex items-center gap-2 text-xs">
+                    <div key={cat.name} className="flex items-center gap-2.5 text-xs">
                       <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
-                      <span className="text-slate-700 dark:text-slate-300">{cat.name}</span>
-                      <span className="ml-auto font-medium text-slate-900 dark:text-white">
+                      <span className="text-slate-700 dark:text-slate-300 flex-1">{cat.name}</span>
+                      <span className="font-medium text-slate-900 dark:text-white tabular-nums">
                         {cat.count} ({selected.totalIssues > 0 ? Math.round((cat.count / selected.totalIssues) * 100) : 0}%)
                       </span>
                     </div>
@@ -369,19 +370,20 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900/40 p-4">
+              {/* Issues by day chart */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] p-4">
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by day</h5>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={selectedProject.series} margin={{ top: 20, right: 4, bottom: 0, left: -12 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.15} vertical={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} vertical={false} />
                       <XAxis
                         dataKey="label"
                         tick={{ fill: '#9CA3AF', fontSize: 10 }}
                         interval={0}
-                        angle={-25}
+                        angle={-15}
                         textAnchor="end"
-                        height={50}
+                        height={40}
                         axisLine={false}
                         tickLine={false}
                       />
