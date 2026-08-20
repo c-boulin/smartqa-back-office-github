@@ -289,17 +289,17 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               </div>
             </div>
 
-            {/* 5 metric cards – unified strip */}
-            <div className="mb-5 flex overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-[#131d33] divide-x divide-slate-200 dark:divide-slate-700/40">
+            {/* 5 metric cards */}
+            <div className="mb-5 grid grid-cols-5 gap-3">
               {/* Total issues */}
-              <div className="flex-1 p-4 min-w-0">
-                <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-1">Total issues</p>
-                <p className="text-2xl font-bold text-red-500 dark:text-red-400">{selected.totalIssues}</p>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-600/70 bg-slate-50 dark:bg-slate-800 p-4 min-w-0">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total issues</p>
+                <p className="text-2xl font-bold text-red-500">{selected.totalIssues}</p>
               </div>
 
               {/* Top issue category */}
-              <div className="flex-1 p-4 min-w-0">
-                <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-1">Top issue category</p>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-600/70 bg-slate-50 dark:bg-slate-800 p-4 min-w-0">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Top issue category</p>
                 {selected.totalIssues === 0 || selected.topIssueCategory === null ? (
                   <p className="text-sm font-bold text-slate-900 dark:text-white">—</p>
                 ) : (
@@ -315,7 +315,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                         {selected.topIssueCategory}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-400 mt-0.5">
                       {selected.topIssueCategoryCount} ({selected.topIssueCategoryPercent ?? 0}%)
                     </p>
                   </>
@@ -323,12 +323,12 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               </div>
 
               {/* Pass rate */}
-              <div className="flex-1 p-4 min-w-0">
-                <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-1">Pass rate</p>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-600/70 bg-slate-50 dark:bg-slate-800 p-4 min-w-0">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Pass rate</p>
                 <p className="text-lg font-bold text-slate-900 dark:text-white">
                   {formatPassRate(selected.passRate)}
                 </p>
-                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/50">
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                   <div
                     className="h-full rounded-full bg-emerald-500"
                     style={{ width: `${Math.min(selected.passRate ?? 0, 100)}%` }}
@@ -337,15 +337,15 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               </div>
 
               {/* Test cases */}
-              <div className="flex-1 p-4 min-w-0">
-                <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-1">Test cases</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">{selected.testCases}</p>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-600/70 bg-slate-50 dark:bg-slate-800 p-4 min-w-0">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Test cases</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-white">{selected.testCases}</p>
               </div>
 
               {/* Affected countries */}
-              <div className="flex-1 p-4 min-w-0">
-                <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-1">Affected countries</p>
-                <p className="text-sm font-bold text-slate-900 dark:text-white">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-600/70 bg-slate-50 dark:bg-slate-800 p-4 min-w-0">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Affected countries</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-white">
                   {formatAffectedCountries(selected.affectedCountries)}
                 </p>
               </div>
