@@ -205,15 +205,15 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
       <div className="flex flex-col gap-5 lg:flex-row">
         {/* Left: Service list */}
         <div className="w-full shrink-0 lg:w-[320px]">
-          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-700/40">
+          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/60">
             {/* Table header */}
-            <div className="grid grid-cols-[1fr_72px_88px] gap-2 border-b border-slate-200 dark:border-slate-700/60 px-4 py-2.5 text-[11px] font-medium text-slate-500 dark:text-slate-500">
+            <div className="grid grid-cols-[1fr_80px_100px] gap-2 border-b border-slate-200 dark:border-slate-700/60 px-5 py-2.5 text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
               <span>Service</span>
               <span className="text-center">Total issue</span>
               <span className="text-right">Pass rate</span>
             </div>
             {/* Service rows */}
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/30">
+            <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-600/20">
               {summaries.map((s, idx) => {
                 const isSelected = idx === selectedIndex;
                 const handleSelect = (): void => setSelectedIndex(idx);
@@ -230,26 +230,26 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                     tabIndex={0}
                     onClick={handleSelect}
                     onKeyDown={handleKeyDown}
-                    className={`group/row relative grid w-full cursor-pointer grid-cols-[1fr_72px_88px] items-center gap-2 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400 ${
+                    className={`group/row relative grid w-full cursor-pointer grid-cols-[1fr_80px_100px] items-center gap-2 pl-5 pr-4 py-4 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400 ${
                       isSelected
-                        ? 'bg-slate-100 dark:bg-slate-700/40'
-                        : 'hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
+                        ? 'bg-slate-100 dark:bg-slate-700/30'
+                        : 'hover:bg-slate-100/60 dark:hover:bg-slate-700/20'
                     }`}
                     data-mipqa={`defect-service-row-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
                   >
-                    {isSelected && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-r bg-cyan-400" />
-                    )}
-                    <span className="truncate pr-4 font-medium text-slate-900 dark:text-white">{s.label}</span>
+                    <div className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-r transition-colors ${
+                      isSelected ? 'bg-cyan-400' : 'bg-cyan-700/50 group-hover/row:bg-cyan-500/70'
+                    }`} />
+                    <span className="truncate pr-4 font-semibold text-slate-900 dark:text-white">{s.label}</span>
                     <span className="text-center font-bold text-red-400">{s.totalIssues}</span>
                     <div className="flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/50">
+                      <div className="h-2 w-14 shrink-0 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/50">
                         <div
                           className="h-full rounded-full bg-emerald-500"
                           style={{ width: `${Math.min(s.passRate ?? 0, 100)}%` }}
                         />
                       </div>
-                      <span className="w-[38px] text-right text-xs font-medium text-slate-600 dark:text-emerald-400">
+                      <span className="text-right text-xs font-medium text-slate-600 dark:text-emerald-400 whitespace-nowrap">
                         {formatPassRate(s.passRate)}
                       </span>
                     </div>
@@ -264,7 +264,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                       data-mipqa={`defect-service-view-tests-${s.label.toLowerCase().replace(/\s+/g, '-')}`}
                       className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 transition-colors hover:text-cyan-500 dark:hover:text-cyan-400 ${
                         isSelected
-                          ? 'text-slate-400 dark:text-slate-500'
+                          ? 'text-slate-400 dark:text-slate-400'
                           : 'text-slate-400 dark:text-slate-500 opacity-0 group-hover/row:opacity-100'
                       }`}
                     >
