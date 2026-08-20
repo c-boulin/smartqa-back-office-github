@@ -105,7 +105,6 @@ function InfoMetricCard({
 function IssuesByDayTooltip({
   active,
   payload,
-  label,
   hoveredKey,
 }: {
   active?: boolean;
@@ -124,13 +123,16 @@ function IssuesByDayTooltip({
   const pct = total > 0 ? Math.round((Number(entry.value) / total) * 100) : 0;
 
   return (
-    <div
-      className="rounded-lg bg-white p-3 text-xs shadow-xl dark:bg-slate-800 min-w-[140px]"
-      style={{ borderLeft: `4px solid ${entry.color}` }}
-    >
-      <p className="mb-1 font-semibold text-slate-900 dark:text-white">{label}</p>
-      <p className="text-slate-700 dark:text-slate-300">
-        {entry.name} / {entry.value} issue ({pct}%)
+    <div className="rounded-lg bg-slate-800 px-3 py-2.5 text-xs shadow-lg border border-slate-700/50">
+      <div className="flex items-center gap-2">
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: entry.color }}
+        />
+        <span className="font-medium text-white">{entry.name}</span>
+      </div>
+      <p className="mt-1 pl-[18px] text-slate-300">
+        {entry.value} issue ({pct}%)
       </p>
     </div>
   );
