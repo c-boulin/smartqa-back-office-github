@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ChevronRight, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, LabelList, Customized } from 'recharts';
 import { useNavigate } from 'react-router-dom';
@@ -158,47 +158,62 @@ function toPastel(hex: string, opacity = 0.45): string {
   return `rgb(${pr}, ${pg}, ${pb})`;
 }
 
-/* ─── Gap between stacked segments (px) ─── */
-const SEGMENT_GAP = 2;
-const SEGMENT_RADIUS = 4;
+const BAR_RADIUS = 4;
 
-/* ─── Custom bar shape that insets vertically to create gaps between stacked segments ─── */
-function GappedBarShape(props: Record<string, unknown>): React.ReactElement | null {
-  const x = Number(props.x) || 0;
-  const y = Number(props.y) || 0;
-  const width = Number(props.width) || 0;
-  const height = Number(props.height) || 0;
-  const fill = (props.fill as string) ?? '#888';
-  if (height <= 0) return null;
-  const insetH = Math.max(height - SEGMENT_GAP, 1);
-  const insetY = y + SEGMENT_GAP;
-  return (
-    <rect
-      x={x}
-      y={insetY}
-      width={width}
-      height={insetH}
-      fill={fill}
-      rx={SEGMENT_RADIUS}
-      ry={SEGMENT_RADIUS}
-    />
-  );
+function roundedRectPath(x: number, y: number, w: number, h: number, r: number): string {
+  const cr = Math.min(r, w / 2, h / 2);
+  return `M${x + cr},${y} h${w - 2 * cr} a${cr},${cr} 0 0 1 ${cr},${cr} v${h - 2 * cr} a${cr},${cr} 0 0 1 -${cr},${cr} h-${w - 2 * cr} a${cr},${cr} 0 0 1 -${cr},-${cr} v-${h - 2 * cr} a${cr},${cr} 0 0 1 ${cr},-${cr} Z`;
+}
+
+type BarGeoEntry = { x: number; y: number; width: number; height: number; fill: string; stackIndex: number; barIndex: number };
+
+function makeCollectorShape(geoRef: React.MutableRefObject<BarGeoEntry[]>, stackIndex: number) {
+  return function CollectorShape(props: Record<string, unknown>): React.ReactElement | null {
+    const x = Number(props.x) || 0;
+    const y = Number(props.y) || 0;
+    const width = Number(props.width) || 0;
+    const height = Number(props.height) || 0;
+    const fill = (props.fill as string) ?? '#888';
+    const barIndex = Number(props.index) || 0;
+    if (height > 0) {
+      geoRef.current.push({ x, y, width, height, fill, stackIndex, barIndex });
+    }
+    return <rect x={x} y={y} width={width} height={height} fill="transparent" />;
+  };
+}
+
+function VisibleBarsLayer({ geoRef }: { geoRef: React.MutableRefObject<BarGeoEntry[]> }): React.ReactElement | null {
+  const entries = geoRef.current;
+  if (!entries.length) return null;
+  const grouped = new Map<number, BarGeoEntry[]>();
+  for (const entry of entries) {
+    const arr = grouped.get(entry.barIndex) || [];
+    arr.push(entry);
+    grouped.set(entry.barIndex, arr);
+  }
+  const elements: React.ReactElement[] = [];
+  for (const [, segs] of grouped) {
+    segs.sort((a, b) => b.stackIndex - a.stackIndex);
+    for (const seg of segs) {
+      elements.push(
+        <path
+          key={`${seg.barIndex}-${seg.stackIndex}`}
+          d={roundedRectPath(seg.x, seg.y, seg.width, seg.height, BAR_RADIUS)}
+          fill={seg.fill}
+        />
+      );
+    }
+  }
+  return <g>{elements}</g>;
 }
 
 /* ─── Overlay layer rendering the hovered segment on top of all bars ─── */
 function HoveredBarOverlay({ geo }: { geo: { x: number; y: number; width: number; height: number; fill: string; r: number } | null }): React.ReactElement | null {
   if (!geo || geo.height <= 0) return null;
-  const insetY = geo.y + SEGMENT_GAP;
-  const insetH = Math.max(geo.height - SEGMENT_GAP, 1);
   return (
-    <rect
-      x={geo.x}
-      y={insetY}
-      width={geo.width}
-      height={insetH}
+    <path
+      d={roundedRectPath(geo.x, geo.y, geo.width, geo.height, geo.r)}
       fill={geo.fill}
-      rx={geo.r}
-      ry={geo.r}
       stroke={toPastel(geo.fill)}
       strokeWidth={2.5}
       style={{ transition: 'all 0.15s ease-out', pointerEvents: 'none' }}
@@ -219,6 +234,12 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hoveredDefectKey, setHoveredDefectKey] = useState<string | null>(null);
   const [hoveredBarGeo, setHoveredBarGeo] = useState<{ x: number; y: number; width: number; height: number; fill: string; r: number } | null>(null);
+  const barGeoRef = useRef<BarGeoEntry[]>([]);
+
+  const collectorShapes = useMemo(
+    () => DEFECT_BREAKDOWN_STACK_TYPES.map((_, dIdx) => makeCollectorShape(barGeoRef, dIdx)),
+    [],
+  );
 
   const summaries = useMemo(
     () => deriveServiceSummaries(defectSeriesByProject, defectColorMap),
@@ -435,6 +456,8 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-700/40 p-4">
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by day</h5>
                 <div className="h-56">
+                  {/* Clear collected geometry before each render */}
+                  {(() => { barGeoRef.current = []; return null; })()}
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={selectedProject.series} margin={{ top: 20, right: 4, bottom: 0, left: 4 }}>
                       <XAxis
@@ -467,7 +490,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           fill={defectColorMap[defect.slug] ?? defect.color}
                           name={defect.label}
                           barSize={38}
-                          shape={GappedBarShape}
+                          shape={collectorShapes[dIdx]}
                           cursor="pointer"
                           onMouseEnter={(data: Record<string, unknown>) => {
                             setHoveredDefectKey(defect.key);
@@ -479,7 +502,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                               setHoveredBarGeo({
                                 x: bx, y: by, width: bw, height: bh,
                                 fill: defectColorMap[defect.slug] ?? defect.color,
-                                r: 4,
+                                r: BAR_RADIUS,
                               });
                             }
                           }}
@@ -501,6 +524,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           )}
                         </Bar>
                       ))}
+                      <Customized component={() => <VisibleBarsLayer geoRef={barGeoRef} />} />
                       <Customized component={() => <HoveredBarOverlay geo={hoveredBarGeo} />} />
                     </BarChart>
                   </ResponsiveContainer>
