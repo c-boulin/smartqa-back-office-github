@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ChevronRight, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, LabelList, Customized } from 'recharts';
 import { useNavigate } from 'react-router-dom';
@@ -165,49 +165,17 @@ function topRoundedRectPath(x: number, y: number, w: number, h: number, r: numbe
   return `M${x + cr},${y} h${w - 2 * cr} a${cr},${cr} 0 0 1 ${cr},${cr} v${h - cr} h-${w} v-${h - cr} a${cr},${cr} 0 0 1 ${cr},-${cr} Z`;
 }
 
-type BarGeoEntry = { x: number; y: number; width: number; height: number; fill: string; stackIndex: number; barIndex: number };
-
 const MAX_BAR_WIDTH = 38;
 
-function makeCollectorShape(geoRef: React.MutableRefObject<BarGeoEntry[]>, stackIndex: number) {
-  return function CollectorShape(props: Record<string, unknown>): React.ReactElement | null {
-    const rawWidth = Number(props.width) || 0;
-    const width = Math.min(rawWidth, MAX_BAR_WIDTH);
-    const x = (Number(props.x) || 0) + (rawWidth - width) / 2;
-    const y = Number(props.y) || 0;
-    const height = Number(props.height) || 0;
-    const fill = (props.fill as string) ?? '#888';
-    const barIndex = Number(props.index) || 0;
-    if (height > 0) {
-      geoRef.current.push({ x, y, width, height, fill, stackIndex, barIndex });
-    }
-    return <rect x={x} y={y} width={width} height={height} fill="transparent" />;
-  };
-}
-
-function VisibleBarsLayer({ geoRef }: { geoRef: React.MutableRefObject<BarGeoEntry[]> }): React.ReactElement | null {
-  const entries = geoRef.current;
-  if (!entries.length) return null;
-  const grouped = new Map<number, BarGeoEntry[]>();
-  for (const entry of entries) {
-    const arr = grouped.get(entry.barIndex) || [];
-    arr.push(entry);
-    grouped.set(entry.barIndex, arr);
-  }
-  const elements: React.ReactElement[] = [];
-  for (const [, segs] of grouped) {
-    segs.sort((a, b) => b.stackIndex - a.stackIndex);
-    for (const seg of segs) {
-      elements.push(
-        <path
-          key={`${seg.barIndex}-${seg.stackIndex}`}
-          d={topRoundedRectPath(seg.x, seg.y, seg.width, seg.height, BAR_RADIUS)}
-          fill={seg.fill}
-        />
-      );
-    }
-  }
-  return <g>{elements}</g>;
+function DirectBarShape(props: Record<string, unknown>): React.ReactElement | null {
+  const rawWidth = Number(props.width) || 0;
+  const width = Math.min(rawWidth, MAX_BAR_WIDTH);
+  const x = (Number(props.x) || 0) + (rawWidth - width) / 2;
+  const y = Number(props.y) || 0;
+  const height = Number(props.height) || 0;
+  const fill = (props.fill as string) ?? '#888';
+  if (height <= 0) return null;
+  return <path d={topRoundedRectPath(x, y, width, height, BAR_RADIUS)} fill={fill} />;
 }
 
 /* ─── Overlay layer rendering the hovered segment on top of all bars ─── */
@@ -237,12 +205,6 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hoveredDefectKey, setHoveredDefectKey] = useState<string | null>(null);
   const [hoveredBarGeo, setHoveredBarGeo] = useState<{ x: number; y: number; width: number; height: number; fill: string; r: number } | null>(null);
-  const barGeoRef = useRef<BarGeoEntry[]>([]);
-
-  const collectorShapes = useMemo(
-    () => DEFECT_BREAKDOWN_STACK_TYPES.map((_, dIdx) => makeCollectorShape(barGeoRef, dIdx)),
-    [],
-  );
 
   const summaries = useMemo(
     () => deriveServiceSummaries(defectSeriesByProject, defectColorMap),
@@ -459,8 +421,6 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-700/40 p-4">
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by day</h5>
                 <div className="h-56">
-                  {/* Clear collected geometry before each render */}
-                  {(() => { barGeoRef.current = []; return null; })()}
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={selectedProject.series} margin={{ top: 20, right: 4, bottom: 0, left: 4 }} barCategoryGap="20%">
                       <XAxis
@@ -492,17 +452,18 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           stackId="defects"
                           fill={defectColorMap[defect.slug] ?? defect.color}
                           name={defect.label}
-                          shape={collectorShapes[dIdx]}
+                          shape={DirectBarShape}
                           cursor="pointer"
                           onMouseEnter={(data: Record<string, unknown>) => {
                             setHoveredDefectKey(defect.key);
-                            const bx = Number(data.x) || 0;
+                            const rawW = Number(data.width) || 0;
+                            const w = Math.min(rawW, MAX_BAR_WIDTH);
+                            const bx = (Number(data.x) || 0) + (rawW - w) / 2;
                             const by = Number(data.y) || 0;
-                            const bw = Number(data.width) || 0;
                             const bh = Number(data.height) || 0;
                             if (bh > 0) {
                               setHoveredBarGeo({
-                                x: bx, y: by, width: bw, height: bh,
+                                x: bx, y: by, width: w, height: bh,
                                 fill: defectColorMap[defect.slug] ?? defect.color,
                                 r: BAR_RADIUS,
                               });
@@ -526,7 +487,6 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           )}
                         </Bar>
                       ))}
-                      <Customized component={() => <VisibleBarsLayer geoRef={barGeoRef} />} />
                       <Customized component={() => <HoveredBarOverlay geo={hoveredBarGeo} />} />
                     </BarChart>
                   </ResponsiveContainer>
