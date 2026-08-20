@@ -205,7 +205,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
       <div className="flex flex-col gap-5 lg:flex-row">
         {/* Left: Service list */}
         <div className="w-full shrink-0 lg:w-[320px]">
-          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-900/50">
+          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-700/40">
             {/* Table header */}
             <div className="grid grid-cols-[1fr_72px_88px] gap-2 border-b border-slate-200 dark:border-slate-700/60 px-4 py-2.5 text-[11px] font-medium text-slate-500 dark:text-slate-500">
               <span>Service</span>
@@ -354,7 +354,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
             {/* Issues by category + Issues by day */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {/* Issues by category */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-900/50 p-4">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-700/40 p-4">
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by category</h5>
                 <div className="flex flex-col gap-2.5">
                   {selected.issuesByCategory.slice(0, 8).map(cat => (
@@ -373,7 +373,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               </div>
 
               {/* Issues by day chart */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-900/50 p-4">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-700/40 p-4">
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by day</h5>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
