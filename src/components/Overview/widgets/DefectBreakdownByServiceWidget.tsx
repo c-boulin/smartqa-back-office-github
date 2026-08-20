@@ -158,11 +158,11 @@ function toPastel(hex: string, opacity = 0.45): string {
   return `rgb(${pr}, ${pg}, ${pb})`;
 }
 
-const BAR_RADIUS = 4;
+const BAR_RADIUS = 3;
 
-function roundedRectPath(x: number, y: number, w: number, h: number, r: number): string {
+function topRoundedRectPath(x: number, y: number, w: number, h: number, r: number): string {
   const cr = Math.min(r, w / 2, h / 2);
-  return `M${x + cr},${y} h${w - 2 * cr} a${cr},${cr} 0 0 1 ${cr},${cr} v${h - 2 * cr} a${cr},${cr} 0 0 1 -${cr},${cr} h-${w - 2 * cr} a${cr},${cr} 0 0 1 -${cr},-${cr} v-${h - 2 * cr} a${cr},${cr} 0 0 1 ${cr},-${cr} Z`;
+  return `M${x + cr},${y} h${w - 2 * cr} a${cr},${cr} 0 0 1 ${cr},${cr} v${h - cr} h-${w} v-${h - cr} a${cr},${cr} 0 0 1 ${cr},-${cr} Z`;
 }
 
 type BarGeoEntry = { x: number; y: number; width: number; height: number; fill: string; stackIndex: number; barIndex: number };
@@ -194,15 +194,11 @@ function VisibleBarsLayer({ geoRef }: { geoRef: React.MutableRefObject<BarGeoEnt
   const elements: React.ReactElement[] = [];
   for (const [, segs] of grouped) {
     segs.sort((a, b) => b.stackIndex - a.stackIndex);
-    for (let i = 0; i < segs.length; i++) {
-      const seg = segs[i];
-      const isTopmost = i === 0;
-      const drawY = isTopmost ? seg.y : seg.y - BAR_RADIUS;
-      const drawH = isTopmost ? seg.height : seg.height + BAR_RADIUS;
+    for (const seg of segs) {
       elements.push(
         <path
           key={`${seg.barIndex}-${seg.stackIndex}`}
-          d={roundedRectPath(seg.x, drawY, seg.width, drawH, BAR_RADIUS)}
+          d={topRoundedRectPath(seg.x, seg.y, seg.width, seg.height, BAR_RADIUS)}
           fill={seg.fill}
         />
       );
@@ -216,7 +212,7 @@ function HoveredBarOverlay({ geo }: { geo: { x: number; y: number; width: number
   if (!geo || geo.height <= 0) return null;
   return (
     <path
-      d={roundedRectPath(geo.x, geo.y, geo.width, geo.height, geo.r)}
+      d={topRoundedRectPath(geo.x, geo.y, geo.width, geo.height, geo.r)}
       fill={geo.fill}
       stroke={toPastel(geo.fill)}
       strokeWidth={2.5}
