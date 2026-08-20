@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronRight, Calendar } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import type {
   OverviewDefectSeriesProject,
@@ -107,7 +107,10 @@ function IssuesByDayTooltip({
   const pct = total > 0 ? Math.round((Number(entry.value) / total) * 100) : 0;
 
   return (
-    <div className="rounded-lg bg-slate-800 px-3 py-2.5 text-xs shadow-lg border border-slate-700/50">
+    <div
+      className="rounded-lg bg-slate-800 px-3 py-2.5 text-xs shadow-lg"
+      style={{ border: `1.5px solid ${entry.color}` }}
+    >
       <div className="flex items-center gap-2">
         <span
           className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -116,7 +119,7 @@ function IssuesByDayTooltip({
         <span className="font-medium text-white">{entry.name}</span>
       </div>
       <p className="mt-1 pl-[18px] text-slate-300">
-        {entry.value} issue ({pct}%)
+        {entry.value} Issue ({pct}%)
       </p>
     </div>
   );
@@ -140,6 +143,45 @@ function renderBarTotalLabel(props: Record<string, unknown>, series: Array<Recor
     >
       {total}
     </text>
+  );
+}
+
+/* ─── Custom bar shape with hover zoom effect ─── */
+function ZoomableBarShape({
+  x,
+  y,
+  width,
+  height,
+  fill,
+  radius,
+  isHovered,
+}: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  fill?: string;
+  radius?: number[];
+  isHovered?: boolean;
+}): React.ReactElement | null {
+  if (!x || !y || !width || !height || height <= 0) return null;
+  const expand = isHovered ? 3 : 0;
+  const rx = x - expand;
+  const ry = y - expand;
+  const rw = width + expand * 2;
+  const rh = height + expand;
+  const r = radius?.[0] ?? 0;
+  return (
+    <rect
+      x={rx}
+      y={ry}
+      width={rw}
+      height={rh}
+      fill={fill}
+      rx={r}
+      ry={r}
+      style={{ transition: 'all 0.15s ease-out' }}
+    />
   );
 }
 
@@ -347,11 +389,11 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
             </div>
 
             {/* Issues by category + Issues by day */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
               {/* Issues by category */}
               <div className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-700/40 p-4">
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by category</h5>
-                <div className="flex flex-col gap-2.5">
+                <div className="flex flex-col gap-2">
                   {selected.issuesByCategory.slice(0, 8).map(cat => (
                     <div key={cat.name} className="flex items-center gap-2.5 text-xs">
                       <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
@@ -372,8 +414,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                 <h5 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Issues by day</h5>
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={selectedProject.series} margin={{ top: 20, right: 4, bottom: 0, left: -12 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} vertical={false} />
+                    <BarChart data={selectedProject.series} margin={{ top: 20, right: 4, bottom: 0, left: 4 }}>
                       <XAxis
                         dataKey="label"
                         tick={{ fill: '#9CA3AF', fontSize: 10 }}
@@ -392,12 +433,6 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           return value.length > 7 ? value.slice(0, 7) : value;
                         }}
                       />
-                      <YAxis
-                        tick={{ fill: '#9CA3AF', fontSize: 10 }}
-                        allowDecimals={false}
-                        axisLine={false}
-                        tickLine={false}
-                      />
                       <Tooltip
                         content={<IssuesByDayTooltip hoveredKey={hoveredDefectKey} />}
                         cursor={{ fill: 'rgba(148,163,184,0.08)' }}
@@ -409,9 +444,21 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           stackId="defects"
                           fill={defectColorMap[defect.slug] ?? defect.color}
                           name={defect.label}
-                          barSize={28}
+                          barSize={38}
                           radius={dIdx === DEFECT_BREAKDOWN_STACK_TYPES.length - 1 ? [3, 3, 0, 0] : undefined}
                           cursor="pointer"
+                          shape={(props: Record<string, unknown>) => (
+                            <ZoomableBarShape
+                              {...props}
+                              x={props.x as number}
+                              y={props.y as number}
+                              width={props.width as number}
+                              height={props.height as number}
+                              fill={props.fill as string}
+                              radius={dIdx === DEFECT_BREAKDOWN_STACK_TYPES.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                              isHovered={hoveredDefectKey === defect.key}
+                            />
+                          )}
                           onMouseEnter={() => setHoveredDefectKey(defect.key)}
                           onMouseLeave={() => setHoveredDefectKey(null)}
                           onClick={(payload: { date?: string; payload?: { date?: string } }) => {
