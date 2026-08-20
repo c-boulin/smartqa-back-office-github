@@ -459,7 +459,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                   {/* Clear collected geometry before each render */}
                   {(() => { barGeoRef.current = []; return null; })()}
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={selectedProject.series} margin={{ top: 20, right: 4, bottom: 0, left: 4 }} barCategoryGap="20%">
+                    <BarChart data={selectedProject.series} margin={{ top: 20, right: 4, bottom: 0, left: 4 }} barCategoryGap="20%" maxBarSize={38}>
                       <XAxis
                         dataKey="label"
                         tick={{ fill: '#9CA3AF', fontSize: 10 }}
@@ -489,7 +489,6 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           stackId="defects"
                           fill={defectColorMap[defect.slug] ?? defect.color}
                           name={defect.label}
-                          maxBarSize={38}
                           shape={collectorShapes[dIdx]}
                           cursor="pointer"
                           onMouseEnter={(data: Record<string, unknown>) => {
