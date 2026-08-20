@@ -167,11 +167,14 @@ function topRoundedRectPath(x: number, y: number, w: number, h: number, r: numbe
 
 type BarGeoEntry = { x: number; y: number; width: number; height: number; fill: string; stackIndex: number; barIndex: number };
 
+const MAX_BAR_WIDTH = 38;
+
 function makeCollectorShape(geoRef: React.MutableRefObject<BarGeoEntry[]>, stackIndex: number) {
   return function CollectorShape(props: Record<string, unknown>): React.ReactElement | null {
-    const x = Number(props.x) || 0;
+    const rawWidth = Number(props.width) || 0;
+    const width = Math.min(rawWidth, MAX_BAR_WIDTH);
+    const x = (Number(props.x) || 0) + (rawWidth - width) / 2;
     const y = Number(props.y) || 0;
-    const width = Number(props.width) || 0;
     const height = Number(props.height) || 0;
     const fill = (props.fill as string) ?? '#888';
     const barIndex = Number(props.index) || 0;
@@ -459,7 +462,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                   {/* Clear collected geometry before each render */}
                   {(() => { barGeoRef.current = []; return null; })()}
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={selectedProject.series} margin={{ top: 20, right: 4, bottom: 0, left: 4 }} barCategoryGap="20%" maxBarSize={38}>
+                    <BarChart data={selectedProject.series} margin={{ top: 20, right: 4, bottom: 0, left: 4 }} barCategoryGap="20%">
                       <XAxis
                         dataKey="label"
                         tick={{ fill: '#9CA3AF', fontSize: 10 }}
