@@ -106,36 +106,32 @@ function IssuesByDayTooltip({
   active,
   payload,
   label,
+  hoveredKey,
 }: {
   active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string; payload?: Record<string, unknown> }>;
+  payload?: Array<{ name: string; value: number; color: string; dataKey?: string; payload?: Record<string, unknown> }>;
   label?: string;
+  hoveredKey?: string | null;
 }) {
   if (!active || !payload?.length) return null;
   const total = payload.reduce((s, p) => s + (Number(p.value) || 0), 0);
-  const nonZero = payload.filter(p => (Number(p.value) || 0) > 0);
+  const entry = hoveredKey
+    ? payload.find(p => p.dataKey === hoveredKey)
+    : null;
+
+  if (!entry || (Number(entry.value) || 0) === 0) return null;
+
+  const pct = total > 0 ? Math.round((Number(entry.value) / total) * 100) : 0;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-xl dark:border-slate-600 dark:bg-slate-800 min-w-[160px]">
-      <p className="mb-2 font-semibold text-slate-900 dark:text-white">{label}</p>
-      {nonZero.map(entry => {
-        const pct = total > 0 ? Math.round((Number(entry.value) / total) * 100) : 0;
-        return (
-          <div
-            key={entry.name}
-            className="flex items-center gap-2 py-0.5"
-            style={{ borderLeft: `3px solid ${entry.color}`, paddingLeft: 8 }}
-          >
-            <span className="text-slate-700 dark:text-slate-300 flex-1">{entry.name}</span>
-            <span className="font-medium text-slate-900 dark:text-white">
-              {entry.value} issue ({pct}%)
-            </span>
-          </div>
-        );
-      })}
-      <div className="mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-600 font-medium text-slate-900 dark:text-white">
-        Total: {total}
-      </div>
+    <div
+      className="rounded-lg bg-white p-3 text-xs shadow-xl dark:bg-slate-800 min-w-[140px]"
+      style={{ borderLeft: `4px solid ${entry.color}` }}
+    >
+      <p className="mb-1 font-semibold text-slate-900 dark:text-white">{label}</p>
+      <p className="text-slate-700 dark:text-slate-300">
+        {entry.name} / {entry.value} issue ({pct}%)
+      </p>
     </div>
   );
 }
@@ -172,6 +168,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
   const navigate = useNavigate();
   const rangeShort = formatOverviewWindowRangeShort(windowProp.from, windowProp.to);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [hoveredDefectKey, setHoveredDefectKey] = useState<string | null>(null);
 
   const summaries = useMemo(
     () => deriveServiceSummaries(defectSeriesByProject, defectColorMap),
@@ -393,7 +390,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                         tickLine={false}
                       />
                       <Tooltip
-                        content={<IssuesByDayTooltip />}
+                        content={<IssuesByDayTooltip hoveredKey={hoveredDefectKey} />}
                         cursor={{ fill: 'rgba(148,163,184,0.08)' }}
                       />
                       {DEFECT_BREAKDOWN_STACK_TYPES.map((defect, dIdx) => (
@@ -406,6 +403,8 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                           barSize={28}
                           radius={dIdx === DEFECT_BREAKDOWN_STACK_TYPES.length - 1 ? [3, 3, 0, 0] : undefined}
                           cursor="pointer"
+                          onMouseEnter={() => setHoveredDefectKey(defect.key)}
+                          onMouseLeave={() => setHoveredDefectKey(null)}
                           onClick={(payload: { date?: string; payload?: { date?: string } }) => {
                             const date = payload?.date ?? payload?.payload?.date;
                             if (!date || !selectedProject) return;
