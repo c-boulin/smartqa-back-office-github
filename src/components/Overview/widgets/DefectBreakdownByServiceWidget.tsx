@@ -194,11 +194,15 @@ function VisibleBarsLayer({ geoRef }: { geoRef: React.MutableRefObject<BarGeoEnt
   const elements: React.ReactElement[] = [];
   for (const [, segs] of grouped) {
     segs.sort((a, b) => b.stackIndex - a.stackIndex);
-    for (const seg of segs) {
+    for (let i = 0; i < segs.length; i++) {
+      const seg = segs[i];
+      const isTopmost = i === 0;
+      const drawY = isTopmost ? seg.y : seg.y - BAR_RADIUS;
+      const drawH = isTopmost ? seg.height : seg.height + BAR_RADIUS;
       elements.push(
         <path
           key={`${seg.barIndex}-${seg.stackIndex}`}
-          d={roundedRectPath(seg.x, seg.y, seg.width, seg.height, BAR_RADIUS)}
+          d={roundedRectPath(seg.x, drawY, seg.width, drawH, BAR_RADIUS)}
           fill={seg.fill}
         />
       );
