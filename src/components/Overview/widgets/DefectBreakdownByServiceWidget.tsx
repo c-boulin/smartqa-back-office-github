@@ -205,14 +205,15 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
       <div className="flex flex-col gap-5 lg:flex-row">
         {/* Left: Service list */}
         <div className="w-full shrink-0 lg:w-[340px]">
-          {/* Table header */}
-          <div className="grid grid-cols-[1fr_90px_100px] gap-2 px-5 py-2.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
-            <span>Service</span>
-            <span className="text-center">Total issue</span>
-            <span className="text-right">Pass rate</span>
-          </div>
-          {/* Service rows */}
-          <div className="max-h-[420px] overflow-y-auto space-y-1 px-1">
+          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-800/50">
+            {/* Table header */}
+            <div className="grid grid-cols-[1fr_90px_100px] gap-2 px-5 py-2.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+              <span>Service</span>
+              <span className="text-center">Total issue</span>
+              <span className="text-right">Pass rate</span>
+            </div>
+            {/* Service rows */}
+            <div className="max-h-[380px] overflow-y-auto space-y-1 px-2 pb-2 sidebar-project-scrollbar">
             {summaries.map((s, idx) => {
               const isSelected = idx === selectedIndex;
               const handleSelect = (): void => setSelectedIndex(idx);
@@ -267,6 +268,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
                 </div>
               );
             })}
+          </div>
           </div>
         </div>
 
