@@ -293,10 +293,10 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
         <p className="text-xs text-slate-500 dark:text-slate-400">Defect types per service for {rangeShort}</p>
       </div>
 
-      <div className="flex flex-col gap-5 lg:flex-row">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
         {/* Left: Service list */}
-        <div className="w-full shrink-0 lg:w-[38%]">
-          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-700/40">
+        <div className="w-full shrink-0 lg:w-[38%] flex flex-col">
+          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-700/40 flex flex-col flex-1">
             {/* Table header */}
             <div className="grid grid-cols-[1fr_70px_85px_28px] gap-2 px-5 py-2.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
               <span>Service</span>
@@ -305,7 +305,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               <span></span>
             </div>
             {/* Service rows */}
-            <div className="max-h-[380px] overflow-y-auto space-y-1 px-2 pb-2 sidebar-project-scrollbar">
+            <div className="flex-1 overflow-y-auto space-y-1 px-2 pb-2 sidebar-project-scrollbar">
             {summaries.map((s, idx) => {
               const isSelected = idx === selectedIndex;
               const handleSelect = (): void => setSelectedIndex(idx);
