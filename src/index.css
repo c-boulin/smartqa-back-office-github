@@ -257,3 +257,47 @@
 .dark .react-datepicker__triangle {
   display: none;
 }
+
+.donut-chart-wrapper svg {
+  overflow: visible;
+}
+
+.donut-chart-wrapper .recharts-responsive-container,
+.donut-chart-wrapper .recharts-wrapper {
+  overflow: visible !important;
+}
+
+/* ─── Overview Launches: Desktop vs Compact visibility ─── */
+@container overview-main (min-width: 1100.02px) {
+  .launches-table-wrapper { display: block; }
+  .launches-compact-grid { display: none; }
+}
+
+@container overview-main (max-width: 1100px) {
+  .launches-table-wrapper { display: none; }
+  .launches-compact-grid { display: block; }
+}
+
+/* ─── Compact grid: 5-column grouped row layout ─── */
+.compact-row-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(14rem, 2fr)
+    minmax(5.5rem, 0.8fr)
+    minmax(6.5rem, 1fr)
+    minmax(9rem, 1.2fr)
+    minmax(13rem, 1.7fr);
+  gap: 0.5rem;
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+}
+
+/* 2x2 sub-grid inside Results and Defects columns */
+.compact-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 0.125rem 0.5rem;
+  align-items: center;
+}

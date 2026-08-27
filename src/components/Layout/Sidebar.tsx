@@ -365,7 +365,7 @@ const Sidebar: React.FC = () => {
   if (state.isTemplateMode) {
     const selectedTemplate = getSelectedProject();
     return (
-      <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl min-h-[calc(100vh-3.5rem)] sticky top-14 flex flex-col">
+      <aside className="w-52 xl:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl min-h-[calc(100vh-3.5rem)] sticky top-14 flex flex-col">
         <nav className="p-4 space-y-2 flex-1">
           {/* Templates label + dropdown */}
           <div className="mb-4">
@@ -377,9 +377,9 @@ const Sidebar: React.FC = () => {
                 onClick={() => setIsTemplateDropdownOpen(prev => !prev)}
                 className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-left flex items-center justify-between hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >
-                <span className="flex items-center gap-2 truncate">
-                  <span className="text-cyan-600 dark:text-cyan-400">📁 </span>
-                  <span className="text-sm text-slate-900 dark:text-white truncate">
+                <span className="flex items-start gap-2 min-w-0">
+                  <span className="text-cyan-600 dark:text-cyan-400 shrink-0">📁 </span>
+                  <span className="text-sm text-slate-900 dark:text-white" style={{ overflowWrap: 'anywhere' }}>
                     {selectedTemplate?.name ?? 'Template'}
                   </span>
                 </span>
@@ -421,14 +421,15 @@ const Sidebar: React.FC = () => {
                         <button
                           key={template.id}
                           onClick={() => handleTemplateSelect(template)}
-                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${
+                          className={`w-full px-4 py-2.5 text-left text-sm flex items-start gap-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${
                             template.id === selectedTemplate?.id
                               ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
                               : 'text-slate-900 dark:text-white'
                           }`}
+                          title={template.name}
                         >
-                          <FolderOpen className="w-4 h-4 shrink-0 text-cyan-500" />
-                          <span className="truncate">{template.name}</span>
+                          <FolderOpen className="w-4 h-4 shrink-0 text-cyan-500 mt-0.5" />
+                          <span className="break-words min-w-0">{template.name}</span>
                         </button>
                       ))
                     )}
@@ -487,7 +488,7 @@ const Sidebar: React.FC = () => {
   }
 
   return (
-    <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl min-h-[calc(100vh-3.5rem)] sticky top-14 flex flex-col">
+    <aside className="w-52 xl:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-2xl min-h-[calc(100vh-3.5rem)] sticky top-14 flex flex-col">
       <nav className="p-4 space-y-2 flex-1">
         {/* Projects Dropdown */}
         <div className="mb-4">
@@ -527,13 +528,13 @@ const Sidebar: React.FC = () => {
             ) : (
               <button
                 onClick={() => setIsDropdownOpen(true)}
-                className={`w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 focus:border-transparent hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors text-left flex items-center justify-between ${
+                className={`w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 focus:border-transparent hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors text-left flex items-start justify-between ${
                   getSelectedProject() || location.pathname === '/projects' ? 'border-cyan-500/50 dark:border-cyan-500/40 bg-slate-200 dark:bg-slate-700/50' : ''
                 }`}
                 disabled={state.isLoadingProjects}
                 data-mipqa="sidebar-project-selector-button"
               >
-                <span className="min-w-0 flex-1 overflow-hidden">
+                <div className="min-w-0 flex-1">
                   {getSelectedProject() ? (
                     <ProjectTitle project={getSelectedProject()!} nameClassName="text-cyan-600 dark:text-cyan-400" hideCategory truncate />
                   ) : location.pathname === '/projects' ? (
@@ -541,7 +542,7 @@ const Sidebar: React.FC = () => {
                   ) : (
                     <span className="text-slate-500 dark:text-gray-400">Select a project</span>
                   )}
-                </span>
+                </div>
                 {state.isLoadingProjects ? (
                   <Loader className="w-4 h-4 text-slate-400 dark:text-gray-400 animate-spin shrink-0" />
                 ) : (
@@ -576,7 +577,7 @@ const Sidebar: React.FC = () => {
                       <button
                         key={project.id}
                         onClick={() => handleProjectSelect(project.id)}
-                        className={`w-full px-3 py-2.5 text-left transition-all duration-150 flex items-center gap-2 overflow-hidden ${
+                        className={`w-full px-3 py-2.5 text-left transition-all duration-150 flex items-start gap-2 ${
                           isSelected
                             ? 'bg-cyan-500/10 dark:bg-cyan-500/15 border-l-[3px] border-cyan-500 dark:border-cyan-400'
                             : 'border-l-[3px] border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/60'
@@ -585,16 +586,16 @@ const Sidebar: React.FC = () => {
                         data-mipqa={`sidebar-project-item-${project.id}`}
                       >
                         {isSelected && (
-                          <span className="text-cyan-500 dark:text-cyan-400 font-bold text-xs shrink-0">✓</span>
+                          <span className="text-cyan-500 dark:text-cyan-400 font-bold text-xs shrink-0 mt-1">✓</span>
                         )}
-                        <span className="min-w-0 flex-1 overflow-hidden">
+                        <div className="min-w-0 flex-1">
                           <ProjectTitle
                             project={project}
                             nameClassName={isSelected ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-800 dark:text-gray-200'}
                             hideCategory
                             truncate
                           />
-                        </span>
+                        </div>
                       </button>
                     );
                   })}

@@ -82,21 +82,22 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Tests: Passed vs Failed */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="mb-4">
           <h3 className="text-base font-bold text-slate-900 dark:text-white">Tests: Passed vs Failed</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Distribution of {totalTests.toLocaleString()} tests
           </p>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="relative h-56 w-56 shrink-0">
+        <div className="flex flex-1 flex-col items-center gap-4 2xl:flex-row 2xl:items-start 2xl:gap-8">
+          <div className="relative h-48 w-48 shrink-0 2xl:h-72 2xl:w-72">
             {overallData.length > 0 ? (
               <DashboardStyleDonutWithCenterLabel
                 data={overallData}
                 centerValue={totalTests.toLocaleString()}
                 centerSubtitle="TOTAL TESTS"
                 onSliceClick={handleOverallSliceClick}
+                showSegmentLabels
               />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
@@ -104,41 +105,38 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: PASSED_COLOR }} />
-              <span className="text-sm text-slate-700 dark:text-slate-300">Passed</span>
-              <span className="ml-2 text-sm font-semibold text-slate-900 dark:text-white">
-                {pass.toLocaleString()} ({passPercent}%)
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: FAILED_COLOR }} />
-              <span className="text-sm text-slate-700 dark:text-slate-300">Failed</span>
-              <span className="ml-2 text-sm font-semibold text-slate-900 dark:text-white">
-                {fail.toLocaleString()} ({failPercent}%)
-              </span>
-            </div>
+          <div className="min-w-0 grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 text-sm">
+            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: PASSED_COLOR }} />
+            <span className="text-slate-700 dark:text-slate-300">Passed</span>
+            <span className="whitespace-nowrap font-semibold text-slate-900 dark:text-white tabular-nums">
+              {pass.toLocaleString()} ({passPercent.replace('.', ',')}%)
+            </span>
+            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: FAILED_COLOR }} />
+            <span className="text-slate-700 dark:text-slate-300">Failed</span>
+            <span className="whitespace-nowrap font-semibold text-slate-900 dark:text-white tabular-nums">
+              {fail.toLocaleString()} ({failPercent.replace('.', ',')}%)
+            </span>
           </div>
         </div>
       </div>
 
       {/* Issues by category */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="mb-4">
           <h3 className="text-base font-bold text-slate-900 dark:text-white">Issues by category</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Distribution of {totalIssues.toLocaleString()} issues
           </p>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="relative h-56 w-56 shrink-0">
+        <div className="flex flex-1 flex-col items-center gap-4 2xl:flex-row 2xl:items-start 2xl:gap-8">
+          <div className="relative h-48 w-48 shrink-0 2xl:h-72 2xl:w-72">
             {defectData.length > 0 ? (
               <DashboardStyleDonutWithCenterLabel
                 data={defectData}
                 centerValue={totalIssues.toLocaleString()}
                 centerSubtitle="ISSUES"
                 onSliceClick={handleDefectSliceClick}
+                showSegmentLabels
               />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
@@ -146,15 +144,15 @@ const WeeklyExecutionWidget: React.FC<WeeklyExecutionWidgetProps> = ({
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-2 overflow-hidden">
+          <div className="min-w-0 grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 text-sm">
             {defectData.map(item => (
-              <div key={item.name} className="flex items-center gap-2 text-xs">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="truncate text-slate-700 dark:text-slate-300">{item.name}</span>
-                <span className="ml-auto whitespace-nowrap font-medium text-slate-900 dark:text-white">
-                  {item.value} ({totalIssues > 0 ? Math.round((item.value / totalIssues) * 100) : 0}%)
+              <React.Fragment key={item.name}>
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                <span className="text-slate-700 dark:text-slate-300">{item.name}</span>
+                <span className="whitespace-nowrap font-semibold text-slate-900 dark:text-white tabular-nums">
+                  {item.value} ({totalIssues > 0 ? ((item.value / totalIssues) * 100).toFixed(1).replace('.', ',') : '0,0'}%)
                 </span>
-              </div>
+              </React.Fragment>
             ))}
           </div>
         </div>

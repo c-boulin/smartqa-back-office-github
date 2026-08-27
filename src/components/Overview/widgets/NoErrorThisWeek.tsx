@@ -31,18 +31,18 @@ const NoErrorThisWeek: React.FC<NoErrorThisWeekProps> = ({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
       <h3 className="mb-4 text-base font-bold text-slate-900 dark:text-white">No error this week</h3>
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-6">
         {healthyServices.map(service => (
           <button
             key={service.key}
             type="button"
             onClick={() => handleClick(service)}
             aria-label={`View tests for ${service.label}`}
-            data-mipqa={`no-error-pill-${service.label.toLowerCase().replace(/\s+/g, '-')}`}
-            className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 transition-colors hover:border-cyan-400 hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-cyan-500 dark:hover:bg-cyan-950/30 dark:focus-visible:ring-cyan-400"
+            data-mipqa={`no-error-service-${service.label.toLowerCase().replace(/\s+/g, '-')}`}
+            className="flex items-center gap-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded-md px-1 py-0.5"
           >
-            <CheckCircle className="h-4 w-4 text-emerald-500" />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{service.label}</span>
+            <CheckCircle className="h-5 w-5 text-emerald-400" />
+            <span className="text-sm text-slate-700 dark:text-slate-300">{service.label}</span>
           </button>
         ))}
       </div>

@@ -43,9 +43,9 @@ const OverviewProjectSidebar: React.FC<OverviewProjectSidebarProps> = ({
   onSelectReposChange,
 }) => {
   return (
-    <div className="w-56 shrink-0" data-mipqa="overview-project-sidebar">
+    <div className="w-52 shrink-0 pt-1" data-mipqa="overview-project-sidebar">
       <h3 className="px-3 mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-        Repository
+        Project
       </h3>
 
       <div className="space-y-1">
@@ -55,21 +55,15 @@ const OverviewProjectSidebar: React.FC<OverviewProjectSidebarProps> = ({
 
           const baseClasses = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors';
           const stateClasses = isSelected
-            ? 'bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800'
+            ? 'bg-slate-700 dark:bg-[#1e3a5f]'
             : category.enabled
-              ? 'hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent'
-              : 'border border-transparent opacity-60 cursor-not-allowed';
+              ? 'hover:bg-slate-100 dark:hover:bg-slate-800/50'
+              : 'opacity-50 cursor-not-allowed';
 
-          const labelClasses = `text-sm font-medium truncate ${
+          const labelClasses = `text-sm font-medium ${
             isSelected
-              ? 'text-cyan-700 dark:text-cyan-300'
+              ? 'text-white'
               : 'text-slate-700 dark:text-slate-300'
-          }`;
-
-          const iconWrapClasses = `w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-            isSelected
-              ? 'bg-cyan-100 dark:bg-cyan-900/40'
-              : 'bg-slate-100 dark:bg-slate-700/60'
           }`;
 
           return (
@@ -89,8 +83,8 @@ const OverviewProjectSidebar: React.FC<OverviewProjectSidebarProps> = ({
               }}
               className={`${baseClasses} ${stateClasses}`}
             >
-              <div className={iconWrapClasses}>
-                <Icon className="w-4 h-4 text-[#01ADD8]" />
+              <div className="w-8 h-8 rounded-full bg-[#01ADD8] flex items-center justify-center shrink-0">
+                <Icon className="w-4 h-4 text-white" />
               </div>
               <span className={labelClasses}>{category.label}</span>
             </button>
