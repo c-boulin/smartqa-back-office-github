@@ -1,9 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import type { OverviewExecutionRow } from '../../../services/overviewWidgetsApi';
 import { ServiceStatCard, StatusBoard, StatusGroup } from './dashboard';
-import { navigateToFilteredTests } from './navigateToFilteredTests';
 
 interface ServiceCountryExecutionWidgetProps {
   executionByService: OverviewExecutionRow[];
@@ -13,8 +11,6 @@ interface ServiceCountryExecutionWidgetProps {
   windowStartTo: string;
 }
 
-type ScopeView = 'services' | 'countries' | 'serviceByCountry';
-
 function formatPassRateLabel(passRate: number | null | undefined): string {
   if (passRate == null || Number.isNaN(passRate)) {
     return '\u2014';
@@ -22,192 +18,167 @@ function formatPassRateLabel(passRate: number | null | undefined): string {
   return `${passRate}%`;
 }
 
-const FAILED_LEGEND_RED_SHADES = ['bg-red-950', 'bg-red-700', 'bg-red-500', 'bg-red-300'] as const;
-
-function FailedPassRateLegendSwatch(): React.ReactElement {
-  return (
-    <div className="flex h-1.5 w-14 shrink-0 overflow-hidden rounded-full" aria-hidden>
-      {FAILED_LEGEND_RED_SHADES.map((className, i) => (
-        <span key={i} className={`min-w-0 flex-1 ${className}`} />
-      ))}
-    </div>
-  );
-}
-
 const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps> = ({
   executionByService,
-  executionByCountry,
   executionByCountryByService,
-  windowStartFrom,
-  windowStartTo,
 }) => {
-  const navigate = useNavigate();
-  const [scope, setScope] = useState<ScopeView>('services');
-  const [selectedServiceKey, setSelectedServiceKey] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState<{ key: string; label: string } | null>(null);
 
-  const selectedServiceLabel = useMemo(() => {
-    if (selectedServiceKey === null) return '';
-    return executionByService.find(s => s.key === selectedServiceKey)?.label ?? '';
-  }, [executionByService, selectedServiceKey]);
+  const failed = useMemo(() => executionByService.filter(r => r.band === 'failed'), [executionByService]);
+  const passed = useMemo(() => executionByService.filter(r => r.band === 'passed'), [executionByService]);
 
-  const rows: OverviewExecutionRow[] = useMemo(() => {
-    if (scope === 'countries') return executionByCountry;
-    if (scope === 'serviceByCountry' && selectedServiceKey !== null) {
-      return executionByCountryByService[selectedServiceKey] ?? [];
-    }
-    return executionByService;
-  }, [scope, selectedServiceKey, executionByService, executionByCountry, executionByCountryByService]);
+  const countryRows = useMemo(() => {
+    if (!selectedService) return [];
+    return executionByCountryByService[selectedService.key] ?? [];
+  }, [selectedService, executionByCountryByService]);
 
-  const failed = rows.filter(r => r.band === 'failed');
-  const passed = rows.filter(r => r.band === 'passed');
+  const countryFailed = useMemo(() => countryRows.filter(r => r.band === 'failed'), [countryRows]);
+  const countryPassed = useMemo(() => countryRows.filter(r => r.band === 'passed'), [countryRows]);
 
-  const goToServices = (): void => {
-    setScope('services');
-    setSelectedServiceKey(null);
+  const handleServiceClick = (row: OverviewExecutionRow) => {
+    setSelectedService({ key: row.key, label: row.label });
   };
 
-  const goToCountries = (): void => {
-    setScope('countries');
-    setSelectedServiceKey(null);
-  };
-
-  const openServiceByCountry = (serviceKey: string): void => {
-    setSelectedServiceKey(serviceKey);
-    setScope('serviceByCountry');
-  };
-
-  const handleViewTests = (row: OverviewExecutionRow): void => {
-    navigateToFilteredTests(navigate, {
-      projectIds: row.projectIds,
-      startFrom: windowStartFrom,
-      startTo: windowStartTo,
-    });
+  const handleBack = () => {
+    setSelectedService(null);
   };
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
       {/* Section header */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">Service health By Country</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Last 7 days component health check</p>
+        <div className="flex items-center gap-3">
+          {selectedService && (
+            <button
+              onClick={handleBack}
+              className="flex items-center justify-center rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+              aria-label="Back to services"
+              data-mipqa="service-health-back-button"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              {selectedService
+                ? `Service health By Country \u2014 ${selectedService.label}`
+                : 'Service health By Service'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {selectedService
+                ? 'Country breakdown for this service'
+                : 'Last 7 days component health check'}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-5" role="group" aria-label="Pass rate legend">
+        <div className="flex flex-col gap-1.5" role="group" aria-label="Pass rate legend">
           <div className="flex items-center gap-2">
-            <FailedPassRateLegendSwatch />
-            <span className="text-xs text-slate-600 dark:text-slate-400">Need attention (less then 99%)</span>
+            <span className="inline-block h-1.5 w-10 shrink-0 rounded-full bg-red-500 dark:bg-red-400" aria-hidden />
+            <span className="text-xs text-slate-600 dark:text-slate-400">Need attention (less than 99%)</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="inline-block h-1.5 w-14 shrink-0 rounded-full bg-green-500" aria-hidden />
+            <span className="inline-block h-1.5 w-10 shrink-0 rounded-full bg-green-500 dark:bg-green-400" aria-hidden />
             <span className="text-xs text-slate-600 dark:text-slate-400">Healthy (100%)</span>
           </div>
         </div>
       </div>
 
-      {/* Scope navigation */}
-      <div className="mb-5">
-        {scope === 'serviceByCountry' ? (
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <button
-              type="button"
-              onClick={goToServices}
-              className="flex items-center gap-1 text-xs font-medium text-cyan-500 hover:text-cyan-400 transition-colors"
-              data-mipqa="back-to-services-btn"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-              Back to services
-            </button>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">
-              {selectedServiceLabel} - Country breakdown
+      {/* Service view (default) */}
+      {!selectedService && (
+        <>
+          {executionByService.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+              No execution data for this view.
             </p>
-          </div>
-        ) : (
-          <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label="Execution scope">
-            {scope === 'services' ? (
-              <span className="font-medium text-cyan-600 dark:text-cyan-400">service</span>
-            ) : (
-              <button
-                type="button"
-                onClick={goToServices}
-                className="font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-white"
-              >
-                service
-              </button>
-            )}
-            <span className="select-none text-slate-400 dark:text-slate-500" aria-hidden>
-              &gt;
-            </span>
-            {scope === 'services' ? (
-              <button
-                type="button"
-                onClick={goToCountries}
-                className="font-medium text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
-              >
-                country
-              </button>
-            ) : (
-              <span className="font-medium text-cyan-600 dark:text-cyan-400">country</span>
-            )}
-          </nav>
-        )}
-      </div>
+          ) : (
+            <StatusBoard>
+              <StatusGroup title="Failed" count={failed.length} status="failed">
+                {failed.length === 0 ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">None</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {failed.map(row => (
+                      <ServiceStatCard
+                        key={`f-${row.key}`}
+                        serviceName={row.label}
+                        passingRate={formatPassRateLabel(row.passRate)}
+                        testCases={row.pass + row.fail}
+                        status="failed"
+                        onClick={() => handleServiceClick(row)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </StatusGroup>
+              <StatusGroup title="Passed" count={passed.length} status="passed">
+                {passed.length === 0 ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">None</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {passed.map(row => (
+                      <ServiceStatCard
+                        key={`p-${row.key}`}
+                        serviceName={row.label}
+                        passingRate={formatPassRateLabel(row.passRate)}
+                        testCases={row.pass + row.fail}
+                        status="passed"
+                        onClick={() => handleServiceClick(row)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </StatusGroup>
+            </StatusBoard>
+          )}
+        </>
+      )}
 
-      {/* Cards */}
-      {rows.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-          No execution data for this view.
-        </p>
-      ) : (
-        <StatusBoard>
-          <StatusGroup
-            title={scope === 'serviceByCountry' ? 'Failed countries' : 'Failed'}
-            count={failed.length}
-            status="failed"
-          >
-            {failed.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">None</p>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {failed.map(row => (
-                  <ServiceStatCard
-                    key={`f-${scope}-${row.key}`}
-                    serviceName={row.label}
-                    passingRate={formatPassRateLabel(row.passRate)}
-                    passRateValue={row.passRate}
-                    testCases={row.pass + row.fail}
-                    status="failed"
-                    onClick={scope === 'services' ? () => openServiceByCountry(row.key) : undefined}
-                    onViewLaunches={() => handleViewTests(row)}
-                  />
-                ))}
-              </div>
-            )}
-          </StatusGroup>
-          <StatusGroup
-            title={scope === 'serviceByCountry' ? 'Healthy countries' : 'Passed'}
-            count={passed.length}
-            status="passed"
-          >
-            {passed.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">None</p>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {passed.map(row => (
-                  <ServiceStatCard
-                    key={`p-${scope}-${row.key}`}
-                    serviceName={row.label}
-                    passingRate={formatPassRateLabel(row.passRate)}
-                    passRateValue={row.passRate}
-                    testCases={row.pass + row.fail}
-                    status="passed"
-                    onClick={scope === 'services' ? () => openServiceByCountry(row.key) : undefined}
-                    onViewLaunches={() => handleViewTests(row)}
-                  />
-                ))}
-              </div>
-            )}
-          </StatusGroup>
-        </StatusBoard>
+      {/* Country drill-down view */}
+      {selectedService && (
+        <>
+          {countryRows.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+              No country data available for this service.
+            </p>
+          ) : (
+            <StatusBoard>
+              <StatusGroup title="Failed" count={countryFailed.length} status="failed">
+                {countryFailed.length === 0 ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">None</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {countryFailed.map(row => (
+                      <ServiceStatCard
+                        key={`cf-${row.key}`}
+                        serviceName={row.label}
+                        passingRate={formatPassRateLabel(row.passRate)}
+                        testCases={row.pass + row.fail}
+                        status="failed"
+                      />
+                    ))}
+                  </div>
+                )}
+              </StatusGroup>
+              <StatusGroup title="Passed" count={countryPassed.length} status="passed">
+                {countryPassed.length === 0 ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">None</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {countryPassed.map(row => (
+                      <ServiceStatCard
+                        key={`cp-${row.key}`}
+                        serviceName={row.label}
+                        passingRate={formatPassRateLabel(row.passRate)}
+                        testCases={row.pass + row.fail}
+                        status="passed"
+                      />
+                    ))}
+                  </div>
+                )}
+              </StatusGroup>
+            </StatusBoard>
+          )}
+        </>
       )}
     </div>
   );

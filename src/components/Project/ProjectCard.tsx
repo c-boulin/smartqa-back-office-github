@@ -90,7 +90,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
 }) => (
   <div
     onClick={onClick}
-    className="group relative flex flex-col bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-2xl overflow-hidden cursor-pointer hover:border-cyan-500/40 dark:hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/5 transition-all duration-200"
+    className="group relative flex flex-col bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-2xl cursor-pointer hover:border-cyan-500/40 dark:hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/5 transition-all duration-200"
   >
     {/* Actions row: category badge on the left, buttons on the right */}
     <div className="flex items-center justify-between px-5 pt-4 pb-0" onClick={(e) => e.stopPropagation()}>

@@ -93,7 +93,7 @@ const ProjectTitle: React.FC<ProjectTitleProps> = ({ project, nameClassName = ''
     const metaNodes: React.ReactNode[] = [];
     if (!hideCategory && category) {
       metaNodes.push(
-        <span key="category" className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold text-white rounded-md shrink-0 ${categoryColor(category)}`}>
+        <span key="category" className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold text-white rounded-md ${categoryColor(category)}`}>
           {category}
         </span>
       );
@@ -101,7 +101,7 @@ const ProjectTitle: React.FC<ProjectTitleProps> = ({ project, nameClassName = ''
     if (country) {
       if (metaNodes.length > 0) metaNodes.push(<Separator key="sep-country" />);
       metaNodes.push(
-        <span key="country" className="text-xs font-semibold text-slate-900 dark:text-white uppercase shrink-0">
+        <span key="country" className="text-xs font-semibold text-slate-900 dark:text-white uppercase">
           {country}
         </span>
       );
@@ -110,12 +110,11 @@ const ProjectTitle: React.FC<ProjectTitleProps> = ({ project, nameClassName = ''
     const label = project_type && !categoryAndTitleOnly ? `${name} ${project_type}` : name;
 
     return (
-      <span className="flex items-center gap-x-1.5 overflow-hidden w-full" title={fullTitle}>
+      <span className="block w-full" title={fullTitle}>
         {metaNodes.length > 0 && (
-          <span className="flex items-center gap-x-1.5 shrink-0">{metaNodes}</span>
+          <span className="inline-flex items-center gap-x-1.5 mr-1.5">{metaNodes}</span>
         )}
-        {metaNodes.length > 0 && <Separator key="sep-name" />}
-        <span className={`font-semibold text-slate-900 dark:text-white leading-tight truncate min-w-0 ${nameClassName}`}>
+        <span className={`font-semibold text-slate-900 dark:text-white leading-snug ${nameClassName}`} style={{ overflowWrap: 'anywhere' }}>
           {label}
         </span>
       </span>

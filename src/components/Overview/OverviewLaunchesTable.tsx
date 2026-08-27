@@ -48,6 +48,7 @@ import { DefectSelectionModal } from './DefectSelectionModal';
 import { fetchDefectGroups, type DefectGroupData, type DefectTypeData } from '../../services/defectGroupsApi';
 import { DEFECT_CHART_TYPES } from '../../constants/defectChartTypes';
 import { exportOverviewLaunches, type OverviewExporter } from '../../services/overviewExportService';
+import { OverviewLaunchesCompactGrid } from './OverviewLaunchesCompactGrid';
 
 /**
  * Suite list row opens either test log or suite-keyword log (ReportPortal: every name is a link).
@@ -312,6 +313,12 @@ function detectStartTimePresetFromSearch(startFrom: string | null, startTo: stri
   };
 }
 
+
+function splitLaunchTitle(title: string): { name: string; pipeline: string | null } {
+  const match = title.match(/^(.*?)\s+(#\d+)$/);
+  if (match) return { name: match[1], pipeline: match[2] };
+  return { name: title, pipeline: null };
+}
 
 function launchHistoryButtonLabel(row: OverviewLaunchRow): string {
   const match = row.title.match(/#(\d+)/);
@@ -743,6 +750,7 @@ interface LaunchSortableThProps {
   onSort: (c: OverviewLaunchesSortColumn) => void;
   align?: 'left' | 'right';
   thClassName?: string;
+  compact?: boolean;
 }
 
 /**
@@ -756,6 +764,7 @@ function LaunchSortableTh({
   onSort,
   align = 'left',
   thClassName = '',
+  compact = false,
 }: LaunchSortableThProps): React.ReactElement {
   const active = activeColumn === column;
   const SortIcon = active && direction === 'asc' ? ArrowUp : ArrowDown;
@@ -768,14 +777,16 @@ function LaunchSortableTh({
       <button
         type="button"
         onClick={() => onSort(column)}
-        className={`group inline-flex max-w-full items-center gap-1 select-none text-xs font-semibold uppercase tracking-wide hover:text-cyan-600 dark:hover:text-cyan-400 ${
-          align === 'right' ? 'ml-auto w-full justify-end text-right' : 'text-left'
+        className={`group w-full select-none font-semibold uppercase hover:text-cyan-600 dark:hover:text-cyan-400 ${
+          compact ? 'text-[10px] tracking-normal leading-tight' : 'text-xs tracking-wide'
         } ${active ? 'text-teal-600 dark:text-teal-400' : 'text-slate-600 dark:text-slate-400'}`}
+        style={{ display: 'grid', gridTemplateColumns: compact ? 'minmax(0,1fr) 0.75rem' : 'minmax(0,1fr) 0.875rem', alignItems: 'center', columnGap: '0.25rem', width: '100%', minWidth: 0, overflow: 'hidden' }}
         aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
       >
-        <span className={`min-w-0 ${active ? 'font-semibold' : ''}`}>{label}</span>
+        <span className={`min-w-0 max-w-full overflow-hidden ${align === 'right' ? 'text-right' : 'text-left'} ${active ? 'font-semibold' : ''}`} style={compact ? { lineHeight: '1.1' } : undefined}>{label}</span>
         <SortIcon
-          className={`h-3.5 w-3.5 shrink-0 ${active ? 'opacity-90' : 'opacity-40 group-hover:opacity-70'}`}
+          className={compact ? 'h-3 w-3 min-w-[0.75rem] shrink-0' : `h-3.5 w-3.5 ${active ? 'opacity-90' : 'opacity-40 group-hover:opacity-70'}`}
+          style={compact ? { gridColumn: 2, justifySelf: 'end' } : undefined}
           aria-hidden
         />
       </button>
@@ -922,14 +933,15 @@ function SuiteListSortableTh({
       <button
         type="button"
         onClick={() => onSort(column)}
-        className={`group inline-flex max-w-full items-center gap-1 select-none text-xs font-semibold uppercase tracking-wide hover:text-cyan-600 dark:hover:text-cyan-400 ${
-          align === 'right' ? 'ml-auto w-full justify-end text-right' : 'text-left'
-        } ${active ? 'text-teal-600 dark:text-teal-400' : 'text-slate-600 dark:text-slate-400'}`}
+        className={`group w-full select-none text-xs font-semibold uppercase tracking-wide hover:text-cyan-600 dark:hover:text-cyan-400 ${
+          active ? 'text-teal-600 dark:text-teal-400' : 'text-slate-600 dark:text-slate-400'
+        }`}
+        style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 0.875rem', alignItems: 'center', columnGap: '0.25rem', width: '100%' }}
         aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
       >
-        <span className={`min-w-0 ${active ? 'font-semibold' : ''}`}>{label}</span>
+        <span className={`min-w-0 ${align === 'right' ? 'text-right' : 'text-left'} ${active ? 'font-semibold' : ''}`}>{label}</span>
         <SortIcon
-          className={`h-3.5 w-3.5 shrink-0 ${active ? 'opacity-90' : 'opacity-40 group-hover:opacity-70'}`}
+          className={`h-3.5 w-3.5 ${active ? 'opacity-90' : 'opacity-40 group-hover:opacity-70'}`}
           aria-hidden
         />
       </button>
@@ -2830,7 +2842,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
           </div>
         </div>
       ) : null}
-      <div className="overflow-x-auto rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+      <div className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         {inTestLogView && drillLaunch !== null && testLogTarget !== null ? (
           <OverviewTestLogView
             testDisplayName={testLogPayload?.testName ?? testLogTarget.displayName}
@@ -2885,14 +2897,14 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             onDefectApplied={(overviewTestId, applied) => handleDefectApplied([{ overviewTestId, defect: applied }])}
           />
         ) : inSuiteListView ? (
-          <table className="w-full min-w-[900px] table-fixed text-sm">
+          <table className="w-full table-fixed text-sm">
             <colgroup>
-              <col className="w-10" />
-              <col className="w-[11%]" />
-              <col style={{ width: '34%' }} />
-              <col className="w-[13%]" />
-              <col className="w-[14%]" />
-              <col className="w-[12%]" />
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '43%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '15%' }} />
             </colgroup>
             <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
               <tr className="text-left">
@@ -2925,7 +2937,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                   direction={suiteSort.direction}
                   onSort={toggleSuiteSort}
                   align="left"
-                  thClassName="pr-2"
+                  thClassName="pr-2 whitespace-nowrap"
                 />
                 <SuiteListSortableTh
                   column="name"
@@ -3005,7 +3017,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                     <td className="py-3 pr-2 align-top text-slate-700 dark:text-slate-300 whitespace-nowrap">
                       {item.methodType}
                     </td>
-                    <td className="min-w-0 break-words py-3 pr-4 align-top">
+                    <td className="break-words py-3 pr-4 align-top">
                       {item.overviewTestId !== null ? (
                         <button
                           type="button"
@@ -3116,14 +3128,14 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                         </button>
                       ) : null}
                     </td>
-                    <td className="whitespace-nowrap py-3 px-2 align-top text-slate-700 dark:text-slate-300">
+                    <td className="py-3 px-2 align-top text-slate-700 dark:text-slate-300">
                       <span className="inline-flex items-center gap-1">
                         {item.statusLabel !== '—' ? item.statusLabel.toUpperCase() : '—'}
                         <ChevronDown className="h-3.5 w-3.5 opacity-60" aria-hidden />
                       </span>
                     </td>
                     <td
-                      className="cursor-default whitespace-nowrap py-3 px-2 align-top text-slate-700 dark:text-slate-300"
+                      className="cursor-default truncate py-3 px-2 align-top text-slate-700 dark:text-slate-300"
                       onMouseEnter={() => {
                         if (
                           item.startTimeRelative !== '\u2014' &&
@@ -3187,24 +3199,22 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             </tbody>
           </table>
         ) : (
-          <table className="w-full min-w-[1080px] table-fixed text-sm">
-            {/*
-              NAME column width (~half of previous 46% share); other columns absorb the rest.
-            */}
+          <>
+          <div className="launches-table-wrapper">
+          <table className="w-full table-fixed text-sm">
             <colgroup>
-              <col className="w-10" />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '9.25rem' }} />
-              <col style={{ width: '9rem' }} />
-              <col className="w-14" />
-              <col className="w-14" />
-              <col className="w-14" />
-              <col className="w-14" />
-              <col className="w-[4.5rem]" />
-              <col className="w-[4.5rem]" />
-              <col className="w-[4.5rem]" />
-              <col className="w-24" />
-              <col className="w-10" />
+              <col style={{ width: '3%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
             </colgroup>
             <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
               <tr className="text-left">
@@ -3228,10 +3238,10 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                   thClassName="px-2 whitespace-nowrap"
                 />
                 <th
-                  className="py-3 px-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400"
+                  className="py-3 px-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400 align-bottom"
                   scope="col"
                 >
-                  Ran By
+                  <span className="whitespace-nowrap">Ran By</span>
                 </th>
                 <LaunchSortableTh
                   column="total"
@@ -3334,7 +3344,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {!loading && rows.length === 0 && !error && drillLaunch === null ? (
                 <tr>
-                  <td colSpan={13} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={12} className="py-8 text-center text-slate-500 dark:text-slate-400">
                     No launches with overview data yet.
                   </td>
                 </tr>
@@ -3344,21 +3354,24 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                   key={row.id}
                   className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
                 >
-                  <td className="py-3 pl-4 pr-2 align-top text-slate-400">
-                    <span className="inline-flex p-1" aria-hidden="true">
+                  <td className="overflow-hidden py-3 pl-3 pr-1 align-top text-slate-400">
+                    <span className="inline-flex p-0.5" aria-hidden="true">
                       <Menu className="h-4 w-4" />
                     </span>
                   </td>
-                  <td className="min-w-0 break-words py-3 pr-4 align-top">
-                    {row.suiteDrillDown === true ? (
+                  <td className="py-3 pr-4 align-top overflow-hidden">
+                    {(() => {
+                      const { name: titleName, pipeline: titlePipeline } = splitLaunchTitle(row.title);
+                      return row.suiteDrillDown === true ? (
                       <button
                         type="button"
                         onClick={() => {
                           void openSuiteListView();
                         }}
-                        className="text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline [overflow-wrap:anywhere]"
+                        className="block w-full min-w-0 max-w-full overflow-hidden text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
                       >
-                        {row.title}
+                        <span className="block whitespace-nowrap">{titleName}</span>
+                        {titlePipeline && <span className="mt-0.5 block whitespace-nowrap">{titlePipeline}</span>}
                       </button>
                     ) : (
                       <button
@@ -3369,11 +3382,13 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                             testRunExecutionId: Number(row.id),
                           })
                         }
-                        className="text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline [overflow-wrap:anywhere]"
+                        className="block w-full min-w-0 max-w-full overflow-hidden text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
                       >
-                        {row.title}
+                        <span className="block whitespace-nowrap">{titleName}</span>
+                        {titlePipeline && <span className="mt-0.5 block whitespace-nowrap">{titlePipeline}</span>}
                       </button>
-                    )}
+                    );
+                    })()}
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-400">
                       <span className="inline-flex items-center gap-1">
                         <Clock className="h-3 w-3 shrink-0" />
@@ -3400,7 +3415,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                     ) : null}
                   </td>
                   <td
-                    className="cursor-default whitespace-nowrap py-3 px-2 align-top text-slate-700 dark:text-slate-300"
+                    className="cursor-default py-3 px-2 align-top text-slate-700 dark:text-slate-300 whitespace-normal [overflow-wrap:anywhere]"
                     onMouseEnter={() => {
                       if (row.startTimeRelative !== '\u2014' && row.startTimeRelative !== '-') {
                         setHoveredStartRowId(row.id);
@@ -3416,14 +3431,14 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                     {row.suiteDrillDown === true ? (
                       <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>
                     ) : row.runnedByLabel !== '' ? (
-                      <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 max-w-full">
                         <User className="h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
-                        <span className="break-words [overflow-wrap:anywhere]">{row.runnedByLabel}</span>
+                        <span className="whitespace-normal [overflow-wrap:anywhere]">{row.runnedByLabel}</span>
                       </span>
                     ) : row.createdByUserId === null ? (
                       <span className="inline-flex items-center gap-1.5">
                         <User className="h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
-                        <span className="break-words [overflow-wrap:anywhere]">Cron</span>
+                        <span className="whitespace-nowrap">Cron</span>
                       </span>
                     ) : (
                       <span className="text-slate-400 dark:text-slate-600">{'\u2014'}</span>
@@ -3469,10 +3484,23 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
               ))}
             </tbody>
           </table>
+          </div>
+          <OverviewLaunchesCompactGrid
+            rows={displayRows}
+            launchSort={launchSort}
+            toggleLaunchSort={toggleLaunchSort}
+            hoveredStartRowId={hoveredStartRowId}
+            setHoveredStartRowId={setHoveredStartRowId}
+            startTimeHoverLabel={startTimeHoverLabel}
+            navigateToLaunch={(row) => navigateToLaunchesRoute({ kind: 'launch', testRunExecutionId: Number(row.id) })}
+            openSuiteListView={() => { void openSuiteListView(); }}
+            defectTypesForColumn={defectTypesForColumn}
+          />
+          </>
         )}
       </div>
       {meta && !error && drillLaunch === null ? (
-        <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 bg-white pt-4 text-sm dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 box-border w-full rounded-md border border-slate-200 bg-white px-4 pb-4 pt-4 text-sm dark:border-slate-700 dark:bg-slate-800 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="shrink-0 text-slate-500 dark:text-slate-400">
             {meta.total === 0
               ? '0 of 0'
@@ -3565,7 +3593,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         </div>
       ) : null}
       {drillLaunch !== null && !inSuiteListView ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+        <div className="mt-4 box-border w-full rounded-md border border-slate-200 bg-white px-4 pb-4 pt-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2">
           <p>1 – 1 of 1</p>
           <p>
             <span className="font-semibold text-teal-600 dark:text-teal-400">{perPage}</span>{' '}
@@ -3574,7 +3602,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         </div>
       ) : null}
       {inSuiteListView && !suiteItemsError && !inTestLogView ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+        <div className="mt-4 box-border w-full rounded-md border border-slate-200 bg-white px-4 pb-4 pt-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2">
           <p>
             {(() => {
               const total = suiteListItems?.length ?? 0;
