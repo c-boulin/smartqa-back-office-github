@@ -117,13 +117,13 @@ const Overview: React.FC = () => {
 
   return (
     <>
-      <div className="flex gap-6">
+      <div className="flex -ml-6 -mt-6">
         <OverviewProjectSidebar
           selectedRepos={selectedRepos}
           onSelectReposChange={handleSelectReposChange}
         />
 
-        <div className="flex-1 min-w-0 flex flex-col space-y-6" style={{ containerType: 'inline-size', containerName: 'overview-main' }}>
+        <div className="flex-1 min-w-0 flex flex-col space-y-6 p-6" style={{ containerType: 'inline-size', containerName: 'overview-main' }}>
           <div>
             <h1 data-mipqa="overview-title" className="text-3xl font-bold text-slate-900 dark:text-white">Overview</h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Scheduled Automation tests - Last 7 days</p>
@@ -200,10 +200,10 @@ const Overview: React.FC = () => {
             </div>
           </div>
 
-          {/* Content container — rounded box starts here, below the tabs */}
-          <div className="rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          {/* Content — no wrapper box, sits directly on page background */}
+          <div>
             {activeTab === 'widgets' && (
-              <div className="p-6 bg-slate-50 dark:bg-slate-900/40">
+              <div className="pt-2">
                 <OverviewWidgetsPanel
                   gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
                   registerExporter={activeTab === 'widgets' ? registerExporter : undefined}
@@ -211,7 +211,7 @@ const Overview: React.FC = () => {
               </div>
             )}
             {activeTab === 'launches' && (
-              <div className="p-6 min-h-[12rem] bg-slate-50 dark:bg-slate-900/40">
+              <div className="pt-2 min-h-[12rem]">
                 <OverviewLaunchesTable
                   gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
                   registerExporter={activeTab === 'launches' ? registerExporter : undefined}
@@ -219,7 +219,7 @@ const Overview: React.FC = () => {
               </div>
             )}
             {activeTab === 'tests' && (
-              <div className="p-6 min-h-[12rem] bg-slate-50 dark:bg-slate-900/40">
+              <div className="pt-2 min-h-[12rem]">
                 <OverviewTestsTable
                   gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
                 />
