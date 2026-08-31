@@ -413,6 +413,7 @@ export interface OverviewLaunchSuiteItemApiRow {
   startTimeDisplay: string;
   startTimeRaw: string | null;
   defectType: string | null;
+  defectComment?: string | null;
   /** Error messages from failed log entries; null when not applicable. */
   errorMessages: string[] | null;
   /** `overview_tests.test_id` when this row is a test; otherwise null. */
@@ -589,6 +590,7 @@ export interface OverviewTestApiRow {
   startTimeDisplay: string;
   startTimeRaw: string | null;
   defectType: string | null;
+  defectComment?: string | null;
   errorMessages: string[] | null;
   overviewTestId: number | null;
   /** Always null for individual test rows; kept for parity with suite-items. */
