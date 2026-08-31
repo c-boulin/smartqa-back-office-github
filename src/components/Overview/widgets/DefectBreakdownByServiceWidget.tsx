@@ -305,7 +305,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
               <span></span>
             </div>
             {/* Service rows */}
-            <div className="flex-1 overflow-y-auto space-y-1 px-2 pb-2 sidebar-project-scrollbar">
+            <div className="flex-1 overflow-y-auto max-h-[22rem] space-y-1 px-2 pb-2 sidebar-project-scrollbar">
             {summaries.map((s, idx) => {
               const isSelected = idx === selectedIndex;
               const handleSelect = (): void => setSelectedIndex(idx);

@@ -43,8 +43,11 @@ const OverviewProjectSidebar: React.FC<OverviewProjectSidebarProps> = ({
   onSelectReposChange,
 }) => {
   return (
-    <div className="w-52 shrink-0 pt-1" data-mipqa="overview-project-sidebar">
-      <h3 className="px-3 mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+    <div
+      className="w-52 shrink-0 min-h-[calc(100vh-3.5rem)] bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 py-5 px-3"
+      data-mipqa="overview-project-sidebar"
+    >
+      <h3 className="px-1 mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
         Project
       </h3>
 
