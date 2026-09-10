@@ -852,11 +852,11 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
             </div>
           ) : (
             <div className={`overflow-x-auto ${loading ? 'pointer-events-none select-none opacity-60' : ''}`}>
-              <table className="w-full min-w-[720px] table-fixed text-sm">
+              <table className="w-full min-w-[720px] text-sm">
                 <colgroup>
-                  <col style={{ width: '58%' }} />
-                  <col className="w-[18%]" />
-                  <col className="w-[24%]" />
+                  <col style={{ minWidth: '50%' }} />
+                  <col style={{ minWidth: '100px' }} />
+                  <col style={{ minWidth: '140px' }} />
                 </colgroup>
                 <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
                   <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
