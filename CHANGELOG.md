@@ -1,3 +1,9 @@
+## [1.28.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.27.1...1.28.0) (2026-09-14)
+
+### Features
+
+* change for jira task 1082 ([a7b091e](https://gitlab.dvtech.io/qaautomation/services/back-office/-/commit/a7b091ede0c50556af7a1f182d8d03665357bc6e))
+
 ## [1.27.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.26.0...1.27.0) (2026-08-28)
 
 ### Features
