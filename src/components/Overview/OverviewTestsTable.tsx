@@ -95,7 +95,6 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
 
   const [defectTypes, setDefectTypes] = useState<OverviewDefectType[]>([]);
   const [defectGroups, setDefectGroups] = useState<DefectGroupData[]>([]);
-  const [expandedErrorRows, setExpandedErrorRows] = useState<Set<string>>(new Set());
   const [hoveredStartRowKey, setHoveredStartRowKey] = useState<string | null>(null);
   const [selectedTestIds, setSelectedTestIds] = useState<Set<number>>(new Set());
   const [defectModalTarget, setDefectModalTarget] = useState<Array<{
@@ -496,22 +495,9 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
                             className="mt-1.5 block w-full text-left"
                             data-mipqa="overview-tests-error-link"
                           >
-                            {expandedErrorRows.has(rowKey) ? (
-                              <div className="flex flex-col gap-0.5">
-                                {row.errorMessages.map((msg, i) => (
-                                  <p
-                                    key={i}
-                                    className="text-xs text-red-700 dark:text-red-300 font-mono [overflow-wrap:anywhere]"
-                                  >
-                                    {msg}
-                                  </p>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="truncate text-xs text-red-700 dark:text-red-300 font-mono">
-                                {row.errorMessages[0]}
-                              </p>
-                            )}
+                            <p className="truncate text-xs text-red-700 dark:text-red-300 font-mono">
+                              {row.errorMessages[0]}
+                            </p>
                           </Link>
                         ) : null}
                       </td>

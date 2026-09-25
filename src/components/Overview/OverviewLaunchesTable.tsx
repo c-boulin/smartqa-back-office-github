@@ -1002,7 +1002,6 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const [testLogPayload, setTestLogPayload] = useState<OverviewTestLogItemsResponse | null>(null);
   const [testLogLoading, setTestLogLoading] = useState(false);
   const [testLogError, setTestLogError] = useState<string | null>(null);
-  const [expandedErrorRows, setExpandedErrorRows] = useState<Set<string>>(new Set());
   const [historyAnchorLaunch, setHistoryAnchorLaunch] = useState<OverviewLaunchRow | null>(null);
   const [historyAnchorTarget, setHistoryAnchorTarget] = useState<OverviewSuiteListLogTarget | null>(null);
   const [historyLaunches, setHistoryLaunches] = useState<HistoryLaunchEntry[]>([]);
@@ -3117,36 +3116,49 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                         </span>
                       </div>
                       {isFailed && item.errorMessages != null && item.errorMessages.length > 0 ? (
-                        <button
-                          type="button"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setExpandedErrorRows(prev => {
-                              const next = new Set(prev);
-                              if (next.has(rowKey)) {
-                                next.delete(rowKey);
-                              } else {
-                                next.add(rowKey);
-                              }
-                              return next;
-                            });
-                          }}
-                          className="mt-1.5 block w-full text-left"
-                        >
-                          {expandedErrorRows.has(rowKey) ? (
-                            <div className="flex flex-col gap-0.5">
-                              {item.errorMessages.map((msg, i) => (
-                                <p key={i} className="text-xs text-red-700 dark:text-red-300 font-mono [overflow-wrap:anywhere]">
-                                  {msg}
-                                </p>
-                              ))}
-                            </div>
-                          ) : (
+                        item.overviewTestId !== null && drillLaunch !== null ? (
+                          <Link
+                            to={`/overview/launches/${drillLaunch.id}/test/${item.overviewTestId}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+                              e.preventDefault();
+                              const nextTarget: OverviewSuiteListLogTarget = {
+                                kind: 'test',
+                                overviewTestId: item.overviewTestId!,
+                                displayName: item.name,
+                                methodType: item.methodType,
+                                statusLabel: item.statusLabel,
+                                statusBand: item.statusBand,
+                                startTimeRelative: item.startTimeRelative,
+                                startTimeDisplay: item.startTimeDisplay,
+                                startTimeRaw: item.startTimeRaw,
+                                durationLabel: item.durationLabel,
+                                suiteSourceRelative: item.suiteSourceRelative ?? null,
+                                overviewTestLine: item.overviewTestLine ?? null,
+                                description: item.description ?? null,
+                              };
+                              historyLaunchTargetCacheRef.current = new Map([[drillLaunch.id, nextTarget]]);
+                              navigateToLaunchesRoute({
+                                kind: 'test',
+                                testRunExecutionId: Number(drillLaunch.id),
+                                overviewTestId: item.overviewTestId!,
+                              }, false, null);
+                            }}
+                            className="mt-1.5 block w-full text-left"
+                            data-mipqa="overview-suite-error-link"
+                          >
                             <p className="truncate text-xs text-red-700 dark:text-red-300 font-mono">
                               {item.errorMessages[0]}
                             </p>
-                          )}
-                        </button>
+                          </Link>
+                        ) : (
+                          <div className="mt-1.5">
+                            <p className="truncate text-xs text-red-700 dark:text-red-300 font-mono">
+                              {item.errorMessages[0]}
+                            </p>
+                          </div>
+                        )
                       ) : null}
                     </td>
                     <td className="py-3 px-2 align-top text-slate-700 dark:text-slate-300">
