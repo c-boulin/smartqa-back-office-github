@@ -38,6 +38,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filtered: Suggestion[] = value.trim().length > 0
     ? suggestions.filter(s => {
@@ -53,6 +54,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   const showDropdown = open && filtered.length > 0;
 
   const commit = useCallback((suggestion: Suggestion) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     onChange(suggestion.label);
     if (onSelect) {
       onSelect(suggestion);
@@ -64,15 +66,22 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   }, [onChange, onSearch, onSelect]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
+    const next = e.target.value;
+    onChange(next);
     setOpen(true);
     setActiveIndex(-1);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      onSearch(next);
+    }, 300);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showDropdown) {
       if (e.key === 'Enter') {
         e.preventDefault();
+        if (debounceRef.current) clearTimeout(debounceRef.current);
         onSearch(value);
         setOpen(false);
       }
@@ -86,6 +95,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
       setActiveIndex(i => Math.max(i - 1, -1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       if (activeIndex >= 0) {
         commit(filtered[activeIndex]);
       } else {
@@ -99,6 +109,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   };
 
   const handleClear = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     onChange('');
     onSearch('');
     setOpen(false);
@@ -115,6 +126,10 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, []);
 
   const baseInputCls = inputClassName
