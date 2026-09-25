@@ -20,6 +20,8 @@ import {
 import { fetchDefectGroups, type DefectGroupData } from '../../services/defectGroupsApi';
 import Pagination from '../UI/Pagination';
 import { DefectSelectionModal } from './DefectSelectionModal';
+import { useAuth } from '../../context/AuthContext';
+import { PERMISSIONS } from '../../utils/permissions';
 
 interface OverviewTestsTableProps {
   gitlabProjectNames?: string[];
@@ -75,6 +77,8 @@ const SortHeader: React.FC<SortHeaderProps> = ({
 };
 
 const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNames }) => {
+  const { hasPermission } = useAuth();
+  const canEditDefects = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
   const navigate = useNavigate();
   const {
     rows,
@@ -238,7 +242,7 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
           )}
         </div>
 
-        {!hidePassedDecisions && selectableItems.length > 0 && (
+        {canEditDefects && !hidePassedDecisions && selectableItems.length > 0 && (
           <div className="flex flex-wrap items-center justify-end gap-2">
             {selectedTestIds.size > 0 && (
               <span
@@ -417,7 +421,7 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
                   const isFailed =
                     row.statusBand === 'failed' ||
                     row.statusLabel.toUpperCase().includes('FAIL');
-                  const canDecide = isFailed && row.overviewTestId !== null;
+                  const canDecide = canEditDefects && isFailed && row.overviewTestId !== null;
                   const isSelected = row.overviewTestId !== null && selectedTestIds.has(row.overviewTestId);
                   const currentDefectSlug = resolveDefectSlug(row);
                   const resolvedDefect = currentDefectSlug != null && currentDefectSlug !== ''
@@ -612,7 +616,7 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
           />
         </div>
       </div>
-      {defectModalTarget !== null && (
+      {canEditDefects && defectModalTarget !== null && (
         <DefectSelectionModal
           targets={defectModalTarget}
           defectTypes={defectTypes}

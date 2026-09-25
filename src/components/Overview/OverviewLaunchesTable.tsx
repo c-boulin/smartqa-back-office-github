@@ -49,6 +49,8 @@ import { fetchDefectGroups, type DefectGroupData, type DefectTypeData } from '..
 import { DEFECT_CHART_TYPES } from '../../constants/defectChartTypes';
 import { exportOverviewLaunches, type OverviewExporter } from '../../services/overviewExportService';
 import { OverviewLaunchesCompactGrid } from './OverviewLaunchesCompactGrid';
+import { useAuth } from '../../context/AuthContext';
+import { PERMISSIONS } from '../../utils/permissions';
 
 /**
  * Suite list row opens either test log or suite-keyword log (ReportPortal: every name is a link).
@@ -956,6 +958,8 @@ interface OverviewLaunchesTableProps {
 }
 
 const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, gitlabProjectNames, registerExporter }) => {
+  const { hasPermission } = useAuth();
+  const canEditDefects = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -2806,7 +2810,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
               <span className="text-slate-400">|</span>
               <span>Total: {drillLaunch.total}</span>
             </div>
-            {isCronContext && selectableItems.length > 0 ? (
+            {canEditDefects && isCronContext && selectableItems.length > 0 ? (
               <div className="flex items-center gap-2">
                 {selectedTestIds.size > 0 && (
                   <span className="text-xs text-slate-400 dark:text-slate-500"
@@ -2891,6 +2895,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             hoveredTimeRowKey={hoveredLogTimeRowKey}
             onHoverTimeRow={setHoveredLogTimeRowKey}
             isCronContext={isCronContext}
+            canEditDefects={canEditDefects}
             overviewTestId={testLogTarget.kind === 'test' ? testLogTarget.overviewTestId : null}
             defectTypes={defectTypes}
             defectGroups={defectGroups}
@@ -2909,7 +2914,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
               <tr className="text-left">
                 <th className="py-3 pl-4 pr-2">
-                  {isCronContext && selectableItems.length > 0 ? (
+                  {canEditDefects && isCronContext && selectableItems.length > 0 ? (
                     <label data-mipqa="suite-select-all-checkbox" className="relative inline-flex h-4 w-4 cursor-pointer select-none items-center justify-center">
                       <input
                         type="checkbox"
@@ -2992,7 +2997,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                     className={`transition-colors ${isFailed ? 'bg-red-100 dark:bg-red-900/40 hover:bg-red-200/70 dark:hover:bg-red-900/60' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
                   >
                     <td className="py-3 pl-4 pr-2 align-top text-slate-400">
-                      {isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
+                      {canEditDefects && isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
                         <label
                           data-mipqa={`suite-row-checkbox-${item.overviewTestId}`}
                           className="relative inline-flex h-4 w-4 cursor-pointer select-none items-center justify-center"
@@ -3151,7 +3156,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                         : item.startTimeRelative}
                     </td>
                     <td className="py-3 px-2 align-top text-slate-700 dark:text-slate-300">
-                      {isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
+                      {canEditDefects && isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
                         (() => {
                           const resolved = item.defectType ? defectTypeBySlug.get(item.defectType) : null;
                           return resolved != null ? (
@@ -3637,7 +3642,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         />
       ) : null}
     </div>
-    {defectModalTarget !== null && (
+    {canEditDefects && defectModalTarget !== null && (
       <DefectSelectionModal
         targets={defectModalTarget}
         defectTypes={defectTypes}

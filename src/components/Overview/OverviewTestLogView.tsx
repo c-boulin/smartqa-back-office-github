@@ -76,6 +76,8 @@ export interface OverviewTestLogViewProps {
   onHoverTimeRow: (key: string | null) => void;
   /** When true and the test is failed, show an active "Make decision" button. */
   isCronContext?: boolean;
+  /** Whether the current user has permission to assign/change defect types. */
+  canEditDefects?: boolean;
   /** The overviewTestId for this test log (null for suite-keyword logs). */
   overviewTestId?: number | null;
   /** Cached defect types from the parent (used in the modal). */
@@ -591,6 +593,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   suiteListStatusLabel,
   suiteListStatusBand,
   isCronContext = false,
+  canEditDefects = false,
   overviewTestId = null,
   defectTypes = [],
   defectGroups,
@@ -604,7 +607,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
     suiteListStatusLabel.toUpperCase().includes('FAIL') ||
     normalizeStatusBand(undefined, testStatusLabel) === 'failed' ||
     testStatusLabel.toUpperCase().includes('FAIL');
-  const canMakeDecision = isCronContext && isFailed && overviewTestId !== null;
+  const canMakeDecision = canEditDefects && isCronContext && isFailed && overviewTestId !== null;
 
   const showHistoryButtonTooltip = (
     button: OverviewTestLogViewProps['historyButtons'][number],
