@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowUpRight } from 'lucide-react';
 
 interface ServiceStatCardProps {
   serviceName: string;
@@ -39,15 +40,23 @@ export const ServiceStatCard: React.FC<ServiceStatCardProps> = ({
       onClick={onClick}
       onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       data-mipqa={dataMipqa}
-      className={`relative rounded-xl pt-[4px] px-[1px] pb-[1px] bg-gradient-to-b ${gradientFrom} ${gradientTo} transition-all duration-200 ${hoverClass} ${onClick ? 'cursor-pointer' : ''}`}
+      className={`group relative rounded-xl pt-[4px] px-[1px] pb-[1px] bg-gradient-to-b ${gradientFrom} ${gradientTo} transition-all duration-200 ${hoverClass} ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className="rounded-t-[8px] rounded-b-[11px] bg-white p-4 dark:bg-slate-800">
-        <h4
-          className="mb-4 truncate text-sm font-bold text-slate-900 dark:text-white"
-          title={serviceName}
-        >
-          {serviceName}
-        </h4>
+        <div className="mb-4 flex items-center gap-1">
+          <h4
+            className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900 dark:text-white"
+            title={serviceName}
+          >
+            {serviceName}
+          </h4>
+          {onClick && (
+            <ArrowUpRight
+              className="h-4 w-4 shrink-0 text-slate-400 opacity-0 transition-opacity duration-150 group-hover:opacity-100 dark:text-slate-500"
+              aria-hidden
+            />
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <div className="text-xs text-slate-500 dark:text-slate-400">Passing rate</div>
