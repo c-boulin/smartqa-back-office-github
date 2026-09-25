@@ -697,16 +697,6 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-          <button
-            type="button"
-            onClick={() => window.open(window.location.href, '_blank', 'noopener,noreferrer')}
-            className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            title="Open in new tab"
-            data-mipqa="log-open-in-new-tab-button"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Open in new tab
-          </button>
           {canMakeDecision && (
             <button
               type="button"
