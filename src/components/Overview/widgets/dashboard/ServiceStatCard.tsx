@@ -6,6 +6,7 @@ interface ServiceStatCardProps {
   testCases: number;
   status: 'failed' | 'passed';
   onClick?: () => void;
+  'data-mipqa'?: string;
 }
 
 export const ServiceStatCard: React.FC<ServiceStatCardProps> = ({
@@ -14,6 +15,7 @@ export const ServiceStatCard: React.FC<ServiceStatCardProps> = ({
   testCases,
   status,
   onClick,
+  'data-mipqa': dataMipqa,
 }) => {
   const gradientFrom =
     status === 'failed'
@@ -36,6 +38,7 @@ export const ServiceStatCard: React.FC<ServiceStatCardProps> = ({
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
       onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      data-mipqa={dataMipqa}
       className={`relative rounded-xl pt-[4px] px-[1px] pb-[1px] bg-gradient-to-b ${gradientFrom} ${gradientTo} transition-all duration-200 ${hoverClass} ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className="rounded-t-[8px] rounded-b-[11px] bg-white p-4 dark:bg-slate-800">

@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import type { OverviewExecutionRow } from '../../../services/overviewWidgetsApi';
 import { ServiceStatCard, StatusBoard, StatusGroup } from './dashboard';
+import { navigateToFilteredLaunches } from './navigateToFilteredLaunches';
 
 interface ServiceCountryExecutionWidgetProps {
   executionByService: OverviewExecutionRow[];
@@ -21,7 +23,10 @@ function formatPassRateLabel(passRate: number | null | undefined): string {
 const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps> = ({
   executionByService,
   executionByCountryByService,
+  windowStartFrom,
+  windowStartTo,
 }) => {
+  const navigate = useNavigate();
   const [selectedService, setSelectedService] = useState<{ key: string; label: string } | null>(null);
 
   const failed = useMemo(() => executionByService.filter(r => r.band === 'failed'), [executionByService]);
@@ -37,6 +42,15 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
 
   const handleServiceClick = (row: OverviewExecutionRow) => {
     setSelectedService({ key: row.key, label: row.label });
+  };
+
+  const handleCountryClick = (row: OverviewExecutionRow) => {
+    navigateToFilteredLaunches(navigate, {
+      projectIds: row.projectIds,
+      startFrom: windowStartFrom,
+      startTo: windowStartTo,
+      status: row.band === 'failed' ? 'failed' : 'passed',
+    });
   };
 
   const handleBack = () => {
@@ -154,6 +168,8 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
                         passingRate={formatPassRateLabel(row.passRate)}
                         testCases={row.pass + row.fail}
                         status="failed"
+                        onClick={() => handleCountryClick(row)}
+                        data-mipqa="service-country-card"
                       />
                     ))}
                   </div>
@@ -171,6 +187,8 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
                         passingRate={formatPassRateLabel(row.passRate)}
                         testCases={row.pass + row.fail}
                         status="passed"
+                        onClick={() => handleCountryClick(row)}
+                        data-mipqa="service-country-card"
                       />
                     ))}
                   </div>

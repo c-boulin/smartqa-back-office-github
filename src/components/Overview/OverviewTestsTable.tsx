@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowDown,
@@ -194,15 +194,12 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
     reload();
   }, [reload]);
 
-  const openTestLog = useCallback((row: OverviewTestApiRow) => {
-    if (row.overviewTestId == null) return;
+  const testLogPath = useCallback((row: OverviewTestApiRow): string => {
+    if (row.overviewTestId == null) return '#';
     const params = new URLSearchParams();
     params.set('history_selected_tre', String(row.testRunExecutionId));
-    navigate({
-      pathname: `/overview/launches/${row.testRunExecutionId}/test/${row.overviewTestId}`,
-      search: `?${params.toString()}`,
-    });
-  }, [navigate]);
+    return `/overview/launches/${row.testRunExecutionId}/test/${row.overviewTestId}?${params.toString()}`;
+  }, []);
 
   const rowKeyFor = (row: OverviewTestApiRow): string =>
     `${row.testRunExecutionId}-${row.overviewTestId ?? row.name}`;
@@ -471,19 +468,21 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
                       )}
                       <td className="min-w-0 break-words py-3 pr-4 align-top">
                         {row.overviewTestId !== null ? (
-                          <button
-                            type="button"
-                            onClick={() => openTestLog(row)}
+                          <Link
+                            to={testLogPath(row)}
                             data-mipqa="overview-tests-name-link"
                             className="block text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline [overflow-wrap:anywhere]"
                           >
                             {row.name}
-                          </button>
+                          </Link>
                         ) : (
                           <span className="block font-semibold text-slate-900 dark:text-slate-100 [overflow-wrap:anywhere]">
                             {row.name}
                           </span>
                         )}
+                        {row.description ? (
+                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 [overflow-wrap:anywhere]">{row.description}</p>
+                        ) : null}
                         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-400">
                           <span className="inline-flex items-center gap-1">
                             <Clock className="h-3 w-3 shrink-0" />
@@ -491,21 +490,11 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
                           </span>
                         </div>
                         {isFailed && row.errorMessages != null && row.errorMessages.length > 0 ? (
-                          <button
-                            type="button"
-                            onClick={e => {
-                              e.stopPropagation();
-                              setExpandedErrorRows(prev => {
-                                const next = new Set(prev);
-                                if (next.has(rowKey)) {
-                                  next.delete(rowKey);
-                                } else {
-                                  next.add(rowKey);
-                                }
-                                return next;
-                              });
-                            }}
+                          <Link
+                            to={row.overviewTestId !== null ? testLogPath(row) : '#'}
+                            onClick={e => e.stopPropagation()}
                             className="mt-1.5 block w-full text-left"
+                            data-mipqa="overview-tests-error-link"
                           >
                             {expandedErrorRows.has(rowKey) ? (
                               <div className="flex flex-col gap-0.5">
@@ -523,7 +512,7 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
                                 {row.errorMessages[0]}
                               </p>
                             )}
-                          </button>
+                          </Link>
                         ) : null}
                       </td>
                       <td className="whitespace-nowrap py-3 px-2 align-top text-slate-700 dark:text-slate-300">

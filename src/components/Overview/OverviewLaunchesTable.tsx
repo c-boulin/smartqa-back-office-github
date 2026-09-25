@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ArrowDown,
@@ -69,6 +69,7 @@ export type OverviewSuiteListLogTarget =
       durationLabel: string;
       suiteSourceRelative: string | null;
       overviewTestLine: number | null;
+      description?: string | null;
     }
   | {
       kind: 'suite_kw';
@@ -83,6 +84,7 @@ export type OverviewSuiteListLogTarget =
       durationLabel: string;
       suiteSourceRelative: string | null;
       overviewTestLine: number | null;
+      description?: string | null;
     };
 
 /**
@@ -158,6 +160,7 @@ function suiteItemToLogTarget(item: OverviewLaunchSuiteItemApiRow): OverviewSuit
       durationLabel: item.durationLabel,
       suiteSourceRelative: item.suiteSourceRelative ?? null,
       overviewTestLine: item.overviewTestLine ?? null,
+      description: item.description ?? null,
     };
   }
   if (item.overviewSuiteKwId !== null) {
@@ -174,6 +177,7 @@ function suiteItemToLogTarget(item: OverviewLaunchSuiteItemApiRow): OverviewSuit
       durationLabel: item.durationLabel,
       suiteSourceRelative: item.suiteSourceRelative ?? null,
       overviewTestLine: item.overviewTestLine ?? null,
+      description: item.description ?? null,
     };
   }
 
@@ -2850,6 +2854,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         {inTestLogView && drillLaunch !== null && testLogTarget !== null ? (
           <OverviewTestLogView
             testDisplayName={testLogPayload?.testName ?? testLogTarget.displayName}
+            description={testLogPayload?.description ?? testLogTarget.description ?? null}
             items={testLogPayload?.items ?? []}
             testStatusLabel={testLogPayload?.testStatusLabel ?? '—'}
             historyButtons={visibleHistoryLaunchEntries.map(entry => ({
@@ -3024,13 +3029,16 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                     </td>
                     <td className="break-words py-3 pr-4 align-top">
                       {item.overviewTestId !== null ? (
-                        <button
-                          type="button"
-                          onClick={() => {
+                        <Link
+                          to={`/overview/launches/${drillLaunch!.id}/test/${item.overviewTestId}`}
+                          onClick={(e) => {
                             const overviewTestId = item.overviewTestId;
                             if (overviewTestId === null || drillLaunch === null) {
+                              e.preventDefault();
                               return;
                             }
+                            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+                            e.preventDefault();
                             const nextTarget: OverviewSuiteListLogTarget = {
                               kind: 'test',
                               overviewTestId,
@@ -3044,6 +3052,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                               durationLabel: item.durationLabel,
                               suiteSourceRelative: item.suiteSourceRelative ?? null,
                               overviewTestLine: item.overviewTestLine ?? null,
+                              description: item.description ?? null,
                             };
                             historyLaunchTargetCacheRef.current = new Map([[drillLaunch.id, nextTarget]]);
                             navigateToLaunchesRoute({
@@ -3055,15 +3064,18 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                           className="block text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline [overflow-wrap:anywhere]"
                         >
                           {item.name}
-                        </button>
+                        </Link>
                       ) : item.overviewSuiteKwId !== null ? (
-                        <button
-                          type="button"
-                          onClick={() => {
+                        <Link
+                          to={`/overview/launches/${drillLaunch!.id}/kw/${item.overviewSuiteKwId}`}
+                          onClick={(e) => {
                             const overviewSuiteKwId = item.overviewSuiteKwId;
                             if (overviewSuiteKwId === null || drillLaunch === null) {
+                              e.preventDefault();
                               return;
                             }
+                            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+                            e.preventDefault();
                             const nextTarget: OverviewSuiteListLogTarget = {
                               kind: 'suite_kw',
                               overviewSuiteKwId,
@@ -3077,6 +3089,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                               durationLabel: item.durationLabel,
                               suiteSourceRelative: item.suiteSourceRelative ?? null,
                               overviewTestLine: item.overviewTestLine ?? null,
+                              description: item.description ?? null,
                             };
                             historyLaunchTargetCacheRef.current = new Map([[drillLaunch.id, nextTarget]]);
                             navigateToLaunchesRoute({
@@ -3088,12 +3101,15 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                           className="block text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline [overflow-wrap:anywhere]"
                         >
                           {item.name}
-                        </button>
+                        </Link>
                       ) : (
                         <span className="block font-semibold text-slate-900 dark:text-slate-100 [overflow-wrap:anywhere]">
                           {item.name}
                         </span>
                       )}
+                      {item.description ? (
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 [overflow-wrap:anywhere]">{item.description}</p>
+                      ) : null}
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-400">
                         <span className="inline-flex items-center gap-1">
                           <Clock className="h-3 w-3 shrink-0" />
