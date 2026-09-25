@@ -471,26 +471,18 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
                       )}
                       <td className="min-w-0 break-words py-3 pr-4 align-top">
                         {row.overviewTestId !== null ? (
-                          <a
-                            href={`/overview/launches/${row.testRunExecutionId}/test/${row.overviewTestId}?history_selected_tre=${row.testRunExecutionId}`}
-                            onClick={(e) => {
-                              if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
-                                e.preventDefault();
-                                openTestLog(row);
-                              }
-                            }}
+                          <button
+                            type="button"
+                            onClick={() => openTestLog(row)}
                             data-mipqa="overview-tests-name-link"
                             className="block text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline [overflow-wrap:anywhere]"
                           >
                             {row.name}
-                          </a>
+                          </button>
                         ) : (
                           <span className="block font-semibold text-slate-900 dark:text-slate-100 [overflow-wrap:anywhere]">
                             {row.name}
                           </span>
-                        )}
-                        {row.description != null && row.description.trim() !== '' && (
-                          <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500 [overflow-wrap:anywhere]">{row.description}</p>
                         )}
                         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-400">
                           <span className="inline-flex items-center gap-1">
