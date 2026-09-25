@@ -58,7 +58,7 @@ const GlobalHeader: React.FC = () => {
   };
 
   const navItems = [
-    { path: '/overview',       icon: LayoutGrid, label: 'Overview',      permissions: [PERMISSIONS.ADMIN_PANEL.READ] },
+    { path: '/overview',       icon: LayoutGrid, label: 'Overview',      permissions: [PERMISSIONS.OVERVIEW.READ] },
     { path: '/projects',       icon: FolderOpen, label: 'Projects',      permissions: [] },
     { path: '/templates',      icon: FileText,   label: 'Templates',     permissions: [PERMISSIONS.TEST_PLAN.READ] },
     { path: '/settings',       icon: Settings,   label: 'Settings',      permissions: [PERMISSIONS.ADMIN_PANEL.READ] },

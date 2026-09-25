@@ -15,7 +15,7 @@ type TabType = 'widgets' | 'launches' | 'tests';
 
 const Overview: React.FC = () => {
   const { hasPermission } = useAuth();
-  const canAccessOverview = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
+  const canAccessOverview = hasPermission(PERMISSIONS.OVERVIEW.READ);
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
