@@ -2850,6 +2850,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         {inTestLogView && drillLaunch !== null && testLogTarget !== null ? (
           <OverviewTestLogView
             testDisplayName={testLogPayload?.testName ?? testLogTarget.displayName}
+            testDescription={testLogPayload?.description}
             items={testLogPayload?.items ?? []}
             testStatusLabel={testLogPayload?.testStatusLabel ?? '—'}
             historyButtons={visibleHistoryLaunchEntries.map(entry => ({
@@ -3094,6 +3095,9 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                           {item.name}
                         </span>
                       )}
+                      {item.description ? (
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{item.description}</p>
+                      ) : null}
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-400">
                         <span className="inline-flex items-center gap-1">
                           <Clock className="h-3 w-3 shrink-0" />
