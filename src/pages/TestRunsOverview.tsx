@@ -354,7 +354,7 @@ const TestRunsOverview: React.FC = () => {
             type: fc.type as TestCase['type'],
             typeId: fc.typeId,
             status: fc.status as TestCase['status'],
-            automationStatus: fc.automationStatus as 1 | 2 | 3 | 4 | 5,
+            automationStatus: fc.automationStatus as 1 | 2 | 3 | 4 | 5 | 6,
             steps: [],
             stepResults: fc.stepResults,
             sharedSteps: fc.sharedSteps,

@@ -16,7 +16,7 @@ const REQUIRED_FIELDS = [
   'Expected Results — what a successful outcome looks like',
   'Priority — High, Medium, or Low',
   'Tags — labels for filtering and categorization',
-  'Automation Status — Manual, Automated, or To Be Automated',
+  'Automation Status — Not automated, Automated, Automation not required, Cannot be automated, Obsolete, or To be Automated',
 ];
 
 const ORGANIZATION_TIPS = [
@@ -50,7 +50,7 @@ const DocTestCases: React.FC = () => (
     <DocSectionBlock title="Field Reference">
       <div className="grid grid-cols-2 gap-3">
         <DocMetricCard label="Priority" description="High, Medium, Low — helps prioritize execution order during time-constrained runs." />
-        <DocMetricCard label="Automation Status" description="Indicates whether the test is manual, automated, or planned for automation." />
+        <DocMetricCard label="Automation Status" description="Indicates the automation state: Not automated, Automated, Automation not required, Cannot be automated, Obsolete, or To be Automated." />
         <DocMetricCard label="Tags" description="Free-form labels for grouping across folders and projects." />
         <DocMetricCard label="Test Steps" description="Each step should be atomic, numbered, and actionable." />
       </div>

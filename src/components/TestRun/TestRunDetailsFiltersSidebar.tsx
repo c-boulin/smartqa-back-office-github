@@ -93,6 +93,7 @@ const TestRunDetailsFiltersSidebar: React.FC<TestRunDetailsFiltersSidebarProps> 
                 <option value="3">{AUTOMATION_STATUS_LABELS[3]}</option>
                 <option value="4">{AUTOMATION_STATUS_LABELS[4]}</option>
                 <option value="5">{AUTOMATION_STATUS_LABELS[5]}</option>
+                <option value="6">{AUTOMATION_STATUS_LABELS[6]}</option>
               </select>
             </div>
 

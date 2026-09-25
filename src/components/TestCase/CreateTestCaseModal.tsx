@@ -18,6 +18,7 @@ import {
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
 import TagSelector from '../UI/TagSelector';
+import { AUTOMATION_STATUS } from '../../constants/testCaseConstants';
 import FileUpload from '../UI/FileUpload';
 import WysiwygEditorWithAutoUpload from '../UI/WysiwygEditorWithAutoUpload';
 import DraggableTestStepWithAutoUpload from './DraggableTestStepWithAutoUpload';
@@ -60,13 +61,7 @@ const TEST_CASE_TYPES = {
   11: 'Usability'
 } as const;
 
-const AUTOMATION_STATUS = {
-  1: 'Not automated',
-  2: 'Automated',
-  3: 'Automation not required',
-  4: 'Cannot be automated',
-  5: 'Obsolete'
-} as const;
+
 
 interface TestStep {
   id: string;

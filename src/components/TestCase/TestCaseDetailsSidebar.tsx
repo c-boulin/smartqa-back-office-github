@@ -909,7 +909,8 @@ const TestCaseDetailsSidebar: React.FC<TestCaseDetailsSidebarProps> = ({
                          testCaseDetails.automationStatus === 2 ? 'Automated' :
                          testCaseDetails.automationStatus === 3 ? 'Not required' :
                          testCaseDetails.automationStatus === 4 ? 'Cannot automate' :
-                         testCaseDetails.automationStatus === 5 ? 'Obsolete' : 'Unknown'}
+                         testCaseDetails.automationStatus === 5 ? 'Obsolete' :
+                         testCaseDetails.automationStatus === 6 ? 'To be Automated' : 'Unknown'}
                       </span>
                     </div>
                     {configurationLabel && (context === 'test-run-details' || context === 'test-runs-overview') && (

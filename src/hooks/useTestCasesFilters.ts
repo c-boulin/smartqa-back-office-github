@@ -49,7 +49,7 @@ export const useTestCasesFilters = () => {
     const multipleFilters: Record<string, string | string[]> = {};
     
     if (filters.automationStatus !== 'all') {
-      multipleFilters.automationStatus = parseInt(filters.automationStatus) as 1 | 2 | 3 | 4 | 5;
+      multipleFilters.automationStatus = parseInt(filters.automationStatus) as 1 | 2 | 3 | 4 | 5 | 6;
     }
     
     if (filters.priority !== 'all') {

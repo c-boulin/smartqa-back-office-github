@@ -74,7 +74,7 @@ export interface ApiTestCase {
     priority: number; // L'API utilise des nombres pour priority
     type: number; // L'API utilise des nombres pour type
     state: number; // L'API utilise state au lieu de status
-    automation: 1 | 2 | 3 | 4 | 5; // Le bon nom du champ dans l'API
+    automation: 1 | 2 | 3 | 4 | 5 | 6;
     estimatedDuration?: number;
     tags?: string[];
     createdAt: string;
@@ -149,7 +149,7 @@ export interface CreateTestCaseRequest {
       priority: number; // Convertir en nombre pour l'API
       type: number; // Convertir en nombre pour l'API
       state: number; // Utiliser state au lieu de status
-      automation: 1 | 2 | 3 | 4 | 5;
+      automation: 1 | 2 | 3 | 4 | 5 | 6;
       template: number;
       preconditions: string;
     };
@@ -188,7 +188,7 @@ export interface UpdateTestCaseRequest {
       priority: number;
       type: number;
       state: number;
-      automation: 1 | 2 | 3 | 4 | 5;
+      automation: 1 | 2 | 3 | 4 | 5 | 6;
       template: number;
       preconditions: string;
     };
@@ -368,7 +368,7 @@ class TestCasesApiService {
     return response || this.getDefaultTestCasesResponse();
   }
 
-  async filterTestCasesByAutomation(automationStatus: 1 | 2 | 3 | 4 | 5, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
+  async filterTestCasesByAutomation(automationStatus: 1 | 2 | 3 | 4 | 5 | 6, page: number = 1, itemsPerPage: number = 30, projectId?: string, folderId?: string): Promise<TestCasesApiResponse> {
     if (!projectId) return this.getDefaultTestCasesResponse();
     const params: Record<string, string> = { automation: String(automationStatus), page: String(page), itemsPerPage: String(itemsPerPage) };
     if (folderId) params.folder = folderId;
@@ -408,7 +408,7 @@ class TestCasesApiService {
   }
 
   async filterTestCasesWithMultipleFilters(filters: {
-    automationStatus?: 1 | 2 | 3 | 4 | 5;
+    automationStatus?: 1 | 2 | 3 | 4 | 5 | 6;
     priority?: number;
     type?: number;
     state?: number;
@@ -503,7 +503,7 @@ class TestCasesApiService {
     priority: number;
     testCaseType: number;
     state: number;
-    automationStatus: 1 | 2 | 3 | 4 | 5;
+    automationStatus: 1 | 2 | 3 | 4 | 5 | 6;
     estimatedDuration: number;
     tags: Tag[];
     projectId: string;
@@ -620,7 +620,7 @@ class TestCasesApiService {
     priority: 'low' | 'medium' | 'high' | 'critical';
     testType: 'functional' | 'regression' | 'smoke' | 'integration' | 'performance';
     status: 'draft' | 'active' | 'deprecated';
-    automationStatus: 1 | 2 | 3 | 4 | 5;
+    automationStatus: 1 | 2 | 3 | 4 | 5 | 6;
     template: number;
     preconditions: string;
     tags: Tag[];
@@ -653,7 +653,7 @@ class TestCasesApiService {
     const typeNum = this.typeToApi[testCaseData.testType];
     const stateNum = this.statusToApi[testCaseData.status];
     const automationNum = typeof testCaseData.automationStatus === 'string'
-      ? parseInt(testCaseData.automationStatus, 10) as 1 | 2 | 3 | 4 | 5
+      ? parseInt(testCaseData.automationStatus, 10) as 1 | 2 | 3 | 4 | 5 | 6
       : testCaseData.automationStatus;
     const templateNum = typeof testCaseData.template === 'string'
       ? parseInt(testCaseData.template, 10)
@@ -893,7 +893,7 @@ class TestCasesApiService {
       typeId: apiTestCase.attributes.type, // Store numeric type ID for filtering
       status: this.statusFromApi[apiTestCase.attributes.state as keyof typeof this.statusFromApi] || 'draft',
       automationStatus: typeof apiTestCase.attributes.automation === 'string'
-        ? parseInt(apiTestCase.attributes.automation, 10) as 1 | 2 | 3 | 4 | 5
+        ? parseInt(apiTestCase.attributes.automation, 10) as 1 | 2 | 3 | 4 | 5 | 6
         : apiTestCase.attributes.automation, // Utilise directement le champ automation de l'API
       steps: [], // Steps are handled via stepResults
       stepResults: stepResults, // Add step result IDs

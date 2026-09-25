@@ -22,6 +22,7 @@ interface DashboardSummary {
     notRequired: number;
     cannotAutomate: number;
     obsolete: number;
+    toBeAutomated: number;
   };
 
   testTypeDistribution: {
@@ -127,7 +128,8 @@ export const useDashboardSummary = (selectedProject: Project | null, projects: P
             tc.automationStatus === 1 || tc.automationStatus === "1" ||
             tc.automationStatus === 3 || tc.automationStatus === "3" ||
             tc.automationStatus === 4 || tc.automationStatus === "4" ||
-            tc.automationStatus === 5 || tc.automationStatus === "5"
+            tc.automationStatus === 5 || tc.automationStatus === "5" ||
+            tc.automationStatus === 6 || tc.automationStatus === "6"
           );
           devLog(`🤖 Filtered to non-automated test cases: ${testCases.length}`);
         }
@@ -149,13 +151,15 @@ export const useDashboardSummary = (selectedProject: Project | null, projects: P
         notRequired: testCases.filter(tc => tc.automationStatus === 3 || tc.automationStatus === "3").length,
         cannotAutomate: testCases.filter(tc => tc.automationStatus === 4 || tc.automationStatus === "4").length,
         obsolete: testCases.filter(tc => tc.automationStatus === 5 || tc.automationStatus === "5").length,
+        toBeAutomated: testCases.filter(tc => tc.automationStatus === 6 || tc.automationStatus === "6").length,
       };
 
       const automatedTestCases = automationDistribution.automated;
       const manualTestCases = automationDistribution.notAutomated +
                              automationDistribution.notRequired +
                              automationDistribution.cannotAutomate +
-                             automationDistribution.obsolete;
+                             automationDistribution.obsolete +
+                             automationDistribution.toBeAutomated;
 
       const totalTestCasesWithAutomationStatus = automatedTestCases + manualTestCases;
       const automationCoverage = totalTestCasesWithAutomationStatus > 0 ?

@@ -1,4 +1,4 @@
-import { CheckCircle, Edit, Eye, Clock, XCircle, AlertTriangle, Target, Shield, Flame } from 'lucide-react';
+import { CheckCircle, CreditCard as Edit, Eye, Clock, XCircle, AlertTriangle, Target, Shield, Flame } from 'lucide-react';
 
 // Mappings constants
 export const TEMPLATES = {
@@ -40,5 +40,6 @@ export const AUTOMATION_STATUS = {
   2: 'Automated',
   3: 'Automation not required',
   4: 'Cannot be automated',
-  5: 'Obsolete'
+  5: 'Obsolete',
+  6: 'To be Automated'
 } as const;

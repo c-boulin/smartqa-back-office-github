@@ -36,7 +36,7 @@ export interface TestCase {
   type: 'functional' | 'regression' | 'smoke' | 'integration' | 'performance';
   typeId?: number | string; // Type ID from API for filtering (can be string or number)
   status: 'draft' | 'active' | 'deprecated';
-  automationStatus: 1 | 2 | 3 | 4 | 5; // Utilise les valeurs numériques de l'API
+  automationStatus: 1 | 2 | 3 | 4 | 5 | 6;
   steps: TestStep[];
   sharedSteps: string[];
   stepResults?: string[]; // Add stepResults field for API step result IDs
@@ -182,11 +182,12 @@ export const AUTOMATION_STATUS_LABELS = {
   2: 'Automated',
   3: 'Automation not required',
   4: 'Cannot be automated',
-  5: 'Obsolete'
+  5: 'Obsolete',
+  6: 'To be Automated'
 } as const;
 
 // Helper pour obtenir le label d'un statut d'automation
-export const getAutomationStatusLabel = (status: 1 | 2 | 3 | 4 | 5): string => {
+export const getAutomationStatusLabel = (status: 1 | 2 | 3 | 4 | 5 | 6): string => {
   return AUTOMATION_STATUS_LABELS[status];
 };
 

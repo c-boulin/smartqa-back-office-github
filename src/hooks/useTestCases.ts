@@ -391,7 +391,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
     }
   }, [projectId]); // Remove folderId dependency
 
-  const filterTestCasesByAutomation = useCallback(async (automationStatus: 1 | 2 | 3 | 4 | 5, page: number = 1) => {
+  const filterTestCasesByAutomation = useCallback(async (automationStatus: 1 | 2 | 3 | 4 | 5 | 6, page: number = 1) => {
     if (!projectId) {
       setTestCases([]);
       return;
@@ -657,7 +657,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
   }, [projectId, folderId]);
 
   const filterTestCasesWithMultipleFilters = useCallback(async (filters: {
-    automationStatus?: 1 | 2 | 3 | 4 | 5;
+    automationStatus?: 1 | 2 | 3 | 4 | 5 | 6;
     priority?: number;
     type?: number;
     state?: number;
@@ -721,7 +721,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
     priority: number;
     testCaseType: number;
     state: number;
-    automationStatus: 1 | 2 | 3 | 4 | 5;
+    automationStatus: 1 | 2 | 3 | 4 | 5 | 6;
     template: number;
     preconditions: string;
     tags: Tag[];
@@ -1073,7 +1073,7 @@ export const useTestCases = (projectId?: string | null, folderId?: string | null
     priority: 'low' | 'medium' | 'high' | 'critical';
     testType: 'functional' | 'regression' | 'smoke' | 'integration' | 'performance';
     status: 'draft' | 'active' | 'deprecated';
-    automationStatus: 1 | 2 | 3 | 4 | 5;
+    automationStatus: 1 | 2 | 3 | 4 | 5 | 6;
     template: number;
     preconditions: string;
     tags: Tag[];

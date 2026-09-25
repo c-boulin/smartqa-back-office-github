@@ -53,6 +53,7 @@ export const useDashboardData = (
               notRequired: 0,
               cannotAutomate: 0,
               obsolete: 0,
+              toBeAutomated: 0,
             },
             testTypeDistribution: {},
             statusDistribution: { draft: 0, active: 0, deprecated: 0 },
