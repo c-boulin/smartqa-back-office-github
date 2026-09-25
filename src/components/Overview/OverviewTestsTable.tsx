@@ -484,9 +484,6 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
                             {row.name}
                           </span>
                         )}
-                        {row.description ? (
-                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{row.description}</p>
-                        ) : null}
                         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-400">
                           <span className="inline-flex items-center gap-1">
                             <Clock className="h-3 w-3 shrink-0" />
