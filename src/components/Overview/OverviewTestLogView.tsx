@@ -26,6 +26,7 @@ import type {
 } from '../../services/overviewWidgetsApi';
 import { buildAssetsUrlFromObjectKey } from '../../env';
 import { DefectSelectionModal } from './DefectSelectionModal';
+import { linkifyLogText } from './linkifyLogText';
 
 /** Identifiers for the test-detail sub-tabs (All logs / Item details have body content; others placeholder or empty). */
 export type OverviewTestLogDetailTabId = 'all_logs';
@@ -40,6 +41,7 @@ const TEST_LOG_DETAIL_TABS: ReadonlyArray<{
 
 export interface OverviewTestLogViewProps {
   testDisplayName: string;
+  testDescription?: string | null;
   items: OverviewTestLogTreeNode[];
   testStatusLabel: string;
   historyButtons: Array<{
@@ -459,7 +461,7 @@ function AllLogsTreeRows(props: { node: OverviewTestLogTreeNode } & AllLogsTreeR
           className="min-w-0 break-words border-l-[3px] border-cyan-600/70 py-2.5 pr-2 align-top font-mono text-xs text-slate-800 dark:border-cyan-500/50 dark:text-slate-200"
           style={{ paddingLeft: `${12 + depth * 16}px` }}
         >
-          {node.logMessage}
+          {linkifyLogText(node.logMessage)}
         </td>
         <td className="py-2.5 px-2 align-top">
           {node.screenshotObjectKey != null && node.screenshotObjectKey !== '' ? (
@@ -496,7 +498,8 @@ function KeywordLogAccordionBlock(
   props: { node: OverviewTestLogKeywordApiNode } & AllLogsTreeRowBaseProps,
 ): React.ReactNode {
   const { node, depth, parentKey, rowIndex, hoveredTimeRowKey, onHoverTimeRow } = props;
-  const [open, setOpen] = useState(false);
+  const isFailed = normalizeStatusBand(node.statusBand, node.statusLabel) === 'failed';
+  const [open, setOpen] = useState(isFailed && node.children.length > 0);
   const rowKey = `${parentKey}-kw-${node.kwId}-d${depth}-i${rowIndex}`;
   const expandable = node.children.length > 0;
 
@@ -530,7 +533,7 @@ function KeywordLogAccordionBlock(
                 <span className="inline-block w-4" aria-hidden />
               )}
             </button>
-            <span className="min-w-0 break-words">{node.logMessage}</span>
+            <span className="min-w-0 break-words">{linkifyLogText(node.logMessage)}</span>
           </div>
         </td>
         <td className="py-2.5 px-2 align-top whitespace-nowrap">
@@ -578,6 +581,7 @@ function KeywordLogAccordionBlock(
  */
 const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   testDisplayName,
+  testDescription,
   items,
   testStatusLabel,
   historyButtons,
@@ -691,6 +695,16 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
+          </button>
+          <button
+            type="button"
+            onClick={() => window.open(window.location.href, '_blank', 'noopener,noreferrer')}
+            className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            title="Open in new tab"
+            data-mipqa="open-in-new-tab-button"
+          >
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            Open in new tab
           </button>
           {canMakeDecision && (
             <button
@@ -833,7 +847,12 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
         aria-labelledby="test-log-tab-all_logs"
       >
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span className="font-medium text-slate-600 dark:text-slate-300">{testDisplayName}</span>
+          <div>
+            <span className="font-medium text-slate-600 dark:text-slate-300">{testDisplayName}</span>
+            {testDescription != null && testDescription.trim() !== '' && (
+              <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500 [overflow-wrap:anywhere]">{testDescription}</p>
+            )}
+          </div>
           <span className="tabular-nums">&lt; 1 of 1 &gt;</span>
         </div>
 

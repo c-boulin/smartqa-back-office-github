@@ -406,6 +406,7 @@ export async function fetchOverviewLaunchHistory(
 export interface OverviewLaunchSuiteItemApiRow {
   methodType: string;
   name: string;
+  description?: string | null;
   durationLabel: string;
   statusLabel: string;
   statusBand?: string;
@@ -481,6 +482,7 @@ export type OverviewTestLogTreeNode = OverviewTestLogKeywordApiNode | OverviewTe
 
 export interface OverviewTestLogItemsResponse {
   testName: string;
+  description?: string | null;
   testStatusLabel: string;
   /** Path from `Suites/` onward from `overview_suites.source`; null if missing. */
   suiteSourceRelative: string | null;
@@ -583,6 +585,7 @@ export async function deleteOverviewTestDefect(overviewTestId: number): Promise<
 export interface OverviewTestApiRow {
   methodType: string;
   name: string;
+  description?: string | null;
   durationLabel: string;
   statusLabel: string;
   statusBand?: string;

@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import type { OverviewExecutionRow } from '../../../services/overviewWidgetsApi';
+import { navigateToFilteredLaunches } from './navigateToFilteredLaunches';
 import { ServiceStatCard, StatusBoard, StatusGroup } from './dashboard';
 
 interface ServiceCountryExecutionWidgetProps {
@@ -20,8 +22,12 @@ function formatPassRateLabel(passRate: number | null | undefined): string {
 
 const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps> = ({
   executionByService,
+  executionByCountry,
   executionByCountryByService,
+  windowStartFrom,
+  windowStartTo,
 }) => {
+  const navigate = useNavigate();
   const [selectedService, setSelectedService] = useState<{ key: string; label: string } | null>(null);
 
   const failed = useMemo(() => executionByService.filter(r => r.band === 'failed'), [executionByService]);
@@ -154,6 +160,7 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
                         passingRate={formatPassRateLabel(row.passRate)}
                         testCases={row.pass + row.fail}
                         status="failed"
+                        onClick={() => navigateToFilteredLaunches(navigate, { projectIds: row.projectIds, startFrom: windowStartFrom, startTo: windowStartTo, status: 'failed' })}
                       />
                     ))}
                   </div>
@@ -171,6 +178,7 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
                         passingRate={formatPassRateLabel(row.passRate)}
                         testCases={row.pass + row.fail}
                         status="passed"
+                        onClick={() => navigateToFilteredLaunches(navigate, { projectIds: row.projectIds, startFrom: windowStartFrom, startTo: windowStartTo, status: 'passed' })}
                       />
                     ))}
                   </div>
