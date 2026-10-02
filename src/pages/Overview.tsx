@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Download, LayoutGrid, Rocket } from 'lucide-react';
+import { AlertTriangle, Download, FolderX, LayoutGrid, Loader, RotateCw, Rocket } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import OverviewLaunchesTable from '../components/Overview/OverviewLaunchesTable';
@@ -9,6 +9,13 @@ import OverviewProjectSidebar from '../components/Overview/OverviewProjectSideba
 import DownloadModal from '../components/Reports/DownloadModal';
 import type { OverviewExporter, OverviewExportFormat } from '../services/overviewExportService';
 import toast from 'react-hot-toast';
+import {
+  EMPTY_OVERVIEW_CATEGORY_SELECTION,
+  isTempSbSelection,
+  overviewCategoryLabelForSelection,
+  type OverviewCategorySelection,
+} from '../constants/overviewCategories';
+import { useTempSbScopeProjectIds } from '../hooks/useTempSbScopeProjectIds';
 
 type TabType = 'widgets' | 'launches' | 'tests';
 
@@ -16,7 +23,7 @@ const Overview: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  const [selection, setSelection] = useState<OverviewCategorySelection>(EMPTY_OVERVIEW_CATEGORY_SELECTION);
   const exporterRef = useRef<OverviewExporter | null>(null);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -51,9 +58,22 @@ const Overview: React.FC = () => {
     }
   }, []);
 
-  const handleSelectReposChange = useCallback((repoSlugs: string[]) => {
-    setSelectedRepos(repoSlugs);
+  const handleSelectionChange = useCallback((next: OverviewCategorySelection) => {
+    setSelection(next);
   }, []);
+
+  // TEMP(bolt-overview) — Bolt sends its allowlist alone; SB sends QATESmartbuilder IDs minus the allowlist, alone.
+  // Neither sends gitlab_project_name. DVS keeps its repo filter.
+  // TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists
+  const isSbSelected = isTempSbSelection(selection);
+  const sbScope = useTempSbScopeProjectIds(isSbSelected);
+  const sbProjectIds = sbScope.status === 'ready' ? sbScope.projectIds : undefined;
+  const selectedRepos = !isSbSelected && selection.repoNames.length > 0 ? selection.repoNames : undefined;
+  const selectedProjectIds = isSbSelected
+    ? sbProjectIds
+    : selection.projectIds.length > 0 ? selection.projectIds : undefined;
+  const exportCategoryLabel = selectedRepos ? null : overviewCategoryLabelForSelection(selection);
+  const sbScopeBlocking = isSbSelected && sbScope.status !== 'ready';
 
   const isLaunchesPath = useMemo(() => {
     const normalized = location.pathname.replace(/\/+$/, '');
@@ -100,8 +120,8 @@ const Overview: React.FC = () => {
     <>
       <div className="flex -ml-6 -mt-6">
         <OverviewProjectSidebar
-          selectedRepos={selectedRepos}
-          onSelectReposChange={handleSelectReposChange}
+          selection={selection}
+          onSelectionChange={handleSelectionChange}
         />
 
         <div className="flex-1 min-w-0 flex flex-col space-y-6 p-6" style={{ containerType: 'inline-size', containerName: 'overview-main' }}>
@@ -183,26 +203,58 @@ const Overview: React.FC = () => {
 
           {/* Content — no wrapper box, sits directly on page background */}
           <div>
-            {activeTab === 'widgets' && (
+            {sbScopeBlocking && sbScope.status === 'loading' && (
+              <div data-mipqa="overview-scope-loading" className="flex flex-col items-center justify-center py-24 gap-3">
+                <Loader className="w-10 h-10 text-cyan-500 animate-spin" aria-hidden />
+                <p className="text-slate-600 dark:text-slate-400 text-sm">Loading projects...</p>
+              </div>
+            )}
+            {sbScopeBlocking && sbScope.status === 'empty' && (
+              <div data-mipqa="overview-scope-empty" className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+                <FolderX className="w-10 h-10 text-slate-400" aria-hidden />
+                <p className="text-slate-700 dark:text-slate-300 font-medium">No projects in this category</p>
+              </div>
+            )}
+            {sbScopeBlocking && sbScope.status === 'error' && (
+              <div data-mipqa="overview-scope-error" className="rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 p-6 text-center">
+                <AlertTriangle className="w-8 h-8 text-red-500 mx-auto" aria-hidden />
+                <p className="mt-2 text-red-800 dark:text-red-300 font-medium">Could not load the projects of this category</p>
+                <button
+                  type="button"
+                  data-mipqa="overview-scope-retry-button"
+                  onClick={sbScope.retry}
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-cyan-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                >
+                  <RotateCw className="h-4 w-4" />
+                  Retry
+                </button>
+              </div>
+            )}
+            {!sbScopeBlocking && activeTab === 'widgets' && (
               <div className="pt-2">
                 <OverviewWidgetsPanel
-                  gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
+                  projectIds={selectedProjectIds}
+                  gitlabProjectNames={selectedRepos}
+                  exportCategoryLabel={exportCategoryLabel}
                   registerExporter={activeTab === 'widgets' ? registerExporter : undefined}
                 />
               </div>
             )}
-            {activeTab === 'launches' && (
+            {!sbScopeBlocking && activeTab === 'launches' && (
               <div className="pt-2 min-h-[12rem]">
                 <OverviewLaunchesTable
-                  gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
+                  externalProjectIds={selectedProjectIds}
+                  gitlabProjectNames={selectedRepos}
+                  exportCategoryLabel={exportCategoryLabel}
                   registerExporter={activeTab === 'launches' ? registerExporter : undefined}
                 />
               </div>
             )}
-            {activeTab === 'tests' && (
+            {!sbScopeBlocking && activeTab === 'tests' && (
               <div className="pt-2 min-h-[12rem]">
                 <OverviewTestsTable
-                  gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
+                  projectIds={selectedProjectIds}
+                  gitlabProjectNames={selectedRepos}
                 />
               </div>
             )}

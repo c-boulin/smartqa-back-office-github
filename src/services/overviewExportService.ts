@@ -19,6 +19,8 @@ export type OverviewExportFormat = 'pdf' | 'csv';
 export type OverviewExportTab = 'widgets' | 'launches';
 
 interface CommonFilters {
+  /** TEMP(bolt-overview) — sidebar category label when the scope is sent as project_ids (SB/Bolt). */
+  categoryLabel?: string | null;
   gitlabProjectNames?: string[];
   projectIds?: number[];
   projectOptions?: OverviewLaunchesProjectOption[];
@@ -70,7 +72,9 @@ function projectNamesFromIds(
 function filterSummaryLines(input: OverviewLaunchesExportInput | OverviewWidgetsExportInput): string[] {
   const lines: string[] = [];
   const { filters } = input;
-  if (filters.gitlabProjectNames && filters.gitlabProjectNames.length > 0) {
+  if (filters.categoryLabel) {
+    lines.push(`Repository: ${filters.categoryLabel}`);
+  } else if (filters.gitlabProjectNames && filters.gitlabProjectNames.length > 0) {
     const label = overviewCategoryLabelForRepos(filters.gitlabProjectNames);
     if (label) lines.push(`Repository: ${label}`);
   }
