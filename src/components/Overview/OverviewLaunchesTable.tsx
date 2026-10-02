@@ -1027,7 +1027,9 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const effectiveProjectIds = useMemo(() => {
     if (externalProjectIds && externalProjectIds.length > 0) {
       if (selectedProjectIds.length > 0) {
-        return selectedProjectIds.filter(id => externalProjectIds.includes(id));
+        const scoped = selectedProjectIds.filter(id => externalProjectIds.includes(id));
+        // Never fall through to an unscoped query when the selection is entirely outside the allowlist.
+        return scoped.length > 0 ? scoped : externalProjectIds;
       }
       return externalProjectIds;
     }
@@ -1230,18 +1232,26 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     [buildNextLaunchesSearchParams, location.pathname, location.search, navigate],
   );
 
+  // TEMP(bolt-overview) — scope Projects dropdown to the sidebar allowlist.
+  // TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists
+  const externalProjectIdsKey = externalProjectIds && externalProjectIds.length > 0 ? externalProjectIds.join(',') : '';
+
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
       setProjectsLoading(true);
       try {
-        const opts = await fetchAllOverviewLaunchesProjectOptions(
+        const allOpts = await fetchAllOverviewLaunchesProjectOptions(
           gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
         );
+        const allowedIds = externalProjectIdsKey === ''
+          ? null
+          : new Set(externalProjectIdsKey.split(',').map(Number));
+        const opts = allowedIds === null ? allOpts : allOpts.filter(o => allowedIds.has(o.id));
         if (!cancelled) {
           setProjectOptions(opts);
           // Clear any selected projects that are no longer in the filtered option list.
-          if (gitlabProjectNames && gitlabProjectNames.length > 0) {
+          if ((gitlabProjectNames && gitlabProjectNames.length > 0) || allowedIds !== null) {
             const validIds = new Set(opts.map(o => o.id));
             setSelectedProjectIds(prev => prev.filter(id => validIds.has(id)));
           }
@@ -1261,7 +1271,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     return () => {
       cancelled = true;
     };
-  }, [gitlabProjectNames]);
+  }, [gitlabProjectNames, externalProjectIdsKey]);
 
   useEffect(() => {
     skipNextLaunchesSearchSyncRef.current = true;

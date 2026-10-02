@@ -10,6 +10,11 @@ import {
 interface UseOverviewTestsParams {
   /** Additional repo filter applied on top of URL params (comes from the Overview page sidebar). */
   gitlabProjectNames?: string[];
+  /**
+   * TEMP(bolt-overview) — sidebar project allowlist; intersected with URL project_ids, never widened.
+   * TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists
+   */
+  projectIds?: number[];
 }
 
 interface UseOverviewTestsResult {
@@ -69,7 +74,7 @@ function parseStatus(value: string | null): 'passed' | 'failed' | undefined {
   return value === 'passed' || value === 'failed' ? value : undefined;
 }
 
-export function useOverviewTests({ gitlabProjectNames }: UseOverviewTestsParams): UseOverviewTestsResult {
+export function useOverviewTests({ gitlabProjectNames, projectIds }: UseOverviewTestsParams): UseOverviewTestsResult {
   const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState<OverviewTestApiRow[]>([]);
   const [meta, setMeta] = useState<OverviewLaunchesMeta>({
@@ -107,6 +112,7 @@ export function useOverviewTests({ gitlabProjectNames }: UseOverviewTestsParams)
   }), [startFromParam, startToParam, statusParam, defectTagParam, hasIssuesParam, groupByParam, projectIdsParam]);
 
   const gitlabKey = gitlabProjectNames == null ? '' : gitlabProjectNames.join(',');
+  const sidebarProjectIdsKey = projectIds == null ? '' : projectIds.join(',');
   // Launch-grouped mode loads everything once and paginates launches client-side.
   const fetchPage = filters.groupByLaunch ? 1 : page;
 
@@ -116,10 +122,16 @@ export function useOverviewTests({ gitlabProjectNames }: UseOverviewTestsParams)
       try {
         setLoading(true);
         setError(null);
+        const sidebarProjectIds = sidebarProjectIdsKey === '' ? [] : sidebarProjectIdsKey.split(',').map(Number);
+        let scopedProjectIds = filters.projectIds;
+        if (sidebarProjectIds.length > 0) {
+          const intersection = filters.projectIds.filter(id => sidebarProjectIds.includes(id));
+          scopedProjectIds = intersection.length > 0 ? intersection : sidebarProjectIds;
+        }
         const baseParams = {
           sort,
           direction,
-          projectIds: filters.projectIds.length > 0 ? filters.projectIds : undefined,
+          projectIds: scopedProjectIds.length > 0 ? scopedProjectIds : undefined,
           gitlabProjectNames: gitlabKey === '' ? undefined : gitlabKey.split(','),
           startFrom: filters.startFrom,
           startTo: filters.startTo,
@@ -163,7 +175,7 @@ export function useOverviewTests({ gitlabProjectNames }: UseOverviewTestsParams)
     return () => {
       cancelled = true;
     };
-  }, [fetchPage, perPage, sort, direction, filters, gitlabKey, reloadToken]);
+  }, [fetchPage, perPage, sort, direction, filters, gitlabKey, sidebarProjectIdsKey, reloadToken]);
 
   const setPage = (next: number): void => {
     setSearchParams(prev => {

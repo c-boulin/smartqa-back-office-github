@@ -9,6 +9,10 @@ import OverviewProjectSidebar from '../components/Overview/OverviewProjectSideba
 import DownloadModal from '../components/Reports/DownloadModal';
 import type { OverviewExporter, OverviewExportFormat } from '../services/overviewExportService';
 import toast from 'react-hot-toast';
+import {
+  EMPTY_OVERVIEW_CATEGORY_SELECTION,
+  type OverviewCategorySelection,
+} from '../constants/overviewCategories';
 
 type TabType = 'widgets' | 'launches' | 'tests';
 
@@ -16,7 +20,7 @@ const Overview: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  const [selection, setSelection] = useState<OverviewCategorySelection>(EMPTY_OVERVIEW_CATEGORY_SELECTION);
   const exporterRef = useRef<OverviewExporter | null>(null);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -51,9 +55,14 @@ const Overview: React.FC = () => {
     }
   }, []);
 
-  const handleSelectReposChange = useCallback((repoSlugs: string[]) => {
-    setSelectedRepos(repoSlugs);
+  const handleSelectionChange = useCallback((next: OverviewCategorySelection) => {
+    setSelection(next);
   }, []);
+
+  const selectedRepos = selection.repoNames.length > 0 ? selection.repoNames : undefined;
+  // TEMP(bolt-overview) — sidebar projectIds only come from the Bolt placeholder; sent alone (no gitlab_project_name).
+  // TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists
+  const selectedProjectIds = selection.projectIds.length > 0 ? selection.projectIds : undefined;
 
   const isLaunchesPath = useMemo(() => {
     const normalized = location.pathname.replace(/\/+$/, '');
@@ -100,8 +109,8 @@ const Overview: React.FC = () => {
     <>
       <div className="flex -ml-6 -mt-6">
         <OverviewProjectSidebar
-          selectedRepos={selectedRepos}
-          onSelectReposChange={handleSelectReposChange}
+          selection={selection}
+          onSelectionChange={handleSelectionChange}
         />
 
         <div className="flex-1 min-w-0 flex flex-col space-y-6 p-6" style={{ containerType: 'inline-size', containerName: 'overview-main' }}>
@@ -186,7 +195,8 @@ const Overview: React.FC = () => {
             {activeTab === 'widgets' && (
               <div className="pt-2">
                 <OverviewWidgetsPanel
-                  gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
+                  projectIds={selectedProjectIds}
+                  gitlabProjectNames={selectedRepos}
                   registerExporter={activeTab === 'widgets' ? registerExporter : undefined}
                 />
               </div>
@@ -194,7 +204,8 @@ const Overview: React.FC = () => {
             {activeTab === 'launches' && (
               <div className="pt-2 min-h-[12rem]">
                 <OverviewLaunchesTable
-                  gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
+                  externalProjectIds={selectedProjectIds}
+                  gitlabProjectNames={selectedRepos}
                   registerExporter={activeTab === 'launches' ? registerExporter : undefined}
                 />
               </div>
@@ -202,7 +213,8 @@ const Overview: React.FC = () => {
             {activeTab === 'tests' && (
               <div className="pt-2 min-h-[12rem]">
                 <OverviewTestsTable
-                  gitlabProjectNames={selectedRepos.length > 0 ? selectedRepos : undefined}
+                  projectIds={selectedProjectIds}
+                  gitlabProjectNames={selectedRepos}
                 />
               </div>
             )}
