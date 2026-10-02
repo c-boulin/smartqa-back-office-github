@@ -960,10 +960,12 @@ function SuiteListSortableTh({
 interface OverviewLaunchesTableProps {
   externalProjectIds?: number[];
   gitlabProjectNames?: string[];
+  /** TEMP(bolt-overview) — TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists */
+  exportCategoryLabel?: string | null;
   registerExporter?: (exporter: OverviewExporter | null) => void;
 }
 
-const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, gitlabProjectNames, registerExporter }) => {
+const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, gitlabProjectNames, exportCategoryLabel, registerExporter }) => {
   const { hasPermission } = useAuth();
   const canEditDefects = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
   const location = useLocation();
@@ -1499,8 +1501,12 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       format,
       domSelector: '[data-overview-export="launches"]',
       filters: {
+        categoryLabel: exportCategoryLabel,
         gitlabProjectNames,
-        projectIds: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
+        // TEMP(bolt-overview) — with a category label, only list projects the user explicitly picked.
+        projectIds: exportCategoryLabel
+          ? (selectedProjectIds.length > 0 && effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined)
+          : (effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined),
         projectOptions,
         startFrom: resolvedStartFrom,
         startTo: resolvedStartTo,
@@ -1538,6 +1544,8 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     defectTagFilter,
     hasIssuesFilter,
     projectOptions,
+    exportCategoryLabel,
+    selectedProjectIds,
   ]);
 
   /**
