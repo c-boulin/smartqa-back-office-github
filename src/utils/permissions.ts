@@ -81,6 +81,9 @@ export const PERMISSIONS = {
   ADMIN_PANEL: {
     READ: 'admin-panel:read',
   },
+  OVERVIEW: {
+    READ: 'overview:read',
+  },
 } as const;
 
 export type Permission = string;

@@ -20,7 +20,7 @@ import { PERMISSIONS } from '../utils/permissions';
 import PermissionGuard from '../components/PermissionGuard';
 import CreateTemplateModal, { CreateTemplateFormData } from '../components/Project/CreateTemplateModal';
 import ProjectTitle from '../components/Project/ProjectTitle';
-import SearchAutocomplete, { Suggestion } from '../components/UI/SearchAutocomplete';
+import SearchAutocomplete from '../components/UI/SearchAutocomplete';
 
 /* ------------------------------------------------------------------ */
 /* TemplateFormModal                                                    */
@@ -387,13 +387,6 @@ const Templates: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '', categoryIri: '', categoryName: '' });
 
-  const templateNameSuggestions = useMemo<Suggestion[]>(() =>
-    templates
-      .filter(t => t.name)
-      .map(t => ({ label: t.name, country: t.country ?? undefined, type: t.project_type ?? undefined })),
-    [templates]
-  );
-
   const SORT_OPTIONS = useMemo(() => [
     { value: 'createdAt-desc', label: 'Creation date (New/Old)', param: 'order[createdAt]=desc' },
     { value: 'createdAt-asc',  label: 'Creation date (Old/New)', param: 'order[createdAt]=asc' },
@@ -595,7 +588,6 @@ const Templates: React.FC = () => {
               value={searchTerm}
               onChange={setSearchTerm}
               onSearch={handleSearch}
-              suggestions={templateNameSuggestions}
               placeholder="Search for template..."
             />
           </div>

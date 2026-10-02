@@ -137,9 +137,11 @@ const TestCasesFiltersSidebar: React.FC<TestCasesFiltersSidebarProps> = ({
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-0">
           <FilterGroup title="Execution">
             <CheckItem label="Not automated" checked={filters.automationStatus === '1'} onChange={() => toggleAutomation('1')} />
-            <CheckItem label="Automation not required" checked={filters.automationStatus === '5'} onChange={() => toggleAutomation('5')} />
             <CheckItem label="Automated" checked={filters.automationStatus === '2'} onChange={() => toggleAutomation('2')} />
+            <CheckItem label="Automation not required" checked={filters.automationStatus === '3'} onChange={() => toggleAutomation('3')} />
             <CheckItem label="Cannot be automated" checked={filters.automationStatus === '4'} onChange={() => toggleAutomation('4')} />
+            <CheckItem label="Obsolete" checked={filters.automationStatus === '5'} onChange={() => toggleAutomation('5')} />
+            <CheckItem label="To be Automated" checked={filters.automationStatus === '6'} onChange={() => toggleAutomation('6')} />
           </FilterGroup>
 
           <FilterGroup title="Priority">

@@ -30,11 +30,13 @@ interface UseOverviewTestsResult {
     status?: 'passed' | 'failed';
     defectTag?: string;
     hasIssues: boolean;
+    groupByLaunch: boolean;
   };
   reload: () => void;
 }
 
 const DEFAULT_PER_PAGE = 15;
+const FETCH_ALL_PER_PAGE = 100;
 const DEFAULT_SORT: OverviewTestsSortColumn = 'start_time';
 const DEFAULT_DIRECTION: 'asc' | 'desc' = 'desc';
 
@@ -85,24 +87,28 @@ export function useOverviewTests({ gitlabProjectNames }: UseOverviewTestsParams)
   const sort = parseSort(searchParams.get('sort'));
   const direction = parseDirection(searchParams.get('direction'));
 
-  const filters = useMemo(() => {
-    const startFrom = searchParams.get('start_from') ?? undefined;
-    const startTo = searchParams.get('start_to') ?? undefined;
-    const status = parseStatus(searchParams.get('status'));
-    const defectTag = searchParams.get('defect_tag') ?? undefined;
-    const hasIssues = searchParams.get('has_issues') === '1';
-    const projectIds = parseProjectIds(searchParams.get('project_ids'));
-    return {
-      projectIds,
-      startFrom: startFrom === '' ? undefined : startFrom,
-      startTo: startTo === '' ? undefined : startTo,
-      status,
-      defectTag: defectTag === '' ? undefined : defectTag,
-      hasIssues,
-    };
-  }, [searchParams]);
+  const startFromParam = searchParams.get('start_from');
+  const startToParam = searchParams.get('start_to');
+  const statusParam = searchParams.get('status');
+  const defectTagParam = searchParams.get('defect_tag');
+  const hasIssuesParam = searchParams.get('has_issues');
+  const groupByParam = searchParams.get('group_by');
+  const projectIdsParam = searchParams.get('project_ids');
+
+  // Keyed on individual params so a page change alone does not rebuild filters (and refetch).
+  const filters = useMemo(() => ({
+    projectIds: parseProjectIds(projectIdsParam),
+    startFrom: startFromParam == null || startFromParam === '' ? undefined : startFromParam,
+    startTo: startToParam == null || startToParam === '' ? undefined : startToParam,
+    status: parseStatus(statusParam),
+    defectTag: defectTagParam == null || defectTagParam === '' ? undefined : defectTagParam,
+    hasIssues: hasIssuesParam === '1',
+    groupByLaunch: groupByParam === 'launch',
+  }), [startFromParam, startToParam, statusParam, defectTagParam, hasIssuesParam, groupByParam, projectIdsParam]);
 
   const gitlabKey = gitlabProjectNames == null ? '' : gitlabProjectNames.join(',');
+  // Launch-grouped mode loads everything once and paginates launches client-side.
+  const fetchPage = filters.groupByLaunch ? 1 : page;
 
   useEffect(() => {
     let cancelled = false;
@@ -110,9 +116,7 @@ export function useOverviewTests({ gitlabProjectNames }: UseOverviewTestsParams)
       try {
         setLoading(true);
         setError(null);
-        const res = await fetchOverviewTests({
-          page,
-          perPage,
+        const baseParams = {
           sort,
           direction,
           projectIds: filters.projectIds.length > 0 ? filters.projectIds : undefined,
@@ -122,7 +126,23 @@ export function useOverviewTests({ gitlabProjectNames }: UseOverviewTestsParams)
           status: filters.status,
           defectTag: filters.defectTag,
           hasIssues: filters.hasIssues,
-        });
+        };
+        if (filters.groupByLaunch) {
+          const all: OverviewTestApiRow[] = [];
+          let current = 1;
+          let last = 1;
+          do {
+            const res = await fetchOverviewTests({ ...baseParams, page: current, perPage: FETCH_ALL_PER_PAGE });
+            if (cancelled) return;
+            if (Array.isArray(res.tests)) all.push(...res.tests);
+            last = res.meta?.lastPage ?? current;
+            current += 1;
+          } while (current <= last);
+          setRows(all);
+          setMeta({ currentPage: 1, lastPage: 1, perPage: all.length, total: all.length });
+          return;
+        }
+        const res = await fetchOverviewTests({ ...baseParams, page: fetchPage, perPage });
         if (cancelled) return;
         setRows(Array.isArray(res.tests) ? res.tests : []);
         setMeta(res.meta ?? {
@@ -143,7 +163,7 @@ export function useOverviewTests({ gitlabProjectNames }: UseOverviewTestsParams)
     return () => {
       cancelled = true;
     };
-  }, [page, perPage, sort, direction, filters, gitlabKey, reloadToken]);
+  }, [fetchPage, perPage, sort, direction, filters, gitlabKey, reloadToken]);
 
   const setPage = (next: number): void => {
     setSearchParams(prev => {

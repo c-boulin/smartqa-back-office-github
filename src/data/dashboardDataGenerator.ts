@@ -22,6 +22,7 @@ export interface ProjectDashboardMetrics {
     notRequired: number;
     cannotAutomate: number;
     obsolete: number;
+    toBeAutomated: number;
   };
   testTypeDistribution: {
     functional: number;
@@ -217,6 +218,7 @@ export function generateProjectDashboardData(
       notRequired: 0,
       cannotAutomate: 0,
       obsolete: 0,
+      toBeAutomated: 0,
     },
     testTypeDistribution: {
       functional: 27,
@@ -259,6 +261,7 @@ export function generateProjectDashboardData(
         notRequired: 0,
         cannotAutomate: 0,
         obsolete: 0,
+        toBeAutomated: 0,
       },
       testTypeDistribution: {
         functional: Math.floor(totalTestCases * 0.6),
@@ -297,6 +300,7 @@ export function generateProjectDashboardData(
         notRequired: 0,
         cannotAutomate: 0,
         obsolete: 0,
+        toBeAutomated: 0,
       },
       testTypeDistribution: {
         functional: 0,
@@ -435,6 +439,7 @@ export function generateProjectDashboardData(
       notRequired: 0,
       cannotAutomate: 0,
       obsolete: 0,
+      toBeAutomated: 0,
     },
     testTypeDistribution: {
       functional: actualFunctionalCount,

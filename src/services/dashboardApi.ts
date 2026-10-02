@@ -9,6 +9,7 @@ export interface DashboardSummary {
     notRequired: number;
     cannotAutomate: number;
     obsolete: number;
+    toBeAutomated: number;
   };
   testTypeDistribution: Record<string, number>;
   statusDistribution: {

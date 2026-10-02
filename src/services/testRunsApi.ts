@@ -621,7 +621,7 @@ class TestRunsApiService {
       type: tc.type as TestCase['type'],
       typeId: tc.typeId,
       status: (tc.status as TestCase['status']) ?? 'draft',
-      automationStatus: tc.automationStatus as 1 | 2 | 3 | 4 | 5,
+      automationStatus: tc.automationStatus as 1 | 2 | 3 | 4 | 5 | 6,
       steps: [],
       stepResults: (tc.stepResults ?? []).map((s: { id: string }) => s.id),
       sharedSteps: (tc.sharedSteps ?? []).map((s: { id: string }) => s.id),
