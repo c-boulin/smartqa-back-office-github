@@ -20,6 +20,8 @@ import { PERMISSIONS } from '../../utils/permissions';
 
 interface OverviewTestsTableProps {
   gitlabProjectNames?: string[];
+  /** TEMP(bolt-overview) — sidebar allowlist. TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists */
+  projectIds?: number[];
 }
 
 const DEFECT_LABEL_BY_SLUG = new Map<string, string>(DEFECT_CHART_TYPES.map(d => [d.slug, d.label]));
@@ -63,7 +65,7 @@ const groupRows = (rows: OverviewTestApiRow[]): OverviewTestsGroup[] => {
   return groups;
 };
 
-const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNames }) => {
+const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNames, projectIds }) => {
   const { hasPermission } = useAuth();
   const canEditDefects = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
   const {
@@ -78,7 +80,7 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
     setSort,
     filters,
     reload,
-  } = useOverviewTests({ gitlabProjectNames });
+  } = useOverviewTests({ gitlabProjectNames, projectIds });
 
   const [defectTypes, setDefectTypes] = useState<OverviewDefectType[]>([]);
   const [defectGroups, setDefectGroups] = useState<DefectGroupData[]>([]);

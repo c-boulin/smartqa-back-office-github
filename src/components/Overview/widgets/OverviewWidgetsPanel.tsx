@@ -13,10 +13,12 @@ import { toDateOnly } from './navigateToFilteredLaunches';
 interface OverviewWidgetsPanelProps {
   projectIds?: number[];
   gitlabProjectNames?: string[];
+  /** TEMP(bolt-overview) — TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists */
+  exportCategoryLabel?: string | null;
   registerExporter?: (exporter: OverviewExporter | null) => void;
 }
 
-const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds, gitlabProjectNames, registerExporter }) => {
+const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds, gitlabProjectNames, exportCategoryLabel, registerExporter }) => {
   const [data, setData] = useState<OverviewWidgetsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,13 +80,14 @@ const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds,
       domSelector: '[data-overview-export="widgets"]',
       data,
       filters: {
+        categoryLabel: exportCategoryLabel,
         gitlabProjectNames,
-        projectIds,
+        projectIds: exportCategoryLabel ? undefined : projectIds,
       },
     });
     registerExporter(exporter);
     return () => registerExporter(null);
-  }, [registerExporter, data, projectIds, gitlabProjectNames]);
+  }, [registerExporter, data, projectIds, gitlabProjectNames, exportCategoryLabel]);
 
   const summaryStats = useMemo(() => {
     if (!data) return null;
