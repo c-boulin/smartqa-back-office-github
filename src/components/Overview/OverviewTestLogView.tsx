@@ -15,8 +15,8 @@ import {
   RefreshCw,
   Search,
   X,
+  type LucideIcon,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import type {
   OverviewDefectType,
   OverviewTestDefect,
@@ -26,6 +26,7 @@ import type {
 } from '../../services/overviewWidgetsApi';
 import { buildAssetsUrlFromObjectKey } from '../../env';
 import { DefectSelectionModal } from './DefectSelectionModal';
+import { linkifyLogText } from './linkifyLogText';
 
 /** Identifiers for the test-detail sub-tabs (All logs / Item details have body content; others placeholder or empty). */
 export type OverviewTestLogDetailTabId = 'all_logs';
@@ -76,6 +77,8 @@ export interface OverviewTestLogViewProps {
   onHoverTimeRow: (key: string | null) => void;
   /** When true and the test is failed, show an active "Make decision" button. */
   isCronContext?: boolean;
+  /** Whether the current user has permission to assign/change defect types. */
+  canEditDefects?: boolean;
   /** The overviewTestId for this test log (null for suite-keyword logs). */
   overviewTestId?: number | null;
   /** Cached defect types from the parent (used in the modal). */
@@ -84,6 +87,8 @@ export interface OverviewTestLogViewProps {
   defectGroups?: import('../../services/defectGroupsApi').DefectGroupData[];
   /** Called after a defect decision is applied so the parent can update the suite list row. */
   onDefectApplied?: (overviewTestId: number, applied: OverviewTestDefect | null) => void;
+  /** Optional test description from the API payload or suite-list target. */
+  description?: string | null;
 }
 
 /**
@@ -457,7 +462,7 @@ function AllLogsTreeRows(props: { node: OverviewTestLogTreeNode } & AllLogsTreeR
           className="min-w-0 break-words border-l-[3px] border-cyan-600/70 py-2.5 pr-2 align-top font-mono text-xs text-slate-800 dark:border-cyan-500/50 dark:text-slate-200"
           style={{ paddingLeft: `${12 + depth * 16}px` }}
         >
-          {node.logMessage}
+          {linkifyLogText(node.logMessage)}
         </td>
         <td className="py-2.5 px-2 align-top">
           {node.screenshotObjectKey != null && node.screenshotObjectKey !== '' ? (
@@ -494,9 +499,10 @@ function KeywordLogAccordionBlock(
   props: { node: OverviewTestLogKeywordApiNode } & AllLogsTreeRowBaseProps,
 ): React.ReactNode {
   const { node, depth, parentKey, rowIndex, hoveredTimeRowKey, onHoverTimeRow } = props;
-  const [open, setOpen] = useState(false);
-  const rowKey = `${parentKey}-kw-${node.kwId}-d${depth}-i${rowIndex}`;
+  const isFailed = normalizeStatusBand(node.statusBand, node.statusLabel) === 'failed';
   const expandable = node.children.length > 0;
+  const [open, setOpen] = useState(isFailed && expandable);
+  const rowKey = `${parentKey}-kw-${node.kwId}-d${depth}-i${rowIndex}`;
 
   return (
     <React.Fragment key={`${rowKey}-frag`}>
@@ -528,7 +534,7 @@ function KeywordLogAccordionBlock(
                 <span className="inline-block w-4" aria-hidden />
               )}
             </button>
-            <span className="min-w-0 break-words">{node.logMessage}</span>
+            <span className="min-w-0 break-words">{linkifyLogText(node.logMessage)}</span>
           </div>
         </td>
         <td className="py-2.5 px-2 align-top whitespace-nowrap">
@@ -591,10 +597,12 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   suiteListStatusLabel,
   suiteListStatusBand,
   isCronContext = false,
+  canEditDefects = false,
   overviewTestId = null,
   defectTypes = [],
   defectGroups,
   onDefectApplied,
+  description,
 }) => {
   const [defectModalOpen, setDefectModalOpen] = useState(false);
 
@@ -604,7 +612,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
     suiteListStatusLabel.toUpperCase().includes('FAIL') ||
     normalizeStatusBand(undefined, testStatusLabel) === 'failed' ||
     testStatusLabel.toUpperCase().includes('FAIL');
-  const canMakeDecision = isCronContext && isFailed && overviewTestId !== null;
+  const canMakeDecision = canEditDefects && isCronContext && isFailed && overviewTestId !== null;
 
   const showHistoryButtonTooltip = (
     button: OverviewTestLogViewProps['historyButtons'][number],
@@ -631,10 +639,20 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   const [activeDetailTab, setActiveDetailTab] = useState<OverviewTestLogDetailTabId>('all_logs');
   const [hoveredHistoryButton, setHoveredHistoryButton] = useState<HistoryButtonTooltipState | null>(null);
 
+  const logContainerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setActiveDetailTab('all_logs');
     setHoveredHistoryButton(null);
   }, [logItemsSignature]);
+
+  useEffect(() => {
+    if (loading || items.length === 0 || !logContainerRef.current) return;
+    const firstFailed = logContainerRef.current.querySelector('tr.bg-red-100, tr.dark\\:bg-red-900\\/40');
+    if (firstFailed) {
+      firstFailed.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [loading, logItemsSignature]);
 
   useEffect(() => {
     if (hoveredHistoryButton === null) {
@@ -659,7 +677,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
 
   return (
     <>
-    <div className="min-h-[12rem] p-4 text-sm text-slate-800 dark:text-slate-200">
+    <div ref={logContainerRef} className="min-h-[12rem] p-4 text-sm text-slate-800 dark:text-slate-200">
       <div className="mb-4 flex justify-end">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded border border-slate-200 dark:border-slate-600">
@@ -689,6 +707,18 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+          <a
+            href={window.location.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open log in new tab"
+            aria-label="Open log in new tab"
+            data-mipqa="overview-log-open-newtab-link"
+            className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            New tab
+          </a>
           {canMakeDecision && (
             <button
               type="button"
@@ -830,7 +860,12 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
         aria-labelledby="test-log-tab-all_logs"
       >
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span className="font-medium text-slate-600 dark:text-slate-300">{testDisplayName}</span>
+          <div>
+            <span className="font-medium text-slate-600 dark:text-slate-300">{testDisplayName}</span>
+            {description ? (
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 whitespace-pre-line [overflow-wrap:anywhere]">{description}</p>
+            ) : null}
+          </div>
           <span className="tabular-nums">&lt; 1 of 1 &gt;</span>
         </div>
 

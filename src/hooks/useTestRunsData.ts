@@ -98,7 +98,8 @@ export const useTestRunsData = (projectId: string | undefined, automationFilter:
           return testCase.automationStatus === 1 || testCase.automationStatus === "1" ||
                  testCase.automationStatus === 3 || testCase.automationStatus === "3" ||
                  testCase.automationStatus === 4 || testCase.automationStatus === "4" ||
-                 testCase.automationStatus === 5 || testCase.automationStatus === "5";
+                 testCase.automationStatus === 5 || testCase.automationStatus === "5" ||
+                 testCase.automationStatus === 6 || testCase.automationStatus === "6";
         }
 
         return true;

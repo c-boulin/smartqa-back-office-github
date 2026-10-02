@@ -424,6 +424,8 @@ export interface OverviewLaunchSuiteItemApiRow {
   suiteSourceRelative: string | null;
   /** `overview_tests.line` for test rows; always null for suite-keyword rows. */
   overviewTestLine: number | null;
+  /** Optional test/kw description from the API; null/undefined when absent. */
+  description?: string | null;
 }
 
 export interface OverviewLaunchSuiteItemsResponse {
@@ -488,6 +490,8 @@ export interface OverviewTestLogItemsResponse {
   testLine: number | null;
   /** Accordion roots: keywords with nested `children` (keywords + messages). */
   items: OverviewTestLogTreeNode[];
+  /** Optional test description from the API; null/undefined when absent. */
+  description?: string | null;
 }
 
 /**
@@ -604,6 +608,8 @@ export interface OverviewTestApiRow {
   rootOverviewSuiteName: string | null;
   serviceKey: string | null;
   countryKey: string | null;
+  /** Optional test description from the API; null/undefined when absent. */
+  description?: string | null;
 }
 
 /** Server-side sortable columns for GET /widgets/overview/tests. */

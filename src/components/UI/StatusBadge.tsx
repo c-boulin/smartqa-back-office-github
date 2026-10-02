@@ -24,7 +24,8 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'test' }) => {
         2: { bg: 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/50', text: 'text-green-700 dark:text-green-400', label: 'Automated' },
         3: { bg: 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-blue-500/50', text: 'text-blue-400', label: 'Automation not required' },
         4: { bg: 'bg-gradient-to-r from-orange-500/20 to-yellow-500/20 border-orange-500/50', text: 'text-orange-400', label: 'Cannot be automated' },
-        5: { bg: 'bg-gradient-to-r from-red-500/20 to-pink-500/20 border-red-500/50', text: 'text-red-400', label: 'Obsolete' }
+        5: { bg: 'bg-gradient-to-r from-red-500/20 to-pink-500/20 border-red-500/50', text: 'text-red-400', label: 'Obsolete' },
+        6: { bg: 'bg-gradient-to-r from-teal-500/20 to-cyan-500/20 border-teal-500/50', text: 'text-teal-400', label: 'To be Automated' }
       },
       execution: {
         not_started: { bg: 'bg-gradient-to-r from-gray-500/20 to-slate-500/20 border-gray-500/50', text: 'text-gray-400', label: 'Not Started' },

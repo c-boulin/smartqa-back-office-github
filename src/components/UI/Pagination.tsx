@@ -6,6 +6,7 @@ interface PaginationProps {
   totalPages: number;
   totalItems: number;
   itemsPerPage: number;
+  itemLabel?: string;
   onPageChange: (page: number) => void;
 }
 
@@ -14,6 +15,7 @@ const Pagination: React.FC<PaginationProps> = ({
   totalPages,
   totalItems,
   itemsPerPage,
+  itemLabel = 'users',
   onPageChange,
 }) => {
   if (totalPages <= 1) return null;
@@ -58,7 +60,7 @@ const Pagination: React.FC<PaginationProps> = ({
       <p className="text-sm text-slate-600 dark:text-gray-400">
         Showing <span className="font-medium text-slate-900 dark:text-white">{startItem}</span> to{' '}
         <span className="font-medium text-slate-900 dark:text-white">{endItem}</span> of{' '}
-        <span className="font-medium text-slate-900 dark:text-white">{totalItems}</span> users
+        <span className="font-medium text-slate-900 dark:text-white">{totalItems}</span> {itemLabel}
       </p>
 
       <div className="flex items-center gap-1">

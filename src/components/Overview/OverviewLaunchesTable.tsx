@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ArrowDown,
@@ -10,6 +10,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Clock,
+  ExternalLink,
   Folder,
   Link2,
   Loader2,
@@ -49,6 +50,9 @@ import { fetchDefectGroups, type DefectGroupData, type DefectTypeData } from '..
 import { DEFECT_CHART_TYPES } from '../../constants/defectChartTypes';
 import { exportOverviewLaunches, type OverviewExporter } from '../../services/overviewExportService';
 import { OverviewLaunchesCompactGrid } from './OverviewLaunchesCompactGrid';
+import { useAuth } from '../../context/AuthContext';
+import { PERMISSIONS } from '../../utils/permissions';
+import { linkifyLogText } from './linkifyLogText';
 
 /**
  * Suite list row opens either test log or suite-keyword log (ReportPortal: every name is a link).
@@ -67,6 +71,7 @@ export type OverviewSuiteListLogTarget =
       durationLabel: string;
       suiteSourceRelative: string | null;
       overviewTestLine: number | null;
+      description?: string | null;
     }
   | {
       kind: 'suite_kw';
@@ -81,6 +86,7 @@ export type OverviewSuiteListLogTarget =
       durationLabel: string;
       suiteSourceRelative: string | null;
       overviewTestLine: number | null;
+      description?: string | null;
     };
 
 /**
@@ -156,6 +162,7 @@ function suiteItemToLogTarget(item: OverviewLaunchSuiteItemApiRow): OverviewSuit
       durationLabel: item.durationLabel,
       suiteSourceRelative: item.suiteSourceRelative ?? null,
       overviewTestLine: item.overviewTestLine ?? null,
+      description: item.description ?? null,
     };
   }
   if (item.overviewSuiteKwId !== null) {
@@ -172,6 +179,7 @@ function suiteItemToLogTarget(item: OverviewLaunchSuiteItemApiRow): OverviewSuit
       durationLabel: item.durationLabel,
       suiteSourceRelative: item.suiteSourceRelative ?? null,
       overviewTestLine: item.overviewTestLine ?? null,
+      description: item.description ?? null,
     };
   }
 
@@ -956,6 +964,8 @@ interface OverviewLaunchesTableProps {
 }
 
 const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, gitlabProjectNames, registerExporter }) => {
+  const { hasPermission } = useAuth();
+  const canEditDefects = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -994,7 +1004,6 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const [testLogPayload, setTestLogPayload] = useState<OverviewTestLogItemsResponse | null>(null);
   const [testLogLoading, setTestLogLoading] = useState(false);
   const [testLogError, setTestLogError] = useState<string | null>(null);
-  const [expandedErrorRows, setExpandedErrorRows] = useState<Set<string>>(new Set());
   const [historyAnchorLaunch, setHistoryAnchorLaunch] = useState<OverviewLaunchRow | null>(null);
   const [historyAnchorTarget, setHistoryAnchorTarget] = useState<OverviewSuiteListLogTarget | null>(null);
   const [historyLaunches, setHistoryLaunches] = useState<HistoryLaunchEntry[]>([]);
@@ -1003,6 +1012,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const [historyLaunchesNextBeforeId, setHistoryLaunchesNextBeforeId] = useState<number | null>(null);
   const [hoveredLogTimeRowKey, setHoveredLogTimeRowKey] = useState<string | null>(null);
   const historyLaunchTargetCacheRef = useRef<Map<string, OverviewSuiteListLogTarget | null>>(new Map());
+  const deepLinkResolvingRef = useRef(false);
   const pendingLaunchesRefreshRef = useRef(false);
   const skipNextLaunchesSearchSyncRef = useRef(false);
   const loadRequestIdRef = useRef(0);
@@ -1707,8 +1717,14 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       historyLaunchTargetCacheRef.current = new Map();
     };
 
+    const isDeepLink = routeState.kind === 'test' || routeState.kind === 'kw';
+    if (isDeepLink) {
+      deepLinkResolvingRef.current = true;
+    }
+
     const run = async (): Promise<void> => {
       if (routeState.kind === 'list') {
+        deepLinkResolvingRef.current = false;
         clearLocalSelection();
         if (pendingLaunchesRefreshRef.current) {
           pendingLaunchesRefreshRef.current = false;
@@ -1819,6 +1835,10 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         if (!cancelled) {
           toast.error(e instanceof Error ? e.message : 'Could not open overview launch.');
         }
+      } finally {
+        if (!cancelled) {
+          deepLinkResolvingRef.current = false;
+        }
       }
     };
 
@@ -1848,6 +1868,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   }, [rows]);
 
   useEffect(() => {
+    if (deepLinkResolvingRef.current) return;
     setSuiteListItems(null);
     setSuiteItemsError(null);
     setSuiteSort({ column: 'start_time', direction: 'asc' });
@@ -1959,6 +1980,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   }, [navigateToLaunchesRoute, searchParams, stripOverviewDeepLinkParams]);
 
 
+  const isDeepLinkResolving = (routeState.kind === 'test' || routeState.kind === 'kw') && testLogTarget === null;
   const inTestLogView = testLogTarget !== null;
 
   const buildHistoryLaunchEntry = useCallback(
@@ -2463,6 +2485,11 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
           {suiteItemsError}
         </p>
       ) : null}
+      {isDeepLinkResolving ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-cyan-500" aria-hidden />
+        </div>
+      ) : (<>
       {drillLaunch === null ? (
         <div className="mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/40">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
@@ -2806,7 +2833,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
               <span className="text-slate-400">|</span>
               <span>Total: {drillLaunch.total}</span>
             </div>
-            {isCronContext && selectableItems.length > 0 ? (
+            {canEditDefects && isCronContext && selectableItems.length > 0 ? (
               <div className="flex items-center gap-2">
                 {selectedTestIds.size > 0 && (
                   <span className="text-xs text-slate-400 dark:text-slate-500"
@@ -2846,6 +2873,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         {inTestLogView && drillLaunch !== null && testLogTarget !== null ? (
           <OverviewTestLogView
             testDisplayName={testLogPayload?.testName ?? testLogTarget.displayName}
+            description={testLogPayload?.description ?? testLogTarget.description ?? null}
             items={testLogPayload?.items ?? []}
             testStatusLabel={testLogPayload?.testStatusLabel ?? '—'}
             historyButtons={visibleHistoryLaunchEntries.map(entry => ({
@@ -2891,6 +2919,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             hoveredTimeRowKey={hoveredLogTimeRowKey}
             onHoverTimeRow={setHoveredLogTimeRowKey}
             isCronContext={isCronContext}
+            canEditDefects={canEditDefects}
             overviewTestId={testLogTarget.kind === 'test' ? testLogTarget.overviewTestId : null}
             defectTypes={defectTypes}
             defectGroups={defectGroups}
@@ -2909,7 +2938,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
               <tr className="text-left">
                 <th className="py-3 pl-4 pr-2">
-                  {isCronContext && selectableItems.length > 0 ? (
+                  {canEditDefects && isCronContext && selectableItems.length > 0 ? (
                     <label data-mipqa="suite-select-all-checkbox" className="relative inline-flex h-4 w-4 cursor-pointer select-none items-center justify-center">
                       <input
                         type="checkbox"
@@ -2986,13 +3015,20 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                 const isFailed =
                   item.statusBand === 'failed' ||
                   item.statusLabel.toUpperCase().includes('FAIL');
+                const suiteLogHref = drillLaunch !== null
+                  ? item.overviewTestId !== null
+                    ? `/overview/launches/${drillLaunch.id}/test/${item.overviewTestId}${searchParams.toString() !== '' ? `?${searchParams.toString()}` : ''}`
+                    : item.overviewSuiteKwId !== null
+                      ? `/overview/launches/${drillLaunch.id}/kw/${item.overviewSuiteKwId}${searchParams.toString() !== '' ? `?${searchParams.toString()}` : ''}`
+                      : '#'
+                  : '#';
                 return (
                   <tr
                     key={rowKey}
                     className={`transition-colors ${isFailed ? 'bg-red-100 dark:bg-red-900/40 hover:bg-red-200/70 dark:hover:bg-red-900/60' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
                   >
                     <td className="py-3 pl-4 pr-2 align-top text-slate-400">
-                      {isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
+                      {canEditDefects && isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
                         <label
                           data-mipqa={`suite-row-checkbox-${item.overviewTestId}`}
                           className="relative inline-flex h-4 w-4 cursor-pointer select-none items-center justify-center"
@@ -3019,13 +3055,16 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                     </td>
                     <td className="break-words py-3 pr-4 align-top">
                       {item.overviewTestId !== null ? (
-                        <button
-                          type="button"
-                          onClick={() => {
+                        <Link
+                          to={`/overview/launches/${drillLaunch!.id}/test/${item.overviewTestId}`}
+                          onClick={(e) => {
                             const overviewTestId = item.overviewTestId;
                             if (overviewTestId === null || drillLaunch === null) {
+                              e.preventDefault();
                               return;
                             }
+                            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+                            e.preventDefault();
                             const nextTarget: OverviewSuiteListLogTarget = {
                               kind: 'test',
                               overviewTestId,
@@ -3039,6 +3078,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                               durationLabel: item.durationLabel,
                               suiteSourceRelative: item.suiteSourceRelative ?? null,
                               overviewTestLine: item.overviewTestLine ?? null,
+                              description: item.description ?? null,
                             };
                             historyLaunchTargetCacheRef.current = new Map([[drillLaunch.id, nextTarget]]);
                             navigateToLaunchesRoute({
@@ -3050,15 +3090,18 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                           className="block text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline [overflow-wrap:anywhere]"
                         >
                           {item.name}
-                        </button>
+                        </Link>
                       ) : item.overviewSuiteKwId !== null ? (
-                        <button
-                          type="button"
-                          onClick={() => {
+                        <Link
+                          to={`/overview/launches/${drillLaunch!.id}/kw/${item.overviewSuiteKwId}`}
+                          onClick={(e) => {
                             const overviewSuiteKwId = item.overviewSuiteKwId;
                             if (overviewSuiteKwId === null || drillLaunch === null) {
+                              e.preventDefault();
                               return;
                             }
+                            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+                            e.preventDefault();
                             const nextTarget: OverviewSuiteListLogTarget = {
                               kind: 'suite_kw',
                               overviewSuiteKwId,
@@ -3072,6 +3115,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                               durationLabel: item.durationLabel,
                               suiteSourceRelative: item.suiteSourceRelative ?? null,
                               overviewTestLine: item.overviewTestLine ?? null,
+                              description: item.description ?? null,
                             };
                             historyLaunchTargetCacheRef.current = new Map([[drillLaunch.id, nextTarget]]);
                             navigateToLaunchesRoute({
@@ -3083,49 +3127,80 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                           className="block text-left font-semibold text-cyan-600 dark:text-cyan-400 hover:underline [overflow-wrap:anywhere]"
                         >
                           {item.name}
-                        </button>
+                        </Link>
                       ) : (
                         <span className="block font-semibold text-slate-900 dark:text-slate-100 [overflow-wrap:anywhere]">
                           {item.name}
                         </span>
                       )}
+                      {item.description ? (
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 whitespace-pre-line [overflow-wrap:anywhere]">{item.description}</p>
+                      ) : null}
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-400">
                         <span className="inline-flex items-center gap-1">
                           <Clock className="h-3 w-3 shrink-0" />
                           {item.durationLabel}
                         </span>
+                        {suiteLogHref !== '#' && (
+                          <a
+                            href={suiteLogHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Open log in new tab"
+                            aria-label="Open log in new tab"
+                            data-mipqa="overview-suite-open-newtab-link"
+                            className="inline-flex items-center text-slate-400 hover:text-cyan-500 dark:text-slate-500 dark:hover:text-cyan-400 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
                       </div>
                       {isFailed && item.errorMessages != null && item.errorMessages.length > 0 ? (
-                        <button
-                          type="button"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setExpandedErrorRows(prev => {
-                              const next = new Set(prev);
-                              if (next.has(rowKey)) {
-                                next.delete(rowKey);
-                              } else {
-                                next.add(rowKey);
-                              }
-                              return next;
-                            });
-                          }}
-                          className="mt-1.5 block w-full text-left"
-                        >
-                          {expandedErrorRows.has(rowKey) ? (
-                            <div className="flex flex-col gap-0.5">
-                              {item.errorMessages.map((msg, i) => (
-                                <p key={i} className="text-xs text-red-700 dark:text-red-300 font-mono [overflow-wrap:anywhere]">
-                                  {msg}
-                                </p>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="truncate text-xs text-red-700 dark:text-red-300 font-mono">
-                              {item.errorMessages[0]}
+                        item.overviewTestId !== null && drillLaunch !== null ? (
+                          <div
+                            className="mt-1.5 block w-full text-left"
+                            data-mipqa="overview-suite-error-link"
+                          >
+                            <p
+                              className="truncate text-xs text-red-700 dark:text-red-300 font-mono cursor-pointer"
+                              onClick={(e) => {
+                                const target = e.target as HTMLElement;
+                                if (target.tagName === 'A') return;
+                                e.stopPropagation();
+                                const nextTarget: OverviewSuiteListLogTarget = {
+                                  kind: 'test',
+                                  overviewTestId: item.overviewTestId!,
+                                  displayName: item.name,
+                                  methodType: item.methodType,
+                                  statusLabel: item.statusLabel,
+                                  statusBand: item.statusBand,
+                                  startTimeRelative: item.startTimeRelative,
+                                  startTimeDisplay: item.startTimeDisplay,
+                                  startTimeRaw: item.startTimeRaw,
+                                  durationLabel: item.durationLabel,
+                                  suiteSourceRelative: item.suiteSourceRelative ?? null,
+                                  overviewTestLine: item.overviewTestLine ?? null,
+                                  description: item.description ?? null,
+                                };
+                                historyLaunchTargetCacheRef.current = new Map([[drillLaunch.id, nextTarget]]);
+                                navigateToLaunchesRoute({
+                                  kind: 'test',
+                                  testRunExecutionId: Number(drillLaunch.id),
+                                  overviewTestId: item.overviewTestId!,
+                                }, false, null);
+                              }}
+                            >
+                              {linkifyLogText(item.errorMessages[0])}
                             </p>
-                          )}
-                        </button>
+                          </div>
+                        ) : (
+                          <div className="mt-1.5">
+                            <p className="truncate text-xs text-red-700 dark:text-red-300 font-mono">
+                              {linkifyLogText(item.errorMessages[0])}
+                            </p>
+                          </div>
+                        )
                       ) : null}
                     </td>
                     <td className="py-3 px-2 align-top text-slate-700 dark:text-slate-300">
@@ -3151,7 +3226,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                         : item.startTimeRelative}
                     </td>
                     <td className="py-3 px-2 align-top text-slate-700 dark:text-slate-300">
-                      {isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
+                      {canEditDefects && isCronContext && item.statusBand === 'failed' && item.overviewTestId !== null ? (
                         (() => {
                           const resolved = item.defectType ? defectTypeBySlug.get(item.defectType) : null;
                           return resolved != null ? (
@@ -3629,6 +3704,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         </div>
       ) : null}
       </div>
+      </>)}
       {suiteListLaunchTooltip !== null && drillLaunchHistoryTooltipButton !== null ? (
         <HistoryLaunchTooltip
           button={drillLaunchHistoryTooltipButton}
@@ -3637,7 +3713,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         />
       ) : null}
     </div>
-    {defectModalTarget !== null && (
+    {canEditDefects && defectModalTarget !== null && (
       <DefectSelectionModal
         targets={defectModalTarget}
         defectTypes={defectTypes}

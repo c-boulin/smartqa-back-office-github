@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Download, LayoutGrid, Rocket, Shield } from 'lucide-react';
+import { Download, LayoutGrid, Rocket } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { PERMISSIONS } from '../utils/permissions';
+
 import OverviewLaunchesTable from '../components/Overview/OverviewLaunchesTable';
 import OverviewTestsTable from '../components/Overview/OverviewTestsTable';
 import OverviewWidgetsPanel from '../components/Overview/widgets/OverviewWidgetsPanel';
@@ -14,8 +13,6 @@ import toast from 'react-hot-toast';
 type TabType = 'widgets' | 'launches' | 'tests';
 
 const Overview: React.FC = () => {
-  const { hasPermission } = useAuth();
-  const canAccessOverview = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -98,22 +95,6 @@ const Overview: React.FC = () => {
     setActiveTab('widgets');
   }, [isLaunchesPath, isTestsPath, searchParams]);
 
-  useEffect(() => {
-    if (!canAccessOverview) {
-      toast.error('You do not have permission to access this page');
-    }
-  }, [canAccessOverview]);
-
-  if (!canAccessOverview) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Shield className="w-12 h-12 text-slate-400 dark:text-gray-600 mx-auto mb-3" />
-          <p className="text-slate-600 dark:text-gray-400">You do not have permission to access this page</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>

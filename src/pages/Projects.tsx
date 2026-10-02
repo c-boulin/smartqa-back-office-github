@@ -21,7 +21,7 @@ import ProjectCard from '../components/Project/ProjectCard';
 import ProjectTitle from '../components/Project/ProjectTitle';
 import CreateProjectModal, { CreateProjectFormData } from '../components/Project/CreateProjectModal';
 import EditProjectModal, { EditProjectFormData } from '../components/Project/EditProjectModal';
-import SearchAutocomplete, { Suggestion } from '../components/UI/SearchAutocomplete';
+import SearchAutocomplete from '../components/UI/SearchAutocomplete';
 
 const ProjectFormModal: React.FC<{
   isOpen: boolean;
@@ -364,13 +364,6 @@ const Projects: React.FC = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [modalTemplates, setModalTemplates] = useState<Project[]>([]);
   const [templatesLoadingForModal, setTemplatesLoadingForModal] = useState(false);
-
-  const projectNameSuggestions = useMemo<Suggestion[]>(() =>
-    projects
-      .filter(p => p.name)
-      .map(p => ({ label: p.name, id: p.id, country: p.country ?? undefined, type: p.project_type ?? undefined })),
-    [projects]
-  );
 
   const SORT_OPTIONS = useMemo(() => [
     { value: 'createdAt-desc', label: 'Creation Date (New to Old)', param: 'order[createdAt]=desc' },
@@ -732,11 +725,6 @@ const Projects: React.FC = () => {
               value={searchTerm}
               onChange={setSearchTerm}
               onSearch={handleSearch}
-              onSelect={(suggestion) => {
-                const project = projects.find(p => p.id === suggestion.id);
-                if (project) handleProjectClick(project);
-              }}
-              suggestions={projectNameSuggestions}
               placeholder="Search for project..."
             />
           </div>

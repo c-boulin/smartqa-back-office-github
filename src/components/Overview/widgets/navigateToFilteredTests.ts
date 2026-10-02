@@ -11,6 +11,8 @@ export interface TestsDeepLinkFilters {
    *  (`product_bug`, `auto_bug`, `system_issue`, `to_investigate`). */
   defectTag?: string;
   hasIssues?: boolean;
+  /** Load every matching test and paginate whole launches instead of individual tests. */
+  groupByLaunch?: boolean;
 }
 
 /**
@@ -37,5 +39,6 @@ export function navigateToFilteredTests(
   if (filters.status) params.set('status', filters.status);
   if (filters.defectTag) params.set('defect_tag', filters.defectTag);
   if (filters.hasIssues) params.set('has_issues', '1');
+  if (filters.groupByLaunch) params.set('group_by', 'launch');
   navigate({ pathname: '/overview/tests', search: `?${params.toString()}` });
 }
