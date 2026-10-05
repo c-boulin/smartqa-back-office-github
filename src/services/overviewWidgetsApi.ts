@@ -217,7 +217,7 @@ export interface FetchOverviewLaunchesParams {
   hasIssues?: boolean;
 }
 
-/** Label + id for overview launch project filter (projects that have at least one launch). */
+/** Label + id for the overview launches Projects filter. */
 export interface OverviewLaunchesProjectOption {
   id: number;
   name: string;
@@ -226,80 +226,52 @@ export interface OverviewLaunchesProjectOption {
   gitlab_project_name?: string;
 }
 
-const PER_PAGE = 200;
+const PROJECTS_LIST_PER_PAGE = 100;
+
+export function toOverviewLaunchesProjectOptions(projects: ApiProject[]): OverviewLaunchesProjectOption[] {
+  const options: OverviewLaunchesProjectOption[] = projects.map(p => {
+    const t = projectsApiService.transformApiProject(p);
+    return {
+      id: p.attributes.id,
+      name: t.name ?? '',
+      country: t.country ?? undefined,
+      project_type: t.project_type ?? undefined,
+      gitlab_project_name: t.gitlab_project_name ?? undefined,
+    };
+  });
+  options.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  return options;
+}
 
 /**
- * Fetches projects from /api/projects-list that have at least one launch.
+ * Projects filter options from /api/projects-list only — never /widgets/overview/launches.
  * When `gitlabProjectNames` is supplied, only projects belonging to those repos are returned.
  */
-export async function fetchAllOverviewLaunchesProjectOptions(
+export async function fetchOverviewLaunchesProjectOptions(
   gitlabProjectNames?: string[],
 ): Promise<OverviewLaunchesProjectOption[]> {
-  const first = await fetchOverviewLaunches({
-    page: 1,
-    perPage: PER_PAGE,
-    gitlabProjectNames: gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
-  });
-  const projectIds = new Set<number>(first.launches.map(l => l.projectId));
-
-  if (first.meta.lastPage > 1) {
+  const repos = gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined;
+  const first = await projectsApiService.getProjectsList(1, PROJECTS_LIST_PER_PAGE, undefined, undefined, repos);
+  if (!first || !Array.isArray(first.data) || !first.meta) {
+    throw new Error('Unexpected projects list response');
+  }
+  const items = [...first.data];
+  const totalPages = Math.max(
+    1,
+    Math.ceil(first.meta.totalItems / (first.meta.itemsPerPage || PROJECTS_LIST_PER_PAGE)),
+  );
+  if (totalPages > 1) {
     const rest = await Promise.all(
-      Array.from({ length: first.meta.lastPage - 1 }, (_, i) =>
-        fetchOverviewLaunches({
-          page: i + 2,
-          perPage: PER_PAGE,
-          gitlabProjectNames: gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
-        }),
+      Array.from({ length: totalPages - 1 }, (_, i) =>
+        projectsApiService.getProjectsList(i + 2, PROJECTS_LIST_PER_PAGE, undefined, undefined, repos),
       ),
     );
-    for (const page of rest) {
-      for (const l of page.launches) projectIds.add(l.projectId);
+    for (const res of rest) {
+      if (!res || !Array.isArray(res.data)) throw new Error('Unexpected projects list response');
+      items.push(...res.data);
     }
   }
-
-  if (projectIds.size === 0) return [];
-
-  // Resolve names via /api/projects-list, scoped to the repo filter when provided.
-  const firstProjects = await projectsApiService.getProjectsList(
-    1,
-    100,
-    undefined,
-    undefined,
-    gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
-  );
-  const allProjectListItems = [...firstProjects.data];
-  const totalProjectPages = Math.max(1, Math.ceil(firstProjects.meta.totalItems / firstProjects.meta.itemsPerPage));
-  if (totalProjectPages > 1) {
-    const restProjects = await Promise.all(
-      Array.from({ length: totalProjectPages - 1 }, (_, i) =>
-        projectsApiService.getProjectsList(
-          i + 2,
-          100,
-          undefined,
-          undefined,
-          gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
-        ),
-      ),
-    );
-    for (const res of restProjects) allProjectListItems.push(...res.data);
-  }
-
-  const options: OverviewLaunchesProjectOption[] = allProjectListItems
-    .filter(p => projectIds.has(p.attributes.id))
-    .map(p => {
-      const t = projectsApiService.transformApiProject(p);
-      return {
-        id: p.attributes.id,
-        name: t.name ?? '',
-        country: t.country ?? undefined,
-        project_type: t.project_type ?? undefined,
-        gitlab_project_name: t.gitlab_project_name ?? undefined,
-      };
-    });
-
-  options.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-
-  return options;
+  return toOverviewLaunchesProjectOptions(items);
 }
 
 

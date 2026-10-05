@@ -65,6 +65,7 @@ const Overview: React.FC = () => {
       ? selectedCategory.repoNames
       : undefined;
   const selectedProjectIds = projectScope !== null && scope.status === 'ready' ? scope.projectIds : undefined;
+  const selectedProjectOptions = projectScope !== null && scope.status === 'ready' ? scope.projectOptions : undefined;
   const exportCategoryLabel = projectScope !== null && selectedCategory ? selectedCategory.label : null;
   const scopeBlocking = projectScope !== null && scope.status !== 'ready';
 
@@ -237,6 +238,7 @@ const Overview: React.FC = () => {
               <div className="pt-2 min-h-[12rem]">
                 <OverviewLaunchesTable
                   externalProjectIds={selectedProjectIds}
+                  externalProjectOptions={selectedProjectOptions}
                   gitlabProjectNames={selectedRepos}
                   exportCategoryLabel={exportCategoryLabel}
                   registerExporter={activeTab === 'launches' ? registerExporter : undefined}
