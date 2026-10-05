@@ -4,6 +4,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { projectsApiService, type ApiProject } from '../services/projectsApi';
 import {
+  toOverviewLaunchesProjectOptions,
+  type OverviewLaunchesProjectOption,
+} from '../services/overviewWidgetsApi';
+import {
   isTempBoltProjectTitle,
   TEMP_SB_OVERVIEW_REPO_NAME,
   type OverviewProjectScope,
@@ -11,7 +15,7 @@ import {
 
 const PER_PAGE = 100;
 
-type ScopePartition = Record<OverviewProjectScope, number[]>;
+type ScopePartition = Record<OverviewProjectScope, { projectIds: number[]; projectOptions: OverviewLaunchesProjectOption[] }>;
 
 type FetchState =
   | { status: 'idle' }
@@ -22,7 +26,7 @@ type FetchState =
 export type TempOverviewScopeState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'ready'; projectIds: number[] }
+  | { status: 'ready'; projectIds: number[]; projectOptions: OverviewLaunchesProjectOption[] }
   | { status: 'empty' }
   | { status: 'error' };
 
@@ -49,15 +53,18 @@ async function fetchSmartbuilderProjects(): Promise<ApiProject[]> {
 }
 
 function partitionProjects(projects: ApiProject[]): ScopePartition {
-  const bolt = new Set<number>();
-  const sb = new Set<number>();
+  const bolt = new Map<number, ApiProject>();
+  const sb = new Map<number, ApiProject>();
   for (const p of projects) {
     const id = Number(p.attributes?.id);
     if (!Number.isFinite(id) || id <= 0) continue;
-    (isTempBoltProjectTitle(p.attributes?.title) ? bolt : sb).add(id);
+    (isTempBoltProjectTitle(p.attributes?.title) ? bolt : sb).set(id, p);
   }
-  const sorted = (ids: Set<number>) => [...ids].sort((a, b) => a - b);
-  return { bolt: sorted(bolt), sb: sorted(sb) };
+  const build = (byId: Map<number, ApiProject>) => ({
+    projectIds: [...byId.keys()].sort((a, b) => a - b),
+    projectOptions: toOverviewLaunchesProjectOptions([...byId.values()]),
+  });
+  return { bolt: build(bolt), sb: build(sb) };
 }
 
 export function useTempOverviewProjectScope(
@@ -92,8 +99,10 @@ export function useTempOverviewProjectScope(
 
   if (scope === null) return { status: 'idle', retry };
   if (state.status === 'loaded') {
-    const projectIds = state.partition[scope];
-    return projectIds.length > 0 ? { status: 'ready', projectIds, retry } : { status: 'empty', retry };
+    const { projectIds, projectOptions } = state.partition[scope];
+    return projectIds.length > 0
+      ? { status: 'ready', projectIds, projectOptions, retry }
+      : { status: 'empty', retry };
   }
   // Avoid a one-render gap where the scope was just enabled but the effect hasn't set 'loading' yet.
   if (state.status === 'idle') return { status: 'loading', retry };

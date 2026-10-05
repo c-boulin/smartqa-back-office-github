@@ -21,7 +21,7 @@ import {
 import { endOfDay, format, isEqual, isSameDay, startOfDay } from 'date-fns';
 import { convertUtcToLocalDisplay } from '../../utils/dateHelpers';
 import {
-  fetchAllOverviewLaunchesProjectOptions,
+  fetchOverviewLaunchesProjectOptions,
   fetchOverviewDefectTypes,
   fetchOverviewLaunchHistory,
   fetchOverviewLaunches,
@@ -958,13 +958,15 @@ function SuiteListSortableTh({
 
 interface OverviewLaunchesTableProps {
   externalProjectIds?: number[];
+  /** Project records already resolved by the Overview scope; used as-is for the Projects dropdown. */
+  externalProjectOptions?: OverviewLaunchesProjectOption[];
   gitlabProjectNames?: string[];
   /** TEMP(bolt-overview) — TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists */
   exportCategoryLabel?: string | null;
   registerExporter?: (exporter: OverviewExporter | null) => void;
 }
 
-const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, gitlabProjectNames, exportCategoryLabel, registerExporter }) => {
+const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, externalProjectOptions, gitlabProjectNames, exportCategoryLabel, registerExporter }) => {
   const { hasPermission } = useAuth();
   const canEditDefects = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
   const location = useLocation();
@@ -1238,24 +1240,34 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const externalProjectIdsKey = externalProjectIds && externalProjectIds.length > 0 ? externalProjectIds.join(',') : '';
 
   useEffect(() => {
+    const allowedIds = externalProjectIdsKey === ''
+      ? null
+      : new Set(externalProjectIdsKey.split(',').map(Number));
+    const applyOptions = (allOpts: OverviewLaunchesProjectOption[]) => {
+      const opts = allowedIds === null ? allOpts : allOpts.filter(o => allowedIds.has(o.id));
+      setProjectOptions(opts);
+      // Clear any selected projects that are no longer in the filtered option list.
+      if ((gitlabProjectNames && gitlabProjectNames.length > 0) || allowedIds !== null) {
+        const validIds = new Set(opts.map(o => o.id));
+        setSelectedProjectIds(prev => prev.filter(id => validIds.has(id)));
+      }
+    };
+
+    if (externalProjectOptions !== undefined) {
+      applyOptions(externalProjectOptions);
+      setProjectsLoading(false);
+      return;
+    }
+
     let cancelled = false;
     const run = async () => {
       setProjectsLoading(true);
       try {
-        const allOpts = await fetchAllOverviewLaunchesProjectOptions(
+        const allOpts = await fetchOverviewLaunchesProjectOptions(
           gitlabProjectNames && gitlabProjectNames.length > 0 ? gitlabProjectNames : undefined,
         );
-        const allowedIds = externalProjectIdsKey === ''
-          ? null
-          : new Set(externalProjectIdsKey.split(',').map(Number));
-        const opts = allowedIds === null ? allOpts : allOpts.filter(o => allowedIds.has(o.id));
         if (!cancelled) {
-          setProjectOptions(opts);
-          // Clear any selected projects that are no longer in the filtered option list.
-          if ((gitlabProjectNames && gitlabProjectNames.length > 0) || allowedIds !== null) {
-            const validIds = new Set(opts.map(o => o.id));
-            setSelectedProjectIds(prev => prev.filter(id => validIds.has(id)));
-          }
+          applyOptions(allOpts);
         }
       } catch {
         if (!cancelled) {
@@ -1272,7 +1284,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     return () => {
       cancelled = true;
     };
-  }, [gitlabProjectNames, externalProjectIdsKey]);
+  }, [gitlabProjectNames, externalProjectIdsKey, externalProjectOptions]);
 
   useEffect(() => {
     skipNextLaunchesSearchSyncRef.current = true;
@@ -1729,7 +1741,6 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       setTestLogPayload(null);
       setTestLogError(null);
       setHoveredLogTimeRowKey(null);
-      setExpandedErrorRows(new Set());
       setSelectedTestIds(new Set());
       historyLaunchTargetCacheRef.current = new Map();
     };
