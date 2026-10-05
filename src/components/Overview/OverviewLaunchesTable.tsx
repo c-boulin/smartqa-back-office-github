@@ -10,7 +10,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Clock,
-  ExternalLink,
   Folder,
   Link2,
   Loader2,
@@ -3033,13 +3032,6 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                 const isFailed =
                   item.statusBand === 'failed' ||
                   item.statusLabel.toUpperCase().includes('FAIL');
-                const suiteLogHref = drillLaunch !== null
-                  ? item.overviewTestId !== null
-                    ? `/overview/launches/${drillLaunch.id}/test/${item.overviewTestId}${searchParams.toString() !== '' ? `?${searchParams.toString()}` : ''}`
-                    : item.overviewSuiteKwId !== null
-                      ? `/overview/launches/${drillLaunch.id}/kw/${item.overviewSuiteKwId}${searchParams.toString() !== '' ? `?${searchParams.toString()}` : ''}`
-                      : '#'
-                  : '#';
                 return (
                   <tr
                     key={rowKey}
@@ -3159,20 +3151,6 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                           <Clock className="h-3 w-3 shrink-0" />
                           {item.durationLabel}
                         </span>
-                        {suiteLogHref !== '#' && (
-                          <a
-                            href={suiteLogHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Open log in new tab"
-                            aria-label="Open log in new tab"
-                            data-mipqa="overview-suite-open-newtab-link"
-                            className="inline-flex items-center text-slate-400 hover:text-cyan-500 dark:text-slate-500 dark:hover:text-cyan-400 transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
                       </div>
                       {isFailed && item.errorMessages != null && item.errorMessages.length > 0 ? (
                         item.overviewTestId !== null && drillLaunch !== null ? (
