@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  ExternalLink,
   FileText,
   Loader2,
   RefreshCw,
@@ -410,7 +411,7 @@ function LogMessageScreenshotPreview(props: { objectKey: string }): React.ReactN
 
   return (
     <>
-      <div className="relative inline-flex max-w-full flex-col items-center">
+      <div className="group relative inline-flex max-w-full flex-col items-center gap-0.5">
         <a
           href={url}
           target="_blank"
@@ -432,6 +433,19 @@ function LogMessageScreenshotPreview(props: { objectKey: string }): React.ReactN
             className="max-h-full min-h-[35px] min-w-[60px] max-w-[65px] cursor-pointer rounded border border-slate-200 object-cover object-top shadow-sm dark:border-slate-600"
           />
         </a>
+        <div className="flex items-center justify-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded p-0.5 text-cyan-600 hover:bg-cyan-500/15 dark:text-cyan-400 dark:hover:bg-cyan-500/20"
+            title="Open in new tab"
+            aria-label="Open in new tab"
+            data-mipqa="overview-log-screenshot-newtab-link"
+          >
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          </a>
+        </div>
       </div>
       <ScreenshotPreviewModal
         isOpen={modalOpen}
