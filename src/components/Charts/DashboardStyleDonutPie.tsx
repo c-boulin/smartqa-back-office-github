@@ -45,7 +45,7 @@ function createSegmentLabelRenderer(labelColor: string, labelOffset: number, fon
   }): React.ReactElement | null {
     const { cx, cy, midAngle, outerRadius, percent } = props;
     if (cx == null || cy == null || midAngle == null || outerRadius == null || percent == null) return null;
-    if (percent < 0.01) return null;
+    if (percent < 0.05) return null;
     const radius = outerRadius + labelOffset;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
