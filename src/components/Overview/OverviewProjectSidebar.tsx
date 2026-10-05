@@ -7,12 +7,7 @@ import {
   LandingIcon,
   AiAgentIcon,
 } from './overviewCategoryIcons';
-import {
-  EMPTY_OVERVIEW_CATEGORY_SELECTION,
-  OVERVIEW_CATEGORIES,
-  OverviewCategoryMeta,
-  OverviewCategorySelection,
-} from '../../constants/overviewCategories';
+import { OVERVIEW_CATEGORIES, OverviewCategoryMeta } from '../../constants/overviewCategories';
 
 type IconComponent = React.ComponentType<{ className?: string }>;
 
@@ -33,33 +28,13 @@ const CATEGORIES: CategoryWithIcon[] = OVERVIEW_CATEGORIES.map(category => ({
 }));
 
 interface OverviewProjectSidebarProps {
-  selection: OverviewCategorySelection;
-  onSelectionChange: (selection: OverviewCategorySelection) => void;
-}
-
-function setsMatch<T>(a: T[], b: T[]): boolean {
-  if (a.length !== b.length || a.length === 0) return false;
-  const setB = new Set(b);
-  return a.every(s => setB.has(s));
-}
-
-// TEMP(bolt-overview) — projectIds branch only exists for the Bolt placeholder.
-// TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists
-function categoryMatchesSelection(category: OverviewCategoryMeta, selection: OverviewCategorySelection): boolean {
-  if (category.repoNames.length > 0) return setsMatch(category.repoNames, selection.repoNames);
-  if (category.projectIds && category.projectIds.length > 0) {
-    return selection.repoNames.length === 0 && setsMatch(category.projectIds, selection.projectIds);
-  }
-  return false;
-}
-
-function selectionForCategory(category: OverviewCategoryMeta): OverviewCategorySelection {
-  return { repoNames: category.repoNames, projectIds: category.projectIds ?? [] };
+  selectedCategoryId: string | null;
+  onSelectedCategoryChange: (categoryId: string | null) => void;
 }
 
 const OverviewProjectSidebar: React.FC<OverviewProjectSidebarProps> = ({
-  selection,
-  onSelectionChange,
+  selectedCategoryId,
+  onSelectedCategoryChange,
 }) => {
   return (
     <div
@@ -72,7 +47,7 @@ const OverviewProjectSidebar: React.FC<OverviewProjectSidebarProps> = ({
 
       <div className="space-y-1">
         {CATEGORIES.map(category => {
-          const isSelected = category.enabled && categoryMatchesSelection(category, selection);
+          const isSelected = category.enabled && category.id === selectedCategoryId;
           const Icon = category.Icon;
 
           const baseClasses = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors';
@@ -97,11 +72,7 @@ const OverviewProjectSidebar: React.FC<OverviewProjectSidebarProps> = ({
               aria-pressed={isSelected}
               onClick={() => {
                 if (!category.enabled) return;
-                if (isSelected) {
-                  onSelectionChange(EMPTY_OVERVIEW_CATEGORY_SELECTION);
-                } else {
-                  onSelectionChange(selectionForCategory(category));
-                }
+                onSelectedCategoryChange(isSelected ? null : category.id);
               }}
               className={`${baseClasses} ${stateClasses}`}
             >
