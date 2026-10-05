@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
-  ExternalLink,
   Folder,
   Link2,
 } from 'lucide-react';
@@ -307,20 +306,6 @@ const OverviewTestsGroupTable: React.FC<OverviewTestsGroupTableProps> = ({
                         <Clock className="h-3 w-3 shrink-0" />
                         {row.durationLabel}
                       </span>
-                      {row.overviewTestId !== null && (
-                        <a
-                          href={testLogPath(row)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Open log in new tab"
-                          aria-label="Open log in new tab"
-                          data-mipqa="overview-tests-open-newtab-link"
-                          className="inline-flex items-center text-slate-400 hover:text-cyan-500 dark:text-slate-500 dark:hover:text-cyan-400 transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
                     </div>
                     {isFailed && row.errorMessages != null && row.errorMessages.length > 0 ? (
                       <div className="mt-1.5 block w-full text-left" data-mipqa="overview-tests-error-link">

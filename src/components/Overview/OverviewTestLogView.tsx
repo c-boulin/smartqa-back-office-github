@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  ExternalLink,
   FileText,
   Loader2,
   RefreshCw,
@@ -396,7 +395,8 @@ function ScreenshotPreviewModal(props: {
 }
 
 /**
- * Thumbnail + hover actions for a log line with a {@code screenshotObjectKey} (CDN path).
+ * Thumbnail for a log line with a {@code screenshotObjectKey} (CDN path). Plain click opens the popup;
+ * Ctrl/Cmd/Shift + click and middle click fall through to the native link to open a new tab.
  */
 function LogMessageScreenshotPreview(props: { objectKey: string }): React.ReactNode {
   const { objectKey } = props;
@@ -410,33 +410,28 @@ function LogMessageScreenshotPreview(props: { objectKey: string }): React.ReactN
 
   return (
     <>
-      <div className="group relative inline-flex max-w-full flex-col items-center gap-0.5">
-        <button
-          type="button"
+      <div className="relative inline-flex max-w-full flex-col items-center">
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
           className="rounded border-0 bg-transparent p-0"
           title="View screenshot"
           aria-label="View screenshot in popup"
-          onClick={() => setModalOpen(true)}
+          data-mipqa="overview-log-screenshot-link"
+          onClick={(e) => {
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+            e.preventDefault();
+            setModalOpen(true);
+          }}
         >
           <img
             src={url}
             alt=""
+            data-mipqa="overview-log-screenshot-img"
             className="max-h-full min-h-[35px] min-w-[60px] max-w-[65px] cursor-pointer rounded border border-slate-200 object-cover object-top shadow-sm dark:border-slate-600"
           />
-        </button>
-        <div className="flex items-center justify-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-          <button
-            type="button"
-            className="rounded p-0.5 text-cyan-600 hover:bg-cyan-500/15 dark:text-cyan-400 dark:hover:bg-cyan-500/20"
-            title="Open in new tab"
-            aria-label="Open in new tab"
-            onClick={() => {
-              window.open(url, '_blank', 'noopener,noreferrer');
-            }}
-          >
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-          </button>
-        </div>
+        </a>
       </div>
       <ScreenshotPreviewModal
         isOpen={modalOpen}
@@ -707,18 +702,6 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-          <a
-            href={window.location.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Open log in new tab"
-            aria-label="Open log in new tab"
-            data-mipqa="overview-log-open-newtab-link"
-            className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            New tab
-          </a>
           {canMakeDecision && (
             <button
               type="button"
