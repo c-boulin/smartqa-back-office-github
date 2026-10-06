@@ -11,6 +11,7 @@ import { fetchDefectGroups, type DefectGroupData } from '../../services/defectGr
 import Pagination from '../UI/Pagination';
 import { DefectSelectionModal } from './DefectSelectionModal';
 import OverviewTestsGroupTable, {
+  CheckboxBox,
   OverviewTestsTableHead,
   isFailedRow,
   type OverviewTestsGroup,
@@ -158,16 +159,16 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
     });
   }, []);
 
-  const setGroupSelection = useCallback((ids: number[], selected: boolean) => {
-    setSelectedTestIds(prev => {
-      const next = new Set(prev);
-      for (const id of ids) {
-        if (selected) next.add(id);
-        else next.delete(id);
-      }
-      return next;
-    });
-  }, []);
+  const allSelected = selectableItems.length > 0
+    && selectableItems.every(item => selectedTestIds.has(item.overviewTestId as number));
+  const someSelected = !allSelected
+    && selectableItems.some(item => selectedTestIds.has(item.overviewTestId as number));
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedTestIds(allSelected
+      ? new Set()
+      : new Set(selectableItems.map(item => item.overviewTestId as number)));
+  }, [allSelected, selectableItems]);
 
   const openDefectModalForRow = useCallback((row: OverviewTestApiRow) => {
     if (row.overviewTestId == null) return;
@@ -258,20 +259,36 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
         )}
 
         {canEditDefects && !hidePassedDecisions && selectableItems.length > 0 && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {selectedTestIds.size > 0 && (
-              <span data-mipqa="tests-selected-count" className="text-xs text-slate-500 dark:text-slate-400">
-                {selectedTestIds.size} selected
-              </span>
-            )}
-            <button
-              type="button"
-              data-mipqa="tests-make-decision-btn"
-              onClick={openDefectModalForSelection}
-              className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors"
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label
+              data-mipqa="tests-select-all-checkbox"
+              className="inline-flex cursor-pointer select-none items-center gap-2 pl-[17px] text-xs font-medium text-slate-700 dark:text-slate-300"
             >
-              Make Decision
-            </button>
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={el => { if (el) el.indeterminate = someSelected; }}
+                onChange={toggleSelectAll}
+                className="sr-only"
+              />
+              <CheckboxBox checked={allSelected} indeterminate={someSelected} />
+              Select all
+            </label>
+            <div className="flex items-center gap-2">
+              {selectedTestIds.size > 0 && (
+                <span data-mipqa="tests-selected-count" className="text-xs text-slate-500 dark:text-slate-400">
+                  {selectedTestIds.size} selected
+                </span>
+              )}
+              <button
+                type="button"
+                data-mipqa="tests-make-decision-btn"
+                onClick={openDefectModalForSelection}
+                className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors"
+              >
+                Make Decision
+              </button>
+            </div>
           </div>
         )}
 
@@ -305,7 +322,6 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
                 canEditDefects={canEditDefects}
                 selectedTestIds={selectedTestIds}
                 onToggleItem={toggleSelectItem}
-                onSetGroupSelection={setGroupSelection}
                 resolveDefectSlug={resolveDefectSlug}
                 defectTypeBySlug={defectTypeBySlug}
                 onOpenDefectModal={openDefectModalForRow}
