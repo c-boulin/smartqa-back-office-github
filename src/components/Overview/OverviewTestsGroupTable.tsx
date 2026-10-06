@@ -74,7 +74,7 @@ const SortHeader: React.FC<SortHeaderProps> = ({
   );
 };
 
-const CheckboxBox: React.FC<{ checked: boolean; indeterminate?: boolean }> = ({ checked, indeterminate = false }) => (
+export const CheckboxBox: React.FC<{ checked: boolean; indeterminate?: boolean }> = ({ checked, indeterminate = false }) => (
   <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${
     checked
       ? 'border-cyan-500 bg-cyan-500'
@@ -100,7 +100,6 @@ interface TableHeadProps {
   sort: OverviewTestsSortColumn;
   direction: 'asc' | 'desc';
   onSort: (col: OverviewTestsSortColumn, dir: 'asc' | 'desc') => void;
-  selectAll?: React.ReactNode;
 }
 
 export const OverviewTestsTableHead: React.FC<TableHeadProps> = ({
@@ -108,7 +107,6 @@ export const OverviewTestsTableHead: React.FC<TableHeadProps> = ({
   sort,
   direction,
   onSort,
-  selectAll,
 }) => (
   <>
     <colgroup>
@@ -122,7 +120,7 @@ export const OverviewTestsTableHead: React.FC<TableHeadProps> = ({
     <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
       <tr className="text-left">
         <th className="py-3 pl-4 pr-2">
-          {selectAll ?? <Link2 className="h-4 w-4 text-slate-400" aria-hidden />}
+          <Link2 className="h-4 w-4 text-slate-400" aria-hidden />
         </th>
         <th className="py-3 pr-2 text-xs font-semibold uppercase tracking-wide text-slate-600 align-bottom whitespace-nowrap dark:text-slate-400">
           Method type
@@ -149,7 +147,6 @@ interface OverviewTestsGroupTableProps {
   canEditDefects: boolean;
   selectedTestIds: Set<number>;
   onToggleItem: (id: number) => void;
-  onSetGroupSelection: (ids: number[], selected: boolean) => void;
   resolveDefectSlug: (row: OverviewTestApiRow) => string | null;
   defectTypeBySlug: Map<string, OverviewDefectType>;
   onOpenDefectModal: (row: OverviewTestApiRow) => void;
@@ -165,7 +162,6 @@ const OverviewTestsGroupTable: React.FC<OverviewTestsGroupTableProps> = ({
   canEditDefects,
   selectedTestIds,
   onToggleItem,
-  onSetGroupSelection,
   resolveDefectSlug,
   defectTypeBySlug,
   onOpenDefectModal,
@@ -173,29 +169,7 @@ const OverviewTestsGroupTable: React.FC<OverviewTestsGroupTableProps> = ({
 }) => {
   const navigate = useNavigate();
   const [hoveredStartRowKey, setHoveredStartRowKey] = useState<string | null>(null);
-
-  const selectableIds = group.rows
-    .filter(row => isFailedRow(row) && row.overviewTestId !== null)
-    .map(row => row.overviewTestId as number);
-  const allSelected = selectableIds.length > 0 && selectableIds.every(id => selectedTestIds.has(id));
-  const someSelected = selectableIds.some(id => selectedTestIds.has(id));
   const showCheckboxes = canEditDefects && !hidePassedDecisions;
-
-  const selectAll = showCheckboxes && selectableIds.length > 0 ? (
-    <label
-      data-mipqa="tests-select-all-checkbox"
-      className="relative inline-flex h-4 w-4 cursor-pointer select-none items-center justify-center"
-    >
-      <input
-        type="checkbox"
-        checked={allSelected}
-        ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
-        onChange={() => onSetGroupSelection(selectableIds, !allSelected)}
-        className="sr-only"
-      />
-      <CheckboxBox checked={allSelected} indeterminate={someSelected} />
-    </label>
-  ) : undefined;
 
   return (
     <section data-mipqa="overview-tests-group" className="space-y-3">
@@ -239,7 +213,6 @@ const OverviewTestsGroupTable: React.FC<OverviewTestsGroupTableProps> = ({
             sort={sort}
             direction={direction}
             onSort={onSort}
-            selectAll={selectAll}
           />
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
             {group.rows.map(row => {
