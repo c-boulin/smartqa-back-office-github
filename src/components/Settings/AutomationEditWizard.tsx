@@ -440,6 +440,7 @@ const ConfigStep: React.FC<{
         className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
       >
         <option value="">Select country</option>
+        <option value="WW">WW -- Worldwide</option>
         {COUNTRY_CODES_ALPHA2.map(({ code, name }) => (
           <option key={code} value={code}>
             {code} -- {name}

@@ -11,6 +11,7 @@ interface ServiceCountryExecutionWidgetProps {
   executionByCountryByService: Record<string, OverviewExecutionRow[]>;
   windowStartFrom: string;
   windowStartTo: string;
+  isGamesCategory?: boolean;
 }
 
 function formatPassRateLabel(passRate: number | null | undefined): string {
@@ -25,6 +26,7 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
   executionByCountryByService,
   windowStartFrom,
   windowStartTo,
+  isGamesCategory = false,
 }) => {
   const navigate = useNavigate();
   const [selectedService, setSelectedService] = useState<{ key: string; label: string } | null>(null);
@@ -41,8 +43,31 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
   const countryPassed = useMemo(() => countryRows.filter(r => r.band === 'passed'), [countryRows]);
 
   const handleServiceClick = (row: OverviewExecutionRow) => {
+    if (isGamesCategory) {
+      navigateToFilteredTests(navigate, {
+        gameTitle: row.label,
+        startFrom: windowStartFrom,
+        startTo: windowStartTo,
+        groupByLaunch: true,
+      });
+      return;
+    }
     setSelectedService({ key: row.key, label: row.label });
   };
+
+  const cardMipqa = (row: OverviewExecutionRow): string | undefined =>
+    isGamesCategory ? `game-health-card-${row.label.toLowerCase().replace(/\s+/g, '-')}` : undefined;
+
+  const title = isGamesCategory
+    ? 'Health by game'
+    : selectedService
+      ? `Service health By Country \u2014 ${selectedService.label}`
+      : 'Service health By Country';
+  const subtitle = isGamesCategory
+    ? 'Last 7 days health check per game'
+    : selectedService
+      ? 'Country breakdown for this service'
+      : 'Last 7 days component health check';
 
   const handleCountryClick = (row: OverviewExecutionRow) => {
     navigateToFilteredTests(navigate, {
@@ -73,15 +98,11 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
             </button>
           )}
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              {selectedService
-                ? `Service health By Country \u2014 ${selectedService.label}`
-                : 'Service health By Country'}
+            <h3 className="text-base font-bold text-slate-900 dark:text-white" data-mipqa="health-widget-title">
+              {title}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {selectedService
-                ? 'Country breakdown for this service'
-                : 'Last 7 days component health check'}
+              {subtitle}
             </p>
           </div>
         </div>
@@ -119,6 +140,7 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
                         testCases={row.pass + row.fail}
                         status="failed"
                         onClick={() => handleServiceClick(row)}
+                        data-mipqa={cardMipqa(row)}
                       />
                     ))}
                   </div>
@@ -137,6 +159,7 @@ const ServiceCountryExecutionWidget: React.FC<ServiceCountryExecutionWidgetProps
                         testCases={row.pass + row.fail}
                         status="passed"
                         onClick={() => handleServiceClick(row)}
+                        data-mipqa={cardMipqa(row)}
                       />
                     ))}
                   </div>

@@ -68,6 +68,7 @@ const Overview: React.FC = () => {
   const selectedProjectOptions = projectScope !== null && scope.status === 'ready' ? scope.projectOptions : undefined;
   const exportCategoryLabel = projectScope !== null && selectedCategory ? selectedCategory.label : null;
   const scopeBlocking = projectScope !== null && scope.status !== 'ready';
+  const isGamesCategory = selectedCategory?.id === 'games';
 
   const isLaunchesPath = useMemo(() => {
     const normalized = location.pathname.replace(/\/+$/, '');
@@ -231,6 +232,7 @@ const Overview: React.FC = () => {
                   gitlabProjectNames={selectedRepos}
                   exportCategoryLabel={exportCategoryLabel}
                   registerExporter={activeTab === 'widgets' ? registerExporter : undefined}
+                  isGamesCategory={isGamesCategory}
                 />
               </div>
             )}

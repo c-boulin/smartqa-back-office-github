@@ -31,7 +31,8 @@ export const OVERVIEW_CATEGORIES: OverviewCategoryMeta[] = [
   { id: 'dvs', label: 'DV Content by DVS', repoNames: ['QATEconf', 'QATEgraph'], enabled: true },
   // TEMP(bolt-overview) — TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists
   { id: 'bolt', label: 'DV Content by Bolt', repoNames: [], projectScope: 'bolt', enabled: true },
-  { id: 'games', label: 'Games', repoNames: [], enabled: false },
+  // The API matches gitlab_project_name exactly, so both known spellings are sent.
+  { id: 'games', label: 'Games', repoNames: ['QATEgamestest', 'qategamestest'], enabled: true },
   { id: 'landing', label: 'Landing Page', repoNames: [], enabled: false },
   { id: 'ai-agent', label: 'AI Agent', repoNames: [], enabled: false },
 ];
@@ -41,12 +42,15 @@ export function findOverviewCategory(id: string | null): OverviewCategoryMeta | 
   return OVERVIEW_CATEGORIES.find(category => category.id === id && category.enabled) ?? null;
 }
 
+const toRepoKeySet = (names: string[]) => new Set(names.map(name => name.trim().toLowerCase()));
+
 export function overviewCategoryLabelForRepos(repoNames: string[]): string | null {
   if (repoNames.length === 0) return null;
-  const target = new Set(repoNames);
+  const target = toRepoKeySet(repoNames);
   for (const category of OVERVIEW_CATEGORIES) {
-    if (category.repoNames.length !== target.size) continue;
-    if (category.repoNames.every(name => target.has(name))) return category.label;
+    const candidate = toRepoKeySet(category.repoNames);
+    if (candidate.size !== target.size) continue;
+    if ([...candidate].every(name => target.has(name))) return category.label;
   }
   return null;
 }

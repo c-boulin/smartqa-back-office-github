@@ -207,6 +207,7 @@ const OverviewTestsTable: React.FC<OverviewTestsTableProps> = ({ gitlabProjectNa
 
   const filterSummary = useMemo(() => {
     const parts: string[] = [];
+    if (filters.gameTitle) parts.push(`Game: ${filters.gameTitle}`);
     if (filters.status) parts.push(`Status: ${filters.status}`);
     if (filters.defectTag) {
       parts.push(`Defect: ${DEFECT_LABEL_BY_SLUG.get(filters.defectTag) ?? filters.defectTag}`);
