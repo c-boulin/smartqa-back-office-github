@@ -1,0 +1,23 @@
+name: Auto PR
+
+on:
+  push:
+    branches-ignore:
+      - master
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: auto-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auto-pr:
+    uses: digitalvirgo/dating-cicd/.github/workflows/auto-pr-library.yml@v1
+    secrets: inherit
+    with:
+      default-branch: master

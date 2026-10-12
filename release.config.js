@@ -15,9 +15,9 @@ export default {
         }],
         ["@semantic-release/release-notes-generator", {
             "presetConfig": {
-                "compareUrlFormat": "https://gitlab.dvtech.io/{{owner}}/{{repository}}/-/compare/{{previousTag}}...{{currentTag}}",
-                "commitUrlFormat": "https://gitlab.dvtech.io/{{owner}}/{{repository}}/-/commit/{{hash}}",
-                "issueUrlFormat": "https://gitlab.dvtech.io/{{owner}}/{{repository}}/-/issues/{{id}}",
+                "compareUrlFormat": "https://github.com/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}",
+                "commitUrlFormat": "https://github.com/{{owner}}/{{repository}}/commit/{{hash}}",
+                "issueUrlFormat": "https://github.com/{{owner}}/{{repository}}/issues/{{id}}",
                 "types": [
                     {"type": "feat", "section": "Features"},
                     {"type": "fix", "section": "Bug Fixes"},
