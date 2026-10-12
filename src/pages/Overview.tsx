@@ -244,6 +244,7 @@ const Overview: React.FC = () => {
                   gitlabProjectNames={selectedRepos}
                   exportCategoryLabel={exportCategoryLabel}
                   registerExporter={activeTab === 'launches' ? registerExporter : undefined}
+                  isGamesCategory={isGamesCategory}
                 />
               </div>
             )}

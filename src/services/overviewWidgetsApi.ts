@@ -130,6 +130,17 @@ export interface OverviewLaunchApiRow {
   autoBug: number;
   systemIssue: number;
   toInvestigate: number;
+  /** Games Hub: game name of the launch's test (e.g. "pogoball-nosdk-GMY"). */
+  testDisplayName?: string | null;
+  gameTitle?: string | null;
+}
+
+/** Games Hub: swaps the launch name for the game name, keeping the trailing "#pipeline". */
+export function applyGameDisplayName(row: OverviewLaunchApiRow): OverviewLaunchApiRow {
+  const gameName = row.testDisplayName?.trim();
+  if (!gameName || gameName === '\u2014' || gameName === '-') return row;
+  const pipeline = row.displayName.match(/#\d+\s*$/)?.[0].trim();
+  return { ...row, displayName: pipeline ? `${gameName} ${pipeline}` : gameName };
 }
 
 export interface OverviewLaunchesMeta {

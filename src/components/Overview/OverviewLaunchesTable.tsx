@@ -21,6 +21,7 @@ import {
 import { endOfDay, format, isEqual, isSameDay, startOfDay } from 'date-fns';
 import { convertUtcToLocalDisplay } from '../../utils/dateHelpers';
 import {
+  applyGameDisplayName,
   fetchOverviewLaunchesProjectOptions,
   fetchOverviewDefectTypes,
   fetchOverviewLaunchHistory,
@@ -91,7 +92,8 @@ export type OverviewSuiteListLogTarget =
 /**
  * Maps the API launch row into table row props.
  */
-function mapApiRowToRow(api: OverviewLaunchApiRow): OverviewLaunchRow {
+function mapApiRowToRow(rawApi: OverviewLaunchApiRow, useGameName: boolean): OverviewLaunchRow {
+  const api = useGameName ? applyGameDisplayName(rawApi) : rawApi;
   const byLabel = api.runnedByLabel ?? api.ownerLabel;
   return {
     id: String(api.testRunExecutionId),
@@ -967,9 +969,10 @@ interface OverviewLaunchesTableProps {
   /** TEMP(bolt-overview) — TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists */
   exportCategoryLabel?: string | null;
   registerExporter?: (exporter: OverviewExporter | null) => void;
+  isGamesCategory?: boolean;
 }
 
-const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, externalProjectOptions, gitlabProjectNames, exportCategoryLabel, registerExporter }) => {
+const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, externalProjectOptions, gitlabProjectNames, exportCategoryLabel, registerExporter, isGamesCategory = false }) => {
   const { hasPermission } = useAuth();
   const canEditDefects = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
   const location = useLocation();
@@ -1487,7 +1490,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         if (loadRequestIdRef.current !== reqId) {
           return;
         }
-        setRows(res.launches.map(mapApiRowToRow));
+        setRows(res.launches.map(r => mapApiRowToRow(r, isGamesCategory)));
         setMeta(res.meta);
       } catch (e) {
         if (loadRequestIdRef.current !== reqId) {
@@ -1514,6 +1517,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       defectTagFilter,
       hasIssuesFilter,
       gameTitleFilter,
+      isGamesCategory,
     ],
   );
 
@@ -1537,7 +1541,10 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         defectTagFilter,
         hasIssuesFilter,
       },
-      fetchAllLaunches: base => fetchOverviewLaunches(base),
+      fetchAllLaunches: async base => {
+        const res = await fetchOverviewLaunches(base);
+        return isGamesCategory ? { ...res, launches: res.launches.map(applyGameDisplayName) } : res;
+      },
       fetchParamsBase: {
         sort: launchSort.column,
         direction: launchSort.direction,
@@ -1570,6 +1577,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     projectOptions,
     exportCategoryLabel,
     selectedProjectIds,
+    isGamesCategory,
   ]);
 
   /**
@@ -1727,9 +1735,9 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
 
       const row = res.launches[0];
 
-      return row !== undefined ? mapApiRowToRow(row) : null;
+      return row !== undefined ? mapApiRowToRow(row, isGamesCategory) : null;
     },
-    [effectiveProjectIds, gitlabProjectNames, resolvedStartFrom, resolvedStartTo, executionFilter],
+    [effectiveProjectIds, gitlabProjectNames, resolvedStartFrom, resolvedStartTo, executionFilter, isGamesCategory],
   );
 
   useEffect(() => {
@@ -2064,7 +2072,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
       });
-      const rowsForHistory = res.launches.map(mapApiRowToRow).reverse();
+      const rowsForHistory = res.launches.map(r => mapApiRowToRow(r, isGamesCategory)).reverse();
       const entries = await Promise.all(
         rowsForHistory.map(row => buildHistoryLaunchEntry(row, historyAnchorTarget)),
       );
@@ -2080,6 +2088,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       setHistoryLaunchesLoading(false);
     }
   }, [
+    isGamesCategory,
     historyAnchorLaunch,
     historyAnchorTarget,
     effectiveProjectIds,
@@ -2188,7 +2197,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
         beforeTestRunExecutionId: historyLaunchesNextBeforeId,
       });
-      const rowsForHistory = res.launches.map(mapApiRowToRow).reverse();
+      const rowsForHistory = res.launches.map(r => mapApiRowToRow(r, isGamesCategory)).reverse();
       const entries = await Promise.all(
         rowsForHistory.map(row => buildHistoryLaunchEntry(row, historyAnchorTarget)),
       );
@@ -2210,6 +2219,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       setHistoryLaunchesLoading(false);
     }
   }, [
+    isGamesCategory,
     historyAnchorLaunch,
     historyAnchorTarget,
     historyLaunchesLoading,
