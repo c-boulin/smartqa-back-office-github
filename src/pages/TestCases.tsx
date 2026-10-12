@@ -17,6 +17,7 @@ import CreateFolderModal from '../components/Folder/CreateFolderModal';
 import EditFolderModal from '../components/Folder/EditFolderModal';
 import TestCaseDetailsSidebar from '../components/TestCase/TestCaseDetailsSidebar';
 import CreateTestRunModal from '../components/TestRun/CreateTestRunModal';
+import { isTestCasesOnlyProject } from '../utils/testCasesOnlyProjects';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useTestCases } from '../hooks/useTestCases';
@@ -43,6 +44,7 @@ const TestCases: React.FC = () => {
   const location = useLocation();
   const rootLabel = (location.state as { from?: string } | null)?.from === 'templates' ? 'Templates' : 'Projects';
   const selectedProject = getSelectedProject();
+  const isTestCasesOnly = isTestCasesOnlyProject(selectedProject);
 
   useRestoreLastProject();
   
@@ -1145,9 +1147,10 @@ const TestCases: React.FC = () => {
         testCase={selectedTestCaseForDetails}
         context="test-cases"
         availableTags={tags}
-        onRunTest={handleRunTest}
+        onRunTest={isTestCasesOnly ? undefined : handleRunTest}
       />
 
+      {!isTestCasesOnly && (
       <CreateTestRunModal
         isOpen={isCreateTestRunModalOpen}
         onClose={() => {
@@ -1158,6 +1161,7 @@ const TestCases: React.FC = () => {
         isSubmitting={isSubmitting}
         preselectedTestCaseId={preselectedTestCaseId}
       />
+      )}
     </div>
   );
 };

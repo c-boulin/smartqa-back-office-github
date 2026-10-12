@@ -15,6 +15,7 @@ import { Project } from '../types';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../hooks/usePermissions';
 import { PERMISSIONS } from '../utils/permissions';
+import { getProjectLandingPath } from '../utils/testCasesOnlyProjects';
 import PermissionGuard from '../components/PermissionGuard';
 import { projectsApiService } from '../services/projectsApi';
 import ProjectCard from '../components/Project/ProjectCard';
@@ -623,7 +624,7 @@ const Projects: React.FC = () => {
 
     setTimeout(() => {
       toast.success(`Selected project: ${project.name}`);
-      navigate('/dashboard');
+      navigate(getProjectLandingPath(project));
     }, 50);
   }, [dispatch, navigate, getSelectedProject]);
 
