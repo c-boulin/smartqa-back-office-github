@@ -32,7 +32,7 @@ export const OVERVIEW_CATEGORIES: OverviewCategoryMeta[] = [
   // TEMP(bolt-overview) — TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists
   { id: 'bolt', label: 'DV Content by Bolt', repoNames: [], projectScope: 'bolt', enabled: true },
   // The API matches gitlab_project_name exactly, so both known spellings are sent.
-  { id: 'games', label: 'Games', repoNames: ['QATEgamestest', 'qategamestest'], enabled: true },
+  { id: 'games', label: 'Games Hub', repoNames: ['QATEgamestest', 'qategamestest'], enabled: true },
   { id: 'landing', label: 'Landing Page', repoNames: [], enabled: false },
   { id: 'ai-agent', label: 'AI Agent', repoNames: [], enabled: false },
 ];
