@@ -8,12 +8,14 @@ interface NoErrorThisWeekProps {
   executionByService: OverviewExecutionRow[];
   windowStartFrom: string;
   windowStartTo: string;
+  isGamesCategory?: boolean;
 }
 
 const NoErrorThisWeek: React.FC<NoErrorThisWeekProps> = ({
   executionByService,
   windowStartFrom,
   windowStartTo,
+  isGamesCategory = false,
 }) => {
   const navigate = useNavigate();
   const healthyServices = executionByService.filter(s => s.band === 'passed');
@@ -25,6 +27,7 @@ const NoErrorThisWeek: React.FC<NoErrorThisWeekProps> = ({
       projectIds: service.projectIds,
       startFrom: windowStartFrom,
       startTo: windowStartTo,
+      gameTitle: isGamesCategory ? service.label : undefined,
     });
   };
 

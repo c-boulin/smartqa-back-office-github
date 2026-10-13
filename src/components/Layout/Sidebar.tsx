@@ -20,6 +20,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { PERMISSIONS } from '../../utils/permissions';
 import { Project } from '../../types';
 import ProjectTitle from '../Project/ProjectTitle';
+import { isTestCasesOnlyProject, getProjectLandingPath, TEST_CASES_PATH } from '../../utils/testCasesOnlyProjects';
 
 const TEMPLATE_NAV_ITEMS = [
   { path: '/test-cases',    icon: TestTube, label: 'Test Cases' },
@@ -90,7 +91,10 @@ const Sidebar: React.FC = () => {
     },
   ];
 
+  const isTestCasesOnly = isTestCasesOnlyProject(getSelectedProject());
+
   const navItems = allNavItems.filter(item => {
+    if (isTestCasesOnly && item.path !== TEST_CASES_PATH) return false;
     const hasAccess = item.permissions.length === 0 || hasAnyPermission(item.permissions);
     return hasAccess;
   });
@@ -199,7 +203,7 @@ const Sidebar: React.FC = () => {
         dispatch({ type: 'UPDATE_PROJECT', payload: selectedProject });
       }
 
-      navigate('/dashboard');
+      navigate(getProjectLandingPath(selectedProject ?? state.projects.find(p => p.id === value)));
     }
   };
 
