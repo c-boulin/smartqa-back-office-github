@@ -36,6 +36,7 @@ interface UseOverviewTestsResult {
     defectTag?: string;
     hasIssues: boolean;
     groupByLaunch: boolean;
+    gameTitle?: string;
   };
   reload: () => void;
 }
@@ -99,6 +100,7 @@ export function useOverviewTests({ gitlabProjectNames, projectIds }: UseOverview
   const hasIssuesParam = searchParams.get('has_issues');
   const groupByParam = searchParams.get('group_by');
   const projectIdsParam = searchParams.get('project_ids');
+  const gameTitleParam = searchParams.get('game_title');
 
   // Keyed on individual params so a page change alone does not rebuild filters (and refetch).
   const filters = useMemo(() => ({
@@ -109,7 +111,8 @@ export function useOverviewTests({ gitlabProjectNames, projectIds }: UseOverview
     defectTag: defectTagParam == null || defectTagParam === '' ? undefined : defectTagParam,
     hasIssues: hasIssuesParam === '1',
     groupByLaunch: groupByParam === 'launch',
-  }), [startFromParam, startToParam, statusParam, defectTagParam, hasIssuesParam, groupByParam, projectIdsParam]);
+    gameTitle: gameTitleParam == null || gameTitleParam === '' ? undefined : gameTitleParam,
+  }), [startFromParam, startToParam, statusParam, defectTagParam, hasIssuesParam, groupByParam, projectIdsParam, gameTitleParam]);
 
   const gitlabKey = gitlabProjectNames == null ? '' : gitlabProjectNames.join(',');
   const sidebarProjectIdsKey = projectIds == null ? '' : projectIds.join(',');
@@ -138,6 +141,7 @@ export function useOverviewTests({ gitlabProjectNames, projectIds }: UseOverview
           status: filters.status,
           defectTag: filters.defectTag,
           hasIssues: filters.hasIssues,
+          gameTitle: filters.gameTitle,
         };
         if (filters.groupByLaunch) {
           const all: OverviewTestApiRow[] = [];

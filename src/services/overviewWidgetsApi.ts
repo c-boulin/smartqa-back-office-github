@@ -130,6 +130,17 @@ export interface OverviewLaunchApiRow {
   autoBug: number;
   systemIssue: number;
   toInvestigate: number;
+  /** Games Hub: game name of the launch's test (e.g. "pogoball-nosdk-GMY"). */
+  testDisplayName?: string | null;
+  gameTitle?: string | null;
+}
+
+/** Games Hub: swaps the launch name for the game name, keeping the trailing "#pipeline". */
+export function applyGameDisplayName(row: OverviewLaunchApiRow): OverviewLaunchApiRow {
+  const gameName = row.testDisplayName?.trim();
+  if (!gameName || gameName === '\u2014' || gameName === '-') return row;
+  const pipeline = row.displayName.match(/#\d+\s*$/)?.[0].trim();
+  return { ...row, displayName: pipeline ? `${gameName} ${pipeline}` : gameName };
 }
 
 export interface OverviewLaunchesMeta {
@@ -215,6 +226,8 @@ export interface FetchOverviewLaunchesParams {
   defectTag?: string;
   /** Content filter: keep only launches that have any triaged defect. */
   hasIssues?: boolean;
+  /** Games category: restrict to one GAME_TITLE (`executionByService[].label`). */
+  gameTitle?: string;
 }
 
 /** Label + id for the overview launches Projects filter. */
@@ -319,6 +332,9 @@ export async function fetchOverviewLaunches(
   }
   if (params.hasIssues === true) {
     search.set('has_issues', '1');
+  }
+  if (params.gameTitle != null && params.gameTitle !== '') {
+    search.set('game_title', params.gameTitle);
   }
   if (params.testRunExecutionId != null && params.testRunExecutionId > 0) {
     search.set('test_run_execution_id', String(params.testRunExecutionId));
@@ -599,6 +615,7 @@ export interface FetchOverviewTestsParams {
   status?: 'passed' | 'failed';
   defectTag?: string;
   hasIssues?: boolean;
+  gameTitle?: string;
 }
 
 export interface OverviewTestsResponse {
@@ -647,6 +664,9 @@ export async function fetchOverviewTests(
   }
   if (params.hasIssues === true) {
     search.set('has_issues', '1');
+  }
+  if (params.gameTitle != null && params.gameTitle !== '') {
+    search.set('game_title', params.gameTitle);
   }
   const qs = search.toString();
   const path = qs ? `/widgets/overview/tests?${qs}` : '/widgets/overview/tests';

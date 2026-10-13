@@ -16,9 +16,11 @@ interface OverviewWidgetsPanelProps {
   /** TEMP(bolt-overview) — TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists */
   exportCategoryLabel?: string | null;
   registerExporter?: (exporter: OverviewExporter | null) => void;
+  /** Games category: cards are per GAME_TITLE and drill-downs filter by `game_title`. */
+  isGamesCategory?: boolean;
 }
 
-const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds, gitlabProjectNames, exportCategoryLabel, registerExporter }) => {
+const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds, gitlabProjectNames, exportCategoryLabel, registerExporter, isGamesCategory = false }) => {
   const [data, setData] = useState<OverviewWidgetsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +153,7 @@ const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds,
         executionByCountryByService={data.executionByCountryByService ?? {}}
         windowStartFrom={windowDates.startFrom}
         windowStartTo={windowDates.startTo}
+        isGamesCategory={isGamesCategory}
       />
       <DefectBreakdownByServiceWidget
         defectSeriesByProject={data.defectSeriesByProject}
@@ -159,11 +162,13 @@ const OverviewWidgetsPanel: React.FC<OverviewWidgetsPanelProps> = ({ projectIds,
         windowStartFrom={windowDates.startFrom}
         windowStartTo={windowDates.startTo}
         defectColorMap={defectColorMap}
+        isGamesCategory={isGamesCategory}
       />
       <NoErrorThisWeek
         executionByService={data.executionByService}
         windowStartFrom={windowDates.startFrom}
         windowStartTo={windowDates.startTo}
+        isGamesCategory={isGamesCategory}
       />
     </div>
   );
