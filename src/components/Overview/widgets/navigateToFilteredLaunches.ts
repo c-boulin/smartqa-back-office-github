@@ -11,6 +11,8 @@ export interface LaunchesDeepLinkFilters {
    *  (`product_bug`, `auto_bug`, `system_issue`, `to_investigate`). */
   defectTag?: string;
   hasIssues?: boolean;
+  /** Games category: exact `executionByService[].label` (GAME_TITLE). */
+  gameTitle?: string;
 }
 
 /**
@@ -37,6 +39,7 @@ export function navigateToFilteredLaunches(
   if (filters.status) params.set('status', filters.status);
   if (filters.defectTag) params.set('defect_tag', filters.defectTag);
   if (filters.hasIssues) params.set('has_issues', '1');
+  if (filters.gameTitle) params.set('game_title', filters.gameTitle);
   navigate({ pathname: '/overview/launches', search: `?${params.toString()}` });
 }
 

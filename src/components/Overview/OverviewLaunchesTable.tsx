@@ -21,6 +21,7 @@ import {
 import { endOfDay, format, isEqual, isSameDay, startOfDay } from 'date-fns';
 import { convertUtcToLocalDisplay } from '../../utils/dateHelpers';
 import {
+  applyGameDisplayName,
   fetchOverviewLaunchesProjectOptions,
   fetchOverviewDefectTypes,
   fetchOverviewLaunchHistory,
@@ -91,7 +92,8 @@ export type OverviewSuiteListLogTarget =
 /**
  * Maps the API launch row into table row props.
  */
-function mapApiRowToRow(api: OverviewLaunchApiRow): OverviewLaunchRow {
+function mapApiRowToRow(rawApi: OverviewLaunchApiRow, useGameName: boolean): OverviewLaunchRow {
+  const api = useGameName ? applyGameDisplayName(rawApi) : rawApi;
   const byLabel = api.runnedByLabel ?? api.ownerLabel;
   return {
     id: String(api.testRunExecutionId),
@@ -546,14 +548,17 @@ function ActiveFilterChip({
   statusFilter,
   defectTagFilter,
   hasIssuesFilter,
+  gameTitleFilter,
   onClear,
 }: {
   statusFilter: 'passed' | 'failed' | null;
   defectTagFilter: string | null;
   hasIssuesFilter: boolean;
-  onClear: (kind: 'status' | 'defect' | 'issues') => void;
+  gameTitleFilter: string | null;
+  onClear: (kind: 'status' | 'defect' | 'issues' | 'game') => void;
 }): React.ReactElement {
-  const chips: Array<{ key: 'status' | 'defect' | 'issues'; label: string }> = [];
+  const chips: Array<{ key: 'status' | 'defect' | 'issues' | 'game'; label: string }> = [];
+  if (gameTitleFilter !== null) chips.push({ key: 'game', label: `Game: ${gameTitleFilter}` });
   if (statusFilter !== null) chips.push({ key: 'status', label: `Filtered: ${STATUS_FILTER_LABEL[statusFilter]}` });
   if (defectTagFilter !== null) chips.push({ key: 'defect', label: `Filtered: ${resolveDefectTagLabel(defectTagFilter)}` });
   if (hasIssuesFilter) chips.push({ key: 'issues', label: 'Filtered: Has issues' });
@@ -964,9 +969,10 @@ interface OverviewLaunchesTableProps {
   /** TEMP(bolt-overview) — TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists */
   exportCategoryLabel?: string | null;
   registerExporter?: (exporter: OverviewExporter | null) => void;
+  isGamesCategory?: boolean;
 }
 
-const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, externalProjectOptions, gitlabProjectNames, exportCategoryLabel, registerExporter }) => {
+const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalProjectIds, externalProjectOptions, gitlabProjectNames, exportCategoryLabel, registerExporter, isGamesCategory = false }) => {
   const { hasPermission } = useAuth();
   const canEditDefects = hasPermission(PERMISSIONS.ADMIN_PANEL.READ);
   const location = useLocation();
@@ -1047,6 +1053,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const [statusFilter, setStatusFilter] = useState<'passed' | 'failed' | null>(null);
   const [defectTagFilter, setDefectTagFilter] = useState<string | null>(null);
   const [hasIssuesFilter, setHasIssuesFilter] = useState(false);
+  const [gameTitleFilter, setGameTitleFilter] = useState<string | null>(null);
   const prevStartTimePresetRef = useRef<StartTimePreset>(startTimePreset);
 
   // Defect types (cached once)
@@ -1334,6 +1341,8 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         ? rawDefectTag
         : null;
     const parsedHasIssues = searchParams.get('has_issues') === '1';
+    const rawGameTitle = searchParams.get('game_title');
+    const parsedGameTitle: string | null = rawGameTitle !== null && rawGameTitle !== '' ? rawGameTitle : null;
 
     setPage(prev => (prev === parsedPage ? prev : parsedPage));
     setPerPage(prev => (prev === parsedPerPage ? prev : parsedPerPage));
@@ -1347,6 +1356,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     setStatusFilter(prev => (prev === parsedStatus ? prev : parsedStatus));
     setDefectTagFilter(prev => (prev === parsedDefectTag ? prev : parsedDefectTag));
     setHasIssuesFilter(prev => (prev === parsedHasIssues ? prev : parsedHasIssues));
+    setGameTitleFilter(prev => (prev === parsedGameTitle ? prev : parsedGameTitle));
     setStartTimePreset(prev => (prev === parsedPreset.preset ? prev : parsedPreset.preset));
     setCustomRangeStart(prev => {
       const next = parsedPreset.customRangeStart;
@@ -1398,6 +1408,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       if (statusFilter !== null) { next.set('status', statusFilter); } else { next.delete('status'); }
       if (defectTagFilter !== null) { next.set('defect_tag', defectTagFilter); } else { next.delete('defect_tag'); }
       if (hasIssuesFilter) { next.set('has_issues', '1'); } else { next.delete('has_issues'); }
+      if (gameTitleFilter !== null) { next.set('game_title', gameTitleFilter); } else { next.delete('game_title'); }
       next.set('tab', 'launches');
     });
   }, [
@@ -1412,6 +1423,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     statusFilter,
     defectTagFilter,
     hasIssuesFilter,
+    gameTitleFilter,
     replaceLaunchesSearchParams,
   ]);
 
@@ -1473,11 +1485,12 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
           status: statusFilter ?? undefined,
           defectTag: defectTagFilter ?? undefined,
           hasIssues: hasIssuesFilter || undefined,
+          gameTitle: gameTitleFilter ?? undefined,
         });
         if (loadRequestIdRef.current !== reqId) {
           return;
         }
-        setRows(res.launches.map(mapApiRowToRow));
+        setRows(res.launches.map(r => mapApiRowToRow(r, isGamesCategory)));
         setMeta(res.meta);
       } catch (e) {
         if (loadRequestIdRef.current !== reqId) {
@@ -1503,6 +1516,8 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       statusFilter,
       defectTagFilter,
       hasIssuesFilter,
+      gameTitleFilter,
+      isGamesCategory,
     ],
   );
 
@@ -1526,7 +1541,10 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         defectTagFilter,
         hasIssuesFilter,
       },
-      fetchAllLaunches: base => fetchOverviewLaunches(base),
+      fetchAllLaunches: async base => {
+        const res = await fetchOverviewLaunches(base);
+        return isGamesCategory ? { ...res, launches: res.launches.map(applyGameDisplayName) } : res;
+      },
       fetchParamsBase: {
         sort: launchSort.column,
         direction: launchSort.direction,
@@ -1538,6 +1556,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         status: statusFilter ?? undefined,
         defectTag: defectTagFilter ?? undefined,
         hasIssues: hasIssuesFilter || undefined,
+        gameTitle: gameTitleFilter ?? undefined,
       },
     });
     registerExporter(exporter);
@@ -1554,9 +1573,11 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     statusFilter,
     defectTagFilter,
     hasIssuesFilter,
+    gameTitleFilter,
     projectOptions,
     exportCategoryLabel,
     selectedProjectIds,
+    isGamesCategory,
   ]);
 
   /**
@@ -1714,9 +1735,9 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
 
       const row = res.launches[0];
 
-      return row !== undefined ? mapApiRowToRow(row) : null;
+      return row !== undefined ? mapApiRowToRow(row, isGamesCategory) : null;
     },
-    [effectiveProjectIds, gitlabProjectNames, resolvedStartFrom, resolvedStartTo, executionFilter],
+    [effectiveProjectIds, gitlabProjectNames, resolvedStartFrom, resolvedStartTo, executionFilter, isGamesCategory],
   );
 
   useEffect(() => {
@@ -2051,7 +2072,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         startTo: resolvedStartTo ?? undefined,
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
       });
-      const rowsForHistory = res.launches.map(mapApiRowToRow).reverse();
+      const rowsForHistory = res.launches.map(r => mapApiRowToRow(r, isGamesCategory)).reverse();
       const entries = await Promise.all(
         rowsForHistory.map(row => buildHistoryLaunchEntry(row, historyAnchorTarget)),
       );
@@ -2067,6 +2088,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       setHistoryLaunchesLoading(false);
     }
   }, [
+    isGamesCategory,
     historyAnchorLaunch,
     historyAnchorTarget,
     effectiveProjectIds,
@@ -2175,7 +2197,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
         beforeTestRunExecutionId: historyLaunchesNextBeforeId,
       });
-      const rowsForHistory = res.launches.map(mapApiRowToRow).reverse();
+      const rowsForHistory = res.launches.map(r => mapApiRowToRow(r, isGamesCategory)).reverse();
       const entries = await Promise.all(
         rowsForHistory.map(row => buildHistoryLaunchEntry(row, historyAnchorTarget)),
       );
@@ -2197,6 +2219,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       setHistoryLaunchesLoading(false);
     }
   }, [
+    isGamesCategory,
     historyAnchorLaunch,
     historyAnchorTarget,
     historyLaunchesLoading,
@@ -2403,7 +2426,8 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     executionFilter !== 'all' ||
     statusFilter !== null ||
     defectTagFilter !== null ||
-    hasIssuesFilter;
+    hasIssuesFilter ||
+    gameTitleFilter !== null;
 
   /** Text shown on the closed Projects dropdown (matches native select-style controls). */
   const projectsDropdownSummary = useMemo(() => {
@@ -2725,16 +2749,18 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             </div>
           {hasLaunchFilters ? (
             <div className="flex flex-wrap items-center gap-2 self-start sm:self-end">
-              {(statusFilter !== null || defectTagFilter !== null || hasIssuesFilter) && (
+              {(statusFilter !== null || defectTagFilter !== null || hasIssuesFilter || gameTitleFilter !== null) && (
                 <ActiveFilterChip
                   statusFilter={statusFilter}
                   defectTagFilter={defectTagFilter}
                   hasIssuesFilter={hasIssuesFilter}
+                  gameTitleFilter={gameTitleFilter}
                   onClear={(kind) => {
                     setPage(1);
                     if (kind === 'status') setStatusFilter(null);
                     if (kind === 'defect') setDefectTagFilter(null);
                     if (kind === 'issues') setHasIssuesFilter(false);
+                    if (kind === 'game') setGameTitleFilter(null);
                   }}
                 />
               )}
@@ -2750,6 +2776,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
                   setStatusFilter(null);
                   setDefectTagFilter(null);
                   setHasIssuesFilter(false);
+                  setGameTitleFilter(null);
                   setSearchParams(prev => {
                     const next = new URLSearchParams(prev);
                     next.delete('from_widget');

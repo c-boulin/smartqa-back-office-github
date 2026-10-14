@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import GlobalHeader from './GlobalHeader';
 import Sidebar from './Sidebar';
 import ActiveExecutionsIndicator from '../TestRun/ActiveExecutionsIndicator';
 import { useApp } from '../../context/AppContext';
 import { useNotifications } from '../../context/NotificationsContext';
+import { isTestCasesOnlyProject, TEST_CASES_PATH } from '../../utils/testCasesOnlyProjects';
 
 const PROJECT_ROUTES = [
   '/dashboard',
@@ -35,6 +36,15 @@ const Layout: React.FC = () => {
   }, [startPolling, stopPolling]);
 
   const showSidebar = isProjectRoute(location.pathname);
+
+  if (
+    showSidebar &&
+    !state.isTemplateMode &&
+    isTestCasesOnlyProject(selectedProject) &&
+    !location.pathname.startsWith(TEST_CASES_PATH)
+  ) {
+    return <Navigate to={TEST_CASES_PATH} replace />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">

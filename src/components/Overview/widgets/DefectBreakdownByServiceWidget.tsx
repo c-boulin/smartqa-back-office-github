@@ -21,6 +21,7 @@ interface DefectBreakdownByServiceWidgetProps {
   windowStartFrom: string;
   windowStartTo: string;
   defectColorMap: Record<string, string>;
+  isGamesCategory?: boolean;
 }
 
 interface ServiceSummary {
@@ -240,6 +241,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
   windowStartFrom,
   windowStartTo,
   defectColorMap,
+  isGamesCategory = false,
 }) => {
   const navigate = useNavigate();
   const rangeShort = formatOverviewWindowRangeShort(windowProp.from, windowProp.to);
@@ -257,6 +259,11 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
     [executionByService],
   );
 
+  const labelByServiceKey = useMemo(
+    () => new Map(executionByService.map(row => [row.key, row.label])),
+    [executionByService],
+  );
+
   const selected = summaries[selectedIndex] ?? null;
   const selectedProject = defectSeriesByProject[selectedIndex] ?? null;
 
@@ -270,6 +277,7 @@ const DefectBreakdownByServiceWidget: React.FC<DefectBreakdownByServiceWidgetPro
       startFrom: extra?.startFrom ?? windowStartFrom,
       startTo: extra?.startTo ?? windowStartTo,
       defectTag: extra?.defectTag,
+      gameTitle: isGamesCategory ? labelByServiceKey.get(serviceKey) : undefined,
     });
   };
 

@@ -7,6 +7,7 @@ import { TestCase, TEST_CASE_TYPES } from '../../types';
 import { usePermissions } from '../../hooks/usePermissions';
 import { PERMISSIONS } from '../../utils/permissions';
 import { useApp } from '../../context/AppContext';
+import { isTestCasesOnlyProject } from '../../utils/testCasesOnlyProjects';
 
 const HOVER_PREFETCH_DELAY_MS = 150;
 const AUTOMATION_STATUS_AUTOMATED = 2;
@@ -66,13 +67,13 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { hasPermission } = usePermissions();
-  const { state: appState } = useApp();
+  const { state: appState, getSelectedProject } = useApp();
 
   const templateWriteAllowed = !appState.isTemplateMode || hasPermission(PERMISSIONS.TEMPLATE.UPDATE);
   const canEdit = hasPermission(PERMISSIONS.TEST_CASE.UPDATE) && templateWriteAllowed;
   const canDelete = hasPermission(PERMISSIONS.TEST_CASE.DELETE) && templateWriteAllowed;
   const canCreate = hasPermission(PERMISSIONS.TEST_CASE.CREATE) && templateWriteAllowed;
-  const canRun = hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && !appState.isTemplateMode;
+  const canRun = hasPermission(PERMISSIONS.TEST_CASE_EXECUTION.CREATE) && !appState.isTemplateMode && !isTestCasesOnlyProject(getSelectedProject());
   const hasAnyAction = canEdit || canDelete || canCreate || canRun;
 
   const handleMouseEnter = useCallback(() => {
