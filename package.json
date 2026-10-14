@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@gitlab-ssh.dvtech.io:qaautomation/services/back-office.git"
+    "url": "git@github.com:digitalvirgo/smartqa-front-app.git"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

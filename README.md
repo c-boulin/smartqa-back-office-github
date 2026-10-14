@@ -62,8 +62,8 @@ npm run preview
 
 ## Deploy
 
-GitLab CI builds `dist/` (`npm run build-$STAGE`) → S3 sync + CloudFront invalidation.  
-Manual job `release-version` runs `semantic-release` on `master`.
+GitHub Actions builds `dist/` (`npm run build-$STAGE`) → S3 sync + CloudFront invalidation.  
+The **Release** workflow runs `semantic-release` on `master` (manual dispatch).
 
 | Branch / tag | Stage |
 |--------------|--------|
