@@ -1,0 +1,52 @@
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    registries:
+      - 'npm'
+    schedule:
+      interval: 'monthly'
+    groups:
+      production-dependencies:
+        dependency-type: 'production'
+      development-dependencies:
+        dependency-type: 'development'
+  - package-ecosystem: 'docker'
+    directory: '/'
+    registries:
+      - 'docker'
+    schedule:
+      interval: 'monthly'
+    groups:
+      production-dependencies:
+        dependency-type: 'production'
+      development-dependencies:
+        dependency-type: 'development'
+  - package-ecosystem: 'docker-compose'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+    groups:
+      production-dependencies:
+        dependency-type: 'production'
+      development-dependencies:
+        dependency-type: 'development'
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+    groups:
+      production-dependencies:
+        dependency-type: 'production'
+      development-dependencies:
+        dependency-type: 'development'
+registries:
+  npm:
+    type: "npm-registry"
+    url: "https://registry.npmjs.org/"
+    token: "${{secrets.DEPENDABOT_NPMJSORG_TOKEN}}"
+  docker:
+    type: "docker-registry"
+    url: "https://897638747866.dkr.ecr.eu-west-1.amazonaws.com"
+    username: "${{secrets.DEPENDABOT_ECR_ACCESS_KEY}}"
+    password: "${{secrets.DEPENDABOT_ECR_SECRET_KEY}}"
