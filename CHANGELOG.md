@@ -1,3 +1,14 @@
+## [1.30.0](https://github.com/digitalvirgo/smartqa-front-app/compare/1.29.3...1.30.0) (2026-10-19)
+
+### Features
+
+* add GitHub Actions deploy for the back-office front ([195d69f](https://github.com/digitalvirgo/smartqa-front-app/commit/195d69fd31bd80775aca5fe0ec12fbe76c0ff075))
+
+### Bug Fixes
+
+* **release:** use dating-cicd release-library for protected master ([81159d3](https://github.com/digitalvirgo/smartqa-front-app/commit/81159d38e6dfcb786147a5b45869ce53b92d143c))
+* **ci:** use Node 22 for semantic-release 25 engine requirements ([5669d54](https://github.com/digitalvirgo/smartqa-front-app/commit/5669d544956d2d289be0c14d270e469c6678caf1))
+
 ## [1.29.0](https://gitlab.dvtech.io/qaautomation/services/back-office/-/compare/1.28.0...1.29.0) (2026-10-05)
 
 ### Features
