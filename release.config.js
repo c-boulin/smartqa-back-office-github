@@ -34,6 +34,10 @@ export default {
             }
         }],
         "@semantic-release/changelog",
+        ["@semantic-release/github", {
+            "successCommentCondition": "<% return issue.pull_request; %>",
+            "failCommentCondition": false
+        }],
         ["@semantic-release/npm", {
             "npmPublish": false
         }],

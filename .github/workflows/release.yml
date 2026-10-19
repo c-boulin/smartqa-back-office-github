@@ -3,24 +3,13 @@ name: Release
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   release:
-    name: semantic-release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          npm ci
-          npx semantic-release
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    uses: digitalvirgo/dating-cicd/.github/workflows/release-library.yml@v1
+    with:
+      composer-install: false
+    secrets: inherit
