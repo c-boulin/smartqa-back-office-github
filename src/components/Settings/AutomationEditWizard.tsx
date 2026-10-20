@@ -20,13 +20,6 @@ const SUITS_LOAD_ERROR =
   'Could not load suites — check CI repository token and branch (rundeckOptions/suitsList.json)';
 const TEST_CASE_LINKS_LOAD_ERROR = 'Failed to load test case links from CI repository';
 
-function formatRepoOptionLabel(repo: GitlabRepositoryOption): string {
-  const badge =
-    repo.ci_provider === 'github' ? 'GitHub' :
-    repo.ci_provider === 'gitlab' ? 'GitLab' : 'CI';
-  return `[${badge}] ${repo.name}`;
-}
-
 type AutomatedTestCaseLink = {
   id: string;
   title: string;
@@ -495,7 +488,7 @@ const ConfigStep: React.FC<{
         </option>
         {gitlabRepositories.map((repo) => (
           <option key={repo.id} value={repo.url}>
-            {formatRepoOptionLabel(repo)}
+            {repo.name}
           </option>
         ))}
       </select>

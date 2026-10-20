@@ -446,9 +446,6 @@ const Settings: React.FC = () => {
             <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
               Configure and manage automation testing settings. All projects are listed below.
             </p>
-            <p data-mipqa="automation-ci-token-help-text" className="text-xs text-slate-500 dark:text-gray-400 mt-3 leading-relaxed">
-              Each CI repository (GitLab or GitHub) needs an access token configured for SmartQA: GitLab project token or GitHub personal access token with repository contents read (for automation config files) and Actions read/write (to trigger runs). Ask your platform administrator if a repository is missing or configuration lists stay empty.
-            </p>
           </Card>
 
           <Card className="overflow-hidden">
