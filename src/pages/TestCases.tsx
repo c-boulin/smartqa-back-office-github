@@ -145,7 +145,7 @@ const TestCases: React.FC = () => {
     edgeSize: 150
   });
 
-  // Fetch GitLab test case links for the selected project (for automated TC link indicator)
+  // Fetch CI test case links for the selected project (for automated TC link indicator)
   React.useEffect(() => {
     const project = selectedProject;
     if (!project?.id) {

@@ -224,7 +224,7 @@ const DraggableTestCaseRow: React.FC<DraggableTestCaseRowProps> = ({
               {showGitlabLinkIndicator && testCase.automationStatus === AUTOMATION_STATUS_AUTOMATED && (
                 <span
                   className="inline-flex shrink-0"
-                  title={gitlabLinkName ? `Linked to GitLab: ${gitlabLinkName}` : 'Not linked to GitLab'}
+                  title={gitlabLinkName ? `Linked to CI test: ${gitlabLinkName}` : 'Not linked to CI automated test'}
                 >
                   {gitlabLinkName ? (
                     <Link className="w-3.5 h-3.5 text-green-500 dark:text-green-400" />

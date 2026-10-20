@@ -7,12 +7,25 @@ import { COUNTRY_CODES_ALPHA2 } from '../../constants/countryCodes';
 import Button from '../UI/Button';
 import AutomatedConfigurationsStep from './AutomatedConfigurationsStep';
 import toast from 'react-hot-toast';
+import { apiErrorDetailOr } from '../../utils/apiErrorDetail';
 
 type GitlabRepositoryOption = {
   id: string;
   name: string;
   url: string;
+  ci_provider?: 'gitlab' | 'github';
 };
+
+const SUITS_LOAD_ERROR =
+  'Could not load suites — check CI repository token and branch (rundeckOptions/suitsList.json)';
+const TEST_CASE_LINKS_LOAD_ERROR = 'Failed to load test case links from CI repository';
+
+function formatRepoOptionLabel(repo: GitlabRepositoryOption): string {
+  const badge =
+    repo.ci_provider === 'github' ? 'GitHub' :
+    repo.ci_provider === 'gitlab' ? 'GitLab' : 'CI';
+  return `[${badge}] ${repo.name}`;
+}
 
 type AutomatedTestCaseLink = {
   id: string;
@@ -89,28 +102,33 @@ const AutomationEditWizard: React.FC<AutomationEditWizardProps> = ({
       return;
     }
     let cancelled = false;
+    const savedRepo = savedProject.gitlab_project_name ?? '';
+    const savedSuite = savedProject.test_suite_name ?? '';
+    const isSavedRepo = gitlabProject === savedRepo;
     setTestSuiteLoading(true);
     setTestSuiteOptions([]);
-    setAutomationForm((f) => (f.testSuite ? { ...f, testSuite: '' } : f));
+    // Keep the saved suite while loading; a different repository cannot reuse it.
+    if (!isSavedRepo) {
+      setAutomationForm((f) => (f.testSuite ? { ...f, testSuite: '' } : f));
+    }
     apiService
       .authenticatedRequest(
         `/gitlab/suits-list?repository_url=${encodeURIComponent(gitlabProject)}`
       )
-      .then((response: { success?: boolean; data?: string[] }) => {
+      .then((response: { success?: boolean; data?: string[]; errors?: unknown }) => {
         if (cancelled) return;
-        if (response?.success && Array.isArray(response.data)) {
-          setTestSuiteOptions(response.data);
-          const savedSuite = savedProject.test_suite_name ?? '';
-          if (savedSuite && response.data.includes(savedSuite) && gitlabProject === (savedProject.gitlab_project_name ?? '')) {
-            setAutomationForm((f) => ({ ...f, testSuite: savedSuite }));
-          }
-        } else {
-          setTestSuiteOptions([]);
+        const suites = response?.success && Array.isArray(response.data) ? response.data : null;
+        setTestSuiteOptions(suites ?? []);
+        if (isSavedRepo && savedSuite) {
+          setAutomationForm((f) => ({ ...f, testSuite: savedSuite }));
+        }
+        if (!suites || suites.length === 0) {
+          toast.error(apiErrorDetailOr(response, SUITS_LOAD_ERROR));
         }
       })
       .catch((err) => {
         if (cancelled) return;
-        toast.error(err instanceof Error ? err.message : 'Failed to load test suites');
+        toast.error(apiErrorDetailOr(err, SUITS_LOAD_ERROR));
         setTestSuiteOptions([]);
       })
       .finally(() => {
@@ -119,7 +137,7 @@ const AutomationEditWizard: React.FC<AutomationEditWizardProps> = ({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-fetch when gitlab project changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-fetch when CI repository changes
   }, [automationForm.gitlabProject]);
 
   const fetchTestCaseLinks = useCallback(async (proj: Project) => {
@@ -148,7 +166,7 @@ const AutomationEditWizard: React.FC<AutomationEditWizardProps> = ({
         setTestCaseLinkSelections({});
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load test case links');
+      toast.error(apiErrorDetailOr(err, TEST_CASE_LINKS_LOAD_ERROR));
       setTestCaseLinksData(null);
     } finally {
       setTestCaseLinksLoading(false);
@@ -463,7 +481,7 @@ const ConfigStep: React.FC<{
     </div>
     <div>
       <label htmlFor="automation-edit-gitlab-project" className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
-        Gitlab project
+        CI repository
       </label>
       <select
         id="automation-edit-gitlab-project"
@@ -473,11 +491,11 @@ const ConfigStep: React.FC<{
         className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <option value="">
-          {gitlabRepositoriesLoading ? 'Loading...' : 'Select GitLab repository'}
+          {gitlabRepositoriesLoading ? 'Loading...' : 'Select CI repository'}
         </option>
         {gitlabRepositories.map((repo) => (
           <option key={repo.id} value={repo.url}>
-            {repo.name}
+            {formatRepoOptionLabel(repo)}
           </option>
         ))}
       </select>
@@ -496,10 +514,13 @@ const ConfigStep: React.FC<{
         <option value="">
           {(() => {
             if (testSuiteLoading) return 'Loading...';
-            if (!form.gitlabProject) return 'Select a GitLab project first';
+            if (!form.gitlabProject) return 'Select CI repository first';
             return 'Select test suite';
           })()}
         </option>
+        {form.testSuite && !testSuiteOptions.includes(form.testSuite) && (
+          <option value={form.testSuite}>{form.testSuite}</option>
+        )}
         {testSuiteOptions.map((name) => (
           <option key={name} value={name}>
             {name}
@@ -531,7 +552,7 @@ const LinksStep: React.FC<{
         <Link2 className="w-8 h-8 text-slate-400 dark:text-gray-600" />
         <p className="text-sm text-slate-500 dark:text-gray-400 text-center">
           No automated test cases in this project.<br />
-          Mark test cases as &quot;Automated&quot; to link them to GitLab tests.
+          Mark test cases as &quot;Automated&quot; to link them to CI automated tests.
         </p>
       </div>
     );
@@ -540,8 +561,15 @@ const LinksStep: React.FC<{
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-500 dark:text-gray-400">
-        Link each automated test case to the corresponding test in the GitLab suite.
+        Link each automated test case to the corresponding automated test in the CI repository suite.
       </p>
+      <div
+        data-mipqa="automation-links-header"
+        className="flex items-center gap-3 px-2 pr-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400"
+      >
+        <span className="flex-1 min-w-0">Test case</span>
+        <span className="flex-shrink-0 w-[45%]">Automated test name (from CI repo)</span>
+      </div>
       <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
         {testCaseLinksData.automatedTestCases.map((tc) => (
           <div

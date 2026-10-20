@@ -202,7 +202,7 @@ export interface FetchOverviewLaunchesParams {
   direction?: 'asc' | 'desc';
   /** Restrict to these SmartQA project ids; omit or empty = all projects. */
   projectIds?: number[];
-  /** Filter by GitLab repository names (exact match on project.gitlab_project_name); joined as CSV. */
+  /** Filter by CI repository URLs (project.gitlab_project_name); joined as CSV. */
   gitlabProjectNames?: string[];
   /**
    * Lower bound for launch `start` time. Pass `Y-m-d` for a calendar day or `Y-m-d H:i:s` / ISO-like

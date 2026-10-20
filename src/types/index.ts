@@ -13,7 +13,7 @@ export interface Project {
   country?: string;
   /** Automation: URL */
   url?: string;
-  /** Automation: full GitLab project URL (e.g. https://gitlab.dvtech.io/qaautomation/QATEsmartbuilder) */
+  /** Automation: full CI repository URL (GitLab or GitHub), e.g. https://gitlab…/… or https://github.com/org/repo */
   gitlab_project_name?: string;
   /** Automation: test suite name (e.g. TplayvodSuite.robot) */
   test_suite_name?: string;

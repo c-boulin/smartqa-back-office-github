@@ -4,6 +4,10 @@ import { automatedConfigurationsApi, AutomatedConfigurationItem } from '../../se
 import { apiService } from '../../services/api';
 import Button from '../UI/Button';
 import toast from 'react-hot-toast';
+import { apiErrorDetailOr } from '../../utils/apiErrorDetail';
+
+const USER_AGENTS_LOAD_ERROR =
+  'Could not load user agents — check CI repository token and branch (rundeckOptions/useragents.json)';
 
 const BROWSER_OPTIONS = ['Chrome', 'Firefox'] as const;
 
@@ -56,10 +60,11 @@ const AutomatedConfigurationsStep: React.FC<AutomatedConfigurationsStepProps> = 
     setUserAgentOptions([]);
     apiService
       .authenticatedRequest(`/gitlab/useragents-list?repository_url=${encodeURIComponent(repositoryUrl)}`)
-      .then((response: { success?: boolean; data?: unknown[] }) => {
+      .then((response: { success?: boolean; data?: unknown[]; errors?: unknown }) => {
         const data = response?.data;
-        if (!Array.isArray(data)) {
+        if (response?.success === false || !Array.isArray(data) || data.length === 0) {
           setUserAgentOptions([]);
+          toast.error(apiErrorDetailOr(response, USER_AGENTS_LOAD_ERROR));
           return;
         }
         const options = data.map((item) =>
@@ -67,7 +72,10 @@ const AutomatedConfigurationsStep: React.FC<AutomatedConfigurationsStepProps> = 
         );
         setUserAgentOptions(options);
       })
-      .catch(() => setUserAgentOptions([]))
+      .catch((err) => {
+        setUserAgentOptions([]);
+        toast.error(apiErrorDetailOr(err, USER_AGENTS_LOAD_ERROR));
+      })
       .finally(() => setUserAgentOptionsLoading(false));
   }, [gitlabProjectName]);
 
@@ -202,7 +210,7 @@ const AutomatedConfigurationsStep: React.FC<AutomatedConfigurationsStepProps> = 
               <option value="">
                 {(() => {
                   if (userAgentOptionsLoading) return 'Loading...';
-                  if (!gitlabProjectName) return 'Configure GitLab in Settings first';
+                  if (!gitlabProjectName) return 'Configure CI repository on the project first';
                   return '-- Select user agent --';
                 })()}
               </option>
