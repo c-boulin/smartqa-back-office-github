@@ -19,8 +19,9 @@ jobs:
   build:
     name: Build stag
     if: github.event_name == 'pull_request' || !contains(github.event.head_commit.message, '[skip release]')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNS_ON_BASIC != '' && vars.RUNS_ON_BASIC || format('runs-on={0}/runner=basic-x64', github.run_id) }}
     steps:
+      - uses: runs-on/action@v2
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
