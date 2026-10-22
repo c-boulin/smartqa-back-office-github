@@ -17,7 +17,7 @@ export const TEMP_SB_OVERVIEW_REPO_NAME = 'QATESmartbuilder';
  * TEMP(bolt-overview) — Bolt projects are identified by title, never by id: ids differ per environment.
  * TODO(remove): replace with real Bolt gitlab repoNames when the QATE Bolt repo exists
  */
-const TEMP_BOLT_OVERVIEW_PROJECT_TITLES = ['Bravigo', 'WinInfinity'];
+const TEMP_BOLT_OVERVIEW_PROJECT_TITLES = ['Bravigo', 'WinInfinity', 'Condorito'];
 
 const normalizeTitle = (title: string) => title.trim().toLowerCase();
 const BOLT_TITLES = new Set(TEMP_BOLT_OVERVIEW_PROJECT_TITLES.map(normalizeTitle));
