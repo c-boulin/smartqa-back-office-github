@@ -46,6 +46,16 @@ export interface User {
   permissions?: string[];
 }
 
+export class ApiRequestError extends Error {
+  detail?: string;
+
+  constructor(message: string, detail?: string) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.detail = detail;
+  }
+}
+
 class ApiService {
   private baseURL: string;
 
@@ -122,9 +132,14 @@ class ApiService {
 
     if (!response.ok) {
       let errorMessage = `API request failed: ${response.status} ${response.statusText}`;
-      
+      let errorDetail: string | undefined;
+
       try {
         const errorData = await response.json();
+        const firstDetail = Array.isArray(errorData?.errors) ? errorData.errors[0]?.detail : undefined;
+        if (typeof firstDetail === 'string' && firstDetail.trim() !== '') {
+          errorDetail = firstDetail.trim();
+        }
         if (errorData.message) {
           errorMessage = errorData.message;
         } else if (errorData.error) {
@@ -136,7 +151,7 @@ class ApiService {
         // If we can't parse the error response, use the default message
       }
       
-      throw new Error(errorMessage);
+      throw new ApiRequestError(errorMessage, errorDetail);
     }
 
     // Handle empty responses (like DELETE requests)

@@ -15,12 +15,22 @@ import { useProjects } from '../hooks/useProjects';
 import { Project } from '../types';
 import AutomationEditWizard from '../components/Settings/AutomationEditWizard';
 import ProjectTitle from '../components/Project/ProjectTitle';
+import { apiErrorDetailOr } from '../utils/apiErrorDetail';
+
+type CiProvider = 'gitlab' | 'github';
 
 type GitlabRepositoryOption = {
   id: string;
   name: string;
   url: string;
+  ci_provider?: CiProvider;
 };
+
+const REPOSITORIES_LOAD_ERROR = 'Could not load CI repositories. Check your connection or try again later.';
+
+function toCiProvider(value: unknown): CiProvider | undefined {
+  return value === 'gitlab' || value === 'github' ? value : undefined;
+}
 
 type SettingsTab = 'users' | 'automation' | 'monitoring';
 
@@ -139,7 +149,7 @@ const Settings: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch when tab becomes 'automation' only
   }, [activeTab]);
 
-  // Fetch GitLab repositories from API when automation tab is active
+  // Fetch CI repositories (GitLab and GitHub) when automation tab is active
   useEffect(() => {
     if (activeTab !== 'automation') {
       setGitlabRepositories([]);
@@ -151,14 +161,15 @@ const Settings: React.FC = () => {
       .authenticatedRequest('/gitlab/repositories')
       .then((response: {
         data?: Array<
-          | { id: string; name: string; url: string }
-          | { id: string; type?: string; attributes: { id: number | string; name: string; url: string } }
+          | { id: string; name: string; url: string; ci_provider?: string }
+          | { id: string; type?: string; attributes: { id: number | string; name: string; url: string; ci_provider?: string } }
         >;
       }) => {
         if (cancelled) return;
         const list = response?.data;
         if (!Array.isArray(list)) {
           setGitlabRepositories([]);
+          toast.error(apiErrorDetailOr(response, REPOSITORIES_LOAD_ERROR));
           return;
         }
         const normalized: GitlabRepositoryOption[] = list.map((item) => {
@@ -167,15 +178,18 @@ const Settings: React.FC = () => {
               id: String(item.attributes.id ?? item.id),
               name: item.attributes.name,
               url: item.attributes.url,
+              ci_provider: toCiProvider(item.attributes.ci_provider),
             };
           }
-          const flat = item as { id: string; name: string; url: string };
-          return { id: String(flat.id), name: flat.name, url: flat.url };
+          const flat = item as { id: string; name: string; url: string; ci_provider?: string };
+          return { id: String(flat.id), name: flat.name, url: flat.url, ci_provider: toCiProvider(flat.ci_provider) };
         }).filter((r) => r.name && r.url);
         setGitlabRepositories(normalized);
       })
-      .catch(() => {
-        if (!cancelled) setGitlabRepositories([]);
+      .catch((err) => {
+        if (cancelled) return;
+        setGitlabRepositories([]);
+        toast.error(apiErrorDetailOr(err, REPOSITORIES_LOAD_ERROR));
       })
       .finally(() => {
         if (!cancelled) setGitlabRepositoriesLoading(false);

@@ -182,7 +182,7 @@ const TestRunDetailsTable: React.FC<TestRunDetailsTableProps> = ({
                       className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-cyan-500 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       title={
                         isAutomated && !hasGitlabLink
-                          ? 'Link to GitLab required to run'
+                          ? 'Link to CI automated test required to run'
                           : isAutomated && !hasAutomatedConfig
                             ? 'Automated configuration required to run'
                             : undefined

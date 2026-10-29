@@ -582,7 +582,7 @@ const TestRunDetails: React.FC = () => {
       const selectableKeys = new Set(automatedTestCasesForBulkRun.map(tc => `${tc.id}|${tc.configurationId || 'default'}`));
       const selectedKeys = Array.from(selectedTestCasesForBulkRun).filter(k => selectableKeys.has(k));
       if (selectedKeys.length === 0) {
-        toast.error('Please select at least one test case linked to GitLab to run');
+        toast.error('Please select at least one test case linked to a CI automated test to run');
         setIsBulkRunning(false);
         return;
       }
@@ -663,7 +663,7 @@ const TestRunDetails: React.FC = () => {
               }),
             });
           } catch (err) {
-            console.error('Failed to trigger GitLab pipeline:', err);
+            console.error('Failed to trigger CI pipeline:', err);
           }
 
           const testCasesSummary = testCaseIds
