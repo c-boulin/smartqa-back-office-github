@@ -22,8 +22,8 @@ jobs:
     runs-on: ${{ vars.RUNS_ON_BASIC != '' && vars.RUNS_ON_BASIC || format('runs-on={0}/runner=basic-x64', github.run_id) }}
     steps:
       - uses: runs-on/action@v2
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
