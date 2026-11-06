@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { convertUtcToLocalDisplay } from '../../utils/dateHelpers';
 import { createPortal } from 'react-dom';
 import { HistoryLaunchTooltip } from './OverviewLaunchHistoryTooltip';
@@ -27,6 +27,10 @@ import type {
 import { buildAssetsUrlFromObjectKey } from '../../env';
 import { DefectSelectionModal } from './DefectSelectionModal';
 import { linkifyLogText } from './linkifyLogText';
+import { keywordHasLoadedChildren, keywordIsExpandable } from './overviewLogTree';
+
+/** Lets a cascade of failed-path auto-loads settle before scrolling to the deepest failed row. */
+const SCROLL_TO_FAILED_SETTLE_MS = 200;
 
 /** Identifiers for the test-detail sub-tabs (All logs / Item details have body content; others placeholder or empty). */
 export type OverviewTestLogDetailTabId = 'all_logs';
@@ -76,6 +80,8 @@ export interface OverviewTestLogViewProps {
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
+  /** Lazy API: fetches and merges direct children of a keyword; rejects so the branch can show its own error. */
+  onLoadKeywordChildren?: (kwId: number) => Promise<void>;
   hoveredTimeRowKey: string | null;
   onHoverTimeRow: (key: string | null) => void;
   /** When true and the test is failed, show an active "Make decision" button. */
@@ -165,6 +171,8 @@ type AllLogsTreeRowBaseProps = {
   rowIndex: number;
   hoveredTimeRowKey: string | null;
   onHoverTimeRow: (key: string | null) => void;
+  onLoadKeywordChildren?: (kwId: number) => Promise<void>;
+  trackAutoLoad: (delta: 1 | -1) => void;
 };
 
 /** Screen edge inset when centering the modal (matches outer {@code p-4}). */
@@ -464,7 +472,8 @@ function LogMessageScreenshotPreview(props: { objectKey: string }): React.ReactN
  * Renders one accordion branch: message row or expandable keyword with nested children.
  */
 function AllLogsTreeRows(props: { node: OverviewTestLogTreeNode } & AllLogsTreeRowBaseProps): React.ReactNode {
-  const { node, depth, parentKey, rowIndex, hoveredTimeRowKey, onHoverTimeRow } = props;
+  const { node, depth, parentKey, rowIndex, hoveredTimeRowKey, onHoverTimeRow, onLoadKeywordChildren, trackAutoLoad } =
+    props;
   const rowKey = `${parentKey}-${node.kind}-${node.kind === 'keyword' ? node.kwId : node.msgId}-d${depth}-i${rowIndex}`;
 
   if (node.kind === 'message') {
@@ -500,6 +509,8 @@ function AllLogsTreeRows(props: { node: OverviewTestLogTreeNode } & AllLogsTreeR
       rowIndex={rowIndex}
       hoveredTimeRowKey={hoveredTimeRowKey}
       onHoverTimeRow={onHoverTimeRow}
+      onLoadKeywordChildren={onLoadKeywordChildren}
+      trackAutoLoad={trackAutoLoad}
     />
   );
 }
@@ -510,15 +521,55 @@ function AllLogsTreeRows(props: { node: OverviewTestLogTreeNode } & AllLogsTreeR
 function KeywordLogAccordionBlock(
   props: { node: OverviewTestLogKeywordApiNode } & AllLogsTreeRowBaseProps,
 ): React.ReactNode {
-  const { node, depth, parentKey, rowIndex, hoveredTimeRowKey, onHoverTimeRow } = props;
+  const { node, depth, parentKey, rowIndex, hoveredTimeRowKey, onHoverTimeRow, onLoadKeywordChildren, trackAutoLoad } =
+    props;
   const isFailed = normalizeStatusBand(node.statusBand, node.statusLabel) === 'failed';
-  const expandable = node.children.length > 0;
+  const expandable = keywordIsExpandable(node);
+  const needsFetch = !keywordHasLoadedChildren(node) && node.hasChildren === true && onLoadKeywordChildren !== undefined;
   const [open, setOpen] = useState(isFailed && expandable);
+  const [childLoad, setChildLoad] = useState<'idle' | 'loading' | 'error' | 'done'>('idle');
   const rowKey = `${parentKey}-kw-${node.kwId}-d${depth}-i${rowIndex}`;
+
+  const loadChildren = useCallback(
+    async (auto: boolean) => {
+      if (onLoadKeywordChildren === undefined) return;
+      setChildLoad('loading');
+      if (auto) trackAutoLoad(1);
+      try {
+        await onLoadKeywordChildren(node.kwId);
+        setChildLoad('done');
+      } catch {
+        setChildLoad('error');
+      } finally {
+        if (auto) trackAutoLoad(-1);
+      }
+    },
+    [onLoadKeywordChildren, node.kwId, trackAutoLoad],
+  );
+
+  // Failed keywords open on mount; on a lazy tree that open must also fetch, which walks the failed path.
+  const autoLoadOnMountRef = useRef(isFailed && needsFetch);
+  useEffect(() => {
+    if (!autoLoadOnMountRef.current) return;
+    autoLoadOnMountRef.current = false;
+    void loadChildren(true);
+  }, [loadChildren]);
+
+  const toggle = (): void => {
+    if (!expandable) return;
+    const nextOpen = !open;
+    setOpen(nextOpen);
+    if (nextOpen && needsFetch && (childLoad === 'idle' || childLoad === 'error')) {
+      void loadChildren(false);
+    }
+  };
 
   return (
     <React.Fragment key={`${rowKey}-frag`}>
-      <tr className={`transition-colors ${normalizeStatusBand(node.statusBand, node.statusLabel) === 'failed' ? 'bg-red-100 dark:bg-red-900/40 hover:bg-red-200/70 dark:hover:bg-red-900/60' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}>
+      <tr
+        data-log-failed-depth={isFailed ? depth : undefined}
+        className={`transition-colors ${isFailed ? 'bg-red-100 dark:bg-red-900/40 hover:bg-red-200/70 dark:hover:bg-red-900/60' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
+      >
         <td
           className="min-w-0 break-words py-2.5 pr-2 align-top font-mono text-xs text-slate-800 dark:text-slate-200"
           style={{ paddingLeft: `${8 + depth * 16}px` }}
@@ -528,15 +579,15 @@ function KeywordLogAccordionBlock(
               type="button"
               className={`mt-0.5 shrink-0 rounded p-0.5 ${expandable ? 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-600' : 'cursor-default text-slate-300 dark:text-slate-600'}`}
               aria-expanded={expandable ? open : undefined}
+              aria-busy={childLoad === 'loading' ? true : undefined}
               disabled={!expandable}
-              onClick={() => {
-                if (expandable) {
-                  setOpen(v => !v);
-                }
-              }}
+              onClick={toggle}
               aria-label={expandable ? (open ? 'Collapse': 'Expand') : undefined}
+              data-mipqa="overview-log-kw-expand-button"
             >
-              {expandable ? (
+              {childLoad === 'loading' ? (
+                <Loader2 className="h-4 w-4 animate-spin text-cyan-500" aria-hidden />
+              ) : expandable ? (
                 open ? (
                   <ChevronDown className="h-4 w-4" aria-hidden />
                 ) : (
@@ -582,9 +633,29 @@ function KeywordLogAccordionBlock(
               rowIndex={cIdx}
               hoveredTimeRowKey={hoveredTimeRowKey}
               onHoverTimeRow={onHoverTimeRow}
+              onLoadKeywordChildren={onLoadKeywordChildren}
+              trackAutoLoad={trackAutoLoad}
             />
           ))
         : null}
+      {open && childLoad === 'error' ? (
+        <tr>
+          <td colSpan={3} className="py-2 pr-3 text-xs" style={{ paddingLeft: `${28 + depth * 16}px` }}>
+            <span className="inline-flex items-center gap-2 text-red-600 dark:text-red-400" role="alert">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Could not load nested logs.
+              <button
+                type="button"
+                onClick={() => void loadChildren(false)}
+                className="font-semibold text-cyan-600 underline-offset-2 hover:underline dark:text-cyan-400"
+                data-mipqa="overview-log-kw-retry-button"
+              >
+                Retry
+              </button>
+            </span>
+          </td>
+        </tr>
+      ) : null}
     </React.Fragment>
   );
 }
@@ -605,6 +676,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   loading,
   error,
   onRefresh,
+  onLoadKeywordChildren,
   hoveredTimeRowKey,
   onHoverTimeRow,
   suiteListStatusLabel,
@@ -644,15 +716,29 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
     setHoveredHistoryButton(current => (current?.button.id === buttonId ? null : current));
   };
 
+  // Roots only: merging lazily loaded children must not reset the tab or re-trigger scroll-to-failed.
   const logItemsSignature = useMemo(
-    () => [JSON.stringify(items), testDisplayName].join('\n'),
+    () =>
+      [items.map(n => (n.kind === 'keyword' ? `k${n.kwId}` : `m${n.msgId}`)).join(','), testDisplayName].join('\n'),
     [items, testDisplayName],
   );
 
   const [activeDetailTab, setActiveDetailTab] = useState<OverviewTestLogDetailTabId>('all_logs');
   const [hoveredHistoryButton, setHoveredHistoryButton] = useState<HistoryButtonTooltipState | null>(null);
+  const [pendingAutoLoads, setPendingAutoLoads] = useState(0);
+  const trackAutoLoad = useCallback((delta: 1 | -1) => setPendingAutoLoads(n => Math.max(0, n + delta)), []);
 
   const logContainerRef = useRef<HTMLDivElement>(null);
+  const scrolledSignatureRef = useRef<string | null>(null);
+  // Bumped on every (re)load so keyword rows remount with fresh open/lazy state instead of stale `done` flags.
+  const [treeGeneration, setTreeGeneration] = useState(0);
+
+  useEffect(() => {
+    if (!loading) return;
+    scrolledSignatureRef.current = null;
+    setPendingAutoLoads(0);
+    setTreeGeneration(g => g + 1);
+  }, [loading]);
 
   useEffect(() => {
     setActiveDetailTab('all_logs');
@@ -660,12 +746,25 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   }, [logItemsSignature]);
 
   useEffect(() => {
-    if (loading || items.length === 0 || !logContainerRef.current) return;
-    const firstFailed = logContainerRef.current.querySelector('tr.bg-red-100, tr.dark\\:bg-red-900\\/40');
-    if (firstFailed) {
-      firstFailed.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [loading, logItemsSignature]);
+    if (loading || pendingAutoLoads > 0 || items.length === 0) return;
+    if (scrolledSignatureRef.current === logItemsSignature) return;
+    const timer = setTimeout(() => {
+      const container = logContainerRef.current;
+      if (!container) return;
+      scrolledSignatureRef.current = logItemsSignature;
+      let target: Element | null = null;
+      let maxDepth = -1;
+      container.querySelectorAll('tr[data-log-failed-depth]').forEach(row => {
+        const d = Number(row.getAttribute('data-log-failed-depth'));
+        if (d > maxDepth) {
+          maxDepth = d;
+          target = row;
+        }
+      });
+      (target as Element | null)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, SCROLL_TO_FAILED_SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [loading, pendingAutoLoads, items.length, logItemsSignature]);
 
   useEffect(() => {
     if (hoveredHistoryButton === null) {
@@ -926,8 +1025,8 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
                     <AllLogsTreeRows
                       key={
                         node.kind === 'keyword'
-                          ? `root-kw-${node.kwId}-${idx}`
-                          : `root-msg-${node.msgId}-${idx}`
+                          ? `g${treeGeneration}-root-kw-${node.kwId}-${idx}`
+                          : `g${treeGeneration}-root-msg-${node.msgId}-${idx}`
                       }
                       node={node}
                       depth={0}
@@ -935,6 +1034,8 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
                       rowIndex={idx}
                       hoveredTimeRowKey={hoveredTimeRowKey}
                       onHoverTimeRow={onHoverTimeRow}
+                      onLoadKeywordChildren={onLoadKeywordChildren}
+                      trackAutoLoad={trackAutoLoad}
                     />
                   ))}
                 </tbody>

@@ -38,8 +38,11 @@ import {
 } from '../../services/overviewWidgetsApi';
 import {
   getOrFetchSuiteItems,
-  getOrFetchSuiteKwLogItems,
-  getOrFetchTestLogItems,
+  getOrFetchLogChildren,
+  getOrFetchLogRoots,
+  invalidateLogScope,
+  updateLogRoots,
+  type OverviewLogScope,
   peekSuiteItems,
   setPinnedTre,
   updateSuiteItems,
@@ -50,6 +53,7 @@ import {
   type HistoryLaunchTooltipButtonModel,
 } from './OverviewLaunchHistoryTooltip';
 import OverviewTestLogView from './OverviewTestLogView';
+import { mergeKeywordChildren } from './overviewLogTree';
 import { DefectSelectionModal } from './DefectSelectionModal';
 import { fetchDefectGroups, type DefectGroupData, type DefectTypeData } from '../../services/defectGroupsApi';
 import { DEFECT_CHART_TYPES } from '../../constants/defectChartTypes';
@@ -198,6 +202,12 @@ type OverviewLaunchesRouteState =
   | { kind: 'suite'; testRunExecutionId: number }
   | { kind: 'test'; testRunExecutionId: number; overviewTestId: number }
   | { kind: 'kw'; testRunExecutionId: number; overviewSuiteKwId: number };
+
+function logScopeOfTarget(target: OverviewSuiteListLogTarget): OverviewLogScope {
+  return target.kind === 'test'
+    ? { kind: 'test', overviewTestId: target.overviewTestId }
+    : { kind: 'suite_kw', overviewSuiteKwId: target.overviewSuiteKwId };
+}
 
 function positiveIntFromSegment(value: string | undefined): number | null {
   if (value === undefined || value.trim() === '') {
@@ -1019,6 +1029,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const [testLogPayload, setTestLogPayload] = useState<OverviewTestLogItemsResponse | null>(null);
   const [testLogLoading, setTestLogLoading] = useState(false);
   const [testLogError, setTestLogError] = useState<string | null>(null);
+  const activeTestLogKeyRef = useRef<string | null>(null);
   const [historyAnchorLaunch, setHistoryAnchorLaunch] = useState<OverviewLaunchRow | null>(null);
   const [historyAnchorTarget, setHistoryAnchorTarget] = useState<OverviewSuiteListLogTarget | null>(null);
   const [historyLaunches, setHistoryLaunches] = useState<HistoryLaunchEntry[]>([]);
@@ -2354,24 +2365,50 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
 
   const loadTestLog = useCallback(async () => {
     if (testLogLaunch === null || testLogTarget === null) {
+      activeTestLogKeyRef.current = null;
       return;
     }
+    const execId = Number(testLogLaunch.id);
+    const scope = logScopeOfTarget(testLogTarget);
+    const requestKey = `${execId}:${JSON.stringify(scope)}`;
+    activeTestLogKeyRef.current = requestKey;
     setTestLogLoading(true);
     setTestLogError(null);
     try {
-      const execId = Number(testLogLaunch.id);
-      const res =
-        testLogTarget.kind === 'test'
-          ? await getOrFetchTestLogItems(execId, testLogTarget.overviewTestId)
-          : await getOrFetchSuiteKwLogItems(execId, testLogTarget.overviewSuiteKwId);
+      const res = await getOrFetchLogRoots(execId, scope);
+      if (activeTestLogKeyRef.current !== requestKey) return;
       setTestLogPayload(res);
     } catch (e) {
+      if (activeTestLogKeyRef.current !== requestKey) return;
       setTestLogError(e instanceof Error ? e.message : 'Could not load log.');
       setTestLogPayload(null);
     } finally {
-      setTestLogLoading(false);
+      if (activeTestLogKeyRef.current === requestKey) setTestLogLoading(false);
     }
   }, [testLogLaunch, testLogTarget]);
+
+  const refreshTestLog = useCallback(() => {
+    if (testLogLaunch === null || testLogTarget === null) return;
+    invalidateLogScope(Number(testLogLaunch.id), logScopeOfTarget(testLogTarget));
+    void loadTestLog();
+  }, [testLogLaunch, testLogTarget, loadTestLog]);
+
+  /** Throws so the keyword row can show a per-branch error; stale answers only refresh the cache. */
+  const loadKeywordChildren = useCallback(
+    async (kwId: number): Promise<void> => {
+      if (testLogLaunch === null || testLogTarget === null) return;
+      const execId = Number(testLogLaunch.id);
+      const scope = logScopeOfTarget(testLogTarget);
+      const requestKey = `${execId}:${JSON.stringify(scope)}`;
+      const children = await getOrFetchLogChildren(execId, scope, kwId);
+      updateLogRoots(execId, scope, items => mergeKeywordChildren(items, kwId, children));
+      if (activeTestLogKeyRef.current !== requestKey) return;
+      setTestLogPayload(prev =>
+        prev === null ? prev : { ...prev, items: mergeKeywordChildren(prev.items, kwId, children) },
+      );
+    },
+    [testLogLaunch, testLogTarget],
+  );
 
   const visibleHistoryLaunchEntries = useMemo(() => {
     if (historyLaunches.length > 0) {
@@ -3126,7 +3163,8 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             suiteListDurationLabel={testLogTarget.durationLabel}
             loading={testLogLoading}
             error={testLogError}
-            onRefresh={() => void loadTestLog()}
+            onRefresh={refreshTestLog}
+            onLoadKeywordChildren={loadKeywordChildren}
             hoveredTimeRowKey={hoveredLogTimeRowKey}
             onHoverTimeRow={setHoveredLogTimeRowKey}
             isCronContext={isCronContext}

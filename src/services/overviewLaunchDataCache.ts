@@ -11,6 +11,7 @@ import {
   type OverviewLaunchSuiteItemApiRow,
   type OverviewLaunchSuiteItemsResponse,
   type OverviewTestLogItemsResponse,
+  type OverviewTestLogTreeNode,
 } from './overviewWidgetsApi';
 
 const MAX_SUITE_ENTRIES = 50;
@@ -21,9 +22,15 @@ const logEntries = new Map<string, OverviewTestLogItemsResponse>();
 const inFlight = new Map<string, Promise<unknown>>();
 let pinnedTre: number | null = null;
 
+/** Which log endpoint a request targets: an `overview_tests` row or a top-level suite keyword. */
+export type OverviewLogScope = { kind: 'test'; overviewTestId: number } | { kind: 'suite_kw'; overviewSuiteKwId: number };
+
 const suiteKey = (tre: number): string => `${tre}`;
-const testLogKey = (tre: number, overviewTestId: number): string => `${tre}:test:${overviewTestId}`;
-const kwLogKey = (tre: number, overviewSuiteKwId: number): string => `${tre}:kw:${overviewSuiteKwId}`;
+const logScopePrefix = (tre: number, scope: OverviewLogScope): string =>
+  scope.kind === 'test' ? `${tre}:test:${scope.overviewTestId}:` : `${tre}:kw:${scope.overviewSuiteKwId}:`;
+const logRootsKey = (tre: number, scope: OverviewLogScope): string => `${logScopePrefix(tre, scope)}roots`;
+const logChildrenKey = (tre: number, scope: OverviewLogScope, parentKwId: number): string =>
+  `${logScopePrefix(tre, scope)}p:${parentKwId}`;
 
 const isPinned = (key: string): boolean =>
   pinnedTre !== null && (key === suiteKey(pinnedTre) || key.startsWith(`${pinnedTre}:`));
@@ -74,16 +81,51 @@ export function getOrFetchSuiteItems(tre: number): Promise<OverviewLaunchSuiteIt
   return getOrFetch(suiteEntries, suiteKey(tre), MAX_SUITE_ENTRIES, () => fetchOverviewLaunchSuiteItems(tre));
 }
 
-export function getOrFetchTestLogItems(tre: number, overviewTestId: number): Promise<OverviewTestLogItemsResponse> {
-  return getOrFetch(logEntries, testLogKey(tre, overviewTestId), MAX_LOG_ENTRIES, () =>
-    fetchOverviewTestLogItems(tre, overviewTestId),
+/** First level of the log tree (`depth=roots`). Legacy APIs may still answer with a nested full tree. */
+export function getOrFetchLogRoots(tre: number, scope: OverviewLogScope): Promise<OverviewTestLogItemsResponse> {
+  return getOrFetch(logEntries, logRootsKey(tre, scope), MAX_LOG_ENTRIES, () =>
+    scope.kind === 'test'
+      ? fetchOverviewTestLogItems(tre, scope.overviewTestId, { depth: 'roots' })
+      : fetchOverviewSuiteKwLogItems(tre, scope.overviewSuiteKwId, { depth: 'roots' }),
   );
 }
 
-export function getOrFetchSuiteKwLogItems(tre: number, overviewSuiteKwId: number): Promise<OverviewTestLogItemsResponse> {
-  return getOrFetch(logEntries, kwLogKey(tre, overviewSuiteKwId), MAX_LOG_ENTRIES, () =>
-    fetchOverviewSuiteKwLogItems(tre, overviewSuiteKwId),
+/** Direct children (keywords + messages) of one keyword (`depth=1&parent_kw_id`). */
+export async function getOrFetchLogChildren(
+  tre: number,
+  scope: OverviewLogScope,
+  parentKwId: number,
+): Promise<OverviewTestLogTreeNode[]> {
+  const query = { depth: '1', parentKwId } as const;
+  const res = await getOrFetch(logEntries, logChildrenKey(tre, scope, parentKwId), MAX_LOG_ENTRIES, () =>
+    scope.kind === 'test'
+      ? fetchOverviewTestLogItems(tre, scope.overviewTestId, query)
+      : fetchOverviewSuiteKwLogItems(tre, scope.overviewSuiteKwId, query),
   );
+  if (!Array.isArray(res?.items)) throw new Error('Unexpected log children response.');
+  return res.items;
+}
+
+/** Writes the merged (partially expanded) tree back so re-opening this log does not refetch branches. */
+export function updateLogRoots(
+  tre: number,
+  scope: OverviewLogScope,
+  updater: (items: OverviewTestLogTreeNode[]) => OverviewTestLogTreeNode[],
+): void {
+  const key = logRootsKey(tre, scope);
+  const current = logEntries.get(key);
+  if (current === undefined) return;
+  logEntries.set(key, { ...current, items: updater(current.items) });
+}
+
+export function invalidateLogScope(tre: number, scope: OverviewLogScope): void {
+  const prefix = logScopePrefix(tre, scope);
+  for (const key of [...logEntries.keys()]) {
+    if (key.startsWith(prefix)) logEntries.delete(key);
+  }
+  for (const key of [...inFlight.keys()]) {
+    if (key.startsWith(prefix)) inFlight.delete(key);
+  }
 }
 
 export function peekSuiteItems(tre: number): OverviewLaunchSuiteItemsResponse | undefined {

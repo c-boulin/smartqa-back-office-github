@@ -456,7 +456,11 @@ export interface OverviewTestLogKeywordApiNode extends OverviewTestLogItemApiRow
   kwType: string;
   /** Rows in `overview_msgs` with a non-empty `screenshot_object_key` for this keyword. */
   screenshotAttachmentCount: number;
+  /** Empty when the API returned a shallow level; check `hasChildren` to know whether a lazy fetch is needed. */
   children: OverviewTestLogTreeNode[];
+  /** Absent on legacy full-tree responses (children are already nested). */
+  hasChildren?: boolean;
+  childKeywordCount?: number;
 }
 
 /** One `overview_msgs` row (shown when a keyword is expanded). */
@@ -482,15 +486,26 @@ export interface OverviewTestLogItemsResponse {
   description?: string | null;
 }
 
+/** Omitted = full tree. `parentKwId` is only valid with `depth: '1'` (API answers 422 otherwise). */
+export type OverviewLogItemsQuery = { depth: 'roots' } | { depth: '1'; parentKwId: number };
+
+function logItemsQueryString(query?: OverviewLogItemsQuery): string {
+  if (query === undefined) return '';
+  const params = new URLSearchParams({ depth: query.depth });
+  if (query.depth === '1') params.set('parent_kw_id', String(query.parentKwId));
+  return `?${params.toString()}`;
+}
+
 /**
  * Fetches log-style rows (SETUP / KEYWORD / TEARDOWN) for one `overview_tests` row.
  */
 export async function fetchOverviewTestLogItems(
   testRunExecutionId: number,
   overviewTestId: number,
+  query?: OverviewLogItemsQuery,
 ): Promise<OverviewTestLogItemsResponse> {
   return apiService.authenticatedRequest(
-    `/widgets/overview/launches/${testRunExecutionId}/overview-tests/${overviewTestId}/log-items`,
+    `/widgets/overview/launches/${testRunExecutionId}/overview-tests/${overviewTestId}/log-items${logItemsQueryString(query)}`,
     {
       headers: {
         Accept: 'application/json',
@@ -685,9 +700,10 @@ export async function fetchOverviewTests(
 export async function fetchOverviewSuiteKwLogItems(
   testRunExecutionId: number,
   overviewSuiteKwId: number,
+  query?: OverviewLogItemsQuery,
 ): Promise<OverviewTestLogItemsResponse> {
   return apiService.authenticatedRequest(
-    `/widgets/overview/launches/${testRunExecutionId}/overview-suite-kws/${overviewSuiteKwId}/log-items`,
+    `/widgets/overview/launches/${testRunExecutionId}/overview-suite-kws/${overviewSuiteKwId}/log-items${logItemsQueryString(query)}`,
     {
       headers: {
         Accept: 'application/json',
