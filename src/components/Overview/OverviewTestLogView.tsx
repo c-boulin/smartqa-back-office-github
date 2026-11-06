@@ -27,7 +27,7 @@ import type {
 import { buildAssetsUrlFromObjectKey } from '../../env';
 import { DefectSelectionModal } from './DefectSelectionModal';
 import { linkifyLogText } from './linkifyLogText';
-import { keywordHasLoadedChildren, keywordIsExpandable } from './overviewLogTree';
+import { keywordHasLoadedChildren, keywordIsExpandable, normalizeStatusBand } from './overviewLogTree';
 
 /** Lets a cascade of failed-path auto-loads settle before scrolling to the deepest failed row. */
 const SCROLL_TO_FAILED_SETTLE_MS = 200;
@@ -82,6 +82,11 @@ export interface OverviewTestLogViewProps {
   onRefresh: () => void;
   /** Lazy API: fetches and merges direct children of a keyword; rejects so the branch can show its own error. */
   onLoadKeywordChildren?: (kwId: number) => Promise<void>;
+  /** True while the parent batches the failed path; failed rows wait instead of fetching one by one. */
+  failedPathResolving?: boolean;
+  /** Background cache warm-up only; never changes the rendered tree. */
+  onPrefetchKeywordChildren?: (kwIds: number[], mode: 'one' | 'many') => void;
+  isKeywordChildrenCached?: (kwId: number) => boolean;
   hoveredTimeRowKey: string | null;
   onHoverTimeRow: (key: string | null) => void;
   /** When true and the test is failed, show an active "Make decision" button. */
@@ -108,29 +113,6 @@ function logTimeHoverLabel(item: OverviewTestLogItemApiRow): string {
     return convertUtcToLocalDisplay(item.startTimeRaw);
   }
   return convertUtcToLocalDisplay(item.startTimeDisplay);
-}
-
-function normalizeStatusBand(
-  statusBand: string | null | undefined,
-  statusLabel: string | null | undefined,
-): 'passed' | 'failed' | 'skipped' | 'unknown' {
-  const normalizedBand = (statusBand ?? '').trim().toLowerCase();
-  if (normalizedBand === 'passed' || normalizedBand === 'failed' || normalizedBand === 'skipped') {
-    return normalizedBand;
-  }
-
-  const normalizedLabel = (statusLabel ?? '').trim().toLowerCase();
-  if (normalizedLabel.startsWith('pass')) {
-    return 'passed';
-  }
-  if (normalizedLabel.startsWith('fail')) {
-    return 'failed';
-  }
-  if (normalizedLabel.startsWith('skip')) {
-    return 'skipped';
-  }
-
-  return 'unknown';
 }
 
 function statusDotClass(statusBand: string | null | undefined, statusLabel: string | null | undefined): string {
@@ -173,7 +155,29 @@ type AllLogsTreeRowBaseProps = {
   onHoverTimeRow: (key: string | null) => void;
   onLoadKeywordChildren?: (kwId: number) => Promise<void>;
   trackAutoLoad: (delta: 1 | -1) => void;
+  keywordPrefetch?: KeywordChildrenPrefetch;
+  /** False while failed-path auto loads run, so warm-up never competes with scroll-to-failed. */
+  autoLoadsSettled: boolean;
+  failedPathResolving: boolean;
 };
+
+type KeywordChildrenPrefetch = {
+  prefetch: (kwIds: number[], mode: 'one' | 'many') => void;
+  isCached: (kwId: number) => boolean;
+};
+
+const HOVER_PREFETCH_DELAY_MS = 150;
+
+/** Direct keyword children still to fetch; failed ones first so the likely next click is warm. */
+function unloadedChildKeywordIds(children: OverviewTestLogTreeNode[]): number[] {
+  const pending = children.filter(
+    (child): child is OverviewTestLogKeywordApiNode =>
+      child.kind === 'keyword' && child.hasChildren === true && child.children.length === 0,
+  );
+  const isFailedChild = (child: OverviewTestLogKeywordApiNode): boolean =>
+    normalizeStatusBand(child.statusBand, child.statusLabel) === 'failed';
+  return [...pending.filter(isFailedChild), ...pending.filter(child => !isFailedChild(child))].map(child => child.kwId);
+}
 
 /** Screen edge inset when centering the modal (matches outer {@code p-4}). */
 const SCREEN_INSET_FOR_MODAL_PX = 16;
@@ -472,8 +476,7 @@ function LogMessageScreenshotPreview(props: { objectKey: string }): React.ReactN
  * Renders one accordion branch: message row or expandable keyword with nested children.
  */
 function AllLogsTreeRows(props: { node: OverviewTestLogTreeNode } & AllLogsTreeRowBaseProps): React.ReactNode {
-  const { node, depth, parentKey, rowIndex, hoveredTimeRowKey, onHoverTimeRow, onLoadKeywordChildren, trackAutoLoad } =
-    props;
+  const { node, depth, parentKey, rowIndex, hoveredTimeRowKey, onHoverTimeRow } = props;
   const rowKey = `${parentKey}-${node.kind}-${node.kind === 'keyword' ? node.kwId : node.msgId}-d${depth}-i${rowIndex}`;
 
   if (node.kind === 'message') {
@@ -502,16 +505,7 @@ function AllLogsTreeRows(props: { node: OverviewTestLogTreeNode } & AllLogsTreeR
   }
 
   return (
-    <KeywordLogAccordionBlock
-      node={node}
-      depth={depth}
-      parentKey={parentKey}
-      rowIndex={rowIndex}
-      hoveredTimeRowKey={hoveredTimeRowKey}
-      onHoverTimeRow={onHoverTimeRow}
-      onLoadKeywordChildren={onLoadKeywordChildren}
-      trackAutoLoad={trackAutoLoad}
-    />
+    <KeywordLogAccordionBlock {...props} node={node} />
   );
 }
 
@@ -521,8 +515,19 @@ function AllLogsTreeRows(props: { node: OverviewTestLogTreeNode } & AllLogsTreeR
 function KeywordLogAccordionBlock(
   props: { node: OverviewTestLogKeywordApiNode } & AllLogsTreeRowBaseProps,
 ): React.ReactNode {
-  const { node, depth, parentKey, rowIndex, hoveredTimeRowKey, onHoverTimeRow, onLoadKeywordChildren, trackAutoLoad } =
-    props;
+  const {
+    node,
+    depth,
+    parentKey,
+    rowIndex,
+    hoveredTimeRowKey,
+    onHoverTimeRow,
+    onLoadKeywordChildren,
+    trackAutoLoad,
+    keywordPrefetch,
+    autoLoadsSettled,
+    failedPathResolving,
+  } = props;
   const isFailed = normalizeStatusBand(node.statusBand, node.statusLabel) === 'failed';
   const expandable = keywordIsExpandable(node);
   const needsFetch = !keywordHasLoadedChildren(node) && node.hasChildren === true && onLoadKeywordChildren !== undefined;
@@ -533,7 +538,7 @@ function KeywordLogAccordionBlock(
   const loadChildren = useCallback(
     async (auto: boolean) => {
       if (onLoadKeywordChildren === undefined) return;
-      setChildLoad('loading');
+      if (keywordPrefetch?.isCached(node.kwId) !== true) setChildLoad('loading');
       if (auto) trackAutoLoad(1);
       try {
         await onLoadKeywordChildren(node.kwId);
@@ -544,16 +549,45 @@ function KeywordLogAccordionBlock(
         if (auto) trackAutoLoad(-1);
       }
     },
-    [onLoadKeywordChildren, node.kwId, trackAutoLoad],
+    [onLoadKeywordChildren, node.kwId, trackAutoLoad, keywordPrefetch],
   );
 
-  // Failed keywords open on mount; on a lazy tree that open must also fetch, which walks the failed path.
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelHoverPrefetch = (): void => {
+    if (hoverTimerRef.current === null) return;
+    clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = null;
+  };
+  useEffect(() => cancelHoverPrefetch, []);
+  const scheduleHoverPrefetch = (): void => {
+    if (keywordPrefetch === undefined || !needsFetch || open || hoverTimerRef.current !== null) return;
+    hoverTimerRef.current = setTimeout(() => {
+      hoverTimerRef.current = null;
+      keywordPrefetch.prefetch([node.kwId], 'one');
+    }, HOVER_PREFETCH_DELAY_MS);
+  };
+
+  const childrenPrefetchedRef = useRef(false);
+  useEffect(() => {
+    if (keywordPrefetch === undefined || childrenPrefetchedRef.current) return;
+    if (!open || !autoLoadsSettled || node.children.length === 0) return;
+    childrenPrefetchedRef.current = true;
+    const kwIds = unloadedChildKeywordIds(node.children);
+    if (kwIds.length > 0) keywordPrefetch.prefetch(kwIds, 'many');
+  }, [keywordPrefetch, open, autoLoadsSettled, node.children]);
+
+  // Failed keywords open on mount; on a lazy tree that open must also fetch. While the parent batches the
+  // failed path, wait for it and only fetch alone what it could not load.
   const autoLoadOnMountRef = useRef(isFailed && needsFetch);
   useEffect(() => {
-    if (!autoLoadOnMountRef.current) return;
+    if (!autoLoadOnMountRef.current || failedPathResolving) return;
     autoLoadOnMountRef.current = false;
-    void loadChildren(true);
-  }, [loadChildren]);
+    if (needsFetch) void loadChildren(true);
+  }, [loadChildren, failedPathResolving, needsFetch]);
+
+  const awaitingFailedPath =
+    failedPathResolving && isFailed && needsFetch && childLoad === 'idle' && keywordPrefetch?.isCached(node.kwId) !== true;
+  const showSpinner = childLoad === 'loading' || awaitingFailedPath;
 
   const toggle = (): void => {
     if (!expandable) return;
@@ -567,6 +601,8 @@ function KeywordLogAccordionBlock(
   return (
     <React.Fragment key={`${rowKey}-frag`}>
       <tr
+        onMouseEnter={scheduleHoverPrefetch}
+        onMouseLeave={cancelHoverPrefetch}
         data-log-failed-depth={isFailed ? depth : undefined}
         className={`transition-colors ${isFailed ? 'bg-red-100 dark:bg-red-900/40 hover:bg-red-200/70 dark:hover:bg-red-900/60' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
       >
@@ -579,13 +615,13 @@ function KeywordLogAccordionBlock(
               type="button"
               className={`mt-0.5 shrink-0 rounded p-0.5 ${expandable ? 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-600' : 'cursor-default text-slate-300 dark:text-slate-600'}`}
               aria-expanded={expandable ? open : undefined}
-              aria-busy={childLoad === 'loading' ? true : undefined}
+              aria-busy={showSpinner ? true : undefined}
               disabled={!expandable}
               onClick={toggle}
               aria-label={expandable ? (open ? 'Collapse': 'Expand') : undefined}
               data-mipqa="overview-log-kw-expand-button"
             >
-              {childLoad === 'loading' ? (
+              {showSpinner ? (
                 <Loader2 className="h-4 w-4 animate-spin text-cyan-500" aria-hidden />
               ) : expandable ? (
                 open ? (
@@ -635,6 +671,9 @@ function KeywordLogAccordionBlock(
               onHoverTimeRow={onHoverTimeRow}
               onLoadKeywordChildren={onLoadKeywordChildren}
               trackAutoLoad={trackAutoLoad}
+              keywordPrefetch={keywordPrefetch}
+              autoLoadsSettled={autoLoadsSettled}
+              failedPathResolving={failedPathResolving}
             />
           ))
         : null}
@@ -677,6 +716,9 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   error,
   onRefresh,
   onLoadKeywordChildren,
+  failedPathResolving = false,
+  onPrefetchKeywordChildren,
+  isKeywordChildrenCached,
   hoveredTimeRowKey,
   onHoverTimeRow,
   suiteListStatusLabel,
@@ -727,6 +769,13 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   const [hoveredHistoryButton, setHoveredHistoryButton] = useState<HistoryButtonTooltipState | null>(null);
   const [pendingAutoLoads, setPendingAutoLoads] = useState(0);
   const trackAutoLoad = useCallback((delta: 1 | -1) => setPendingAutoLoads(n => Math.max(0, n + delta)), []);
+  const keywordPrefetch = useMemo<KeywordChildrenPrefetch | undefined>(
+    () =>
+      onPrefetchKeywordChildren !== undefined && isKeywordChildrenCached !== undefined
+        ? { prefetch: onPrefetchKeywordChildren, isCached: isKeywordChildrenCached }
+        : undefined,
+    [onPrefetchKeywordChildren, isKeywordChildrenCached],
+  );
 
   const logContainerRef = useRef<HTMLDivElement>(null);
   const scrolledSignatureRef = useRef<string | null>(null);
@@ -746,7 +795,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   }, [logItemsSignature]);
 
   useEffect(() => {
-    if (loading || pendingAutoLoads > 0 || items.length === 0) return;
+    if (loading || failedPathResolving || pendingAutoLoads > 0 || items.length === 0) return;
     if (scrolledSignatureRef.current === logItemsSignature) return;
     const timer = setTimeout(() => {
       const container = logContainerRef.current;
@@ -764,7 +813,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
       (target as Element | null)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, SCROLL_TO_FAILED_SETTLE_MS);
     return () => clearTimeout(timer);
-  }, [loading, pendingAutoLoads, items.length, logItemsSignature]);
+  }, [loading, failedPathResolving, pendingAutoLoads, items.length, logItemsSignature]);
 
   useEffect(() => {
     if (hoveredHistoryButton === null) {
@@ -1036,6 +1085,9 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
                       onHoverTimeRow={onHoverTimeRow}
                       onLoadKeywordChildren={onLoadKeywordChildren}
                       trackAutoLoad={trackAutoLoad}
+                      keywordPrefetch={keywordPrefetch}
+                      autoLoadsSettled={pendingAutoLoads === 0 && !failedPathResolving}
+                      failedPathResolving={failedPathResolving}
                     />
                   ))}
                 </tbody>

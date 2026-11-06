@@ -4,9 +4,12 @@
  * The pinned (drilled) launch and in-flight requests are never evicted. Concurrent callers share one Promise.
  * After a defect is applied, callers patch suite items in place via `updateSuiteItems` instead of refetching.
  */
+import { ApiRequestError } from './api';
 import {
   fetchOverviewLaunchSuiteItems,
+  fetchOverviewSuiteKwLogChildrenBatch,
   fetchOverviewSuiteKwLogItems,
+  fetchOverviewTestLogChildrenBatch,
   fetchOverviewTestLogItems,
   type OverviewLaunchSuiteItemApiRow,
   type OverviewLaunchSuiteItemsResponse,
@@ -16,6 +19,11 @@ import {
 
 const MAX_SUITE_ENTRIES = 50;
 const MAX_LOG_ENTRIES = 100;
+const BATCH_MAX_IDS = 25;
+// API caps the raw `parent_kw_ids` CSV at 512 chars; keep a margin.
+const BATCH_MAX_CSV_LENGTH = 500;
+// Session-wide: once the API refuses `parent_kw_ids`, every caller goes straight to `parent_kw_id`.
+let logChildrenBatchSupported = true;
 
 const suiteEntries = new Map<string, OverviewLaunchSuiteItemsResponse>();
 const logEntries = new Map<string, OverviewTestLogItemsResponse>();
@@ -90,20 +98,124 @@ export function getOrFetchLogRoots(tre: number, scope: OverviewLogScope): Promis
   );
 }
 
+function fetchLogChildrenAlone(
+  tre: number,
+  scope: OverviewLogScope,
+  parentKwId: number,
+): Promise<OverviewTestLogItemsResponse> {
+  const query = { depth: '1', parentKwId } as const;
+  return scope.kind === 'test'
+    ? fetchOverviewTestLogItems(tre, scope.overviewTestId, query)
+    : fetchOverviewSuiteKwLogItems(tre, scope.overviewSuiteKwId, query);
+}
+
 /** Direct children (keywords + messages) of one keyword (`depth=1&parent_kw_id`). */
 export async function getOrFetchLogChildren(
   tre: number,
   scope: OverviewLogScope,
   parentKwId: number,
 ): Promise<OverviewTestLogTreeNode[]> {
-  const query = { depth: '1', parentKwId } as const;
   const res = await getOrFetch(logEntries, logChildrenKey(tre, scope, parentKwId), MAX_LOG_ENTRIES, () =>
-    scope.kind === 'test'
-      ? fetchOverviewTestLogItems(tre, scope.overviewTestId, query)
-      : fetchOverviewSuiteKwLogItems(tre, scope.overviewSuiteKwId, query),
+    fetchLogChildrenAlone(tre, scope, parentKwId),
   );
   if (!Array.isArray(res?.items)) throw new Error('Unexpected log children response.');
   return res.items;
+}
+
+/** Synchronous cache hit for a keyword's children; `undefined` when not loaded yet. */
+export function peekLogChildren(
+  tre: number,
+  scope: OverviewLogScope,
+  parentKwId: number,
+): OverviewTestLogTreeNode[] | undefined {
+  const items = touch(logEntries, logChildrenKey(tre, scope, parentKwId))?.items;
+  return Array.isArray(items) ? items : undefined;
+}
+
+export function isLogChildrenCachedOrPending(tre: number, scope: OverviewLogScope, parentKwId: number): boolean {
+  const key = logChildrenKey(tre, scope, parentKwId);
+  return logEntries.has(key) || inFlight.has(key);
+}
+
+export function isLogChildrenBatchSupported(): boolean {
+  return logChildrenBatchSupported;
+}
+
+/** Splits ids so each `parent_kw_ids` request stays within the API limits (25 ids, CSV length). */
+export function chunkLogChildrenBatchIds(ids: number[]): number[][] {
+  const chunks: number[][] = [];
+  let current: number[] = [];
+  let csvLength = 0;
+  for (const id of ids) {
+    const idLength = String(id).length;
+    if (current.length >= BATCH_MAX_IDS || csvLength + idLength + 1 > BATCH_MAX_CSV_LENGTH) {
+      chunks.push(current);
+      current = [];
+      csvLength = 0;
+    }
+    csvLength += current.length > 0 ? idLength + 1 : idLength;
+    current.push(id);
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
+/**
+ * Children of several keywords, filling each child key as if fetched alone. Uses `parent_kw_ids` (chunked)
+ * while the API supports it, otherwise parallel `parent_kw_id` requests. Never rejects: per-key failures
+ * leave the key empty so the row can retry on its own.
+ */
+export async function fetchLogChildrenBatch(
+  tre: number,
+  scope: OverviewLogScope,
+  parentKwIds: number[],
+): Promise<void> {
+  const ids = [...new Set(parentKwIds)].filter(
+    id => Number.isInteger(id) && id > 0 && !isLogChildrenCachedOrPending(tre, scope, id),
+  );
+  if (ids.length === 0) return;
+  if (!logChildrenBatchSupported || ids.length === 1) {
+    await Promise.allSettled(ids.map(id => getOrFetchLogChildren(tre, scope, id)));
+    return;
+  }
+  await Promise.allSettled(chunkLogChildrenBatchIds(ids).map(chunk => fetchOneLogChildrenBatch(tre, scope, chunk)));
+}
+
+/** Every key is registered in flight so a click during the batch awaits it; a missing id falls back to `parent_kw_id`. */
+async function fetchOneLogChildrenBatch(tre: number, scope: OverviewLogScope, ids: number[]): Promise<void> {
+  const batch =
+    scope.kind === 'test'
+      ? fetchOverviewTestLogChildrenBatch(tre, scope.overviewTestId, ids)
+      : fetchOverviewSuiteKwLogChildrenBatch(tre, scope.overviewSuiteKwId, ids);
+  batch.catch(error => {
+    if (error instanceof ApiRequestError && (error.status === 422 || error.status === 404)) {
+      logChildrenBatchSupported = false;
+    }
+  });
+
+  const perKey = ids.map(id => {
+    const key = logChildrenKey(tre, scope, id);
+    const promise: Promise<OverviewTestLogItemsResponse> = batch
+      .then(
+        res => res,
+        () => undefined,
+      )
+      .then(async res => {
+        const items = res?.parents?.[String(id)]?.items;
+        const value: OverviewTestLogItemsResponse = Array.isArray(items)
+          ? { testName: '', testStatusLabel: '', suiteSourceRelative: null, testLine: null, items }
+          : await fetchLogChildrenAlone(tre, scope, id);
+        if (inFlight.get(key) === promise) storeWithEviction(logEntries, key, value, MAX_LOG_ENTRIES);
+        return value;
+      })
+      .finally(() => {
+        if (inFlight.get(key) === promise) inFlight.delete(key);
+      });
+    inFlight.set(key, promise);
+    return promise;
+  });
+
+  await Promise.allSettled(perKey);
 }
 
 /** Writes the merged (partially expanded) tree back so re-opening this log does not refetch branches. */
