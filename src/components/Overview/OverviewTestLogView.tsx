@@ -52,11 +52,14 @@ export interface OverviewTestLogViewProps {
     statusBand?: string;
     attributeLines: string[];
     durationLabel: string;
+    /** True while this launch's status for the current test is still being resolved. */
+    pending?: boolean;
   }>;
   hiddenHistoryButtonsCount?: number;
   onShowMoreHistoryButtons?: () => void;
   historyButtonsLoading?: boolean;
   onSelectHistoryButton?: (launchId: string) => void;
+  onHoverHistoryButton?: (launchId: string) => void;
   /** From API: suite file path from {@code Suites/} ({@code overview_suites.source}). */
   suiteSourceRelative?: string | null;
   /** From API: Robot test line when opening a test log. */
@@ -598,6 +601,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   onShowMoreHistoryButtons,
   historyButtonsLoading = false,
   onSelectHistoryButton,
+  onHoverHistoryButton,
   loading,
   error,
   onRefresh,
@@ -758,12 +762,14 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
                       type="button"
                       onMouseEnter={e => {
                         showHistoryButtonTooltip(button, e.currentTarget);
+                        onHoverHistoryButton?.(button.id);
                       }}
                       onMouseLeave={() => {
                         hideHistoryButtonTooltip(button.id);
                       }}
                       onFocus={e => {
                         showHistoryButtonTooltip(button, e.currentTarget);
+                        onHoverHistoryButton?.(button.id);
                       }}
                       onBlur={() => {
                         hideHistoryButtonTooltip(button.id);
@@ -776,7 +782,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
                       }}
                       disabled={historyButtonsLoading}
                       aria-current={button.active ? 'page' : undefined}
-                      className={`relative min-w-[3.8rem] rounded-sm px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${historyButtonStatusClass(button.statusBand, button.statusLabel)} ${
+                      className={`relative min-w-[3.8rem] rounded-sm px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${historyButtonStatusClass(button.statusBand, button.statusLabel)} ${button.pending ? 'animate-pulse' : ''} ${
                         button.active
                           ? 'shadow-[inset_0_-2px_0_0_rgba(45,212,191,1)]'
                           : 'hover:brightness-105'
@@ -804,7 +810,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
 
       {hoveredHistoryButton !== null ? (
         <HistoryLaunchTooltip
-          button={hoveredHistoryButton.button}
+          button={historyButtons.find(b => b.id === hoveredHistoryButton.button.id) ?? hoveredHistoryButton.button}
           top={hoveredHistoryButton.top}
           left={hoveredHistoryButton.left}
         />

@@ -26,9 +26,6 @@ import {
   fetchOverviewDefectTypes,
   fetchOverviewLaunchHistory,
   fetchOverviewLaunches,
-  fetchOverviewLaunchSuiteItems,
-  fetchOverviewSuiteKwLogItems,
-  fetchOverviewTestLogItems,
   type OverviewDefectType,
   type OverviewLaunchesMeta,
   type OverviewLaunchApiRow,
@@ -39,6 +36,14 @@ import {
   type OverviewTestDefect,
   type OverviewTestLogItemsResponse,
 } from '../../services/overviewWidgetsApi';
+import {
+  getOrFetchSuiteItems,
+  getOrFetchSuiteKwLogItems,
+  getOrFetchTestLogItems,
+  peekSuiteItems,
+  setPinnedTre,
+  updateSuiteItems,
+} from '../../services/overviewLaunchDataCache';
 import { OverviewLaunchStartTimeRangePicker } from './OverviewLaunchStartTimeRangePicker';
 import {
   HistoryLaunchTooltip,
@@ -394,7 +399,8 @@ const HISTORY_BUTTON_MAX_VISIBLE = 30;
 
 type HistoryLaunchEntry = {
   row: OverviewLaunchRow;
-  target: OverviewSuiteListLogTarget | null;
+  /** `undefined` = not resolved yet, `null` = element absent from that launch. */
+  target: OverviewSuiteListLogTarget | null | undefined;
 };
 
 function launchHistoryStatus(row: OverviewLaunchRow): { label: string; band: 'passed' | 'failed' | 'skipped' | 'unknown' } {
@@ -1023,6 +1029,14 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const historyLaunchTargetCacheRef = useRef<Map<string, OverviewSuiteListLogTarget | null>>(new Map());
   const deepLinkResolvingRef = useRef(false);
   const pendingLaunchesRefreshRef = useRef(false);
+  const lastLoadedLaunchesRef = useRef<{ load: unknown; page: number; perPage: number } | null>(null);
+  const drillRowSourceRef = useRef<{ fetcher: unknown; row: OverviewLaunchRow } | null>(null);
+  const historyResolvingIdRef = useRef<string | null>(null);
+  const historyHoverPriorityRef = useRef<string | null>(null);
+  const historyHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [historyQueueTick, setHistoryQueueTick] = useState(0);
+  const launchesTableWrapperRef = useRef<HTMLDivElement>(null);
+  const [visibleLaunchIds, setVisibleLaunchIds] = useState<Set<number> | null>(() => new Set());
   const skipNextLaunchesSearchSyncRef = useRef(false);
   const loadRequestIdRef = useRef(0);
 
@@ -1644,8 +1658,29 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
 
     if (targets.length === 0) return;
 
+    const countDefects = (items: OverviewLaunchSuiteItemApiRow[]): Map<string, number> => {
+      const counts = new Map<string, number>();
+      for (const item of items) {
+        if (item.defectType != null && item.defectType !== '') {
+          counts.set(item.defectType, (counts.get(item.defectType) ?? 0) + 1);
+        }
+      }
+      return counts;
+    };
+
+    const cachedCounts = new Map<number, Map<string, number>>();
+    const networkTargets: number[] = [];
+    for (const id of targets) {
+      const cached = peekSuiteItems(id);
+      if (cached !== undefined) {
+        cachedCounts.set(id, countDefects(cached.items));
+      } else if (visibleLaunchIds === null || visibleLaunchIds.has(id)) {
+        networkTargets.push(id);
+      }
+    }
+
     let cancelled = false;
-    const MAX_CONCURRENT = 6;
+    const MAX_CONCURRENT = 3;
     let cursor = 0;
 
     const persist = (id: number, counts: Map<string, number>): void => {
@@ -1659,19 +1694,24 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       }
     };
 
+    if (cachedCounts.size > 0) {
+      setDefectSlugsByLaunchId(prev => {
+        const next = new Map(prev);
+        for (const [id, counts] of cachedCounts) next.set(id, counts);
+        return next;
+      });
+      for (const [id, counts] of cachedCounts) persist(id, counts);
+    }
+
     const worker = async (): Promise<void> => {
       while (!cancelled) {
         const idx = cursor++;
-        if (idx >= targets.length) return;
-        const id = targets[idx];
+        if (idx >= networkTargets.length) return;
+        const id = networkTargets[idx];
         let counts = new Map<string, number>();
         try {
-          const res = await fetchOverviewLaunchSuiteItems(id);
-          for (const item of res.items) {
-            if (item.defectType != null && item.defectType !== '') {
-              counts.set(item.defectType, (counts.get(item.defectType) ?? 0) + 1);
-            }
-          }
+          const res = await getOrFetchSuiteItems(id);
+          counts = countDefects(res.items);
         } catch {
           counts = new Map();
         }
@@ -1685,14 +1725,14 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       }
     };
 
-    for (let i = 0; i < Math.min(MAX_CONCURRENT, targets.length); i++) {
+    for (let i = 0; i < Math.min(MAX_CONCURRENT, networkTargets.length); i++) {
       void worker();
     }
 
     return () => {
       cancelled = true;
     };
-  }, [rows, drillLaunch, defectSlugsByLaunchId]);
+  }, [rows, drillLaunch, defectSlugsByLaunchId, visibleLaunchIds]);
 
   useEffect(() => {
     if (drillLaunch === null || suiteListItems === null) return;
@@ -1744,9 +1784,17 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     setPage(1);
   }, [gitlabProjectNames]);
 
+  const isListRoute = routeState.kind === 'list';
+
   useEffect(() => {
+    if (!isListRoute) return;
+    const last = lastLoadedLaunchesRef.current;
+    const paramsChanged = last === null || last.load !== load || last.page !== page || last.perPage !== perPage;
+    if (!paramsChanged && !pendingLaunchesRefreshRef.current) return;
+    pendingLaunchesRefreshRef.current = false;
+    lastLoadedLaunchesRef.current = { load, page, perPage };
     void load(page, perPage);
-  }, [load, page, perPage]);
+  }, [isListRoute, load, page, perPage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1774,16 +1822,21 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     const run = async (): Promise<void> => {
       if (routeState.kind === 'list') {
         deepLinkResolvingRef.current = false;
+        setPinnedTre(null);
         clearLocalSelection();
-        if (pendingLaunchesRefreshRef.current) {
-          pendingLaunchesRefreshRef.current = false;
-          void load(page, perPage);
-        }
         return;
       }
 
+      setPinnedTre(routeState.testRunExecutionId);
+
       try {
-        const launchRow = await fetchLaunchRowById(routeState.testRunExecutionId);
+        const drillSource = drillRowSourceRef.current;
+        const launchRow =
+          drillSource !== null &&
+          drillSource.fetcher === fetchLaunchRowById &&
+          Number(drillSource.row.id) === routeState.testRunExecutionId
+            ? drillSource.row
+            : await fetchLaunchRowById(routeState.testRunExecutionId);
         if (cancelled) {
           return;
         }
@@ -1793,6 +1846,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
           return;
         }
 
+        drillRowSourceRef.current = { fetcher: fetchLaunchRowById, row: launchRow };
         setDrillLaunch(launchRow);
 
         if (routeState.kind === 'launch') {
@@ -1807,7 +1861,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
           return;
         }
 
-        const suiteRes = await fetchOverviewLaunchSuiteItems(routeState.testRunExecutionId);
+        const suiteRes = await getOrFetchSuiteItems(routeState.testRunExecutionId);
         if (cancelled) {
           return;
         }
@@ -1851,7 +1905,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             return;
           }
 
-          const selectedSuiteRes = await fetchOverviewLaunchSuiteItems(selectedLaunchId);
+          const selectedSuiteRes = await getOrFetchSuiteItems(selectedLaunchId);
           if (cancelled) {
             return;
           }
@@ -1896,7 +1950,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     return () => {
       cancelled = true;
     };
-  }, [fetchLaunchRowById, historySelectedLaunchIdFromSearch, load, navigateToLaunchesRoute, page, perPage, routeState]);
+  }, [fetchLaunchRowById, historySelectedLaunchIdFromSearch, navigateToLaunchesRoute, routeState]);
 
   useEffect(() => {
     setDrillLaunch(null);
@@ -1976,7 +2030,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
           return;
         }
 
-        const suiteRes = await fetchOverviewLaunchSuiteItems(tre);
+        const suiteRes = await getOrFetchSuiteItems(tre);
         if (cancelled) {
           return;
         }
@@ -2032,24 +2086,37 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const isDeepLinkResolving = (routeState.kind === 'test' || routeState.kind === 'kw') && testLogTarget === null;
   const inTestLogView = testLogTarget !== null;
 
-  const buildHistoryLaunchEntry = useCallback(
-    async (row: OverviewLaunchRow, target: OverviewSuiteListLogTarget): Promise<HistoryLaunchEntry> => {
-      const cachedTarget = historyLaunchTargetCacheRef.current.get(row.id);
-      if (cachedTarget !== undefined) {
-        return { row, target: cachedTarget };
-      }
+  const peekHistoryTarget = useCallback(
+    (rowId: string, anchor: OverviewSuiteListLogTarget): OverviewSuiteListLogTarget | null | undefined => {
+      const targets = historyLaunchTargetCacheRef.current;
+      const known = targets.get(rowId);
+      if (known !== undefined) return known;
+      const cachedSuite = peekSuiteItems(Number(rowId));
+      if (cachedSuite === undefined) return undefined;
+      const matchedItem = pickMatchingSuiteItemForHistory(cachedSuite.items, anchor);
+      const matched = matchedItem !== null ? suiteItemToLogTarget(matchedItem) : null;
+      targets.set(rowId, matched);
+      return matched;
+    },
+    [],
+  );
 
-      let matchedTarget: OverviewSuiteListLogTarget | null = null;
+  const resolveHistoryTarget = useCallback(
+    async (rowId: string, anchor: OverviewSuiteListLogTarget): Promise<OverviewSuiteListLogTarget | null> => {
+      const targets = historyLaunchTargetCacheRef.current;
+      const known = targets.get(rowId);
+      if (known !== undefined) return known;
+
+      let matched: OverviewSuiteListLogTarget | null = null;
       try {
-        const suiteRes = await fetchOverviewLaunchSuiteItems(Number(row.id));
-        const matchedItem = pickMatchingSuiteItemForHistory(suiteRes.items, target);
-        matchedTarget = matchedItem !== null ? suiteItemToLogTarget(matchedItem) : null;
+        const suiteRes = await getOrFetchSuiteItems(Number(rowId));
+        const matchedItem = pickMatchingSuiteItemForHistory(suiteRes.items, anchor);
+        matched = matchedItem !== null ? suiteItemToLogTarget(matchedItem) : null;
       } catch {
-        matchedTarget = null;
+        matched = null;
       }
-      historyLaunchTargetCacheRef.current.set(row.id, matchedTarget);
-
-      return { row, target: matchedTarget };
+      targets.set(rowId, matched);
+      return matched;
     },
     [],
   );
@@ -2073,9 +2140,10 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         executionFilter: executionFilter === 'all' ? undefined : executionFilter,
       });
       const rowsForHistory = res.launches.map(r => mapApiRowToRow(r, isGamesCategory)).reverse();
-      const entries = await Promise.all(
-        rowsForHistory.map(row => buildHistoryLaunchEntry(row, historyAnchorTarget)),
-      );
+      const entries: HistoryLaunchEntry[] = rowsForHistory.map(row => ({
+        row,
+        target: peekHistoryTarget(row.id, historyAnchorTarget),
+      }));
 
       setHistoryLaunches(entries);
       setHistoryLaunchesHiddenCount(res.meta.hiddenCount);
@@ -2096,7 +2164,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     resolvedStartFrom,
     resolvedStartTo,
     executionFilter,
-    buildHistoryLaunchEntry,
+    peekHistoryTarget,
   ]);
 
   useEffect(() => {
@@ -2137,15 +2205,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     }
 
     try {
-      let matchedTarget: OverviewSuiteListLogTarget | null | undefined =
-        historyLaunchTargetCacheRef.current.get(selectedLaunch.row.id);
-
-      if (matchedTarget === undefined) {
-        const suiteRes = await fetchOverviewLaunchSuiteItems(Number(selectedLaunch.row.id));
-        const matchedItem = pickMatchingSuiteItemForHistory(suiteRes.items, historyAnchorTarget);
-        matchedTarget = matchedItem !== null ? suiteItemToLogTarget(matchedItem) : null;
-        historyLaunchTargetCacheRef.current.set(selectedLaunch.row.id, matchedTarget);
-      }
+      const matchedTarget = await resolveHistoryTarget(selectedLaunch.row.id, historyAnchorTarget);
 
       if (matchedTarget === null) {
         toast.error(`Could not find element "${historyAnchorTarget.displayName}" in selected launch.`);
@@ -2170,7 +2230,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not switch launch.');
     }
-  }, [historyAnchorLaunch, historyAnchorTarget, historyLaunches, navigateToLaunchesRoute, testLogLaunch?.id]);
+  }, [historyAnchorLaunch, historyAnchorTarget, historyLaunches, navigateToLaunchesRoute, resolveHistoryTarget, testLogLaunch?.id]);
 
   const loadMoreHistoryLaunches = useCallback(async () => {
     if (
@@ -2198,9 +2258,10 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
         beforeTestRunExecutionId: historyLaunchesNextBeforeId,
       });
       const rowsForHistory = res.launches.map(r => mapApiRowToRow(r, isGamesCategory)).reverse();
-      const entries = await Promise.all(
-        rowsForHistory.map(row => buildHistoryLaunchEntry(row, historyAnchorTarget)),
-      );
+      const entries: HistoryLaunchEntry[] = rowsForHistory.map(row => ({
+        row,
+        target: peekHistoryTarget(row.id, historyAnchorTarget),
+      }));
 
       setHistoryLaunches(prev => [
         ...entries,
@@ -2231,8 +2292,65 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     resolvedStartFrom,
     resolvedStartTo,
     executionFilter,
-    buildHistoryLaunchEntry,
+    peekHistoryTarget,
   ]);
+
+  /**
+   * Background resolution of history pill status: one suite-items request at a time once the log is visible,
+   * newest launch first; a hovered pill jumps the queue (it may also run before the log is visible).
+   */
+  useEffect(() => {
+    if (historyAnchorTarget === null || historyResolvingIdRef.current !== null) return;
+
+    const isUnresolved = (id: string): boolean =>
+      historyLaunches.some(entry => entry.row.id === id && entry.target === undefined);
+    const hovered = historyHoverPriorityRef.current;
+    let nextId: string | null = null;
+    if (hovered !== null && isUnresolved(hovered)) {
+      nextId = hovered;
+    } else if (testLogPayload !== null) {
+      for (let i = historyLaunches.length - 1; i >= 0; i--) {
+        if (historyLaunches[i].target === undefined) {
+          nextId = historyLaunches[i].row.id;
+          break;
+        }
+      }
+    }
+    if (hovered !== null && hovered === nextId) historyHoverPriorityRef.current = null;
+    if (nextId === null) return;
+
+    const resolvingId = nextId;
+    const anchor = historyAnchorTarget;
+    const targetsAtStart = historyLaunchTargetCacheRef.current;
+    historyResolvingIdRef.current = resolvingId;
+    void resolveHistoryTarget(resolvingId, anchor).then(target => {
+      historyResolvingIdRef.current = null;
+      if (historyLaunchTargetCacheRef.current === targetsAtStart) {
+        setHistoryLaunches(prev =>
+          prev.map(entry =>
+            entry.row.id === resolvingId && entry.target === undefined ? { ...entry, target } : entry,
+          ),
+        );
+      }
+      setHistoryQueueTick(tick => tick + 1);
+    });
+  }, [historyAnchorTarget, historyLaunches, testLogPayload, historyQueueTick, resolveHistoryTarget]);
+
+  useEffect(
+    () => () => {
+      if (historyHoverTimerRef.current !== null) clearTimeout(historyHoverTimerRef.current);
+    },
+    [],
+  );
+
+  const prioritizeHistoryLaunch = useCallback((launchId: string) => {
+    if (historyHoverTimerRef.current !== null) clearTimeout(historyHoverTimerRef.current);
+    historyHoverTimerRef.current = setTimeout(() => {
+      historyHoverTimerRef.current = null;
+      historyHoverPriorityRef.current = launchId;
+      setHistoryQueueTick(tick => tick + 1);
+    }, 150);
+  }, []);
 
   const loadTestLog = useCallback(async () => {
     if (testLogLaunch === null || testLogTarget === null) {
@@ -2244,8 +2362,8 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       const execId = Number(testLogLaunch.id);
       const res =
         testLogTarget.kind === 'test'
-          ? await fetchOverviewTestLogItems(execId, testLogTarget.overviewTestId)
-          : await fetchOverviewSuiteKwLogItems(execId, testLogTarget.overviewSuiteKwId);
+          ? await getOrFetchTestLogItems(execId, testLogTarget.overviewTestId)
+          : await getOrFetchSuiteKwLogItems(execId, testLogTarget.overviewSuiteKwId);
       setTestLogPayload(res);
     } catch (e) {
       setTestLogError(e instanceof Error ? e.message : 'Could not load log.');
@@ -2297,6 +2415,39 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   );
 
   const launchRowIdsOnPage = useMemo(() => displayRows.map(r => r.id), [displayRows]);
+
+  useEffect(() => {
+    const wrapper = launchesTableWrapperRef.current;
+    // Hidden table (compact grid layout) or no IO support: donuts load for every row.
+    if (wrapper === null || typeof IntersectionObserver === 'undefined' || wrapper.getClientRects().length === 0) {
+      setVisibleLaunchIds(null);
+      return;
+    }
+    const rowEls = wrapper.querySelectorAll<HTMLElement>('tr[data-launch-id]');
+    if (rowEls.length === 0) {
+      setVisibleLaunchIds(null);
+      return;
+    }
+    setVisibleLaunchIds(prev => prev ?? new Set());
+    const observer = new IntersectionObserver(
+      entries => {
+        const newlyVisible: number[] = [];
+        for (const entry of entries) {
+          const id = Number((entry.target as HTMLElement).dataset.launchId);
+          if (entry.isIntersecting && Number.isFinite(id)) newlyVisible.push(id);
+        }
+        if (newlyVisible.length === 0) return;
+        setVisibleLaunchIds(prev => {
+          if (prev === null) return prev;
+          if (newlyVisible.every(id => prev.has(id))) return prev;
+          return new Set([...prev, ...newlyVisible]);
+        });
+      },
+      { rootMargin: '200px 0px' },
+    );
+    rowEls.forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, [displayRows]);
 
   const inSuiteListView = suiteListItems !== null;
 
@@ -2351,19 +2502,19 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
 
   /** Updates the defectType slug on suite items after the modal applies. */
   const handleDefectApplied = useCallback((results: Array<{ overviewTestId: number; defect: OverviewTestDefect | null }>) => {
-    setSuiteListItems(prev => {
-      if (prev === null) return prev;
-      const map = new Map(results.map(r => [r.overviewTestId, r.defect]));
-      return prev.map(item =>
-        item.overviewTestId !== null && map.has(item.overviewTestId)
-          ? { ...item, defectType: map.get(item.overviewTestId)?.defectType.slug ?? null }
+    const defectByTestId = new Map(results.map(r => [r.overviewTestId, r.defect]));
+    const applyDefects = (items: OverviewLaunchSuiteItemApiRow[]): OverviewLaunchSuiteItemApiRow[] =>
+      items.map(item =>
+        item.overviewTestId !== null && defectByTestId.has(item.overviewTestId)
+          ? { ...item, defectType: defectByTestId.get(item.overviewTestId)?.defectType.slug ?? null }
           : item,
       );
-    });
+    setSuiteListItems(prev => (prev === null ? prev : applyDefects(prev)));
     setSelectedTestIds(new Set());
     pendingLaunchesRefreshRef.current = true;
     const drilledId = drillLaunch !== null ? Number(drillLaunch.id) : null;
     if (drilledId !== null && Number.isFinite(drilledId)) {
+      updateSuiteItems(drilledId, applyDefects);
       setDefectSlugsByLaunchId(prev => {
         if (!prev.has(drilledId)) return prev;
         const next = new Map(prev);
@@ -2936,10 +3087,14 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
               label: launchHistoryButtonLabel(entry.row),
               active: testLogLaunch?.id === entry.row.id,
               title: entry.row.title,
-              statusLabel: entry.target?.statusLabel ?? 'Unknown',
+              statusLabel: entry.target === undefined ? '\u2014' : entry.target?.statusLabel ?? 'Unknown',
               statusBand: entry.target?.statusBand,
               attributeLines: launchHistoryAttributeLines(entry.row.attributeText),
-              durationLabel: entry.target?.durationLabel ?? historyAnchorTarget?.durationLabel ?? testLogTarget.durationLabel,
+              durationLabel:
+                entry.target === undefined
+                  ? '\u2014'
+                  : entry.target?.durationLabel ?? historyAnchorTarget?.durationLabel ?? testLogTarget.durationLabel,
+              pending: entry.target === undefined,
             }))}
             hiddenHistoryButtonsCount={
               historyLaunches.length >= HISTORY_BUTTON_MAX_VISIBLE || historyLaunchesHiddenCount <= 0
@@ -2953,6 +3108,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             onSelectHistoryButton={launchId => {
               void openHistoryLaunch(launchId);
             }}
+            onHoverHistoryButton={prioritizeHistoryLaunch}
             suiteSourceRelative={
               testLogPayload?.suiteSourceRelative ?? testLogTarget.suiteSourceRelative ?? null
             }
@@ -3318,7 +3474,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
           </table>
         ) : (
           <>
-          <div className="launches-table-wrapper">
+          <div className="launches-table-wrapper" ref={launchesTableWrapperRef}>
           <table className="w-full table-fixed text-sm">
             <colgroup>
               <col style={{ width: '3%' }} />
@@ -3470,6 +3626,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
               {displayRows.map(row => (
                 <tr
                   key={row.id}
+                  data-launch-id={row.id}
                   className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
                 >
                   <td className="overflow-hidden py-3 pl-3 pr-1 align-top text-slate-400">

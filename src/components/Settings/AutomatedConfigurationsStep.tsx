@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Loader, Plus, SquarePen, Bot, ArrowLeft } from 'lucide-react';
 import { automatedConfigurationsApi, AutomatedConfigurationItem } from '../../services/automatedConfigurationsApi';
+import { configurationsApiService } from '../../services/configurationsApi';
 import { apiService } from '../../services/api';
 import Button from '../UI/Button';
 import toast from 'react-hot-toast';
@@ -115,12 +116,15 @@ const AutomatedConfigurationsStep: React.FC<AutomatedConfigurationsStepProps> = 
         browser: form.browser.trim() || null,
         useragent: form.useragent.trim() || null,
       };
+      // Automated configs are also served by GET /configurations, cached for the test run selectors.
       if (formMode === 'create') {
         await automatedConfigurationsApi.create(projectId, payload);
+        configurationsApiService.invalidateConfigurationsCache();
         toast.success('Configuration created');
         loadConfigurations();
       } else if (editingItem) {
         await automatedConfigurationsApi.update(projectId, editingItem.id, payload);
+        configurationsApiService.invalidateConfigurationsCache();
         toast.success('Configuration updated');
         setConfigurations((prev) =>
           prev.map((c) =>

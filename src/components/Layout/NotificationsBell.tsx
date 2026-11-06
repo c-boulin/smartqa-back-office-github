@@ -20,7 +20,7 @@ function formatNotificationMessage(item: NotificationItem): { message: string; d
     if (executionId != null) detailsParts.push(`Execution: ${executionId}`);
     const details = detailsParts.length > 0 ? detailsParts.join(' • ') : undefined;
 
-    const link = testRunId != null ? `/test-runs/${testRunId}` : undefined;
+    const link = testRunId != null ? `/test-runs/${testRunId}?configTab=automated` : undefined;
     return { message, details, link };
   }
 

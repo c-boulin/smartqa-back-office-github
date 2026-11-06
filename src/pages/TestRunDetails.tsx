@@ -16,6 +16,7 @@ import { testCaseExecutionsApiService } from '../services/testCaseExecutionsApi'
 import { testRunExecutionsApiService } from '../services/testRunExecutionsApi';
 import { useTestRunDetailsFilters } from '../hooks/useTestRunDetailsFilters';
 import { useTestRunExecutionPolling } from '../hooks/useTestRunExecutionPolling';
+import { useSyncProjectFromTestRun } from '../hooks/useSyncProjectFromTestRun';
 import { useApp } from '../context/AppContext';
 import { TestCase, TEST_RESULTS, TestResultId, Tag, coerceTestResultId, isTerminalTestExecutionResult } from '../types';
 import { usePermissions } from '../hooks/usePermissions';
@@ -30,6 +31,7 @@ const TestRunDetails: React.FC = () => {
   const { state: appState, createTag } = useApp();
   const { hasPermission } = usePermissions();
   const [testRun, setTestRun] = useState<TestRun | null>(null);
+  useSyncProjectFromTestRun(testRun);
   const [testCases, setTestCases] = useState<TestCaseWithExecution[]>([]);
   const [runExecutions, setRunExecutions] = useState<TestRunDetailsExecutionPayload[]>([]);
   const [filteredTestCases, setFilteredTestCases] = useState<TestCaseWithExecution[]>([]);

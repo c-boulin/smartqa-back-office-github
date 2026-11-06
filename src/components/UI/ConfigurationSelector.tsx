@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Plus, Settings as ConfigIcon, Loader, Search, ChevronDown } from 'lucide-react';
-import { Configuration } from '../../services/configurationsApi';
-import { configurationsApiService } from '../../services/configurationsApi';
+import { Configuration, configurationsApiService } from '../../services/configurationsApi';
 
 interface ConfigurationSelectorProps {
   selectedConfigurations: Configuration[];
@@ -77,48 +76,8 @@ const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
       setLoading(true);
       setError(null);
 
-      // Make first request to get total count
-      const firstPageResponse = await configurationsApiService.getConfigurations();
-      
-      // Check if we got any data
-      if (!firstPageResponse.data || firstPageResponse.data.length === 0) {
+      const allConfigurations = await configurationsApiService.fetchAllConfigurations();
 
-        setConfigurations([]);
-        hasLoadedRef.current = true;
-        return;
-      }
-
-      // Start with first page data
-      let allConfigurations = firstPageResponse.data.map(apiConfig => 
-        configurationsApiService.transformApiConfiguration(apiConfig)
-      );
-      
-      // Check if there are more pages
-      const totalItems = firstPageResponse.meta.totalItems;
-      const itemsPerPage = firstPageResponse.meta.itemsPerPage;
-      const totalPages = Math.ceil(totalItems / itemsPerPage);
-      
-      if (totalPages > 1) {
-
-        // Fetch remaining pages in parallel
-        const pagePromises = [];
-        for (let page = 2; page <= totalPages; page++) {
-          pagePromises.push(
-            configurationsApiService.getConfigurations(page)
-              .then(response => response.data.map(apiConfig =>
-                configurationsApiService.transformApiConfiguration(apiConfig)
-              ))
-          );
-        }
-        
-        const allPageResults = await Promise.all(pagePromises);
-        
-        // Combine all results
-        for (const pageConfigurations of allPageResults) {
-          allConfigurations = [...allConfigurations, ...pageConfigurations];
-        }
-      }
-      
       setConfigurations(allConfigurations);
       setAllConfigurations(allConfigurations);
       hasLoadedRef.current = true;

@@ -290,12 +290,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       dispatch({ type: 'SET_LOADING_CONFIGURATIONS', payload: true });
       
-      const response = await configurationsApiService.getConfigurations();
-      const transformedConfigurations = response.data.map(apiConfig => 
-        configurationsApiService.transformApiConfiguration(apiConfig)
-      );
+      const allConfigurations = await configurationsApiService.fetchAllConfigurations();
       
-      dispatch({ type: 'SET_CONFIGURATIONS', payload: transformedConfigurations });
+      dispatch({ type: 'SET_CONFIGURATIONS', payload: allConfigurations });
       
     } catch (error) {
       console.error('Failed to load configurations:', error);
@@ -317,6 +314,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const response = await configurationsApiService.createConfiguration({ label });
     const newConfiguration = configurationsApiService.transformApiConfiguration(response.data);
     dispatch({ type: 'ADD_CONFIGURATION', payload: newConfiguration });
+    configurationsApiService.invalidateConfigurationsCache();
     return newConfiguration;
   };
 
@@ -434,6 +432,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       hasLoadedRef.current = false;
       loadingRef.current = false;
       isInitializing.current = false;
+      configurationsApiService.invalidateConfigurationsCache();
       dispatch({ type: 'CLEAR_DATA' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadConfigurations, loadProjects, loadTags are stable

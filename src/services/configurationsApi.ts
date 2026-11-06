@@ -60,6 +60,10 @@ export interface CreateConfigurationResponse {
 }
 
 class ConfigurationsApiService {
+  private cachedConfigurations: Configuration[] | null = null;
+  private inFlightPromise: Promise<Configuration[]> | null = null;
+  private cacheGeneration = 0;
+
   public getDefaultConfigurationsResponse(): ConfigurationsApiResponse {
     return {
       links: {
@@ -79,6 +83,63 @@ class ConfigurationsApiService {
   async getConfigurations(page = 1): Promise<ConfigurationsApiResponse> {
     const response = await apiService.authenticatedRequest(`/configurations?itemsPerPage=100&page=${page}`);
     return response || this.getDefaultConfigurationsResponse();
+  }
+
+  async fetchAllConfigurations(): Promise<Configuration[]> {
+    if (this.cachedConfigurations) {
+      return this.cachedConfigurations;
+    }
+    if (this.inFlightPromise) {
+      return this.inFlightPromise;
+    }
+
+    const generation = this.cacheGeneration;
+    const promise = this.loadAllPages()
+      .then((configurations) => {
+        // A fetch started before an invalidation must not repopulate the cache with stale data.
+        if (generation === this.cacheGeneration) {
+          this.cachedConfigurations = configurations;
+        }
+        return configurations;
+      })
+      .finally(() => {
+        if (this.inFlightPromise === promise) {
+          this.inFlightPromise = null;
+        }
+      });
+
+    this.inFlightPromise = promise;
+    return promise;
+  }
+
+  invalidateConfigurationsCache(): void {
+    this.cachedConfigurations = null;
+    this.inFlightPromise = null;
+    this.cacheGeneration += 1;
+  }
+
+  private async loadAllPages(): Promise<Configuration[]> {
+    const firstPage = await this.getConfigurations();
+    if (!firstPage.data || firstPage.data.length === 0) {
+      return [];
+    }
+
+    const configurations = firstPage.data.map((apiConfig) => this.transformApiConfiguration(apiConfig));
+    const totalPages = Math.ceil(firstPage.meta.totalItems / firstPage.meta.itemsPerPage);
+    if (totalPages <= 1) {
+      return configurations;
+    }
+
+    const pagePromises: Promise<Configuration[]>[] = [];
+    for (let page = 2; page <= totalPages; page++) {
+      pagePromises.push(
+        this.getConfigurations(page).then((response) =>
+          response.data.map((apiConfig) => this.transformApiConfiguration(apiConfig))
+        )
+      );
+    }
+    const remainingPages = await Promise.all(pagePromises);
+    return configurations.concat(...remainingPages);
   }
 
   async createConfiguration(attributes: ConfigurationAttributes): Promise<CreateConfigurationResponse> {
