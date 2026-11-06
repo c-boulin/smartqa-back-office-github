@@ -487,13 +487,44 @@ export interface OverviewTestLogItemsResponse {
 }
 
 /** Omitted = full tree. `parentKwId` is only valid with `depth: '1'` (API answers 422 otherwise). */
-export type OverviewLogItemsQuery = { depth: 'roots' } | { depth: '1'; parentKwId: number };
+export type OverviewLogItemsQuery =
+  | { depth: 'roots' }
+  | { depth: '1'; parentKwId: number }
+  | { depth: '1'; parentKwIds: number[] };
 
 function logItemsQueryString(query?: OverviewLogItemsQuery): string {
   if (query === undefined) return '';
   const params = new URLSearchParams({ depth: query.depth });
-  if (query.depth === '1') params.set('parent_kw_id', String(query.parentKwId));
+  if ('parentKwId' in query) params.set('parent_kw_id', String(query.parentKwId));
+  if ('parentKwIds' in query) params.set('parent_kw_ids', query.parentKwIds.join(','));
   return `?${params.toString()}`;
+}
+
+/** Batch `depth=1&parent_kw_ids=…`: the API answers one entry per requested id (string keys), `items: []` when none. */
+export interface OverviewLogBatchChildrenResponse {
+  parents: Record<string, { items: OverviewTestLogTreeNode[] } | undefined>;
+}
+
+export function fetchOverviewTestLogChildrenBatch(
+  testRunExecutionId: number,
+  overviewTestId: number,
+  parentKwIds: number[],
+): Promise<OverviewLogBatchChildrenResponse> {
+  return fetchOverviewTestLogItems(testRunExecutionId, overviewTestId, {
+    depth: '1',
+    parentKwIds,
+  }) as unknown as Promise<OverviewLogBatchChildrenResponse>;
+}
+
+export function fetchOverviewSuiteKwLogChildrenBatch(
+  testRunExecutionId: number,
+  overviewSuiteKwId: number,
+  parentKwIds: number[],
+): Promise<OverviewLogBatchChildrenResponse> {
+  return fetchOverviewSuiteKwLogItems(testRunExecutionId, overviewSuiteKwId, {
+    depth: '1',
+    parentKwIds,
+  }) as unknown as Promise<OverviewLogBatchChildrenResponse>;
 }
 
 /**

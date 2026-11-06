@@ -48,11 +48,13 @@ export interface User {
 
 export class ApiRequestError extends Error {
   detail?: string;
+  status?: number;
 
-  constructor(message: string, detail?: string) {
+  constructor(message: string, detail?: string, status?: number) {
     super(message);
     this.name = 'ApiRequestError';
     this.detail = detail;
+    this.status = status;
   }
 }
 
@@ -151,7 +153,7 @@ class ApiService {
         // If we can't parse the error response, use the default message
       }
       
-      throw new ApiRequestError(errorMessage, errorDetail);
+      throw new ApiRequestError(errorMessage, errorDetail, response.status);
     }
 
     // Handle empty responses (like DELETE requests)

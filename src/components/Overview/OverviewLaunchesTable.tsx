@@ -41,6 +41,7 @@ import {
   getOrFetchLogChildren,
   getOrFetchLogRoots,
   invalidateLogScope,
+  peekLogChildren,
   updateLogRoots,
   type OverviewLogScope,
   peekSuiteItems,
@@ -53,6 +54,7 @@ import {
   type HistoryLaunchTooltipButtonModel,
 } from './OverviewLaunchHistoryTooltip';
 import OverviewTestLogView from './OverviewTestLogView';
+import { createLogChildrenPrefetcher } from '../../services/overviewLogPrefetch';
 import { mergeKeywordChildren } from './overviewLogTree';
 import { DefectSelectionModal } from './DefectSelectionModal';
 import { fetchDefectGroups, type DefectGroupData, type DefectTypeData } from '../../services/defectGroupsApi';
@@ -2387,11 +2389,48 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     }
   }, [testLogLaunch, testLogTarget]);
 
+  const logPrefetcherRef = useRef(createLogChildrenPrefetcher());
+
+  useEffect(() => {
+    const prefetcher = logPrefetcherRef.current;
+    if (testLogLaunch === null || testLogTarget === null) prefetcher.reset();
+    else prefetcher.setContext(Number(testLogLaunch.id), logScopeOfTarget(testLogTarget));
+  }, [testLogLaunch, testLogTarget]);
+
+  useEffect(() => {
+    const prefetcher = logPrefetcherRef.current;
+    return () => prefetcher.reset();
+  }, []);
+
   const refreshTestLog = useCallback(() => {
     if (testLogLaunch === null || testLogTarget === null) return;
-    invalidateLogScope(Number(testLogLaunch.id), logScopeOfTarget(testLogTarget));
+    const execId = Number(testLogLaunch.id);
+    const scope = logScopeOfTarget(testLogTarget);
+    logPrefetcherRef.current.reset();
+    invalidateLogScope(execId, scope);
+    logPrefetcherRef.current.setContext(execId, scope);
     void loadTestLog();
   }, [testLogLaunch, testLogTarget, loadTestLog]);
+
+  const prefetchKeywordChildren = useCallback(
+    (kwIds: number[], mode: 'one' | 'many') => {
+      if (testLogLaunch === null || testLogTarget === null) return;
+      const scope = logScopeOfTarget(testLogTarget);
+      const requestKey = `${Number(testLogLaunch.id)}:${JSON.stringify(scope)}`;
+      if (activeTestLogKeyRef.current !== requestKey) return;
+      if (mode === 'one') kwIds.forEach(kwId => logPrefetcherRef.current.prefetchOne(kwId));
+      else logPrefetcherRef.current.prefetchMany(kwIds);
+    },
+    [testLogLaunch, testLogTarget],
+  );
+
+  const isKeywordChildrenCached = useCallback(
+    (kwId: number): boolean => {
+      if (testLogLaunch === null || testLogTarget === null) return false;
+      return peekLogChildren(Number(testLogLaunch.id), logScopeOfTarget(testLogTarget), kwId) !== undefined;
+    },
+    [testLogLaunch, testLogTarget],
+  );
 
   /** Throws so the keyword row can show a per-branch error; stale answers only refresh the cache. */
   const loadKeywordChildren = useCallback(
@@ -2400,7 +2439,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
       const execId = Number(testLogLaunch.id);
       const scope = logScopeOfTarget(testLogTarget);
       const requestKey = `${execId}:${JSON.stringify(scope)}`;
-      const children = await getOrFetchLogChildren(execId, scope, kwId);
+      const children = peekLogChildren(execId, scope, kwId) ?? (await getOrFetchLogChildren(execId, scope, kwId));
       updateLogRoots(execId, scope, items => mergeKeywordChildren(items, kwId, children));
       if (activeTestLogKeyRef.current !== requestKey) return;
       setTestLogPayload(prev =>
@@ -3165,6 +3204,8 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             error={testLogError}
             onRefresh={refreshTestLog}
             onLoadKeywordChildren={loadKeywordChildren}
+            onPrefetchKeywordChildren={prefetchKeywordChildren}
+            isKeywordChildrenCached={isKeywordChildrenCached}
             hoveredTimeRowKey={hoveredLogTimeRowKey}
             onHoverTimeRow={setHoveredLogTimeRowKey}
             isCronContext={isCronContext}

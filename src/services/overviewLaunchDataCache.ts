@@ -6,7 +6,9 @@
  */
 import {
   fetchOverviewLaunchSuiteItems,
+  fetchOverviewSuiteKwLogChildrenBatch,
   fetchOverviewSuiteKwLogItems,
+  fetchOverviewTestLogChildrenBatch,
   fetchOverviewTestLogItems,
   type OverviewLaunchSuiteItemApiRow,
   type OverviewLaunchSuiteItemsResponse,
@@ -90,20 +92,87 @@ export function getOrFetchLogRoots(tre: number, scope: OverviewLogScope): Promis
   );
 }
 
+function fetchLogChildrenAlone(
+  tre: number,
+  scope: OverviewLogScope,
+  parentKwId: number,
+): Promise<OverviewTestLogItemsResponse> {
+  const query = { depth: '1', parentKwId } as const;
+  return scope.kind === 'test'
+    ? fetchOverviewTestLogItems(tre, scope.overviewTestId, query)
+    : fetchOverviewSuiteKwLogItems(tre, scope.overviewSuiteKwId, query);
+}
+
 /** Direct children (keywords + messages) of one keyword (`depth=1&parent_kw_id`). */
 export async function getOrFetchLogChildren(
   tre: number,
   scope: OverviewLogScope,
   parentKwId: number,
 ): Promise<OverviewTestLogTreeNode[]> {
-  const query = { depth: '1', parentKwId } as const;
   const res = await getOrFetch(logEntries, logChildrenKey(tre, scope, parentKwId), MAX_LOG_ENTRIES, () =>
-    scope.kind === 'test'
-      ? fetchOverviewTestLogItems(tre, scope.overviewTestId, query)
-      : fetchOverviewSuiteKwLogItems(tre, scope.overviewSuiteKwId, query),
+    fetchLogChildrenAlone(tre, scope, parentKwId),
   );
   if (!Array.isArray(res?.items)) throw new Error('Unexpected log children response.');
   return res.items;
+}
+
+/** Synchronous cache hit for a keyword's children; `undefined` when not loaded yet. */
+export function peekLogChildren(
+  tre: number,
+  scope: OverviewLogScope,
+  parentKwId: number,
+): OverviewTestLogTreeNode[] | undefined {
+  const items = touch(logEntries, logChildrenKey(tre, scope, parentKwId))?.items;
+  return Array.isArray(items) ? items : undefined;
+}
+
+export function isLogChildrenCachedOrPending(tre: number, scope: OverviewLogScope, parentKwId: number): boolean {
+  const key = logChildrenKey(tre, scope, parentKwId);
+  return logEntries.has(key) || inFlight.has(key);
+}
+
+/**
+ * One `parent_kw_ids` request filling each child key as if fetched alone. Every key is registered in flight
+ * so a click during the batch awaits it; an id missing from the answer falls back to `parent_kw_id`.
+ * Rejects (with the API error) when the batch request itself fails.
+ */
+export async function fetchLogChildrenBatch(
+  tre: number,
+  scope: OverviewLogScope,
+  parentKwIds: number[],
+): Promise<void> {
+  const ids = parentKwIds.filter(id => !isLogChildrenCachedOrPending(tre, scope, id));
+  if (ids.length === 0) return;
+
+  const batch =
+    scope.kind === 'test'
+      ? fetchOverviewTestLogChildrenBatch(tre, scope.overviewTestId, ids)
+      : fetchOverviewSuiteKwLogChildrenBatch(tre, scope.overviewSuiteKwId, ids);
+
+  const perKey = ids.map(id => {
+    const key = logChildrenKey(tre, scope, id);
+    const promise: Promise<OverviewTestLogItemsResponse> = batch
+      .then(
+        res => res,
+        () => undefined,
+      )
+      .then(async res => {
+        const items = res?.parents?.[String(id)]?.items;
+        const value: OverviewTestLogItemsResponse = Array.isArray(items)
+          ? { testName: '', testStatusLabel: '', suiteSourceRelative: null, testLine: null, items }
+          : await fetchLogChildrenAlone(tre, scope, id);
+        if (inFlight.get(key) === promise) storeWithEviction(logEntries, key, value, MAX_LOG_ENTRIES);
+        return value;
+      })
+      .finally(() => {
+        if (inFlight.get(key) === promise) inFlight.delete(key);
+      });
+    inFlight.set(key, promise);
+    return promise;
+  });
+
+  await Promise.allSettled(perKey);
+  await batch;
 }
 
 /** Writes the merged (partially expanded) tree back so re-opening this log does not refetch branches. */
