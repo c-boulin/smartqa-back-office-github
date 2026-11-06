@@ -27,7 +27,7 @@ import type {
 import { buildAssetsUrlFromObjectKey } from '../../env';
 import { DefectSelectionModal } from './DefectSelectionModal';
 import { linkifyLogText } from './linkifyLogText';
-import { keywordHasLoadedChildren, keywordIsExpandable } from './overviewLogTree';
+import { keywordHasLoadedChildren, keywordIsExpandable, normalizeStatusBand } from './overviewLogTree';
 
 /** Lets a cascade of failed-path auto-loads settle before scrolling to the deepest failed row. */
 const SCROLL_TO_FAILED_SETTLE_MS = 200;
@@ -82,6 +82,8 @@ export interface OverviewTestLogViewProps {
   onRefresh: () => void;
   /** Lazy API: fetches and merges direct children of a keyword; rejects so the branch can show its own error. */
   onLoadKeywordChildren?: (kwId: number) => Promise<void>;
+  /** True while the parent batches the failed path; failed rows wait instead of fetching one by one. */
+  failedPathResolving?: boolean;
   /** Background cache warm-up only; never changes the rendered tree. */
   onPrefetchKeywordChildren?: (kwIds: number[], mode: 'one' | 'many') => void;
   isKeywordChildrenCached?: (kwId: number) => boolean;
@@ -111,29 +113,6 @@ function logTimeHoverLabel(item: OverviewTestLogItemApiRow): string {
     return convertUtcToLocalDisplay(item.startTimeRaw);
   }
   return convertUtcToLocalDisplay(item.startTimeDisplay);
-}
-
-function normalizeStatusBand(
-  statusBand: string | null | undefined,
-  statusLabel: string | null | undefined,
-): 'passed' | 'failed' | 'skipped' | 'unknown' {
-  const normalizedBand = (statusBand ?? '').trim().toLowerCase();
-  if (normalizedBand === 'passed' || normalizedBand === 'failed' || normalizedBand === 'skipped') {
-    return normalizedBand;
-  }
-
-  const normalizedLabel = (statusLabel ?? '').trim().toLowerCase();
-  if (normalizedLabel.startsWith('pass')) {
-    return 'passed';
-  }
-  if (normalizedLabel.startsWith('fail')) {
-    return 'failed';
-  }
-  if (normalizedLabel.startsWith('skip')) {
-    return 'skipped';
-  }
-
-  return 'unknown';
 }
 
 function statusDotClass(statusBand: string | null | undefined, statusLabel: string | null | undefined): string {
@@ -179,6 +158,7 @@ type AllLogsTreeRowBaseProps = {
   keywordPrefetch?: KeywordChildrenPrefetch;
   /** False while failed-path auto loads run, so warm-up never competes with scroll-to-failed. */
   autoLoadsSettled: boolean;
+  failedPathResolving: boolean;
 };
 
 type KeywordChildrenPrefetch = {
@@ -546,6 +526,7 @@ function KeywordLogAccordionBlock(
     trackAutoLoad,
     keywordPrefetch,
     autoLoadsSettled,
+    failedPathResolving,
   } = props;
   const isFailed = normalizeStatusBand(node.statusBand, node.statusLabel) === 'failed';
   const expandable = keywordIsExpandable(node);
@@ -595,13 +576,18 @@ function KeywordLogAccordionBlock(
     if (kwIds.length > 0) keywordPrefetch.prefetch(kwIds, 'many');
   }, [keywordPrefetch, open, autoLoadsSettled, node.children]);
 
-  // Failed keywords open on mount; on a lazy tree that open must also fetch, which walks the failed path.
+  // Failed keywords open on mount; on a lazy tree that open must also fetch. While the parent batches the
+  // failed path, wait for it and only fetch alone what it could not load.
   const autoLoadOnMountRef = useRef(isFailed && needsFetch);
   useEffect(() => {
-    if (!autoLoadOnMountRef.current) return;
+    if (!autoLoadOnMountRef.current || failedPathResolving) return;
     autoLoadOnMountRef.current = false;
-    void loadChildren(true);
-  }, [loadChildren]);
+    if (needsFetch) void loadChildren(true);
+  }, [loadChildren, failedPathResolving, needsFetch]);
+
+  const awaitingFailedPath =
+    failedPathResolving && isFailed && needsFetch && childLoad === 'idle' && keywordPrefetch?.isCached(node.kwId) !== true;
+  const showSpinner = childLoad === 'loading' || awaitingFailedPath;
 
   const toggle = (): void => {
     if (!expandable) return;
@@ -629,13 +615,13 @@ function KeywordLogAccordionBlock(
               type="button"
               className={`mt-0.5 shrink-0 rounded p-0.5 ${expandable ? 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-600' : 'cursor-default text-slate-300 dark:text-slate-600'}`}
               aria-expanded={expandable ? open : undefined}
-              aria-busy={childLoad === 'loading' ? true : undefined}
+              aria-busy={showSpinner ? true : undefined}
               disabled={!expandable}
               onClick={toggle}
               aria-label={expandable ? (open ? 'Collapse': 'Expand') : undefined}
               data-mipqa="overview-log-kw-expand-button"
             >
-              {childLoad === 'loading' ? (
+              {showSpinner ? (
                 <Loader2 className="h-4 w-4 animate-spin text-cyan-500" aria-hidden />
               ) : expandable ? (
                 open ? (
@@ -687,6 +673,7 @@ function KeywordLogAccordionBlock(
               trackAutoLoad={trackAutoLoad}
               keywordPrefetch={keywordPrefetch}
               autoLoadsSettled={autoLoadsSettled}
+              failedPathResolving={failedPathResolving}
             />
           ))
         : null}
@@ -729,6 +716,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   error,
   onRefresh,
   onLoadKeywordChildren,
+  failedPathResolving = false,
   onPrefetchKeywordChildren,
   isKeywordChildrenCached,
   hoveredTimeRowKey,
@@ -807,7 +795,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
   }, [logItemsSignature]);
 
   useEffect(() => {
-    if (loading || pendingAutoLoads > 0 || items.length === 0) return;
+    if (loading || failedPathResolving || pendingAutoLoads > 0 || items.length === 0) return;
     if (scrolledSignatureRef.current === logItemsSignature) return;
     const timer = setTimeout(() => {
       const container = logContainerRef.current;
@@ -825,7 +813,7 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
       (target as Element | null)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, SCROLL_TO_FAILED_SETTLE_MS);
     return () => clearTimeout(timer);
-  }, [loading, pendingAutoLoads, items.length, logItemsSignature]);
+  }, [loading, failedPathResolving, pendingAutoLoads, items.length, logItemsSignature]);
 
   useEffect(() => {
     if (hoveredHistoryButton === null) {
@@ -1098,7 +1086,8 @@ const OverviewTestLogView: React.FC<OverviewTestLogViewProps> = ({
                       onLoadKeywordChildren={onLoadKeywordChildren}
                       trackAutoLoad={trackAutoLoad}
                       keywordPrefetch={keywordPrefetch}
-                      autoLoadsSettled={pendingAutoLoads === 0}
+                      autoLoadsSettled={pendingAutoLoads === 0 && !failedPathResolving}
+                      failedPathResolving={failedPathResolving}
                     />
                   ))}
                 </tbody>

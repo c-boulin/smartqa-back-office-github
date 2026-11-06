@@ -55,7 +55,8 @@ import {
 } from './OverviewLaunchHistoryTooltip';
 import OverviewTestLogView from './OverviewTestLogView';
 import { createLogChildrenPrefetcher } from '../../services/overviewLogPrefetch';
-import { mergeKeywordChildren } from './overviewLogTree';
+import { mergeKeywordChildren, mergeManyKeywordChildren } from './overviewLogTree';
+import { resolveFailedPath } from '../../services/overviewFailedPathResolver';
 import { DefectSelectionModal } from './DefectSelectionModal';
 import { fetchDefectGroups, type DefectGroupData, type DefectTypeData } from '../../services/defectGroupsApi';
 import { DEFECT_CHART_TYPES } from '../../constants/defectChartTypes';
@@ -1032,6 +1033,9 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   const [testLogLoading, setTestLogLoading] = useState(false);
   const [testLogError, setTestLogError] = useState<string | null>(null);
   const activeTestLogKeyRef = useRef<string | null>(null);
+  // Bumped on every log (re)load so a running failed-path resolver from a previous load stops merging.
+  const failedPathRunRef = useRef(0);
+  const [failedPathResolving, setFailedPathResolving] = useState(false);
   const [historyAnchorLaunch, setHistoryAnchorLaunch] = useState<OverviewLaunchRow | null>(null);
   const [historyAnchorTarget, setHistoryAnchorTarget] = useState<OverviewSuiteListLogTarget | null>(null);
   const [historyLaunches, setHistoryLaunches] = useState<HistoryLaunchEntry[]>([]);
@@ -2366,6 +2370,8 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
   }, []);
 
   const loadTestLog = useCallback(async () => {
+    const run = ++failedPathRunRef.current;
+    setFailedPathResolving(false);
     if (testLogLaunch === null || testLogTarget === null) {
       activeTestLogKeyRef.current = null;
       return;
@@ -2378,14 +2384,35 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
     setTestLogError(null);
     try {
       const res = await getOrFetchLogRoots(execId, scope);
-      if (activeTestLogKeyRef.current !== requestKey) return;
+      if (activeTestLogKeyRef.current !== requestKey || failedPathRunRef.current !== run) return;
+      const isActive = (): boolean =>
+        activeTestLogKeyRef.current === requestKey && failedPathRunRef.current === run;
+      // Started before the roots render so failed rows mounting next find their requests already in flight.
+      const resolving = resolveFailedPath({
+        tre: execId,
+        scope,
+        roots: res.items,
+        isActive,
+        onMerge: entries => {
+          updateLogRoots(execId, scope, items => mergeManyKeywordChildren(items, entries));
+          setTestLogPayload(prev =>
+            prev === null ? prev : { ...prev, items: mergeManyKeywordChildren(prev.items, entries) },
+          );
+        },
+      });
+      setFailedPathResolving(true);
       setTestLogPayload(res);
+      void resolving
+        .catch(() => undefined)
+        .finally(() => {
+          if (isActive()) setFailedPathResolving(false);
+        });
     } catch (e) {
       if (activeTestLogKeyRef.current !== requestKey) return;
       setTestLogError(e instanceof Error ? e.message : 'Could not load log.');
       setTestLogPayload(null);
     } finally {
-      if (activeTestLogKeyRef.current === requestKey) setTestLogLoading(false);
+      if (activeTestLogKeyRef.current === requestKey && failedPathRunRef.current === run) setTestLogLoading(false);
     }
   }, [testLogLaunch, testLogTarget]);
 
@@ -3204,6 +3231,7 @@ const OverviewLaunchesTable: React.FC<OverviewLaunchesTableProps> = ({ externalP
             error={testLogError}
             onRefresh={refreshTestLog}
             onLoadKeywordChildren={loadKeywordChildren}
+            failedPathResolving={failedPathResolving}
             onPrefetchKeywordChildren={prefetchKeywordChildren}
             isKeywordChildrenCached={isKeywordChildrenCached}
             hoveredTimeRowKey={hoveredLogTimeRowKey}

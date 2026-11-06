@@ -2,10 +2,11 @@
  * Background warm-up of the All logs lazy tree: fills the log cache only (never the rendered tree).
  * Bounded per log context (TRE + test / suite keyword); switching context drops whatever is still queued.
  */
-import { ApiRequestError } from './api';
 import {
+  chunkLogChildrenBatchIds,
   fetchLogChildrenBatch,
   getOrFetchLogChildren,
+  isLogChildrenBatchSupported,
   isLogChildrenCachedOrPending,
   type OverviewLogScope,
 } from './overviewLaunchDataCache';
@@ -13,9 +14,6 @@ import {
 const MAX_CONCURRENT = 3;
 const MAX_NODES_PER_CONTEXT = 40;
 const MAX_NODES_PER_EXPANSION = 25;
-const BATCH_MAX_IDS = 25;
-// API caps the raw `parent_kw_ids` CSV at 512 chars; keep a margin.
-const BATCH_MAX_CSV_LENGTH = 500;
 
 type PrefetchTask = { kind: 'one'; kwId: number } | { kind: 'batch'; kwIds: number[] };
 
@@ -31,33 +29,11 @@ export interface LogChildrenPrefetcher {
   prefetchMany: (kwIds: number[]) => void;
 }
 
-function chunkForBatch(ids: number[]): number[][] {
-  const chunks: number[][] = [];
-  let current: number[] = [];
-  let csvLength = 0;
-  for (const id of ids) {
-    const idLength = String(id).length;
-    if (current.length >= BATCH_MAX_IDS || csvLength + idLength + 1 > BATCH_MAX_CSV_LENGTH) {
-      chunks.push(current);
-      current = [];
-      csvLength = 0;
-    }
-    csvLength += current.length > 0 ? idLength + 1 : idLength;
-    current.push(id);
-  }
-  if (current.length > 0) chunks.push(current);
-  return chunks;
-}
-
-const isBatchUnsupported = (error: unknown): boolean =>
-  error instanceof ApiRequestError && (error.status === 422 || error.status === 404);
-
 export function createLogChildrenPrefetcher(): LogChildrenPrefetcher {
   let context: PrefetchContext | null = null;
   let queue: PrefetchTask[] = [];
   let running = 0;
   let budgetUsed = 0;
-  let batchSupported = true;
   const queuedIds = new Set<number>();
 
   const accept = (kwId: number): boolean => {
@@ -69,17 +45,12 @@ export function createLogChildrenPrefetcher(): LogChildrenPrefetcher {
     return true;
   };
 
-  // A failed batch already falls back to `parent_kw_id` per key inside the cache.
   const runTask = async (task: PrefetchTask, ctx: PrefetchContext): Promise<void> => {
     if (task.kind === 'one') {
       await getOrFetchLogChildren(ctx.tre, ctx.scope, task.kwId).catch(() => undefined);
       return;
     }
-    try {
-      await fetchLogChildrenBatch(ctx.tre, ctx.scope, task.kwIds);
-    } catch (error) {
-      if (isBatchUnsupported(error)) batchSupported = false;
-    }
+    await fetchLogChildrenBatch(ctx.tre, ctx.scope, task.kwIds);
   };
 
   const pump = (): void => {
@@ -123,8 +94,8 @@ export function createLogChildrenPrefetcher(): LogChildrenPrefetcher {
         if (accept(kwId)) accepted.push(kwId);
       }
       if (accepted.length === 0) return;
-      if (batchSupported && accepted.length > 1) {
-        chunkForBatch(accepted).forEach(chunk => queue.push({ kind: 'batch', kwIds: chunk }));
+      if (isLogChildrenBatchSupported() && accepted.length > 1) {
+        chunkLogChildrenBatchIds(accepted).forEach(chunk => queue.push({ kind: 'batch', kwIds: chunk }));
       } else {
         accepted.forEach(kwId => queue.push({ kind: 'one', kwId }));
       }

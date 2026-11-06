@@ -4,6 +4,7 @@
  * The pinned (drilled) launch and in-flight requests are never evicted. Concurrent callers share one Promise.
  * After a defect is applied, callers patch suite items in place via `updateSuiteItems` instead of refetching.
  */
+import { ApiRequestError } from './api';
 import {
   fetchOverviewLaunchSuiteItems,
   fetchOverviewSuiteKwLogChildrenBatch,
@@ -18,6 +19,11 @@ import {
 
 const MAX_SUITE_ENTRIES = 50;
 const MAX_LOG_ENTRIES = 100;
+const BATCH_MAX_IDS = 25;
+// API caps the raw `parent_kw_ids` CSV at 512 chars; keep a margin.
+const BATCH_MAX_CSV_LENGTH = 500;
+// Session-wide: once the API refuses `parent_kw_ids`, every caller goes straight to `parent_kw_id`.
+let logChildrenBatchSupported = true;
 
 const suiteEntries = new Map<string, OverviewLaunchSuiteItemsResponse>();
 const logEntries = new Map<string, OverviewTestLogItemsResponse>();
@@ -131,23 +137,61 @@ export function isLogChildrenCachedOrPending(tre: number, scope: OverviewLogScop
   return logEntries.has(key) || inFlight.has(key);
 }
 
+export function isLogChildrenBatchSupported(): boolean {
+  return logChildrenBatchSupported;
+}
+
+/** Splits ids so each `parent_kw_ids` request stays within the API limits (25 ids, CSV length). */
+export function chunkLogChildrenBatchIds(ids: number[]): number[][] {
+  const chunks: number[][] = [];
+  let current: number[] = [];
+  let csvLength = 0;
+  for (const id of ids) {
+    const idLength = String(id).length;
+    if (current.length >= BATCH_MAX_IDS || csvLength + idLength + 1 > BATCH_MAX_CSV_LENGTH) {
+      chunks.push(current);
+      current = [];
+      csvLength = 0;
+    }
+    csvLength += current.length > 0 ? idLength + 1 : idLength;
+    current.push(id);
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
 /**
- * One `parent_kw_ids` request filling each child key as if fetched alone. Every key is registered in flight
- * so a click during the batch awaits it; an id missing from the answer falls back to `parent_kw_id`.
- * Rejects (with the API error) when the batch request itself fails.
+ * Children of several keywords, filling each child key as if fetched alone. Uses `parent_kw_ids` (chunked)
+ * while the API supports it, otherwise parallel `parent_kw_id` requests. Never rejects: per-key failures
+ * leave the key empty so the row can retry on its own.
  */
 export async function fetchLogChildrenBatch(
   tre: number,
   scope: OverviewLogScope,
   parentKwIds: number[],
 ): Promise<void> {
-  const ids = parentKwIds.filter(id => !isLogChildrenCachedOrPending(tre, scope, id));
+  const ids = [...new Set(parentKwIds)].filter(
+    id => Number.isInteger(id) && id > 0 && !isLogChildrenCachedOrPending(tre, scope, id),
+  );
   if (ids.length === 0) return;
+  if (!logChildrenBatchSupported || ids.length === 1) {
+    await Promise.allSettled(ids.map(id => getOrFetchLogChildren(tre, scope, id)));
+    return;
+  }
+  await Promise.allSettled(chunkLogChildrenBatchIds(ids).map(chunk => fetchOneLogChildrenBatch(tre, scope, chunk)));
+}
 
+/** Every key is registered in flight so a click during the batch awaits it; a missing id falls back to `parent_kw_id`. */
+async function fetchOneLogChildrenBatch(tre: number, scope: OverviewLogScope, ids: number[]): Promise<void> {
   const batch =
     scope.kind === 'test'
       ? fetchOverviewTestLogChildrenBatch(tre, scope.overviewTestId, ids)
       : fetchOverviewSuiteKwLogChildrenBatch(tre, scope.overviewSuiteKwId, ids);
+  batch.catch(error => {
+    if (error instanceof ApiRequestError && (error.status === 422 || error.status === 404)) {
+      logChildrenBatchSupported = false;
+    }
+  });
 
   const perKey = ids.map(id => {
     const key = logChildrenKey(tre, scope, id);
@@ -172,7 +216,6 @@ export async function fetchLogChildrenBatch(
   });
 
   await Promise.allSettled(perKey);
-  await batch;
 }
 
 /** Writes the merged (partially expanded) tree back so re-opening this log does not refetch branches. */
