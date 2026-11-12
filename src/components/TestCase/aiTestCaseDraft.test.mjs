@@ -11,15 +11,27 @@ async function load(path, name) {
   writeFileSync(output, ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText.replace("'./aiTestProposal'", "'./proposal.mjs'"));
   return import(output.href);
 }
-const { validateAiFiles, validateAiDraft, buildAiDraftText, AI_DEVICES, MAX_AI_FILE_BYTES } = await load('./aiTestCaseDraft.ts', 'draft.mjs');
+const { validateAiFiles, validateAiDraft, buildAiDraftText, aiPriorityLabel, AI_DEVICES, MAX_AI_FILE_BYTES } = await load('./aiTestCaseDraft.ts', 'draft.mjs');
 const { aiProposalSchema, aiCommitBody, selectAiProposal } = await load('../../services/aiTestProposal.ts', 'proposal.mjs');
 const { createAiTestGenerationApi, adaptAiSession, isAiTerminal } = await load('../../services/aiTestGenerationApi.ts', 'api.mjs');
 
-test('requires an image or HTTPS URL and rejects non-HTTPS URLs', () => {
-  assert.ok(validateAiDraft('Sign In', '', 0));
-  assert.equal(validateAiDraft('', '', 1), null);
-  assert.equal(validateAiDraft('Sign In', 'https://example.com', 0), null);
-  for (const url of ['http://example.com', 'https://', 'https://user:password@example.com', 'not a url']) assert.ok(validateAiDraft('Sign In', url, 1));
+test('requires an image or a valid HTTPS URL inside the prompt', () => {
+  assert.ok(validateAiDraft('', 0));
+  assert.ok(validateAiDraft('Sign In', 0));
+  assert.equal(validateAiDraft('', 1), null);
+  assert.equal(validateAiDraft('Sign In without a URL', 1), null);
+  assert.equal(validateAiDraft('Test sign in at https://example.com.', 0), null);
+  for (const url of ['http://example.com', 'https://', 'https://user:password@example.com', 'not a url']) assert.ok(validateAiDraft(`Test ${url}`, 0));
+});
+
+test('maps numeric and textual priorities to mock badges', () => {
+  assert.equal(aiPriorityLabel(1), 'Medium');
+  assert.equal(aiPriorityLabel(2), 'High');
+  assert.equal(aiPriorityLabel(3), 'High');
+  assert.equal(aiPriorityLabel(4), 'Low');
+  assert.equal(aiPriorityLabel('HIGH'), 'High');
+  assert.equal(aiPriorityLabel('Low'), 'Low');
+  assert.equal(aiPriorityLabel('medium'), 'Medium');
 });
 
 test('enforces attachment type, count and size defaults', () => {

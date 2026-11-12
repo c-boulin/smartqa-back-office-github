@@ -51,7 +51,14 @@ export function useAiTestGeneration(projectId: string | undefined, isOpen: boole
 
   return {
     sessionId,
-    session: session.data,
+    session: deadline ? session.data : undefined,
+    reset() {
+      controllerRef.current?.abort();
+      setSessionId(null);
+      setDeadline(null);
+      setTimedOut(false);
+      submission.reset();
+    },
     commit(acceptedIds: string[], signal: AbortSignal) {
       if (!projectId || !session.data) return Promise.reject(new Error('The proposal is not ready.'));
       return api.commit(projectId, session.data, acceptedIds, signal);

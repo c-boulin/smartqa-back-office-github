@@ -1,5 +1,4 @@
 export const AI_DEVICES = ['Desktop Chrome', 'Desktop Firefox', 'iPhone 13', 'Pixel 5', 'iPad'] as const;
-export const AI_PROMPT_CHIPS = ['Sign In', 'Sign Up', 'Homepage', 'Product Page'] as const;
 export const MAX_AI_FILES = 5;
 export const MAX_AI_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -10,16 +9,23 @@ export function validateAiFiles(files: ReadonlyArray<Pick<File, 'type' | 'size'>
   return null;
 }
 
-export function validateAiDraft(prompt: string, baseUrl: string, fileCount: number): string | null {
+export function validateAiDraft(prompt: string, fileCount: number): string | null {
   if (!prompt.trim() && !fileCount) return 'Describe the test cases you want to create.';
-  if (!baseUrl.trim()) return fileCount ? null : 'Enter a Base URL or attach an image.';
-  try {
-    const url = new URL(baseUrl.trim());
-    if (!baseUrl.trim().startsWith('https://') || url.protocol !== 'https:' || !url.hostname || url.username || url.password) return 'Enter a valid Base URL starting with https://.';
-  } catch {
-    return 'Enter a valid Base URL starting with https://.';
-  }
-  return null;
+  if (fileCount) return null;
+  const urls = prompt.match(/https:\/\/[^\s<>"']+/g) ?? [];
+  const valid = urls.some(value => {
+    try {
+      const url = new URL(value.replace(/[.,;!?)]*$/, ''));
+      return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password;
+    } catch { return false; }
+  });
+  return valid ? null : 'Include a valid https:// URL in your prompt or attach an image.';
+}
+
+export function aiPriorityLabel(priority: string | number | null | undefined): 'High' | 'Medium' | 'Low' {
+  if (priority === 2 || priority === 3 || ['high', 'critical'].includes(String(priority).toLowerCase())) return 'High';
+  if (priority === 4 || String(priority).toLowerCase() === 'low') return 'Low';
+  return 'Medium';
 }
 
 export function buildAiDraftText(prompt: string, device: string, baseUrl: string): string {
