@@ -11,7 +11,7 @@ export function validateAiFiles(files: ReadonlyArray<Pick<File, 'type' | 'size'>
 }
 
 export function validateAiDraft(prompt: string, baseUrl: string, fileCount: number): string | null {
-  if (!prompt.trim()) return 'Describe the test cases you want to create.';
+  if (!prompt.trim() && !fileCount) return 'Describe the test cases you want to create.';
   if (!baseUrl.trim()) return fileCount ? null : 'Enter a Base URL or attach an image.';
   try {
     const url = new URL(baseUrl.trim());
@@ -23,5 +23,7 @@ export function validateAiDraft(prompt: string, baseUrl: string, fileCount: numb
 }
 
 export function buildAiDraftText(prompt: string, device: string, baseUrl: string): string {
-  return [prompt.trim(), `Device: ${device}`, baseUrl.trim() ? `Base URL: ${baseUrl.trim()}` : ''].filter(Boolean).join('\n');
+  const text = prompt.trim() || 'create test cases from these images';
+  const prefix = baseUrl.trim() && !text.includes('https://') ? `Go to ${baseUrl.trim()}. ` : '';
+  return `${prefix}${text}, Device: ${device}`;
 }

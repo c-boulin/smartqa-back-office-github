@@ -979,7 +979,7 @@ const TestCases: React.FC = () => {
         rootLabel={rootLabel}
         onGenerateWithAi={() => setIsAiDrawerOpen(true)}
       />
-      {isAiDrawerOpen && <AiTestCaseDrawer onClose={() => setIsAiDrawerOpen(false)} />}
+      <AiTestCaseDrawer key={selectedProject?.id ?? 'no-project'} projectId={selectedProject?.id} isOpen={isAiDrawerOpen} onClose={() => setIsAiDrawerOpen(false)} />
 
       {/* Show message if no project selected */}
       {!selectedProject && (
