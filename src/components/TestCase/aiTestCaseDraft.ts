@@ -9,7 +9,7 @@ export function validateAiFiles(files: ReadonlyArray<Pick<File, 'type' | 'size'>
   return null;
 }
 
-export function validateAiDraft(prompt: string, fileCount: number): string | null {
+export function validateAiDraft(prompt: string, fileCount: number, projectUrl?: string): string | null {
   if (!prompt.trim() && !fileCount) return 'Describe the test cases you want to create.';
   if (fileCount) return null;
   const urls = prompt.match(/https:\/\/[^\s<>"']+/g) ?? [];
@@ -19,7 +19,15 @@ export function validateAiDraft(prompt: string, fileCount: number): string | nul
       return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password;
     } catch { return false; }
   });
-  return valid ? null : 'Include a valid https:// URL in your prompt or attach an image.';
+  if (valid) return null;
+  try {
+    const value = projectUrl?.trim() ?? '';
+    const url = new URL(value);
+    if (value.startsWith('https://') && url.protocol === 'https:' && url.hostname && !url.username && !url.password) return null;
+  } catch {
+    return 'Include a valid https:// URL in your prompt or attach an image.';
+  }
+  return 'Include a valid https:// URL in your prompt or attach an image.';
 }
 
 export function aiPriorityLabel(priority: string | number | null | undefined): 'High' | 'Medium' | 'Low' {

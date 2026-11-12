@@ -24,6 +24,22 @@ test('requires an image or a valid HTTPS URL inside the prompt', () => {
   for (const url of ['http://example.com', 'https://', 'https://user:password@example.com', 'not a url']) assert.ok(validateAiDraft(`Test ${url}`, 0));
 });
 
+test('uses a valid project URL for text-only generation', () => {
+  const projectUrl = 'https://www.example.com';
+  assert.equal(validateAiDraft('Sign In', 0, projectUrl), null);
+  assert.equal(buildAiDraftText('Sign In', AI_DEVICES[0], projectUrl), 'Go to https://www.example.com. Sign In, Device: Desktop Chrome');
+  const error = 'Include a valid https:// URL in your prompt or attach an image.';
+  for (const url of ['', 'http://www.example.com', 'https://', 'https://user:password@example.com']) {
+    assert.equal(validateAiDraft('Sign In', 0, url), error);
+  }
+  assert.equal(validateAiDraft('Test https://other.example', 0, ''), null);
+  assert.equal(buildAiDraftText('Test https://other.example', AI_DEVICES[0], projectUrl), 'Test https://other.example, Device: Desktop Chrome');
+  const files = [{ type: 'image/png' }];
+  assert.equal(validateAiDraft('Sign In', files.length, projectUrl), null);
+  assert.equal(buildAiDraftText('Sign In', AI_DEVICES[0], files.length ? '' : projectUrl), 'Sign In, Device: Desktop Chrome');
+  assert.ok(validateAiDraft('', 0, projectUrl));
+});
+
 test('maps numeric and textual priorities to mock badges', () => {
   assert.equal(aiPriorityLabel(1), 'Medium');
   assert.equal(aiPriorityLabel(2), 'High');

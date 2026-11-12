@@ -983,7 +983,7 @@ const TestCases: React.FC = () => {
         rootLabel={rootLabel}
         onGenerateWithAi={() => setIsAiDrawerOpen(true)}
       />
-      <AiTestCaseDrawer key={`${selectedProject?.id ?? 'no-project'}-${aiReviewVersion}`} projectId={selectedProject?.id} isOpen={isAiDrawerOpen} onClose={() => setIsAiDrawerOpen(false)} onCommitted={counts => {
+      <AiTestCaseDrawer key={`${selectedProject?.id ?? 'no-project'}-${aiReviewVersion}`} projectId={selectedProject?.id} projectUrl={selectedProject?.url} isOpen={isAiDrawerOpen} onClose={() => setIsAiDrawerOpen(false)} onCommitted={counts => {
         const projectId = selectedProject?.id;
         if (!projectId || activeProjectIdRef.current !== projectId) return;
         toast.success(`Inserted ${counts.folders} folders, ${counts.shared_steps} shared steps and ${counts.test_cases} test cases.`);

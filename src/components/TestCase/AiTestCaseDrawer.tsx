@@ -10,10 +10,11 @@ interface AiTestCaseDrawerProps {
   onClose: () => void;
   isOpen: boolean;
   projectId?: string;
+  projectUrl?: string;
   onCommitted: (counts: AiCommitCounts) => void;
 }
 
-const AiTestCaseDrawerContent: React.FC<AiTestCaseDrawerProps> = ({ onClose, isOpen, projectId, onCommitted }) => {
+const AiTestCaseDrawerContent: React.FC<AiTestCaseDrawerProps> = ({ onClose, isOpen, projectId, projectUrl, onCommitted }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -50,10 +51,10 @@ const AiTestCaseDrawerContent: React.FC<AiTestCaseDrawerProps> = ({ onClose, isO
   const handleSend = (event: React.FormEvent) => {
     event.preventDefault();
     if (generation.isRunning || generation.needsPollRetry) return;
-    const validationError = !projectId ? 'Select a project first.' : validateAiFiles(files) || validateAiDraft(prompt, files.length);
+    const validationError = !projectId ? 'Select a project first.' : validateAiFiles(files) || validateAiDraft(prompt, files.length, projectUrl);
     setError(validationError);
     if (validationError) return;
-    if (!generation.send(buildAiDraftText(prompt, AI_DEVICES[0], ''), files)) return;
+    if (!generation.send(buildAiDraftText(prompt, AI_DEVICES[0], files.length ? '' : projectUrl ?? ''), files)) return;
     setSentPrompt(prompt.trim() || 'create test cases from these images');
   };
 
