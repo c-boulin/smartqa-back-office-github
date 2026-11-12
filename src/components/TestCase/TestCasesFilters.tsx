@@ -1,12 +1,8 @@
 import React from 'react';
-import { Search, SlidersHorizontal, X, Plus } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 import ColumnVisibilityDropdown, { ColumnVisibility } from '../UI/ColumnVisibilityDropdown';
-import PermissionGuard from '../PermissionGuard';
-import { PERMISSIONS } from '../../utils/permissions';
 import { AUTOMATION_STATUS_LABELS } from '../../types';
 import { Tag } from '../../services/tagsApi';
-import { useApp } from '../../context/AppContext';
-import { usePermissions } from '../../hooks/usePermissions';
 
 interface FiltersState {
   automationStatus: string;
@@ -31,7 +27,6 @@ interface TestCasesFiltersProps {
   onClearIndividualFilter: (filterType: keyof FiltersState, value?: string) => void;
   visibleColumns: ColumnVisibility;
   onToggleColumn: (column: keyof ColumnVisibility) => void;
-  onCreateTestCase?: () => void;
 }
 
 const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
@@ -44,13 +39,8 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
   onOpenFiltersSidebar,
   onClearIndividualFilter,
   visibleColumns,
-  onToggleColumn,
-  onCreateTestCase
+  onToggleColumn
 }) => {
-  const { state: appState } = useApp();
-  const { hasPermission } = usePermissions();
-  const templateWriteAllowed = !appState.isTemplateMode || hasPermission(PERMISSIONS.TEMPLATE.UPDATE);
-  const canCreateTestCase = templateWriteAllowed;
   const activeFilterCount = [
     filters.automationStatus !== 'all' ? 1 : 0,
     filters.priority !== 'all' ? 1 : 0,
@@ -118,19 +108,7 @@ const TestCasesFilters: React.FC<TestCasesFiltersProps> = ({
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Create test case button — far right */}
-        {onCreateTestCase && canCreateTestCase && (
-          <PermissionGuard permission={PERMISSIONS.TEST_CASE.CREATE}>
-            <button
-              data-mipqa="create-testcase-button"
-              onClick={onCreateTestCase}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white shadow-lg hover:shadow-cyan-500/25 transition-all duration-200 shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              Create new test case
-            </button>
-          </PermissionGuard>
-        )}
+
       </div>
 
       {/* Active filter chips */}

@@ -6,6 +6,7 @@ import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import { ColumnVisibility } from '../components/UI/ColumnVisibilityDropdown';
 import TestCasesHeader from '../components/TestCase/TestCasesHeader';
+import AiTestCaseDrawer from '../components/TestCase/AiTestCaseDrawer';
 import TestCasesFilters from '../components/TestCase/TestCasesFilters';
 import TestCasesTable from '../components/TestCase/TestCasesTable';
 import TestCasesFolderSidebar from '../components/TestCase/TestCasesFolderSidebar';
@@ -80,6 +81,7 @@ const TestCases: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -975,7 +977,9 @@ const TestCases: React.FC = () => {
         onCreateTestCase={() => setIsCreateModalOpen(true)}
         disabled={!selectedProject}
         rootLabel={rootLabel}
+        onGenerateWithAi={() => setIsAiDrawerOpen(true)}
       />
+      {isAiDrawerOpen && <AiTestCaseDrawer onClose={() => setIsAiDrawerOpen(false)} />}
 
       {/* Show message if no project selected */}
       {!selectedProject && (
@@ -1007,7 +1011,6 @@ const TestCases: React.FC = () => {
             onCreateTag={handleCreateTag}
             visibleColumns={visibleColumns}
             onToggleColumn={handleToggleColumn}
-            onCreateTestCase={() => setIsCreateModalOpen(true)}
           />
 
           <div className="flex gap-4">
