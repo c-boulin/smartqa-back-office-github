@@ -51,6 +51,11 @@ export function useAiTestGeneration(projectId: string | undefined, isOpen: boole
 
   return {
     sessionId,
+    session: session.data,
+    commit(acceptedIds: string[], signal: AbortSignal) {
+      if (!projectId || !session.data) return Promise.reject(new Error('The proposal is not ready.'));
+      return api.commit(projectId, session.data, acceptedIds, signal);
+    },
     isRunning,
     needsPollRetry,
     notice: submission.isError ? 'Could not submit the generation request. Please try again.'

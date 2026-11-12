@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Paperclip, Plus, X } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import AiTestProposalReview from './AiTestProposalReview';
+import { AiCommitCounts } from '../../services/aiTestProposal';
 import { useAiTestGeneration } from '../../hooks/useAiTestGeneration';
 import { AI_DEVICES, AI_PROMPT_CHIPS, buildAiDraftText, validateAiDraft, validateAiFiles } from './aiTestCaseDraft';
 
@@ -8,9 +10,10 @@ interface AiTestCaseDrawerProps {
   onClose: () => void;
   isOpen: boolean;
   projectId?: string;
+  onCommitted: (counts: AiCommitCounts) => void;
 }
 
-const AiTestCaseDrawerContent: React.FC<AiTestCaseDrawerProps> = ({ onClose, isOpen, projectId }) => {
+const AiTestCaseDrawerContent: React.FC<AiTestCaseDrawerProps> = ({ onClose, isOpen, projectId, onCommitted }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -88,8 +91,11 @@ const AiTestCaseDrawerContent: React.FC<AiTestCaseDrawerProps> = ({ onClose, isO
             {generation.sessionId && <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">Session {generation.sessionId}</p>}
             {generation.needsPollRetry && <button type="button" data-mipqa="ai-retry-poll-button" onClick={generation.retryPoll} className="mt-3 rounded-lg bg-blue-600 px-3 py-2 text-white hover:bg-blue-700">Retry status check</button>}
           </div>}
+          {generation.session?.status === 'ready' && (generation.session.proposal
+            ? <AiTestProposalReview key={generation.session.id} proposal={generation.session.proposal} recap={generation.session.assistantMessage} commit={generation.commit} onCommitted={onCommitted} />
+            : <p role="alert" className="text-sm text-red-700 dark:text-red-300">The completed session has no proposal to review.</p>)}
         </div>
-        <form onSubmit={handleSend} data-mipqa="ai-testcase-composer" className="shrink-0 space-y-4 border-t border-slate-200 p-4 dark:border-slate-700">
+        {generation.session?.status !== 'ready' && <form onSubmit={handleSend} data-mipqa="ai-testcase-composer" className="shrink-0 space-y-4 border-t border-slate-200 p-4 dark:border-slate-700">
           <div className="flex flex-wrap gap-2">
             {AI_PROMPT_CHIPS.map(chip => <button key={chip} type="button" data-mipqa={`ai-${chip.toLowerCase().replace(/ /g, '-')}-button`} onClick={() => { setPrompt(previous => `${previous}${previous && !previous.endsWith(' ') ? ' ' : ''}${chip}`); textareaRef.current?.focus(); }} className="rounded-full border border-slate-300 px-3 py-1 text-xs hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-fuchsia-500 dark:border-slate-600 dark:hover:bg-slate-700">{chip}</button>)}
           </div>
@@ -112,7 +118,7 @@ const AiTestCaseDrawerContent: React.FC<AiTestCaseDrawerProps> = ({ onClose, isO
             </div>
           </div>
           {error && <p role="alert" data-mipqa="ai-validation-error" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
-        </form>
+        </form>}
       </section>
     </dialog>
   );

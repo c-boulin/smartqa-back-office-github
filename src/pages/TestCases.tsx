@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search, Loader } from 'lucide-react';
 import Card from '../components/UI/Card';
@@ -45,6 +45,8 @@ const TestCases: React.FC = () => {
   const location = useLocation();
   const rootLabel = (location.state as { from?: string } | null)?.from === 'templates' ? 'Templates' : 'Projects';
   const selectedProject = getSelectedProject();
+  const activeProjectIdRef = useRef(selectedProject?.id);
+  activeProjectIdRef.current = selectedProject?.id;
   const isTestCasesOnly = isTestCasesOnlyProject(selectedProject);
 
   useRestoreLastProject();
@@ -67,7 +69,8 @@ const TestCases: React.FC = () => {
     selectedFolderId,
     selectFolder,
     getSelectedFolder,
-    updateFoldersFromTestCases
+    updateFoldersFromTestCases,
+    fetchFolders
   } = useFolders(selectedProject?.id);
 
   const {
@@ -82,6 +85,7 @@ const TestCases: React.FC = () => {
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
+  const [aiReviewVersion, setAiReviewVersion] = useState(0);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -979,7 +983,14 @@ const TestCases: React.FC = () => {
         rootLabel={rootLabel}
         onGenerateWithAi={() => setIsAiDrawerOpen(true)}
       />
-      <AiTestCaseDrawer key={selectedProject?.id ?? 'no-project'} projectId={selectedProject?.id} isOpen={isAiDrawerOpen} onClose={() => setIsAiDrawerOpen(false)} />
+      <AiTestCaseDrawer key={`${selectedProject?.id ?? 'no-project'}-${aiReviewVersion}`} projectId={selectedProject?.id} isOpen={isAiDrawerOpen} onClose={() => setIsAiDrawerOpen(false)} onCommitted={counts => {
+        const projectId = selectedProject?.id;
+        if (!projectId || activeProjectIdRef.current !== projectId) return;
+        toast.success(`Inserted ${counts.folders} folders, ${counts.shared_steps} shared steps and ${counts.test_cases} test cases.`);
+        setIsAiDrawerOpen(false);
+        setAiReviewVersion(previous => previous + 1);
+        void Promise.all([fetchAllTestCasesAndExtractFolders(projectId), fetchFolders(projectId)]).catch(() => toast.error('Test cases were inserted, but the list could not refresh. Please reload the page.'));
+      }} />
 
       {/* Show message if no project selected */}
       {!selectedProject && (

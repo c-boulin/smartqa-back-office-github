@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { aiCommitBody, aiCommitCountsSchema, aiProposalSchema, AiTestProposal } from './aiTestProposal';
 
 const idSchema = z.union([z.string().min(1), z.number().int().positive()]).transform(String);
 const sessionSchema = z.object({
@@ -6,6 +7,8 @@ const sessionSchema = z.object({
     id: idSchema,
     status: z.string().optional(),
     error_message: z.string().nullable().optional(),
+    assistant_message: z.string().nullable().optional(),
+    proposal: aiProposalSchema.nullable().optional(),
   }) }),
 });
 const presignSchema = z.object({ data: z.object({ url: z.string().url().refine(value => value.startsWith('https://')), key: z.string().min(1) }) });
@@ -14,6 +17,8 @@ export interface AiGenerationSession {
   id: string;
   status: string;
   errorMessage: string | null;
+  assistantMessage: string | null;
+  proposal: AiTestProposal | null;
 }
 
 function validateAndAdapt<T, U>(schema: z.ZodType<T>, response: unknown, adapt: (data: T) => U): U {
@@ -25,6 +30,8 @@ export function adaptAiSession(response: unknown): AiGenerationSession {
     id: data.session.id,
     status: data.session.status ?? 'processing',
     errorMessage: data.session.error_message ?? null,
+    assistantMessage: data.session.assistant_message ?? null,
+    proposal: data.session.proposal ?? null,
   }));
 }
 
@@ -47,6 +54,13 @@ export function createAiTestGenerationApi(request: (endpoint: string, options?: 
     },
     async sendMessage(projectId: string, sessionId: string, content: string, attachmentKeys: string[], signal: AbortSignal) {
       await request(`${path(projectId, sessionId)}/messages`, json({ content, attachment_keys: attachmentKeys }, signal));
+    },
+    async commit(projectId: string, session: AiGenerationSession, acceptedIds: string[], signal: AbortSignal) {
+      if (session.status !== 'ready' || !session.proposal) throw new Error('The proposal is not ready.');
+      const body = aiCommitBody(session.proposal, acceptedIds);
+      const response = await request(`${path(projectId, session.id)}/commit`, json(body, signal));
+      const schema = z.object({ data: z.union([z.object({ counts: aiCommitCountsSchema }), aiCommitCountsSchema]) });
+      return validateAndAdapt(schema, response, ({ data }) => 'counts' in data ? data.counts : data);
     },
     async getSession(projectId: string, sessionId: string, signal: AbortSignal) {
       return adaptAiSession(await request(path(projectId, sessionId), { signal, headers: { Accept: 'application/json' } }));
