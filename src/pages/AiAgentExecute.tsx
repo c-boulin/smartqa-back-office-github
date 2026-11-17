@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, Play, X } from 'lucide-react';
+import { CheckCircle2, Circle, Loader2, Play, X, XCircle } from 'lucide-react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { useAiExecuteRun } from '../hooks/useAiExecuteRun';
 import { AiExecuteInput, createAiExecuteApi } from '../services/aiExecuteApi';
@@ -36,8 +36,8 @@ function ScreenshotImage({ projectId, runId, screenshotKey, full = false }: { pr
     retry: false,
   });
   if (image.isPending || image.isFetching) return <span role="status" className="block p-4 text-sm text-slate-600 dark:text-slate-300">Loading screenshot…</span>;
-  if (image.isError || imageFailed) return <span role="alert" className="block p-4 text-sm text-red-700 dark:text-red-300">Screenshot unavailable.</span>;
-  return <img data-mipqa={full ? 'ai-execute-full-img' : 'ai-execute-thumbnail-img'} src={image.data} alt={full ? 'Full test execution screenshot' : 'Test execution screenshot preview'} referrerPolicy="no-referrer" onError={() => setImageFailed(true)} className={full ? 'max-h-[75vh] w-full object-contain' : 'h-32 w-full rounded-lg object-contain'} />;
+  if (image.isError || imageFailed) return <span data-mipqa="ai-execute-screenshot-placeholder" className="flex h-40 items-center justify-center rounded-lg bg-slate-100 p-4 text-xs text-slate-500 dark:bg-slate-700 dark:text-slate-400">Screenshot could not be loaded</span>;
+  return <img data-mipqa={full ? 'ai-execute-full-img' : 'ai-execute-thumbnail-img'} src={image.data} alt={full ? 'Full test execution screenshot' : 'Test execution screenshot preview'} referrerPolicy="no-referrer" onError={() => setImageFailed(true)} className={full ? 'max-h-[75vh] w-full object-contain' : 'h-40 w-full rounded-lg object-cover'} />;
 }
 
 function ScreenshotPreview({ projectId, runId, screenshotKey, index }: { projectId: string; runId: string; screenshotKey: string; index: number }) {
@@ -48,7 +48,7 @@ function ScreenshotPreview({ projectId, runId, screenshotKey, index }: { project
     if (open) dialogRef.current?.showModal();
   }, [open]);
   return <>
-    <button ref={buttonRef} data-mipqa={`ai-execute-screenshot-${index}-button`} type="button" aria-label={`Open screenshot ${index}`} onClick={() => setOpen(true)} className="rounded-lg border border-slate-300 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:border-slate-600">
+    <button ref={buttonRef} data-mipqa={`ai-execute-screenshot-${index}-button`} type="button" aria-label={`Open screenshot ${index}`} onClick={() => setOpen(true)} className="w-full overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 sm:w-56">
       <ScreenshotImage projectId={projectId} runId={runId} screenshotKey={screenshotKey} />
     </button>
     <dialog ref={dialogRef} data-mipqa="ai-execute-lightbox" aria-label={`Screenshot ${index}`} onClose={() => { setOpen(false); buttonRef.current?.focus(); }} className="w-[calc(100%-32px)] max-w-5xl rounded-lg border border-slate-300 bg-white p-4 text-slate-900 backdrop:bg-slate-950/80 dark:border-slate-600 dark:bg-slate-900 dark:text-white">
@@ -69,6 +69,10 @@ const AiAgentExecuteContent: React.FC = () => {
   const [url, setUrl] = useState('');
   const [prompt, setPrompt] = useState('');
   const report = execution.run?.status === 'ready' ? execution.run.executionReport : null;
+  const countedSteps = report?.steps.filter(step => step.kind === 'step' || step.kind === 'assertion') ?? [];
+  const passCount = countedSteps.filter(step => step.status === 'pass').length;
+  const failCount = countedSteps.filter(step => step.status === 'fail').length;
+  const visibleSteps = report?.steps.filter(step => step.kind !== 'start' && step.kind !== 'end' && step.kind !== 'screenshot') ?? [];
   let validUrl = false;
   try {
     validUrl = url.startsWith('https://') && new URL(url).protocol === 'https:' && Boolean(new URL(url).hostname);
@@ -178,30 +182,27 @@ const AiAgentExecuteContent: React.FC = () => {
             {execution.isRunning ? 'Running…' : 'Run'}
           </button>
           </fieldset>
-          {execution.error && <p data-mipqa="ai-execute-error" role="alert" className="text-sm text-red-700 dark:text-red-300">{execution.error}</p>}
+          {execution.error && execution.run?.status !== 'failed' && <p data-mipqa="ai-execute-error" role="alert" className="text-sm text-red-700 dark:text-red-300">{execution.error}</p>}
           {execution.timedOut && <p data-mipqa="ai-execute-timeout" role="status" className="text-sm text-slate-700 dark:text-slate-300">The status check timed out. The test may still be running.</p>}
           {!execution.isRunning && (execution.timedOut || (execution.error && execution.run?.status !== 'failed' && execution.run)) && (
             <button data-mipqa="ai-execute-retry-poll-button" type="button" onClick={execution.retryPoll} className="rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-700 dark:border-cyan-400 dark:text-cyan-400">Retry status check</button>
           )}
         </form>
-        {report && <div data-mipqa="ai-execute-results" className="mt-6 space-y-6 border-t border-slate-200 pt-6 dark:border-slate-600">
-          <div className="space-y-4">
-            <span data-mipqa="ai-execute-status-badge" className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${report.status === 'passed' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'}`}>{report.status.toUpperCase()}</span>
-            <p data-mipqa="ai-execute-summary" className="whitespace-pre-wrap break-words text-sm text-slate-700 dark:text-slate-300">{report.summary}</p>
-            <p data-mipqa="ai-execute-duration" className="text-sm text-slate-600 dark:text-slate-300">Duration: {(report.duration_ms / 1000).toFixed(2)}s · {report.steps.length} steps</p>
+        {execution.run?.status === 'failed' && <div data-mipqa="ai-execute-error" role="alert" className="mt-6 rounded-lg border border-red-300 p-4 text-sm text-red-700 dark:border-red-700 dark:text-red-300">{execution.run.errorMessage || 'Test execution failed.'}</div>}
+        {report && <div data-mipqa="ai-execute-results" className="mt-6 space-y-4 border-t border-slate-200 pt-4 dark:border-slate-600">
+          <div className="space-y-2">
+            <span data-mipqa="ai-execute-status-badge" className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${report.status === 'passed' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'}`}>{report.status === 'passed' ? 'PASSED' : 'FAILED'}</span>
+            <p data-mipqa="ai-execute-summary" title={report.summary} className="truncate text-sm text-slate-700 dark:text-slate-300">{report.summary}</p>
+            <p data-mipqa="ai-execute-duration" className="flex min-w-0 gap-1 text-sm text-slate-500 dark:text-slate-400">
+              <span className="shrink-0">{(report.duration_ms / 1000).toFixed(1)}s · {report.device} ·</span>
+              <span title={report.url} className="min-w-0 truncate">{report.url}</span>
+            </p>
+            <p data-mipqa="ai-execute-counts" className="text-sm text-slate-600 dark:text-slate-300">{passCount} passed · {failCount} failed</p>
           </div>
-          <section aria-labelledby="ai-execute-logs-title">
-            <h3 id="ai-execute-logs-title" data-mipqa="ai-execute-logs-title" className="mb-4 font-semibold text-slate-900 dark:text-white">Live logs</h3>
-            <div data-mipqa="ai-execute-logs" className="max-h-64 space-y-2 overflow-auto rounded-lg bg-slate-100 p-4 font-mono text-sm dark:bg-slate-900">
-              {report.steps.length ? report.steps.map((step, index) => <p key={index} className={`whitespace-pre-wrap break-words ${step.status === 'fail' || step.kind === 'error' ? resultColors.fail : resultColors.info}`}>[{step.kind}] {step.message}</p>) : <p className={resultColors.info}>No log entries were returned.</p>}
-            </div>
-          </section>
-          {selectedProject && execution.run && report.screenshot_keys.length > 0 && <section aria-labelledby="ai-execute-screenshots-title">
-            <h3 id="ai-execute-screenshots-title" className="mb-4 font-semibold text-slate-900 dark:text-white">Screenshots</h3>
-            <div data-mipqa="ai-execute-screenshots" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {report.screenshot_keys.map((key, index) => <ScreenshotPreview key={`${execution.run!.id}-${key}-${index}`} projectId={selectedProject.id} runId={execution.run!.id} screenshotKey={key} index={index + 1} />)}
-            </div>
-          </section>}
+          <details key={execution.run?.id} data-mipqa="ai-execute-raw-output" className="text-sm text-slate-600 dark:text-slate-300">
+            <summary data-mipqa="ai-execute-raw-output-summary" className="cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Raw agent output</summary>
+            <pre data-mipqa="ai-execute-raw-output-pre" className="mt-2 max-h-80 overflow-auto rounded-lg bg-slate-100 p-4 font-mono text-xs text-slate-700 dark:bg-slate-900 dark:text-slate-300">{report.log_excerpt}</pre>
+          </details>
         </div>}
       </section>
       <section
@@ -214,7 +215,7 @@ const AiAgentExecuteContent: React.FC = () => {
           data-mipqa="ai-execute-steps-title"
           className="border-b border-slate-200 pb-4 text-lg font-semibold text-cyan-700 dark:border-slate-600 dark:text-cyan-400"
         >
-          Planned / executed steps
+          Executed steps
         </h2>
         {execution.isRunning ? (
           <div data-mipqa="ai-execute-progress" role="status" className="flex items-center justify-center gap-3 py-16 text-sm text-slate-600 dark:text-slate-300">
@@ -222,12 +223,23 @@ const AiAgentExecuteContent: React.FC = () => {
             Running…
           </div>
         ) : execution.run?.status === 'ready' ? (
-          report ? <ol data-mipqa="ai-execute-steps-list" className="mt-4 space-y-4">
-            {report.steps.length ? report.steps.map((step, index) => <li key={index} data-mipqa={`ai-execute-step-${index + 1}`} className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-slate-200 p-4 text-sm dark:border-slate-600">
-              <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-slate-900 dark:text-white">{step.n}. {step.message}</p>
-              <span className={`text-xs font-semibold uppercase ${resultColors[step.status]}`}>{step.status}</span>
-            </li>) : <li className="text-sm text-slate-600 dark:text-slate-300">No steps were returned.</li>}
-          </ol> : <p data-mipqa="ai-execute-missing-report" role="status" className="mt-4 text-sm text-slate-700 dark:text-slate-300">Test execution completed, but no execution report was returned.</p>
+          report ? <div className="mt-4 space-y-6">
+            {selectedProject && execution.run && report.screenshot_keys.length > 0 && <div data-mipqa="ai-execute-screenshots" className="flex flex-wrap gap-3">
+              {report.screenshot_keys.map((key, index) => <ScreenshotPreview key={`${execution.run!.id}-${key}-${index}`} projectId={selectedProject.id} runId={execution.run!.id} screenshotKey={key} index={index + 1} />)}
+            </div>}
+            <ol data-mipqa="ai-execute-steps-list">
+              {visibleSteps.length ? visibleSteps.map((step, index) => {
+                const Icon = step.status === 'pass' ? CheckCircle2 : step.status === 'fail' ? XCircle : Circle;
+                return <li key={index} data-mipqa={`ai-execute-step-${index + 1}`} className="relative flex gap-3 py-2 text-sm">
+                  {index < visibleSteps.length - 1 && <span aria-hidden="true" className="absolute bottom-0 left-2.5 top-7 w-px bg-slate-200 dark:bg-slate-600" />}
+                  <Icon aria-label={step.status} className={`relative z-10 h-5 w-5 shrink-0 bg-white dark:bg-slate-800 ${resultColors[step.status]}`} />
+                  <p className="min-w-0 break-words text-slate-900 dark:text-white">{step.message}</p>
+                </li>;
+              }) : <li className="text-sm text-slate-600 dark:text-slate-300">No steps were executed.</li>}
+            </ol>
+          </div> : <p data-mipqa="ai-execute-missing-report" role="status" className="mt-4 text-sm text-slate-700 dark:text-slate-300">Test execution completed, but no execution report was returned.</p>
+        ) : execution.run?.status === 'failed' ? (
+          <p data-mipqa="ai-execute-no-steps" className="py-16 text-center text-sm text-slate-500 dark:text-slate-400">No steps were executed.</p>
         ) : !execution.run && !execution.error ? (
           <p className="py-16 text-center text-sm text-slate-600 dark:text-slate-300">Run a test to see its progress.</p>
         ) : null}
