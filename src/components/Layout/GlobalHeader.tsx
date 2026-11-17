@@ -6,6 +6,7 @@ import {
   FileText,
   Settings,
   BookOpen,
+  Bot,
   Hexagon,
   User,
   LogOut,
@@ -28,6 +29,7 @@ const SECTION_PREFIXES: Record<string, string[]> = {
   '/templates':      ['/templates'],
   '/settings':       ['/settings'],
   '/documentation':  ['/documentation'],
+  '/ai-execute':     ['/ai-execute'],
 };
 
 function getSectionRoot(pathname: string, isTemplateMode: boolean): string {
@@ -63,6 +65,7 @@ const GlobalHeader: React.FC = () => {
     { path: '/templates',      icon: FileText,   label: 'Templates',     permissions: [PERMISSIONS.TEST_PLAN.READ] },
     { path: '/settings',       icon: Settings,   label: 'Settings',      permissions: [PERMISSIONS.ADMIN_PANEL.READ] },
     { path: '/documentation',  icon: BookOpen,   label: 'Documentation', permissions: [] },
+    { path: '/ai-execute', icon: Bot, label: 'AI Agent Execute', permissions: [] },
   ];
 
   const visibleNavItems = navItems.filter(
@@ -94,6 +97,8 @@ const GlobalHeader: React.FC = () => {
               <Link
                 key={item.path}
                 to={item.path}
+                title={item.path === '/ai-execute' ? 'Execute your test with AI' : undefined}
+                data-mipqa={item.path === '/ai-execute' ? 'ai-agent-execute-link' : undefined}
                 className={`relative flex items-center gap-2 px-4 h-14 text-sm font-medium transition-colors duration-150 ${
                   active
                     ? 'text-slate-900 dark:text-white'

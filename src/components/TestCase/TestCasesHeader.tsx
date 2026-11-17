@@ -1,5 +1,9 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Plus, Sparkles } from 'lucide-react';
+import Tooltip from '../UI/Tooltip';
+import PermissionGuard from '../PermissionGuard';
+import { PERMISSIONS } from '../../utils/permissions';
+import { usePermissions } from '../../hooks/usePermissions';
 import { Project } from '../../types';
 import { useApp } from '../../context/AppContext';
 
@@ -17,6 +21,7 @@ interface TestCasesHeaderProps {
   selectedFolder: { id: string; name: string } | null;
   onCreateTestCase: () => void;
   disabled: boolean;
+  onGenerateWithAi: () => void;
   rootLabel?: string;
 }
 
@@ -24,8 +29,13 @@ const TestCasesHeader: React.FC<TestCasesHeaderProps> = ({
   selectedProject,
   selectedFolder,
   rootLabel,
+  onCreateTestCase,
+  onGenerateWithAi,
+  disabled,
 }) => {
   const { state } = useApp();
+  const { hasPermission } = usePermissions();
+  const canCreate = !state.isTemplateMode || hasPermission(PERMISSIONS.TEMPLATE.UPDATE);
   const resolvedRootLabel = rootLabel ?? (state.isTemplateMode ? 'Templates' : 'Projects');
 
   return (
@@ -50,7 +60,8 @@ const TestCasesHeader: React.FC<TestCasesHeaderProps> = ({
       </div>
 
       {/* Title */}
-      <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
         <h1 data-mipqa="testcases-title" className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">
           Test Cases
         </h1>
@@ -59,6 +70,19 @@ const TestCasesHeader: React.FC<TestCasesHeaderProps> = ({
             ? 'Manage and organize your test cases, steps and folders'
             : 'Please select a project to view test cases'}
         </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div>
+            <Tooltip content="generate your test with ai">
+              <button type="button" data-mipqa="generate-testcase-ai-button" onClick={onGenerateWithAi} className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-700 to-fuchsia-700 px-4 py-2 text-sm font-medium text-white shadow-lg hover:from-purple-800 hover:to-fuchsia-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-fuchsia-400">
+                <Sparkles className="h-4 w-4" />Generate Test Case with AI
+              </button>
+            </Tooltip>
+          </div>
+          {canCreate && !disabled && <PermissionGuard permission={PERMISSIONS.TEST_CASE.CREATE}>
+            <button type="button" data-mipqa="create-testcase-button" onClick={onCreateTestCase} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-lg hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"><Plus className="h-4 w-4" />New Test Case</button>
+          </PermissionGuard>}
+        </div>
       </div>
     </div>
   );

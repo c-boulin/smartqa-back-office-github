@@ -18,6 +18,7 @@ const Login = React.lazy(() => import('./pages/Login'));
 const Callback = React.lazy(() => import('./pages/Callback'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Overview = React.lazy(() => import('./pages/Overview'));
+const AiAgentExecute = React.lazy(() => import('./pages/AiAgentExecute'));
 const Projects = React.lazy(() => import('./pages/Projects'));
 const TestCases = React.lazy(() => import('./pages/TestCases'));
 const SharedSteps = React.lazy(() => import('./pages/SharedSteps'));
@@ -61,6 +62,7 @@ const AppContent: React.FC = () => {
               }>
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="overview/*" element={<Overview />} />
+                <Route path="ai-execute" element={<AiAgentExecute />} />
                 <Route path="projects" element={<Projects />} />
                 <Route path="templates" element={<Templates />} />
                 <Route path="documentation" element={<Documentation />} />
