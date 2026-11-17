@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Play } from 'lucide-react';
+import { Loader2, Play } from 'lucide-react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useAiExecuteRun } from '../hooks/useAiExecuteRun';
+import { AiExecuteInput } from '../services/aiExecuteApi';
 import { useApp } from '../context/AppContext';
 
 const devices = ['Desktop Chrome', 'iPhone 12', 'iPad', 'Samsung Galaxy S21'];
@@ -13,10 +16,11 @@ const templates = [
 const inputClass = 'w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder:text-slate-400';
 const labelClass = 'block space-y-2 text-sm font-medium text-slate-700 dark:text-slate-300';
 
-const AiAgentExecute: React.FC = () => {
+const AiAgentExecuteContent: React.FC = () => {
   const { state, dispatch } = useApp();
   const selectedProject = state.projects.find(project => project.id === state.selectedProjectId);
-  const [device, setDevice] = useState(devices[0]);
+  const execution = useAiExecuteRun(selectedProject?.id);
+  const [device, setDevice] = useState<AiExecuteInput['device']>('Desktop Chrome');
   const [url, setUrl] = useState('');
   const [prompt, setPrompt] = useState('');
   let validUrl = false;
@@ -48,7 +52,8 @@ const AiAgentExecute: React.FC = () => {
         >
           Run a test
         </h2>
-        <form data-mipqa="ai-execute-form" className="mt-6 space-y-4" onSubmit={event => event.preventDefault()}>
+        <form data-mipqa="ai-execute-form" className="mt-6 space-y-4" onSubmit={event => { event.preventDefault(); if (canRun) execution.start({ url, device, prompt }); }}>
+          <fieldset disabled={execution.isRunning} className="space-y-4">
           <label className={labelClass}>
             <span>Project</span>
             <select
@@ -64,7 +69,7 @@ const AiAgentExecute: React.FC = () => {
           </label>
           <label className={labelClass}>
             <span>Device</span>
-            <select data-mipqa="ai-execute-device-select" className={inputClass} value={device} onChange={event => setDevice(event.target.value)}>
+            <select data-mipqa="ai-execute-device-select" className={inputClass} value={device} onChange={event => setDevice(event.target.value as AiExecuteInput['device'])}>
               {devices.map(value => <option key={value} value={value}>{value}</option>)}
             </select>
           </label>
@@ -120,13 +125,18 @@ const AiAgentExecute: React.FC = () => {
           <button
             data-mipqa="ai-execute-run-button"
             type="submit"
-            disabled={!canRun}
+            disabled={!canRun || execution.isRunning}
             className="flex items-center gap-2 rounded-lg bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
           >
             <Play className="h-4 w-4" aria-hidden="true" />
-            Run
+            {execution.isRunning ? 'Running…' : 'Run'}
           </button>
-          <p data-mipqa="ai-execute-form-notice" className="text-sm text-slate-600 dark:text-slate-300">Test execution is not connected yet.</p>
+          </fieldset>
+          {execution.error && <p data-mipqa="ai-execute-error" role="alert" className="text-sm text-red-700 dark:text-red-300">{execution.error}</p>}
+          {execution.timedOut && <p data-mipqa="ai-execute-timeout" role="status" className="text-sm text-slate-700 dark:text-slate-300">The status check timed out. The test may still be running.</p>}
+          {!execution.isRunning && (execution.timedOut || (execution.error && execution.run?.status !== 'failed' && execution.run)) && (
+            <button data-mipqa="ai-execute-retry-poll-button" type="button" onClick={execution.retryPoll} className="rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-700 dark:border-cyan-400 dark:text-cyan-400">Retry status check</button>
+          )}
         </form>
       </section>
       <section
@@ -141,10 +151,30 @@ const AiAgentExecute: React.FC = () => {
         >
           Planned / executed steps
         </h2>
+        {execution.isRunning ? (
+          <div data-mipqa="ai-execute-progress" role="status" className="flex items-center justify-center gap-3 py-16 text-sm text-slate-600 dark:text-slate-300">
+            <Loader2 className="h-6 w-6 animate-spin text-cyan-700 dark:text-cyan-400" aria-hidden="true" />
+            Running…
+          </div>
+        ) : execution.run?.status === 'ready' ? (
+          <p data-mipqa="ai-execute-ready" role="status" className="mt-4 text-sm text-slate-700 dark:text-slate-300">{execution.run.assistantMessage || 'Test execution completed.'}</p>
+        ) : !execution.run && !execution.error ? (
+          <p className="py-16 text-center text-sm text-slate-600 dark:text-slate-300">Run a test to see its progress.</p>
+        ) : null}
       </section>
     </div>
   </div>
 );
+};
+
+const AiAgentExecute: React.FC = () => {
+  const [queryClient] = useState(() => new QueryClient());
+  const { state } = useApp();
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AiAgentExecuteContent key={state.selectedProjectId ?? 'none'} />
+    </QueryClientProvider>
+  );
 };
 
 export default AiAgentExecute;
