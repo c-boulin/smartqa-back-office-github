@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Loader2, Play } from 'lucide-react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React, { useEffect, useRef, useState } from 'react';
+import { Loader2, Play, X } from 'lucide-react';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { useAiExecuteRun } from '../hooks/useAiExecuteRun';
-import { AiExecuteInput } from '../services/aiExecuteApi';
+import { AiExecuteInput, createAiExecuteApi } from '../services/aiExecuteApi';
+import { apiService } from '../services/api';
 import { useApp } from '../context/AppContext';
 
 const devices = ['Desktop Chrome', 'iPhone 12', 'iPad', 'Samsung Galaxy S21'];
@@ -16,6 +17,50 @@ const templates = [
 const inputClass = 'w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder:text-slate-400';
 const labelClass = 'block space-y-2 text-sm font-medium text-slate-700 dark:text-slate-300';
 
+const resultColors = {
+  pass: 'text-green-700 dark:text-green-400',
+  fail: 'text-red-700 dark:text-red-300',
+  info: 'text-slate-600 dark:text-slate-300',
+};
+
+function ScreenshotImage({ projectId, runId, screenshotKey, full = false }: { projectId: string; runId: string; screenshotKey: string; full?: boolean }) {
+  const [api] = useState(() => createAiExecuteApi((path, options) => apiService.authenticatedRequest(path, options)));
+  const [imageFailed, setImageFailed] = useState(false);
+  const image = useQuery({
+    queryKey: ['ai-execute-image', projectId, runId, screenshotKey, full],
+    queryFn: ({ signal }) => api.getScreenshotUrl(projectId, runId, screenshotKey, signal),
+    gcTime: 0,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+  if (image.isPending || image.isFetching) return <span role="status" className="block p-4 text-sm text-slate-600 dark:text-slate-300">Loading screenshot…</span>;
+  if (image.isError || imageFailed) return <span role="alert" className="block p-4 text-sm text-red-700 dark:text-red-300">Screenshot unavailable.</span>;
+  return <img data-mipqa={full ? 'ai-execute-full-img' : 'ai-execute-thumbnail-img'} src={image.data} alt={full ? 'Full test execution screenshot' : 'Test execution screenshot preview'} referrerPolicy="no-referrer" onError={() => setImageFailed(true)} className={full ? 'max-h-[75vh] w-full object-contain' : 'h-32 w-full rounded-lg object-contain'} />;
+}
+
+function ScreenshotPreview({ projectId, runId, screenshotKey, index }: { projectId: string; runId: string; screenshotKey: string; index: number }) {
+  const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (open) dialogRef.current?.showModal();
+  }, [open]);
+  return <>
+    <button ref={buttonRef} data-mipqa={`ai-execute-screenshot-${index}-button`} type="button" aria-label={`Open screenshot ${index}`} onClick={() => setOpen(true)} className="rounded-lg border border-slate-300 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:border-slate-600">
+      <ScreenshotImage projectId={projectId} runId={runId} screenshotKey={screenshotKey} />
+    </button>
+    <dialog ref={dialogRef} data-mipqa="ai-execute-lightbox" aria-label={`Screenshot ${index}`} onClose={() => { setOpen(false); buttonRef.current?.focus(); }} className="w-[calc(100%-32px)] max-w-5xl rounded-lg border border-slate-300 bg-white p-4 text-slate-900 backdrop:bg-slate-950/80 dark:border-slate-600 dark:bg-slate-900 dark:text-white">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h3 className="font-semibold">Screenshot {index}</h3>
+        <button data-mipqa="ai-execute-lightbox-close-button" type="button" aria-label="Close screenshot" onClick={() => dialogRef.current?.close()} className="rounded-lg p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"><X className="h-5 w-5" aria-hidden="true" /></button>
+      </div>
+      {open && <ScreenshotImage projectId={projectId} runId={runId} screenshotKey={screenshotKey} full />}
+    </dialog>
+  </>;
+}
+
 const AiAgentExecuteContent: React.FC = () => {
   const { state, dispatch } = useApp();
   const selectedProject = state.projects.find(project => project.id === state.selectedProjectId);
@@ -23,6 +68,7 @@ const AiAgentExecuteContent: React.FC = () => {
   const [device, setDevice] = useState<AiExecuteInput['device']>('Desktop Chrome');
   const [url, setUrl] = useState('');
   const [prompt, setPrompt] = useState('');
+  const report = execution.run?.status === 'ready' ? execution.run.executionReport : null;
   let validUrl = false;
   try {
     validUrl = url.startsWith('https://') && new URL(url).protocol === 'https:' && Boolean(new URL(url).hostname);
@@ -138,6 +184,25 @@ const AiAgentExecuteContent: React.FC = () => {
             <button data-mipqa="ai-execute-retry-poll-button" type="button" onClick={execution.retryPoll} className="rounded-lg border border-cyan-700 px-4 py-2 text-sm font-medium text-cyan-700 dark:border-cyan-400 dark:text-cyan-400">Retry status check</button>
           )}
         </form>
+        {report && <div data-mipqa="ai-execute-results" className="mt-6 space-y-6 border-t border-slate-200 pt-6 dark:border-slate-600">
+          <div className="space-y-4">
+            <span data-mipqa="ai-execute-status-badge" className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${report.status === 'passed' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'}`}>{report.status.toUpperCase()}</span>
+            <p data-mipqa="ai-execute-summary" className="whitespace-pre-wrap break-words text-sm text-slate-700 dark:text-slate-300">{report.summary}</p>
+            <p data-mipqa="ai-execute-duration" className="text-sm text-slate-600 dark:text-slate-300">Duration: {(report.duration_ms / 1000).toFixed(2)}s · {report.steps.length} steps</p>
+          </div>
+          <section aria-labelledby="ai-execute-logs-title">
+            <h3 id="ai-execute-logs-title" data-mipqa="ai-execute-logs-title" className="mb-4 font-semibold text-slate-900 dark:text-white">Live logs</h3>
+            <div data-mipqa="ai-execute-logs" className="max-h-64 space-y-2 overflow-auto rounded-lg bg-slate-100 p-4 font-mono text-sm dark:bg-slate-900">
+              {report.steps.length ? report.steps.map((step, index) => <p key={index} className={`whitespace-pre-wrap break-words ${step.status === 'fail' || step.kind === 'error' ? resultColors.fail : resultColors.info}`}>[{step.kind}] {step.message}</p>) : <p className={resultColors.info}>No log entries were returned.</p>}
+            </div>
+          </section>
+          {selectedProject && execution.run && report.screenshot_keys.length > 0 && <section aria-labelledby="ai-execute-screenshots-title">
+            <h3 id="ai-execute-screenshots-title" className="mb-4 font-semibold text-slate-900 dark:text-white">Screenshots</h3>
+            <div data-mipqa="ai-execute-screenshots" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {report.screenshot_keys.map((key, index) => <ScreenshotPreview key={`${execution.run!.id}-${key}-${index}`} projectId={selectedProject.id} runId={execution.run!.id} screenshotKey={key} index={index + 1} />)}
+            </div>
+          </section>}
+        </div>}
       </section>
       <section
         data-mipqa="ai-execute-steps-card"
@@ -157,7 +222,12 @@ const AiAgentExecuteContent: React.FC = () => {
             Running…
           </div>
         ) : execution.run?.status === 'ready' ? (
-          <p data-mipqa="ai-execute-ready" role="status" className="mt-4 text-sm text-slate-700 dark:text-slate-300">{execution.run.assistantMessage || 'Test execution completed.'}</p>
+          report ? <ol data-mipqa="ai-execute-steps-list" className="mt-4 space-y-4">
+            {report.steps.length ? report.steps.map((step, index) => <li key={index} data-mipqa={`ai-execute-step-${index + 1}`} className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-slate-200 p-4 text-sm dark:border-slate-600">
+              <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-slate-900 dark:text-white">{step.n}. {step.message}</p>
+              <span className={`text-xs font-semibold uppercase ${resultColors[step.status]}`}>{step.status}</span>
+            </li>) : <li className="text-sm text-slate-600 dark:text-slate-300">No steps were returned.</li>}
+          </ol> : <p data-mipqa="ai-execute-missing-report" role="status" className="mt-4 text-sm text-slate-700 dark:text-slate-300">Test execution completed, but no execution report was returned.</p>
         ) : !execution.run && !execution.error ? (
           <p className="py-16 text-center text-sm text-slate-600 dark:text-slate-300">Run a test to see its progress.</p>
         ) : null}
