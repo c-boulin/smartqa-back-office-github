@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, FolderOpen, X, Loader, ChevronDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Project } from '../../types';
+import ProjectTitle from '../Project/ProjectTitle';
 
 interface ProjectSelectorProps {
   selectedProjectId: string;
@@ -11,6 +12,7 @@ interface ProjectSelectorProps {
   required?: boolean;
   error?: string;
   className?: string;
+  hideLabel?: boolean;
 }
 
 const ProjectSelector: React.FC<ProjectSelectorProps> = ({
@@ -20,7 +22,8 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   placeholder = 'Select project...',
   required = false,
   error,
-  className = ''
+  className = '',
+  hideLabel = false
 }) => {
   const { state } = useApp();
   const [isOpen, setIsOpen] = useState(false);
@@ -34,7 +37,8 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       project.name.toLowerCase().includes(q) ||
       project.id.toLowerCase().includes(q) ||
       (project.country ?? '').toLowerCase().includes(q) ||
-      (project.project_type ?? '').toLowerCase().includes(q)
+      (project.project_type ?? '').toLowerCase().includes(q) ||
+      (project.category ?? '').toLowerCase().includes(q)
     );
   });
 
@@ -80,9 +84,11 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
-        Project {required && <span className="text-red-400">*</span>}
-      </label>
+      {!hideLabel && (
+        <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-3">
+          Project {required && <span className="text-red-400">*</span>}
+        </label>
+      )}
       <div className="relative" ref={dropdownRef}>
         {/* Main Button */}
         <button
@@ -103,19 +109,7 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
             <FolderOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-400 pointer-events-none" />
             <span className="truncate ml-7 flex items-center gap-2 min-w-0">
               {selectedProject ? (
-                <>
-                  {selectedProject.country && (
-                    <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-gray-300">
-                      {selectedProject.country}
-                    </span>
-                  )}
-                  <span className="font-medium truncate">{selectedProject.name}</span>
-                  {selectedProject.project_type && (
-                    <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300">
-                      {selectedProject.project_type}
-                    </span>
-                  )}
-                </>
+                <ProjectTitle project={selectedProject} truncate />
               ) : (
                 <span className="text-slate-400 dark:text-gray-400">{placeholder}</span>
               )}
@@ -209,22 +203,10 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                             selectedProjectId === project.id ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400 dark:text-gray-400'
                           }`} />
                           <div className="flex-1 min-w-0">
-                            <div className={`font-medium truncate flex items-center gap-2 ${
-                              selectedProjectId === project.id ? 'text-cyan-600 dark:text-cyan-300' : 'text-slate-900 dark:text-white'
-                            }`}>
-                              {project.country && (
-                                <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-gray-300">
-                                  {project.country}
-                                </span>
-                              )}
-                              <span className="truncate">{project.name}</span>
-                              {project.project_type && (
-                                <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300">
-                                  {project.project_type}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-gray-400 truncate mt-1">{project.description}</div>
+                            <ProjectTitle project={project} truncate />
+                            {project.description && (
+                              <div className="text-xs text-slate-500 dark:text-gray-400 truncate mt-1">{project.description}</div>
+                            )}
                           </div>
                           {selectedProjectId === project.id && (
                             <div className="text-cyan-600 dark:text-cyan-400 ml-2">✓</div>

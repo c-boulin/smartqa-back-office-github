@@ -5,6 +5,8 @@ import { useAiExecuteRun } from '../hooks/useAiExecuteRun';
 import { AiExecuteInput, createAiExecuteApi } from '../services/aiExecuteApi';
 import { apiService } from '../services/api';
 import { useApp } from '../context/AppContext';
+import ProjectSelector from '../components/UI/ProjectSelector';
+import ProjectTitle from '../components/Project/ProjectTitle';
 
 const devices = ['Desktop Chrome', 'iPhone 12', 'iPad', 'Samsung Galaxy S21'];
 const templates = [
@@ -86,9 +88,9 @@ const AiAgentExecuteContent: React.FC = () => {
     <h1 data-mipqa="ai-execute-title" className="text-3xl font-bold text-slate-900 dark:text-white">
       AI Agent Execute
     </h1>
-    <p data-mipqa="ai-execute-project-name" className="text-sm text-slate-600 dark:text-slate-300">
-      Project: {selectedProject?.name ?? 'None selected'}
-    </p>
+    <div data-mipqa="ai-execute-project-name" className="text-sm text-slate-600 dark:text-slate-300">
+      {selectedProject ? <ProjectTitle project={selectedProject} truncate /> : 'Project: None selected'}
+    </div>
     <div data-mipqa="ai-execute-grid" className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <section
         data-mipqa="ai-execute-run-card"
@@ -104,19 +106,17 @@ const AiAgentExecuteContent: React.FC = () => {
         </h2>
         <form data-mipqa="ai-execute-form" className="mt-6 space-y-4" onSubmit={event => { event.preventDefault(); if (canRun) execution.start({ url, device, prompt }); }}>
           <fieldset disabled={execution.isRunning} className="space-y-4">
-          <label className={labelClass}>
+          <div className={labelClass} data-mipqa="ai-execute-project-select">
             <span>Project</span>
-            <select
-              data-mipqa="ai-execute-project-select"
-              className={inputClass}
+            <ProjectSelector
+              hideLabel
+              selectedProjectId={state.selectedProjectId ?? ''}
+              onProjectChange={id => dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: id || null })}
+              disabled={execution.isRunning}
               required
-              value={selectedProject?.id ?? ''}
-              onChange={event => dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: event.target.value || null })}
-            >
-              <option value="">Select a project</option>
-              {state.projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
-            </select>
-          </label>
+              placeholder="Select a project"
+            />
+          </div>
           <label className={labelClass}>
             <span>Device</span>
             <select data-mipqa="ai-execute-device-select" className={inputClass} value={device} onChange={event => setDevice(event.target.value as AiExecuteInput['device'])}>
