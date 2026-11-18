@@ -31,7 +31,10 @@ const stepBorders = {
 };
 const statusLabels = { pass: 'Passed', fail: 'Failed', info: 'Info' };
 const cardClass = 'min-w-0 rounded-xl border border-slate-200 bg-white p-6 shadow-md dark:border-slate-600/50 dark:bg-slate-800/90 dark:shadow-black/20';
-const cardTitleClass = 'border-b border-slate-200 pb-4 text-lg font-semibold text-cyan-700 dark:border-slate-600/50 dark:text-cyan-400';
+const cardHeaderClass = '-mx-6 -mt-6 flex flex-wrap items-center justify-between gap-2 rounded-t-xl border-b border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-600/50 dark:bg-slate-900/40';
+const cardTitleClass = 'text-lg font-semibold text-cyan-700 dark:text-cyan-400';
+const stepNumberClass = 'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-700 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-200';
+const tileClass = 'rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-600/50 dark:bg-slate-900/40';
 
 function ScreenshotImage({ projectId, runId, screenshotKey, full = false }: { projectId: string; runId: string; screenshotKey: string; full?: boolean }) {
   const [api] = useState(() => createAiExecuteApi((path, options) => apiService.authenticatedRequest(path, options)));
@@ -99,20 +102,23 @@ const AiAgentExecuteContent: React.FC = () => {
         ? { label: 'PASSED', pill: 'border-green-300 bg-green-50 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300', dot: 'bg-green-500' }
         : { label: 'FAILED', pill: 'border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300', dot: 'bg-red-500' }
       : runFailed
-        ? { label: 'Failed', pill: 'border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300', dot: 'bg-red-500' }
+        ? { label: 'FAILED', pill: 'border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300', dot: 'bg-red-500' }
         : { label: 'Idle', pill: 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300', dot: 'bg-slate-400' };
-  const logText = report?.log_excerpt
-    || (execution.isRunning ? 'Waiting for agent output…' : visibleSteps.length ? visibleSteps.map(step => step.message).join('\n') : 'Logs will appear here after you run a test.');
+  const logOutput = report?.log_excerpt || (!execution.isRunning && visibleSteps.length ? visibleSteps.map(step => step.message).join('\n') : '');
+  const logText = logOutput || (execution.isRunning ? 'Waiting for agent output…' : 'Logs will appear here after you run a test.');
+  const logLineCount = logOutput ? logOutput.split('\n').length : 0;
+  const statusTextClass = report?.status === 'passed' ? 'text-green-700 dark:text-green-400' : report || runFailed ? 'text-red-700 dark:text-red-300' : 'text-slate-900 dark:text-white';
+  const statusValue = report || runFailed ? status.label : execution.isRunning ? 'Running' : '—';
 
   return (
   <div data-mipqa="ai-execute-page" className="space-y-6">
     <header data-mipqa="ai-execute-header" className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 data-mipqa="ai-execute-title" className="text-3xl font-bold text-slate-900 dark:text-white">
-            AI Agent Execute
+          <h1 data-mipqa="ai-execute-title" className="text-3xl font-bold text-cyan-600 dark:text-cyan-400">
+            AI QA Agent — Visual Interface
           </h1>
-          <p data-mipqa="ai-execute-subtitle" className="mt-1 text-sm text-slate-500 dark:text-slate-400">Visual interface</p>
+          <p data-mipqa="ai-execute-subtitle" className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pick a device, write a natural-language test prompt, and review steps, logs and results.</p>
         </div>
         <div data-mipqa="ai-execute-pills" className="flex flex-wrap gap-2">
           <span data-mipqa="ai-execute-status-pill" role="status" className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${status.pill}`}>
@@ -139,17 +145,21 @@ const AiAgentExecuteContent: React.FC = () => {
     </header>
     <div data-mipqa="ai-execute-grid" className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <section data-mipqa="ai-execute-run-card" aria-labelledby="ai-execute-run-title" className={cardClass}>
-        <h2 id="ai-execute-run-title" data-mipqa="ai-execute-run-title" className={cardTitleClass}>
-          Run a test
-        </h2>
+        <div className={cardHeaderClass}>
+          <h2 id="ai-execute-run-title" data-mipqa="ai-execute-run-title" className={cardTitleClass}>
+            Run a test
+          </h2>
+        </div>
         <form data-mipqa="ai-execute-form" className="mt-6 space-y-4" onSubmit={event => { event.preventDefault(); if (canRun) execution.start({ url, device, prompt }); }}>
           <fieldset disabled={execution.isRunning} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className={labelClass}>
             <span>Device</span>
             <select data-mipqa="ai-execute-device-select" className={inputClass} value={device} onChange={event => setDevice(event.target.value as AiExecuteInput['device'])}>
               {devices.map(value => <option key={value} value={value}>{value}</option>)}
             </select>
           </label>
+          <div className="space-y-2">
           <label className={labelClass}>
             <span>Base URL</span>
             <input
@@ -166,11 +176,13 @@ const AiAgentExecuteContent: React.FC = () => {
           <p id="ai-execute-url-help" data-mipqa="ai-execute-url-help" className="text-sm text-slate-600 dark:text-slate-300">
             Required. Enter a valid address starting with https://.
           </p>
+          </div>
+          </div>
           <button
             data-mipqa="ai-execute-run-button"
             type="submit"
             disabled={!canRun || execution.isRunning}
-            className="flex w-full min-w-[140px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-purple-600 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-purple-500/20 transition-all hover:from-cyan-500 hover:to-purple-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none dark:focus-visible:ring-offset-slate-800 dark:disabled:bg-slate-700 dark:disabled:text-slate-400 sm:w-auto"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-purple-600 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-purple-500/20 transition-all hover:from-cyan-500 hover:to-purple-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none dark:focus-visible:ring-offset-slate-800 dark:disabled:bg-slate-700 dark:disabled:text-slate-400 sm:w-auto sm:min-w-[180px]"
           >
             {execution.isRunning ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <Play className="h-5 w-5" aria-hidden="true" />}
             {execution.isRunning ? 'Running…' : 'Run'}
@@ -218,11 +230,11 @@ const AiAgentExecuteContent: React.FC = () => {
         {runFailed && <div data-mipqa="ai-execute-error" role="alert" className="mt-6 rounded-lg border border-red-300 p-4 text-sm text-red-700 dark:border-red-700 dark:text-red-300">{execution.run?.errorMessage || 'Test execution failed.'}</div>}
       </section>
       <section data-mipqa="ai-execute-steps-card" aria-labelledby="ai-execute-steps-title" className={cardClass}>
-        <div className="border-b border-slate-200 pb-4 dark:border-slate-600/50">
-          <h2 id="ai-execute-steps-title" data-mipqa="ai-execute-steps-title" className="text-lg font-semibold text-cyan-700 dark:text-cyan-400">
+        <div className={cardHeaderClass}>
+          <h2 id="ai-execute-steps-title" data-mipqa="ai-execute-steps-title" className={cardTitleClass}>
             Planned / Executed steps
           </h2>
-          <p data-mipqa="ai-execute-steps-device" className="mt-1 text-sm text-slate-500 dark:text-slate-400">Device: {report?.device ?? device}</p>
+          <p data-mipqa="ai-execute-steps-device" className="text-sm text-slate-500 dark:text-slate-400">Device: {report?.device ?? device}</p>
         </div>
         {execution.isRunning ? (
           <div data-mipqa="ai-execute-progress" role="status" className="flex items-center justify-center gap-3 py-16 text-sm text-slate-600 dark:text-slate-300">
@@ -234,16 +246,19 @@ const AiAgentExecuteContent: React.FC = () => {
             {selectedProject && execution.run && report.screenshot_keys.length > 0 && <div data-mipqa="ai-execute-screenshots" className="flex flex-wrap gap-3">
               {report.screenshot_keys.map((key, index) => <ScreenshotPreview key={`${execution.run!.id}-${key}-${index}`} projectId={selectedProject.id} runId={execution.run!.id} screenshotKey={key} index={index + 1} />)}
             </div>}
-            <ol data-mipqa="ai-execute-steps-list" className="space-y-3">
+            <ol data-mipqa="ai-execute-steps-list" className="flex flex-col gap-3">
               {visibleSteps.length ? visibleSteps.map((step, index) => {
                 const Icon = step.status === 'pass' ? CheckCircle2 : step.status === 'fail' ? XCircle : Circle;
-                return <li key={index} data-mipqa={`ai-execute-step-${index + 1}`} className={`flex gap-3 rounded-lg border border-l-4 border-slate-300 bg-slate-100/80 p-4 dark:border-slate-600 dark:bg-slate-700/50 ${stepBorders[step.status]}`}>
-                  <Icon aria-hidden="true" className={`mt-0.5 h-5 w-5 shrink-0 ${resultColors[step.status]}`} />
+                return <li key={index} data-mipqa={`ai-execute-step-${index + 1}`} className={`flex gap-3 rounded-xl border border-l-4 border-slate-300 bg-slate-100/80 p-4 dark:border-slate-600 dark:bg-slate-700/50 ${stepBorders[step.status]}`}>
+                  <span data-mipqa={`ai-execute-step-${index + 1}-number`} aria-hidden="true" className={stepNumberClass}>{index + 1}</span>
                   <div className="min-w-0 flex-1">
                     <p className="break-words text-sm font-semibold text-slate-900 dark:text-white">{step.message}</p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{step.kind === 'assertion' ? 'Assertion' : 'Execution step'}</p>
                   </div>
-                  <span data-mipqa={`ai-execute-step-${index + 1}-status-badge`} className={`h-fit shrink-0 text-xs font-semibold ${resultColors[step.status]}`}>{statusLabels[step.status]}</span>
+                  <span data-mipqa={`ai-execute-step-${index + 1}-status-badge`} className={`flex h-fit shrink-0 items-center gap-1 text-xs font-semibold ${resultColors[step.status]}`}>
+                    <Icon aria-hidden="true" className="h-4 w-4" />
+                    {statusLabels[step.status]}
+                  </span>
                 </li>;
               }) : <li className="text-sm text-slate-600 dark:text-slate-300">No steps were executed.</li>}
             </ol>
@@ -251,11 +266,14 @@ const AiAgentExecuteContent: React.FC = () => {
         ) : runFailed ? (
           <p data-mipqa="ai-execute-no-steps" className="py-16 text-center text-sm text-slate-500 dark:text-slate-400">No steps were executed.</p>
         ) : plannedSteps.length ? (
-          <ol data-mipqa="ai-execute-planned-list" className="mt-4 space-y-3">
+          <ol data-mipqa="ai-execute-planned-list" className="mt-4 flex flex-col gap-3">
             {plannedSteps.map((line, index) => (
-              <li key={index} data-mipqa={`ai-execute-planned-step-${index + 1}`} className="rounded-lg border border-slate-300 bg-slate-100/80 p-4 dark:border-slate-600 dark:bg-slate-700/50">
-                <p className="break-words text-sm font-semibold text-slate-900 dark:text-white">{line}</p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Planned from your prompt</p>
+              <li key={index} data-mipqa={`ai-execute-planned-step-${index + 1}`} className="flex gap-3 rounded-xl border border-slate-300 bg-slate-100/80 p-4 dark:border-slate-600 dark:bg-slate-700/50">
+                <span data-mipqa={`ai-execute-planned-step-${index + 1}-number`} aria-hidden="true" className={stepNumberClass}>{index + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="break-words text-sm font-semibold text-slate-900 dark:text-white">{line}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Planned from your prompt</p>
+                </div>
               </li>
             ))}
           </ol>
@@ -266,22 +284,33 @@ const AiAgentExecuteContent: React.FC = () => {
     </div>
     <div data-mipqa="ai-execute-bottom-grid" className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <section data-mipqa="ai-execute-live-logs" aria-labelledby="ai-execute-live-logs-title" className={cardClass}>
-        <h2 id="ai-execute-live-logs-title" data-mipqa="ai-execute-live-logs-title" className={cardTitleClass}>Live logs</h2>
+        <div className={cardHeaderClass}>
+          <h2 id="ai-execute-live-logs-title" data-mipqa="ai-execute-live-logs-title" className={cardTitleClass}>Live logs</h2>
+          {logLineCount > 0 && <span data-mipqa="ai-execute-live-logs-count" className="text-xs text-slate-500 dark:text-slate-400">{logLineCount} {logLineCount === 1 ? 'line' : 'lines'}</span>}
+        </div>
         <div data-mipqa="ai-execute-raw-output" className="mt-4 max-h-48 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-4 dark:bg-black/40">
           <pre data-mipqa="ai-execute-raw-output-pre" className="whitespace-pre-wrap break-words font-mono text-xs text-slate-200">{logText}</pre>
         </div>
       </section>
       <section data-mipqa="ai-execute-result-summary" aria-labelledby="ai-execute-result-summary-title" className={cardClass}>
-        <h2 id="ai-execute-result-summary-title" data-mipqa="ai-execute-result-summary-title" className={cardTitleClass}>Result summary</h2>
+        <div className={cardHeaderClass}>
+          <h2 id="ai-execute-result-summary-title" data-mipqa="ai-execute-result-summary-title" className={cardTitleClass}>Result summary</h2>
+        </div>
+        <dl data-mipqa="ai-execute-result-tiles" className="mt-4 grid grid-cols-3 gap-3">
+          <div className={tileClass}>
+            <dt className="text-xs text-slate-500 dark:text-slate-400">Status</dt>
+            <dd data-mipqa="ai-execute-status-badge" className={`mt-1 truncate text-xl font-bold ${statusTextClass}`}>{statusValue}</dd>
+          </div>
+          <div className={tileClass}>
+            <dt className="text-xs text-slate-500 dark:text-slate-400">Steps</dt>
+            <dd data-mipqa="ai-execute-steps-count" className="mt-1 text-xl font-bold text-slate-900 dark:text-white">{report ? countedSteps.length : '—'}</dd>
+          </div>
+          <div className={tileClass}>
+            <dt className="text-xs text-slate-500 dark:text-slate-400">Duration</dt>
+            <dd data-mipqa="ai-execute-duration" className="mt-1 text-xl font-bold text-slate-900 dark:text-white">{report ? `${(report.duration_ms / 1000).toFixed(1)}s` : '—'}</dd>
+          </div>
+        </dl>
         <dl data-mipqa="ai-execute-results" className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-3 text-sm">
-          <dt className="text-slate-500 dark:text-slate-400">Status</dt>
-          <dd>
-            <span data-mipqa="ai-execute-status-badge" className={`inline-flex rounded-full border px-3 py-0.5 text-xs font-semibold ${status.pill}`}>{status.label}</span>
-          </dd>
-          <dt className="text-slate-500 dark:text-slate-400">Steps</dt>
-          <dd data-mipqa="ai-execute-steps-count" className="font-medium text-slate-900 dark:text-white">{report ? countedSteps.length : '—'}</dd>
-          <dt className="text-slate-500 dark:text-slate-400">Duration</dt>
-          <dd data-mipqa="ai-execute-duration" className="font-medium text-slate-900 dark:text-white">{report ? `${(report.duration_ms / 1000).toFixed(1)}s` : '—'}</dd>
           <dt className="text-slate-500 dark:text-slate-400">Results</dt>
           <dd data-mipqa="ai-execute-counts" className="text-slate-700 dark:text-slate-300">{report ? `${passCount} passed · ${failCount} failed` : '—'}</dd>
           <dt className="text-slate-500 dark:text-slate-400">Summary</dt>
