@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckCircle2, Circle, Loader2, Play, X, XCircle } from 'lucide-react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { useAiExecuteRun } from '../hooks/useAiExecuteRun';
 import { AiExecuteInput, createAiExecuteApi } from '../services/aiExecuteApi';
 import { apiService } from '../services/api';
 import { useApp } from '../context/AppContext';
-import ProjectSelector from '../components/UI/ProjectSelector';
 import ProjectTitle from '../components/Project/ProjectTitle';
 
 const devices = ['Desktop Chrome', 'iPhone 12', 'iPad', 'Samsung Galaxy S21'];
@@ -64,7 +64,7 @@ function ScreenshotPreview({ projectId, runId, screenshotKey, index }: { project
 }
 
 const AiAgentExecuteContent: React.FC = () => {
-  const { state, dispatch } = useApp();
+  const { state } = useApp();
   const selectedProject = state.projects.find(project => project.id === state.selectedProjectId);
   const execution = useAiExecuteRun(selectedProject?.id);
   const [device, setDevice] = useState<AiExecuteInput['device']>('Desktop Chrome');
@@ -88,8 +88,14 @@ const AiAgentExecuteContent: React.FC = () => {
     <h1 data-mipqa="ai-execute-title" className="text-3xl font-bold text-slate-900 dark:text-white">
       AI Agent Execute
     </h1>
-    <div data-mipqa="ai-execute-project-name" className="text-sm text-slate-600 dark:text-slate-300">
-      {selectedProject ? <ProjectTitle project={selectedProject} truncate /> : 'Project: None selected'}
+    <div data-mipqa="ai-execute-project-name" className="space-y-1 text-sm">
+      {selectedProject ? <>
+        <span data-mipqa="ai-execute-running-in-label" className="block text-slate-600 dark:text-slate-300">Running in:</span>
+        <ProjectTitle project={selectedProject} truncate />
+      </> : <p data-mipqa="ai-execute-no-project-text" className="text-slate-600 dark:text-slate-300">
+        No project selected. Select a project from the Projects page to run a test.{' '}
+        <Link data-mipqa="ai-execute-go-to-projects-link" to="/projects" className="font-semibold text-cyan-600 hover:underline dark:text-cyan-400">Go to Projects</Link>
+      </p>}
     </div>
     <div data-mipqa="ai-execute-grid" className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <section
@@ -106,17 +112,6 @@ const AiAgentExecuteContent: React.FC = () => {
         </h2>
         <form data-mipqa="ai-execute-form" className="mt-6 space-y-4" onSubmit={event => { event.preventDefault(); if (canRun) execution.start({ url, device, prompt }); }}>
           <fieldset disabled={execution.isRunning} className="space-y-4">
-          <div className={labelClass} data-mipqa="ai-execute-project-select">
-            <span>Project</span>
-            <ProjectSelector
-              hideLabel
-              selectedProjectId={state.selectedProjectId ?? ''}
-              onProjectChange={id => dispatch({ type: 'SET_SELECTED_PROJECT_ID', payload: id || null })}
-              disabled={execution.isRunning}
-              required
-              placeholder="Select a project"
-            />
-          </div>
           <label className={labelClass}>
             <span>Device</span>
             <select data-mipqa="ai-execute-device-select" className={inputClass} value={device} onChange={event => setDevice(event.target.value as AiExecuteInput['device'])}>
