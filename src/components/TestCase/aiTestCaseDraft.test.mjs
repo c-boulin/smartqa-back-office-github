@@ -117,6 +117,18 @@ test('ready proposals retain recap, details and ordered steps', () => {
   assert.throws(() => aiProposalSchema.parse({ ...proposalFixture, testCases: [{ title: 'Missing id' }] }));
 });
 
+test('ready proposals accept null or missing step results', () => {
+  const testCases = ['tc1', 'tc2', 'tc3', 'tc4', 'tc5'].map(tempId => ({ tempId, folderTempId: 'f1', title: tempId, stepResults: [{ step: 'Open homepage', order: 1, result: 'Homepage shown' }] }));
+  testCases[0].stepResults = [{ step: 'Scroll to the bottom of the homepage.', order: 1, result: null }, { step: 'Observe footer', order: 2 }];
+  const proposal = { ...proposalFixture, testCases };
+  assert.doesNotThrow(() => aiProposalSchema.parse(proposal));
+  const ready = adaptAiSession({ data: { session: { id: 12, status: 'ready', proposal } } });
+  assert.equal(ready.status, 'ready');
+  assert.equal(ready.proposal.testCases.length, 5);
+  assert.equal(ready.proposal.testCases[0].stepResults[0].result, null);
+  assert.equal(ready.proposal.testCases[0].stepResults[1].result, undefined);
+});
+
 test('acceptance filters exports and creates exact commit bodies', () => {
   const proposal = aiProposalSchema.parse(proposalFixture);
   assert.equal(aiCommitBody(proposal, ['tc1', 'tc2']), undefined);

@@ -10,7 +10,7 @@ export const aiProposalSchema = z.object({
     description: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
     priority: z.union([z.string(), z.number()]).nullable().optional(),
-    stepResults: z.array(z.object({ step: z.string(), result: z.string() }).passthrough()),
+    stepResults: z.array(z.object({ step: z.string(), result: z.string().nullable().optional() }).passthrough()),
   }).passthrough()),
 }).passthrough().refine(proposal => new Set(proposal.testCases.map(item => item.tempId)).size === proposal.testCases.length, 'Duplicate test case identifiers');
 
